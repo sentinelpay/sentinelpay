@@ -2714,9 +2714,10 @@ html.theme-light .lp-demo-select-list { scrollbar-width: thin; scrollbar-color: 
     .bad-form-card .lp-demo-step {
         height: 286px !important; min-height: 286px !important; max-height: 286px !important;
         /* the box is fixed so the card never jumps, which leaves slack on the
-           shorter steps. centre the content so the slack sits either side of it
-           rather than pooling under it and reading as a dead gap. */
-        display: flex; flex-direction: column; justify-content: center;
+           shorter steps. it sits under the fields, not around them: the first
+           row then starts the same distance below the form heading as it does
+           on the homepage, and the two forms read as one form. */
+        display: flex; flex-direction: column; justify-content: flex-start;
     }
 }
 
