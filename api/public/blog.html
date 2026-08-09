@@ -89,9 +89,17 @@
         .lp-ins-avatar svg { width: 18px; height: 18px; }
         /* overlapping avatar group (co-authors): one full circle + half of the next behind it */
         .lp-ins-avatars { display: inline-flex; align-items: center; flex-shrink: 0; }
-        .lp-ins-avatars .lp-ins-avatar { box-shadow: 0 0 0 2px #fff; }
-        .lp-ins-avatars .lp-ins-avatar:first-child { z-index: 2; }
-        .lp-ins-avatars .lp-ins-avatar + .lp-ins-avatar { margin-left: -12px; z-index: 1; }
+        /* the same stack the article byline uses. every avatar after the first had
+           the same z-index, so the last one painted over the middle one and left it
+           as a sliver between two neighbours. each earlier author now sits above the
+           next, so three faces read left to right in the order the names do. */
+        .lp-ins-avatars .lp-ins-avatar { box-shadow: 0 0 0 2px #fff; background: #e7f3f9; }
+        .lp-ins-avatars .lp-ins-avatar:nth-child(1) { z-index: 3; }
+        .lp-ins-avatars .lp-ins-avatar:nth-child(2) { z-index: 2; }
+        .lp-ins-avatars .lp-ins-avatar:nth-child(3) { z-index: 1; }
+        /* less bite than before: at 30px, twelve pixels of overlap left barely a
+           third of the middle face showing */
+        .lp-ins-avatars .lp-ins-avatar + .lp-ins-avatar { margin-left: -9px; }
         .lp-ins-by b { font-size: 0.82rem; font-weight: 600; color: #0e2358; }
         .lp-ins-by small { display: block; font-size: 0.74rem; color: rgba(14,35,88,0.5); }
         .lp-ins-readmore { display: inline-flex; align-items: center; gap: 0.45rem; margin-top: 1.3rem; font-weight: 700; font-size: 0.9rem; color: #0e2358; }
@@ -365,6 +373,6 @@
     </script>
     <script>window.addEventListener('load',function(){window.scrollTo(0,0);var l=document.getElementById('sp-loader');if(!l)return;var finish=function(){l.classList.add('spl-done');setTimeout(function(){l.remove();},620);};/* the load event does not wait for lazy images, and nearly every image on the site is lazy, so the loader used to clear while the first screen was still filling in. wait for the ones that will actually be visible: an image further down has not started loading yet and never would, so waiting for all of them would hold the loader open for ever. */var pending=[],im,r,i;for(i=0;i<document.images.length;i++){im=document.images[i];r=im.getBoundingClientRect();if(r.bottom<0||r.top>window.innerHeight*1.2)continue;if(im.complete&&im.naturalWidth>0)continue;pending.push(im);}if(!pending.length){finish();return;}var left=pending.length,fired=false;var one=function(){if(--left<=0&&!fired){fired=true;finish();}};pending.forEach(function(x){x.addEventListener('load',one,{once:true});x.addEventListener('error',one,{once:true});});/* a slow or broken image must never trap anybody behind the loader */setTimeout(function(){if(!fired){fired=true;finish();}},2500);});</script>
     <script src="/img-fallback.js?v=2" defer></script>
-    <script src="/i18n.js?v=52" defer></script>
+    <script src="/i18n.js?v=53" defer></script>
 </body>
 </html>
