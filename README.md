@@ -92,7 +92,40 @@ the site works with javascript switched off far enough to say so: the loader sta
 
 a trial sign-up is verified automatically: the work email must sit on the company's own domain, free and disposable providers are refused on both sides, and gambling operators are declined by policy in the form and again on the server.
 
-every submission is written to `LOG_DIR/submissions-YYYY-MM.jsonl` **and** to stdout before any email is attempted, so a bounce, an outage or a missed inbox never costs a lead. emails are sent through resend from `noreply@sentinelpay.org`, in the site's own dark house style, with a plain-text alternative.
+every submission is written to stdout **and** to postgres before any email is attempted, so a bounce, an outage or a missed inbox never costs a lead. emails are sent through resend from `noreply@sentinelpay.org`, in the site's own dark house style, with a plain-text alternative.
+
+## the submission store
+
+leads live in postgres, not on the container's disk. everything a form collects belongs to somebody who is not a customer yet, so the table is built to be worth less than it looks if it ever leaves us.
+
+| control | how |
+| --- | --- |
+| encryption at rest | the personal fields go into one aes-256-gcm blob, sealed with the row's own id as additional authenticated data, so a ciphertext cannot be moved between rows. a copy of the database without `SUBMISSIONS_KEY` is a copy of nothing |
+| lookups without the data | the work email is stored only as an hmac-sha256 blind index under a separate key, so we can find or erase somebody's rows without their address being in the table |
+| transport | tls is required on any host that is not on the private network, and `sslmode=disable` in the url is refused rather than honoured |
+| injection | every value is a bound parameter. there is no string concatenation anywhere near a query |
+| blast radius | pool capped, ten second statement timeout, and the row is written inside one transaction so a half-written lead is impossible |
+| retention | rows delete themselves after `SUBMISSIONS_RETENTION_DAYS`, swept at boot and once a day |
+| erasure | `POST /v1/forget` removes every row for an address, matched through the blind index |
+| never losing a lead | stdout first, always. if the database is unreachable the row falls back to `LOG_DIR/submissions-YYYY-MM.jsonl` and the visitor still gets a 200 |
+
+generate the keys once, and keep them somewhere other than the database backups:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"   # SUBMISSIONS_KEY
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"   # SUBMISSIONS_INDEX_KEY
+```
+
+**losing `SUBMISSIONS_KEY` loses the leads.** that is what it is for. the index key can be derived from it, so it is optional, but a separate one is better: whoever holds the index then cannot test guesses against the ciphertext.
+
+the app only needs to read, write and delete its own table. if you are creating the role by hand rather than letting the provider do it:
+
+```sql
+CREATE ROLE sentinelpay_app LOGIN PASSWORD '...';
+GRANT CONNECT ON DATABASE sentinelpay TO sentinelpay_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON submissions TO sentinelpay_app;
+GRANT USAGE ON SEQUENCE submissions_id_seq TO sentinelpay_app;
+```
 
 ## contributing
 
@@ -121,7 +154,13 @@ nothing is required to boot. everything below changes behaviour when set.
 | `CF_ORIGIN_SECRET`, `CF_ORIGIN_HEADER` | the shared secret a cloudflare transform rule injects |
 | `CF_ORIGIN_STRICT` | extends that guard to every route, so the origin url is useless on its own |
 | `ALLOWED_ORIGINS` | cors allowlist. a wildcard is refused in production |
-| `LOG_DIR` | where the submission log is written. point it at a mounted volume, otherwise it resets on redeploy |
+| `DATABASE_URL` | postgres connection string. without it submissions fall back to the filesystem, which a redeploy wipes |
+| `DATABASE_CA_CERT` | the provider's ca certificate, so the tls chain is verified rather than merely encrypted |
+| `DATABASE_POOL_MAX` | connection pool ceiling, 8 by default |
+| `SUBMISSIONS_KEY` | 32 bytes base64. encrypts the personal fields at rest. without it they are stored in the clear and the log says so at boot |
+| `SUBMISSIONS_INDEX_KEY` | 32 bytes base64 for the blind index. derived from `SUBMISSIONS_KEY` when unset |
+| `SUBMISSIONS_RETENTION_DAYS` | how long a lead is kept, 365 by default |
+| `LOG_DIR` | the fallback submission log, used only when there is no database or it is unreachable |
 | `ADMIN_TOKEN` | enables the operations endpoints below |
 | `CSP_STRICT` | set to `false` only to fall back to `unsafe-inline` in an emergency |
 
@@ -155,12 +194,19 @@ contact routes those pages are obliged to offer.
 with `ADMIN_TOKEN` set:
 
 ```
-GET  /v1/submissions?token=…&limit=50&kind=trial   read the submission log back
-GET  /v1/mail-status?token=…                       what the mailer is configured with
-POST /v1/mail-status?token=…&send=1                send a test message and report the provider's answer
+GET  /v1/submissions?limit=50&kind=trial   read the submission log back
+GET  /v1/mail-status                       what the mailer and the database are configured with
+POST /v1/mail-status?send=1                send a test message and report the provider's answer
+POST /v1/forget   {"email":"…"}            erase every row belonging to an address
 ```
 
-all three answer with the ordinary 404 page when the token is missing or wrong, so their existence is not discoverable. the comparison is timing-safe.
+pass the token as a header, not a query string, because a query string is written to every access log and proxy log it passes through:
+
+```bash
+curl -H "x-admin-token: $ADMIN_TOKEN" https://sentinelpay.org/v1/submissions
+```
+
+`?token=…` still works so nothing that already relies on it breaks. all four answer with the ordinary 404 page when the token is missing or wrong, so their existence is not discoverable. the comparison is timing-safe, and the two that return personal data are `no-store`.
 
 ## releasing
 
@@ -182,6 +228,7 @@ html is never cached hard, so copy changes go live with the deploy.
 | layer | tech |
 | --- | --- |
 | runtime | node 22, express 5 |
+| data | postgres, encrypted at rest by the application |
 | email | resend |
 | edge | cloudflare: dns, waf, turnstile, geo, email routing |
 | hosting | railway, docker |

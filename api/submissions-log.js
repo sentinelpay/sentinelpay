@@ -1,17 +1,26 @@
 'use strict';
 
-// An append-only record of everything the forms receive. Mail can bounce, a
-// provider can be down, and an inbox can be missed; the log is the copy that
-// survives all three, so a lead is never lost silently.
+// An append-only record of everything the forms receive.
+//
+// There are three copies and they exist for different reasons:
+//
+//   stdout    written first, always, before anything can fail. the platform's
+//             own log retention picks it up, so even a total database outage
+//             leaves a trace of who came in
+//   postgres  the real store: queryable, encrypted, and it survives a redeploy
+//   file      the fallback for local development and for the minutes when the
+//             database is unreachable
+//
+// Mail can bounce, a provider can be down, an inbox can be missed and a
+// database can be restarting. A lead must survive all four.
 
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const db = require('./db');
 
-// Railway's filesystem is ephemeral: a redeploy wipes it. Point LOG_DIR at a
-// mounted volume to keep the history across deploys. Without one the file still
-// works, it just resets on deploy, which is why every entry is also written to
-// stdout where the platform's own log retention picks it up.
+// Only used when there is no database. Railway's filesystem is ephemeral: a
+// redeploy wipes it, which is the whole reason the database exists.
 const LOG_DIR = process.env.LOG_DIR || path.join(os.tmpdir(), 'sentinelpay-logs');
 
 let ready = false;
@@ -32,9 +41,18 @@ function currentFile(when) {
     return path.join(LOG_DIR, 'submissions-' + stamp + '.jsonl');
 }
 
-// Writing is deliberately synchronous and best effort. It runs once per form
-// submission, so the cost is irrelevant, and a logging failure must never take
-// down the request it is describing.
+function writeFile(entry, when) {
+    if (!ensureDir()) return;
+    try {
+        fs.appendFileSync(currentFile(when), JSON.stringify(entry) + '\n');
+    } catch (err) {
+        console.error('[submissions] write failed: ' + err.message);
+    }
+}
+
+// The caller does not wait for this. It runs once per form submission in the
+// request path, and the visitor's response must not depend on a database round
+// trip, so the durable copy goes out first and the insert catches up.
 function record(kind, req, fields, outcome) {
     const when = new Date();
     const entry = Object.assign({
@@ -46,19 +64,49 @@ function record(kind, req, fields, outcome) {
         ua: req && req.headers ? String(req.headers['user-agent'] || '').slice(0, 200) : null,
     }, fields);
 
-    // stdout first: this is the copy that survives a wiped filesystem
+    // first, and synchronously: this is the copy that survives everything else
     console.log('[submission] ' + JSON.stringify(entry));
 
-    if (!ensureDir()) return;
-    try {
-        fs.appendFileSync(currentFile(when), JSON.stringify(entry) + '\n');
-    } catch (err) {
-        console.error('[submissions] write failed: ' + err.message);
+    if (!db.available()) {
+        writeFile(entry, when);
+        return;
     }
+
+    // The stored row carries the fields, not the envelope: kind and outcome are
+    // columns of their own, and the timestamp is the database's.
+    const stored = Object.assign({}, entry);
+    delete stored.ts;
+    delete stored.kind;
+    delete stored.outcome;
+
+    db.insert(kind, outcome, stored)
+        .then((ok) => {
+            // Falling back on failure rather than on absence: a database that
+            // rejected this row is exactly when the file copy earns its keep.
+            if (!ok) writeFile(entry, when);
+        })
+        .catch((err) => {
+            console.error('[submissions] insert threw: ' + err.message);
+            writeFile(entry, when);
+        });
 }
 
-// Newest first, across however many monthly files it takes to fill the limit.
-function recent(limit) {
+// Newest first. Reads the database when there is one, and only falls back to
+// the files when there is not, so the two never interleave into a half-list
+// that looks complete.
+async function recent(limit, kind) {
+    if (db.available()) {
+        try {
+            const rows = await db.recent(limit, kind);
+            if (rows) return { source: 'postgres', rows: rows };
+        } catch (err) {
+            console.error('[submissions] read failed: ' + err.message);
+        }
+    }
+    return { source: 'file:' + LOG_DIR, rows: fromFiles(limit, kind) };
+}
+
+function fromFiles(limit, kind) {
     const max = Math.min(Math.max(Number(limit) || 50, 1), 500);
     if (!ensureDir()) return [];
     let files;
@@ -76,7 +124,10 @@ function recent(limit) {
             continue;
         }
         for (let i = lines.length - 1; i >= 0 && out.length < max; i--) {
-            try { out.push(JSON.parse(lines[i])); } catch (err) { /* skip a torn line */ }
+            try {
+                const row = JSON.parse(lines[i]);
+                if (!kind || row.kind === kind) out.push(row);
+            } catch (err) { /* skip a torn line */ }
         }
         if (out.length >= max) break;
     }

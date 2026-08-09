@@ -56,8 +56,20 @@ short list of attributes. it preserves surrounding whitespace, so a translation 
 starts with punctuation will render with a leading space.
 
 **the mailer never resolves quietly.** if a send fails the endpoint returns 500
-rather than telling the visitor it worked. every submission is written to disk and
-stdout before any email is attempted.
+rather than telling the visitor it worked. every submission is written to stdout
+and postgres before any email is attempted.
+
+**the submission payload is encrypted with the row's id as additional
+authenticated data.** the row therefore has to exist before the blob can be
+sealed to it, which is why the insert is two statements in one transaction. if
+you change the shape of what is stored, remember the ciphertext of an old row
+still has the old shape: `recent()` reports a row it cannot read rather than
+dropping it, and that is on purpose.
+
+**a database outage must never cost a lead.** `record()` writes stdout first,
+synchronously, then hands the row to postgres without the request waiting for
+it. if that fails the row goes to the fallback file. do not make the form's
+response depend on the insert.
 
 ## testing
 

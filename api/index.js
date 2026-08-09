@@ -8,6 +8,7 @@ const hpp = require('hpp');
 require('dotenv').config();
 const mailer = require('./mailer');
 const submissions = require('./submissions-log');
+const db = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -610,25 +611,58 @@ const trialRequestLimiter = rateLimit({
 // GET  /v1/mail-status?token=...            what the server thinks it is configured with
 // POST /v1/mail-status?token=...&send=1     actually send a test message and report the
 //                                           provider's raw answer
-// Reads the submission log back. Same token gate as /v1/mail-status, same 404 when
-// it is wrong. Useful because the container's disk is wiped on redeploy: this is how
-// you check who came in before that happens.
-app.get('/v1/submissions', (req, res) => {
+// The header is the one to use: a query string is written to every access log,
+// proxy log and browser history it passes through, and this token is the whole
+// gate. ?token= still works so nothing that already relies on it breaks.
+//     curl -H "x-admin-token: ..." https://sentinelpay.org/v1/submissions
+function adminOk(req) {
     const adminToken = process.env.ADMIN_TOKEN || '';
-    const provided = String(req.query.token || '');
-    if (!adminToken || !crypto.timingSafeEqual(sha256(provided), sha256(adminToken))) {
+    if (!adminToken) return false;
+    const provided = String(req.get('x-admin-token') || req.query.token || '');
+    return crypto.timingSafeEqual(sha256(provided), sha256(adminToken));
+}
+
+// Reads the submission log back. Same token gate as /v1/mail-status, same 404 when
+// it is wrong. Every row here is personal data, so the answer is never cached and
+// never stored by anything between us and the browser asking for it.
+app.get('/v1/submissions', async (req, res) => {
+    if (!adminOk(req)) {
         return sendPage(res, req, '404.html', 404);
     }
-    const all = submissions.recent(req.query.limit);
-    const kind = String(req.query.kind || '');
-    const rows = kind ? all.filter((r) => r.kind === kind) : all;
-    res.json({ dir: submissions.LOG_DIR, count: rows.length, submissions: rows });
+    const kind = String(req.query.kind || '').slice(0, 32);
+    try {
+        const out = await submissions.recent(req.query.limit, kind);
+        res.set('Cache-Control', 'no-store, private');
+        res.json({ source: out.source, count: out.rows.length, submissions: out.rows });
+    } catch (err) {
+        console.error('[submissions read]', err.message);
+        res.status(500).json({ error: 'read failed' });
+    }
+});
+
+// Erasure. Removes every row belonging to an address, found through the blind
+// index, so honouring the request does not require the address to have been
+// stored in the first place. POST only: a link that deletes data is a link
+// somebody will follow by accident.
+app.post('/v1/forget', async (req, res) => {
+    if (!adminOk(req)) {
+        return sendPage(res, req, '404.html', 404);
+    }
+    const email = String((req.body && req.body.email) || req.query.email || '').trim();
+    if (!email || email.length > 254) return res.status(400).json({ error: 'email required' });
+    try {
+        const removed = await db.forget(email);
+        console.log('[submissions] erasure request removed ' + removed + ' rows');
+        res.set('Cache-Control', 'no-store, private');
+        res.json({ removed: removed });
+    } catch (err) {
+        console.error('[forget]', err.message);
+        res.status(500).json({ error: 'delete failed' });
+    }
 });
 
 app.all('/v1/mail-status', async (req, res) => {
-    const adminToken = process.env.ADMIN_TOKEN || '';
-    const provided = String(req.query.token || '');
-    if (!adminToken || !crypto.timingSafeEqual(sha256(provided), sha256(adminToken))) {
+    if (!adminOk(req)) {
         return sendPage(res, req, '404.html', 404);
     }
 
@@ -647,6 +681,7 @@ app.all('/v1/mail-status', async (req, res) => {
         // without this the forms accept submissions with no bot challenge at all
         turnstile: process.env.TURNSTILE_SECRET_KEY ? 'enforced' : 'OFF (forms accept unverified submissions)',
         submissionLog: submissions.LOG_DIR,
+        database: db.status(),
     };
 
     // sending is a side effect, so it needs POST: a token that leaks into a url
@@ -919,5 +954,16 @@ app.listen(PORT, () => {
         console.log(`[mail] ready, ${mailer.MAIL_FROM} -> ${mailer.MAIL_TO}`);
     } else {
         console.error('[mail] RESEND_API_KEY is not set: form submissions will fail with a 500 instead of sending');
+    }
+
+    const dbState = db.status();
+    if (!dbState.configured) {
+        console.error('[db] DATABASE_URL is not set: submissions go to ' + submissions.LOG_DIR +
+            ', which a redeploy wipes');
+    } else {
+        if (!dbState.encrypted) {
+            console.error('[db] SUBMISSIONS_KEY is not set: personal data will be stored unencrypted');
+        }
+        db.startRetention();
     }
 });
