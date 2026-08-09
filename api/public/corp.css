@@ -1959,6 +1959,15 @@ html.theme-light .lp-demo-card .lp-cta-label {
     display: flex;
     flex-direction: column;
     max-height: 200px;
+    /* the script caps this to the room actually available, and that number has to
+       be the whole box: with content-box the padding and border are added on top
+       and the menu hangs past the bottom edge again */
+    box-sizing: border-box;
+    /* two of these menus are a bare <ul> with no inner scrolling list, so without
+       this the options past the cap are simply unreachable */
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     background: #0d1120;
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
@@ -2013,19 +2022,37 @@ html.theme-light .lp-demo-select-list { scrollbar-width: thin; scrollbar-color: 
     color: #ffffff;
     background: linear-gradient(120deg, rgba(0, 240, 255, 0.16), rgba(160, 32, 240, 0.16));
 }
+/* the same surface as .lp-demo-check, the solution picker in the demo form.
+   consent was the only checkbox on the site sitting bare on the card while the
+   ones two steps earlier had a box, which read as two different controls doing
+   the same job. one checkbox design, everywhere. */
 .lp-demo-consent {
     display: flex;
-    align-items: center;
-    gap: 0.6rem;
+    align-items: flex-start;
+    gap: 0.55rem;
     margin-top: 1.2rem;
-    font-size: 0.82rem;
-    color: rgba(255, 255, 255, 0.62);
+    padding: 0.55rem 0.7rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.03);
+    font-size: 0.83rem;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.66);
     cursor: pointer;
+    transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
 }
+.lp-demo-consent:hover { border-color: rgba(0, 240, 255, 0.4); color: #fff; }
 .lp-demo-consent input {
     flex: 0 0 auto;
-    width: 17px; height: 17px;
+    width: 16px; height: 16px;
+    margin-top: 0.1rem;
     accent-color: #7b6cff; cursor: pointer;
+}
+.lp-demo-consent:has(input:checked) {
+    border-color: transparent;
+    background: linear-gradient(120deg, rgba(0, 240, 255, 0.16), rgba(160, 32, 240, 0.16));
+    color: #fff;
+    box-shadow: inset 0 0 0 1px rgba(123, 108, 255, 0.5);
 }
 
 .lp-demo-progress { display: flex; align-items: center; gap: 0.8rem; margin: 1.6rem 0 1.2rem; }
@@ -2185,7 +2212,12 @@ html.theme-light .lp-demo-select-list { scrollbar-width: thin; scrollbar-color: 
     white-space: nowrap;
     animation: lpDemoStepIn 0.25s ease;
 }
-.lp-demo-consent.lp-demo-consent-err { color: #ff7a95 !important; }
+.lp-demo-consent.lp-demo-consent-err {
+    color: #ff7a95 !important;
+    border-color: rgba(255, 90, 122, 0.55) !important;
+    background: rgba(255, 90, 122, 0.06) !important;
+    box-shadow: none !important;
+}
 .lp-demo-consent.lp-demo-consent-err input { accent-color: #ff5a7a; outline: 2px solid rgba(255, 90, 122, 0.4); outline-offset: 1px; border-radius: 3px; }
 
 /* ============ latest insights (placeholder content) ============ */
@@ -2519,22 +2551,12 @@ html.theme-light .lp-demo-select-list { scrollbar-width: thin; scrollbar-color: 
 /* turnstile widget spacing (only renders when a site key is configured) */
 /* declarations are commitments, not fine print, so give each one its own surface
    instead of leaving two bare checkboxes floating in the step. */
+/* the declarations differ from an ordinary consent line only in spacing: they sit
+   one under the other, so the top margin is tighter. everything about how they
+   look now comes from .lp-demo-consent. */
 .lp-demo-step .lp-demo-consent.lp-demo-declare {
-    align-items: flex-start;
-    gap: 0.7rem;
     margin-top: 0.7rem;
-    padding: 0.75rem 0.9rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.025);
-    line-height: 1.5;
-    transition: border-color 0.18s ease, background 0.18s ease;
 }
-.lp-demo-step .lp-demo-consent.lp-demo-declare:hover { border-color: rgba(0, 240, 255, 0.3); background: rgba(255, 255, 255, 0.045); }
-.lp-demo-step .lp-demo-consent.lp-demo-declare input { margin-top: 0.12rem; flex-shrink: 0; }
-/* ticked reads as done, so the row stops asking for attention */
-.lp-demo-step .lp-demo-consent.lp-demo-declare:has(input:checked) { border-color: rgba(0, 240, 255, 0.32); background: rgba(0, 240, 255, 0.05); }
-.lp-demo-step .lp-demo-consent.lp-demo-declare.lp-demo-consent-err { border-color: rgba(255, 90, 122, 0.55); background: rgba(255, 90, 122, 0.06); }
 .lp-demo-declare-lead { margin: 0 0 0.2rem; font-size: 0.85rem; line-height: 1.55; color: rgba(255, 255, 255, 0.5); }
 
 .lp-demo-turnstile { margin-top: 1rem; display: flex; justify-content: center; }
@@ -2736,11 +2758,17 @@ html.theme-light .lp-demo-select-list { scrollbar-width: thin; scrollbar-color: 
 .bad-form-card .lp-demo-form.is-sent * { transition: none !important; }
 .bad-form-card .lp-demo-success:not([hidden]) {
     position: absolute;
+    /* inset resolves against the card's padding box, so this can never reach the
+       card's edge. it does not need to: the form underneath is visibility:hidden,
+       there is nothing to cover, and a panel with no background of its own lets
+       the card's gradient run straight through instead of putting a flat lighter
+       rectangle inside it. */
     inset: 0;
-    padding: inherit;
-    /* opaque, so the fade-in can never reveal the form underneath */
-    background: #0d1017;
-    border-radius: inherit;
+    padding: 0;
+    background: none;
+    /* the shared rule floors this at 478px, which is taller than the card's
+       content box, so the panel used to hang past the bottom edge */
+    min-height: 0;
     display: flex;
     flex-direction: column;
     align-items: center;

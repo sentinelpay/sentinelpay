@@ -198,19 +198,45 @@
                 var menu = wrap.querySelector('.lp-demo-select-menu');
                 var val = wrap.querySelector('.lp-demo-select-val');
                 var place = function() {
+                    // clear last time's inline height before measuring, otherwise each
+                    // open reads back the cap it set and the menu ratchets shut
+                    menu.style.maxHeight = '';
                     var r = btn.getBoundingClientRect();
-                    menu.style.left = r.left + 'px';
-                    menu.style.width = r.width + 'px';
-                    // cap to the CSS max-height (which may be a vh value on mobile)
+                    var pad = 8;
+                    // the visual viewport, not window.innerHeight. on ios innerHeight
+                    // counts the strip behind the collapsing toolbar and does not shrink
+                    // when the keyboard is up, so a menu measured against it opens into
+                    // space the visitor cannot see. vv.offsetTop is how far the page is
+                    // pushed up when the keyboard pans it.
+                    var vv = window.visualViewport;
+                    var vw = vv ? vv.width : document.documentElement.clientWidth;
+                    var vh = vv ? vv.height : window.innerHeight;
+                    var vTop = vv ? vv.offsetTop : 0;
+
+                    // the menu tracks its button, but never wider than the screen and
+                    // never past either edge
+                    var w = Math.min(r.width, vw - pad * 2);
+                    menu.style.width = w + 'px';
+                    menu.style.left = Math.max(pad, Math.min(r.left, vw - w - pad)) + 'px';
+
+                    // the CSS cap is the most it may ever be; a vh value on mobile
                     var capPx = parseFloat(getComputedStyle(menu).maxHeight) || 200;
-                    var mh = Math.min(menu.scrollHeight, capPx);
-                    var below = window.innerHeight - r.bottom - 12;
-                    // open upward when it would poke past the bottom and there's room above
-                    if (below < mh && r.top - 12 > mh) {
-                        menu.style.top = (r.top - 6 - mh) + 'px';
-                    } else {
-                        menu.style.top = (r.bottom + 6) + 'px';
-                    }
+                    var want = Math.min(menu.scrollHeight, capPx);
+                    // the visible band, in the same coordinates the button rect uses
+                    var top = vTop, bottom = vTop + vh;
+                    var below = bottom - r.bottom - pad;
+                    var above = r.top - top - pad;
+
+                    // open on whichever side has the room. if neither has enough, take
+                    // the bigger side and shorten the menu to fit: it scrolls, which is
+                    // recoverable, where running off the bottom of the screen is not.
+                    var up = below < want && above > below;
+                    var room = Math.max(up ? above : below, 120);
+                    var h = Math.min(want, room);
+                    menu.style.maxHeight = h + 'px';
+                    menu.style.top = (up
+                        ? Math.max(top + pad, r.top - pad - h)
+                        : Math.min(r.bottom + pad, bottom - h - pad)) + 'px';
                 };
                 var search = wrap.querySelector('.lp-demo-select-search');
                 var emptyMsg = wrap.querySelector('.lp-demo-select-empty');
@@ -239,6 +265,12 @@
                     search.addEventListener('click', function(e) { e.stopPropagation(); });
                 }
                 window.addEventListener('resize', function() { if (!menu.hidden) place(); });
+                // the keyboard opening and the toolbar collapsing both change the
+                // visible band without firing a window resize on ios
+                if (window.visualViewport) {
+                    window.visualViewport.addEventListener('resize', function() { if (!menu.hidden) place(); });
+                    window.visualViewport.addEventListener('scroll', function() { if (!menu.hidden) place(); });
+                }
                 window.addEventListener('scroll', function(e) {
                     // page scrolls: keep the fixed-position menu glued to its button
                     if (!menu.hidden && !(e.target instanceof Node && menu.contains(e.target))) place();
