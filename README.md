@@ -78,7 +78,7 @@ english, croatian and german. **592 translated strings per language**, keyed on 
 | origin lockdown | a secret injected by a cloudflare transform rule; with `CF_ORIGIN_STRICT` the origin answers 403 to anything that did not come through cloudflare |
 | rate limits | 300/min per ip site-wide, 5/hour for demo requests, 3/hour for trial sign-ups |
 | ip trust | `cf-connecting-ip` is trusted only when the request proves it came through our own cloudflare, so a forged header cannot buy a fresh rate-limit bucket |
-| input | 10kb body cap, parameter pollution guard, strict field validation, free-mail and disposable domains rejected as company domains |
+| input | 10kb body cap, parameter pollution guard, strict field validation, throwaway mailboxes refused and free ones tagged for review |
 | headers | `nosniff`, `no-referrer`, and a permissions policy that turns off every sensor api |
 
 the site works with javascript switched off far enough to say so: the loader stays, and underneath it a message in the visitor's language links to instructions for their exact browser.
@@ -90,7 +90,17 @@ the site works with javascript switched off far enough to say so: the loader sta
 | homepage, `/book-a-demo` | the team, at `MAIL_TO` | yes |
 | `/start-free-trial` | the applicant, in their own language, plus a copy to the team | yes |
 
-a trial sign-up is verified automatically: the work email must sit on the company's own domain, free and disposable providers are refused on both sides, and gambling operators are declined by policy in the form and again on the server.
+a trial sign-up is verified automatically: when the work email sits on a real domain, the website has to match it. gambling operators are declined by policy in the form and again on the server, and throwaway mailboxes are refused because there is nobody behind them to reply to.
+
+free mailboxes go through. someone at a real company writes from gmail more often than anyone likes, and refusing them turned away business to catch abuse. instead the submission is tagged and a person decides:
+
+| tag | what it means |
+| --- | --- |
+| `free-email` | signed up from a free mailbox rather than a company domain |
+| `website-is-a-mailbox` | the website they gave is a mail provider, not a company site |
+| `domain-mismatch` | website and work email on different domains. still refused: both look real, so they should agree |
+
+a tagged submission puts an amber band at the top of the notification with the reason in words, prefixes the subject with `review:`, and stores the tags in a column of their own so `GET /v1/submissions?flagged=1` answers "what needs a look" without decrypting every row.
 
 every submission is written to stdout **and** to postgres before any email is attempted, so a bounce, an outage or a missed inbox never costs a lead. emails are sent through resend from `noreply@sentinelpay.org`, in the site's own dark house style, with a plain-text alternative.
 
@@ -195,6 +205,7 @@ with `ADMIN_TOKEN` set:
 
 ```
 GET  /v1/submissions?limit=50&kind=trial   read the submission log back
+GET  /v1/submissions?flagged=1             only the ones a person should look at
 GET  /v1/mail-status                       what the mailer and the database are configured with
 POST /v1/mail-status?send=1                send a test message and report the provider's answer
 POST /v1/forget   {"email":"…"}            erase every row belonging to an address

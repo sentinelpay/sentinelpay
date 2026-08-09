@@ -181,6 +181,11 @@ CREATE TABLE IF NOT EXISTS submissions (
 CREATE INDEX IF NOT EXISTS submissions_received_idx ON submissions (received_at DESC);
 CREATE INDEX IF NOT EXISTS submissions_kind_idx     ON submissions (kind, received_at DESC);
 CREATE INDEX IF NOT EXISTS submissions_email_idx    ON submissions (email_hash);
+/* review tags live in a column of their own rather than only inside the encrypted
+   blob: the point of them is being able to ask "what came in that needs a look",
+   and that question cannot be answered by reading every row and decrypting it. */
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS flags text;
+CREATE INDEX IF NOT EXISTS submissions_flags_idx    ON submissions (flags) WHERE flags <> '';
 `;
 
 let ready = null;
@@ -220,6 +225,9 @@ async function insert(kind, outcome, fields) {
         country: fields.country ? String(fields.country).slice(0, 8) : null,
         lang: fields.lang ? String(fields.lang).slice(0, 8) : null,
         emailHash: blindIndex(fields.email),
+        // a plain comma-separated list: there are three of them and they are read
+        // by people, so a json column would buy nothing
+        flags: Array.isArray(fields.flags) ? fields.flags.join(',').slice(0, 200) : '',
     };
 
     // The id is part of the authenticated data, so the row has to exist before
@@ -229,9 +237,9 @@ async function insert(kind, outcome, fields) {
     try {
         await client.query('BEGIN');
         const res = await client.query(
-            `INSERT INTO submissions (kind, outcome, country, lang, email_hash, payload, encrypted)
-             VALUES ($1, $2, $3, $4, $5, '', $6) RETURNING id`,
-            [row.kind, row.outcome, row.country, row.lang, row.emailHash, ENCRYPTED]
+            `INSERT INTO submissions (kind, outcome, country, lang, email_hash, flags, payload, encrypted)
+             VALUES ($1, $2, $3, $4, $5, $6, '', $7) RETURNING id`,
+            [row.kind, row.outcome, row.country, row.lang, row.emailHash, row.flags, ENCRYPTED]
         );
         const id = res.rows[0].id;
         const sealed = ENCRYPTED ? encrypt(payload, 'submission:' + id) : payload;
@@ -251,20 +259,22 @@ async function insert(kind, outcome, fields) {
 // reading
 // ---------------------------------------------------------------------------
 
-async function recent(limit, kind) {
+async function recent(limit, kind, flaggedOnly) {
     if (!pool) return null;
     if (!(await init())) return null;
 
     const max = Math.min(Math.max(Number(limit) || 50, 1), 500);
     const params = [max];
-    let where = '';
+    const where = [];
     if (kind) {
-        where = 'WHERE kind = $2';
         params.push(String(kind).slice(0, 32));
+        where.push('kind = $' + params.length);
     }
+    if (flaggedOnly) where.push("flags IS NOT NULL AND flags <> ''");
+    const clause = where.length ? 'WHERE ' + where.join(' AND ') : '';
     const res = await pool.query(
-        `SELECT id, received_at, kind, outcome, country, lang, payload, encrypted
-         FROM submissions ${where} ORDER BY received_at DESC, id DESC LIMIT $1`,
+        `SELECT id, received_at, kind, outcome, country, lang, flags, payload, encrypted
+         FROM submissions ${clause} ORDER BY received_at DESC, id DESC LIMIT $1`,
         params
     );
 
@@ -282,6 +292,7 @@ async function recent(limit, kind) {
             ts: r.received_at.toISOString(),
             kind: r.kind,
             outcome: r.outcome,
+            flags: r.flags ? r.flags.split(',') : [],
         }, fields);
     });
 }

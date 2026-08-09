@@ -94,19 +94,19 @@ function record(kind, req, fields, outcome) {
 // Newest first. Reads the database when there is one, and only falls back to
 // the files when there is not, so the two never interleave into a half-list
 // that looks complete.
-async function recent(limit, kind) {
+async function recent(limit, kind, flaggedOnly) {
     if (db.available()) {
         try {
-            const rows = await db.recent(limit, kind);
+            const rows = await db.recent(limit, kind, flaggedOnly);
             if (rows) return { source: 'postgres', rows: rows };
         } catch (err) {
             console.error('[submissions] read failed: ' + err.message);
         }
     }
-    return { source: 'file:' + LOG_DIR, rows: fromFiles(limit, kind) };
+    return { source: 'file:' + LOG_DIR, rows: fromFiles(limit, kind, flaggedOnly) };
 }
 
-function fromFiles(limit, kind) {
+function fromFiles(limit, kind, flaggedOnly) {
     const max = Math.min(Math.max(Number(limit) || 50, 1), 500);
     if (!ensureDir()) return [];
     let files;
@@ -126,7 +126,9 @@ function fromFiles(limit, kind) {
         for (let i = lines.length - 1; i >= 0 && out.length < max; i--) {
             try {
                 const row = JSON.parse(lines[i]);
-                if (!kind || row.kind === kind) out.push(row);
+                if (kind && row.kind !== kind) continue;
+                if (flaggedOnly && !(row.flags && row.flags.length)) continue;
+                out.push(row);
             } catch (err) { /* skip a torn line */ }
         }
         if (out.length >= max) break;

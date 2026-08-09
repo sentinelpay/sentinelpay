@@ -630,8 +630,10 @@ app.get('/v1/submissions', async (req, res) => {
         return sendPage(res, req, '404.html', 404);
     }
     const kind = String(req.query.kind || '').slice(0, 32);
+    // ?flagged=1 is the working question: what came in that a person should look at
+    const flagged = String(req.query.flagged || '') === '1';
     try {
-        const out = await submissions.recent(req.query.limit, kind);
+        const out = await submissions.recent(req.query.limit, kind, flagged);
         res.set('Cache-Control', 'no-store, private');
         res.json({ source: out.source, count: out.rows.length, submissions: out.rows });
     } catch (err) {
@@ -709,20 +711,62 @@ app.all('/v1/mail-status', async (req, res) => {
 // email is at your company's own domain", which a visitor can otherwise satisfy by
 // entering the provider's domain as their website: x@gmail.com + gmail.com matched
 // and let anyone in. Checked on both sides of the pair.
-const PUBLIC_EMAIL_DOMAINS = new Set([
+// Two lists, because they are two different things.
+//
+// A free mailbox is where a real person at a real company sometimes writes from:
+// a founder before the domain is set up, someone whose it department has not
+// given them an alias yet, a consultant. Refusing those turned away business to
+// catch abuse, so they come in and get flagged for a human to look at instead.
+const FREE_MAIL_DOMAINS = new Set([
     'gmail.com', 'googlemail.com', 'outlook.com', 'hotmail.com', 'live.com', 'msn.com',
     'yahoo.com', 'yahoo.co.uk', 'ymail.com', 'aol.com', 'icloud.com', 'me.com', 'mac.com',
     'proton.me', 'protonmail.com', 'pm.me', 'gmx.com', 'gmx.de', 'gmx.net', 'web.de',
     't-online.de', 'freenet.de', 'mail.com', 'zoho.com', 'yandex.com', 'yandex.ru',
     'mail.ru', 'inbox.lv', 'seznam.cz', 'net.hr', 'gmail.hr', 'vip.hr', 'hi.t-com.hr',
     'a1.hr', 'optinet.hr', 'inet.hr', 'email.t-com.hr',
-    // throwaway services
+]);
+
+// A throwaway address is not a person who might buy something. The mailbox is
+// designed to stop existing, so there is nobody to follow up with and nothing to
+// review. These stay refused.
+const DISPOSABLE_EMAIL_DOMAINS = new Set([
     'mailinator.com', 'guerrillamail.com', 'yopmail.com', '10minutemail.com',
     'tempmail.com', 'temp-mail.org', 'trashmail.com', 'sharklasers.com',
     'dispostable.com', 'getnada.com', 'maildrop.cc', 'fakeinbox.com', 'throwawaymail.com',
 ]);
-function isPublicMailDomain(domain) {
-    return PUBLIC_EMAIL_DOMAINS.has(String(domain || '').toLowerCase());
+
+function isFreeMailDomain(domain) {
+    return FREE_MAIL_DOMAINS.has(String(domain || '').toLowerCase());
+}
+function isDisposableDomain(domain) {
+    return DISPOSABLE_EMAIL_DOMAINS.has(String(domain || '').toLowerCase());
+}
+
+// What a submission gets tagged with instead of being turned away. The tags are
+// stored next to the row and printed at the top of the notification, so a human
+// decides whether it is a big company with a tidy inbox or somebody farming
+// trials, which is a judgement no rule here was ever going to make correctly.
+// The same tags, written out for whoever opens the notification. A code in an
+// inbox gets ignored; a sentence gets read.
+const FLAG_NOTES = {
+    'free-email': 'signed up from a free mailbox, not a company domain. could be a founder before the domain is set up, or somebody farming trials. worth thirty seconds on the company name before you reply.',
+    'website-is-a-mailbox': 'the website they gave is a mail provider, not a company site. either a slip in the form or not a real company.',
+    'domain-mismatch': 'the website and the work email are on different domains.',
+};
+function reviewNotes(flags) {
+    return (flags || []).map((f) => FLAG_NOTES[f]).filter(Boolean);
+}
+
+function reviewFlags(emailDomain, websiteHost) {
+    const flags = [];
+    if (isFreeMailDomain(emailDomain)) flags.push('free-email');
+    if (websiteHost && isFreeMailDomain(websiteHost)) flags.push('website-is-a-mailbox');
+    if (websiteHost && !isFreeMailDomain(emailDomain) && !(
+        websiteHost === emailDomain ||
+        websiteHost.endsWith('.' + emailDomain) ||
+        emailDomain.endsWith('.' + websiteHost)
+    )) flags.push('domain-mismatch');
+    return flags;
 }
 
 app.post('/v1/trial-request', requireCloudflareOrigin, trialRequestLimiter, async (req, res) => {
@@ -759,15 +803,18 @@ app.post('/v1/trial-request', requireCloudflareOrigin, trialRequestLimiter, asyn
             return res.status(400).json({ error: 'invalid submission' });
         }
 
-        // the domain check is the verification the trial rests on: a work email at
-        // the company's own domain is what stands in for a manual KYB pass.
         const host = website.replace(/^https?:\/\//i, '').replace(/\/.*$/, '').replace(/^www\./i, '').toLowerCase();
         const emailDomain = email.split('@').pop().toLowerCase();
-        // a free mailbox is not a company, on either side of the pair
-        if (isPublicMailDomain(emailDomain) || isPublicMailDomain(host)) {
-            return res.status(400).json({ error: 'please use your work email and your company website' });
+
+        // a throwaway address has nobody behind it to follow up with
+        if (isDisposableDomain(emailDomain) || isDisposableDomain(host)) {
+            return res.status(400).json({ error: 'please use an address we can reply to' });
         }
-        if (!(host === emailDomain || host.endsWith('.' + emailDomain) || emailDomain.endsWith('.' + host))) {
+        // A work email at the company's own domain is what stands in for a manual
+        // check. When it is a free mailbox there is no domain to match against, so
+        // the pair cannot be required: it goes through tagged for review instead.
+        const flags = reviewFlags(emailDomain, host);
+        if (flags.indexOf('domain-mismatch') !== -1) {
             return res.status(400).json({ error: 'website domain must match your work email domain' });
         }
 
@@ -786,7 +833,8 @@ app.post('/v1/trial-request', requireCloudflareOrigin, trialRequestLimiter, asyn
         submissions.record('trial', req, {
             name: `${firstName} ${lastName}`,
             email, company, website, jobTitle, industry, formCountry: country, lang,
-            domainCheck: 'passed',
+            domainCheck: flags.length ? 'flagged' : 'passed',
+            flags: flags,
         }, 'accepted');
 
         try {
@@ -801,11 +849,15 @@ app.post('/v1/trial-request', requireCloudflareOrigin, trialRequestLimiter, asyn
         // configured, and a bounce there must never cost the visitor their trial.
         try {
             await mailer.send({
-                subject: `new trial sign-up: ${firstName} ${lastName}${company ? ' @ ' + company : ''}`,
+                subject: (flags.length ? 'review: ' : '') +
+                    `new trial sign-up: ${firstName} ${lastName}${company ? ' @ ' + company : ''}`,
                 replyTo: email,
                 eyebrow: 'free trial',
                 title: 'a company signed up for the trial',
-                intro: 'the domain check passed and the welcome email has been sent to them.',
+                intro: flags.length
+                    ? 'the welcome email has been sent to them, but something here is worth a second look.'
+                    : 'the domain check passed and the welcome email has been sent to them.',
+                review: reviewNotes(flags),
                 pairs: [
                     ['name', `${firstName} ${lastName}`],
                     ['job title', jobTitle],
@@ -815,7 +867,7 @@ app.post('/v1/trial-request', requireCloudflareOrigin, trialRequestLimiter, asyn
                     ['industry', industry],
                     ['country', country],
                     ['language', lang],
-                    ['domain check', 'passed'],
+                    ['domain check', flags.length ? flags.join(', ') : 'passed'],
                 ],
             });
         } catch (notifyErr) {
@@ -872,34 +924,36 @@ app.post('/v1/demo-request', requireCloudflareOrigin, demoRequestLimiter, async 
             return res.status(400).json({ error: 'we do not onboard gambling operators' });
         }
 
-        // website domain must match the work email domain (subdomains either way are fine)
-        if (website) {
-            const host = website.replace(/^https?:\/\//i, '').replace(/\/.*$/, '').replace(/^www\./i, '').toLowerCase();
-            const emailDomain = email.split('@').pop().toLowerCase();
-            if (isPublicMailDomain(emailDomain) || isPublicMailDomain(host)) {
-                return res.status(400).json({ error: 'please use your work email and your company website' });
-            }
-            const matches = host === emailDomain ||
-                host.endsWith('.' + emailDomain) ||
-                emailDomain.endsWith('.' + host);
-            if (!matches) {
-                return res.status(400).json({ error: 'website domain must match your work email domain' });
-            }
+        // same rule as the trial: throwaway addresses out, free mailboxes in and
+        // tagged, and the pair only has to match when there is a domain to match
+        const emailDomain = email.split('@').pop().toLowerCase();
+        const host = website
+            ? website.replace(/^https?:\/\//i, '').replace(/\/.*$/, '').replace(/^www\./i, '').toLowerCase()
+            : '';
+        if (isDisposableDomain(emailDomain) || (host && isDisposableDomain(host))) {
+            return res.status(400).json({ error: 'please use an address we can reply to' });
+        }
+        const flags = reviewFlags(emailDomain, host);
+        if (flags.indexOf('domain-mismatch') !== -1) {
+            return res.status(400).json({ error: 'website domain must match your work email domain' });
         }
 
         submissions.record('demo', req, {
             name: `${firstName} ${lastName}`,
             email, company, website, jobTitle, industry, formCountry: country,
             size, volume, solutions, message,
+            flags: flags,
         }, 'accepted');
 
         try {
             await mailer.send({
-                subject: `new demo request: ${firstName} ${lastName}${company ? ' @ ' + company : ''}`,
+                subject: (flags.length ? 'review: ' : '') +
+                    `new demo request: ${firstName} ${lastName}${company ? ' @ ' + company : ''}`,
                 replyTo: email,
                 eyebrow: 'demo request',
                 title: 'someone asked for a demo',
                 intro: 'sent from the demo form on sentinelpay.org.',
+                review: reviewNotes(flags),
                 pairs: [
                     ['name', `${firstName} ${lastName}`],
                     ['job title', jobTitle],
@@ -912,6 +966,7 @@ app.post('/v1/demo-request', requireCloudflareOrigin, demoRequestLimiter, async 
                     ['wallets/txns per year', volume],
                     ['solutions', solutions],
                     ['message', message],
+                    ['domain check', flags.length ? flags.join(', ') : 'passed'],
                 ],
             });
         } catch (mailErr) {

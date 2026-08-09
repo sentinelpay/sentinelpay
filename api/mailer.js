@@ -41,7 +41,23 @@ function row(label, value) {
 }
 
 // Builds the full document. `rows` is already-escaped markup from row().
-function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff }) {
+// An amber band above everything else, the same colour the site's incident
+// banner uses. It exists so a submission that needs a person to look at it
+// cannot be skimmed past: the reasons are spelled out in words, not codes.
+function reviewBand(notes) {
+    if (!notes || !notes.length) return '';
+    return '<tr><td style="padding:18px 28px 0;">' +
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" ' +
+        'style="background:rgba(255,176,60,0.10);border:1px solid rgba(255,176,60,0.35);border-radius:10px;">' +
+        '<tr><td style="padding:12px 14px;">' +
+        '<div style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#ffb03c;">worth a look</div>' +
+        notes.map((n) =>
+            '<div style="margin-top:6px;font-size:13px;line-height:19px;color:#ffe0bd;">' + esc(n) + '</div>'
+        ).join('') +
+        '</td></tr></table></td></tr>';
+}
+
+function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff, review }) {
     const font = "-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Roboto,Helvetica,Arial,sans-serif";
     return '<!doctype html><html><head><meta charset="utf-8">' +
         '<meta name="viewport" content="width=device-width,initial-scale=1">' +
@@ -66,6 +82,8 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff }
         '<div style="margin-top:8px;font-size:22px;line-height:30px;font-weight:700;color:' + C.text + ';">' + esc(title) + '</div>' +
         '<div style="margin-top:8px;font-size:14px;line-height:21px;color:' + C.muted + ';">' + esc(intro) + '</div>' +
         '</td></tr>' +
+
+        reviewBand(review) +
 
         (rows ? '<tr><td style="padding:20px 28px 4px;">' +
             '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">' + rows + '</table>' +
@@ -101,8 +119,13 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff }
 
 // Plain-text alternative. Without it, spam filters mark an html-only mail down and
 // some clients render nothing at all.
-function textVersion({ title, intro, pairs, bullets, cta, footnote }) {
+function textVersion({ title, intro, pairs, bullets, cta, footnote, review }) {
     const lines = [title, '', intro, ''];
+    if (review && review.length) {
+        lines.push('worth a look:');
+        review.forEach((n) => lines.push('  - ' + n));
+        lines.push('');
+    }
     (pairs || []).forEach(([k, v]) => { if (v) lines.push(k + ': ' + v); });
     (bullets || []).forEach((b) => lines.push('- ' + b));
     if (cta) lines.push('', cta.label + ': ' + cta.href);
@@ -113,10 +136,10 @@ function textVersion({ title, intro, pairs, bullets, cta, footnote }) {
 
 // Sends, or throws. It never resolves quietly when nothing was sent: an endpoint
 // that answers "ok" while the inbox stays empty is the worst possible outcome.
-async function send({ to, subject, replyTo, eyebrow, title, intro, pairs, bullets, cta, footnote, signoff }) {
+async function send({ to, subject, replyTo, eyebrow, title, intro, pairs, bullets, cta, footnote, signoff, review }) {
     const rows = (pairs || []).map(([k, v]) => row(k, v)).join('');
-    const html = layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff });
-    const text = textVersion({ title, intro, pairs, bullets, cta, footnote });
+    const html = layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff, review });
+    const text = textVersion({ title, intro, pairs, bullets, cta, footnote, review });
 
     if (!isConfigured()) {
         // in production a missing key is a hard failure: the form must not claim
