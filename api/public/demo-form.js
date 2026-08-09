@@ -353,6 +353,30 @@
                     if (field && field.classList.contains('lp-demo-invalid')) setError(inp, fieldError(inp));
                 });
             });
+            // The website rule is the only one that reads a second field: it has to
+            // agree with the work email. That makes it go stale in one direction.
+            // Editing the email after the website has already passed leaves the
+            // website green on an answer that is no longer true, and the mismatch is
+            // then caught by the server, which reaches the visitor as a toast after
+            // they have pressed send. Re-judge the website whenever the email moves.
+            var emailField = form.querySelector('input[name="email"]');
+            var siteField = form.querySelector('input[name="website"]');
+            if (emailField && siteField) {
+                var recheckSite = function() {
+                    if (!siteField.value.trim()) return;
+                    setError(siteField, fieldError(siteField));
+                };
+                // on blur, because marking the website wrong while someone is still
+                // halfway through typing their address would be noise
+                emailField.addEventListener('blur', recheckSite);
+                // while typing, only to take the red away again the moment the email
+                // is corrected. the same rule the other fields already follow.
+                emailField.addEventListener('input', function() {
+                    var f = siteField.closest('.lp-demo-field');
+                    if (f && f.classList.contains('lp-demo-invalid')) recheckSite();
+                });
+            }
+
             var consentInp = form.querySelector('input[name="consent"]');
             if (consentInp) consentInp.addEventListener('change', function() {
                 if (consentInp.checked) consentInp.closest('.lp-demo-consent').classList.remove('lp-demo-consent-err');
