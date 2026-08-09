@@ -3032,43 +3032,65 @@ html[data-mail-down] a[data-mail-subject] {
 }
 
 /* ============ article sources ============
-   every article carries the reading behind it. the list sits at the end, quieter
-   than the body: it is there to be checked, not read straight through. shared
-   here rather than in each article's own style block so the next one gets it. */
+   every article ends with the reading behind it. it is a reference list, not part
+   of the argument, so it steps back: a rule to break from the body, a quiet label,
+   and links that only pick up brand colour when you reach for one. shared here
+   rather than in each article's head so the next article gets it from the class. */
+.article-body .article-sources-title {
+    margin: 3.4rem 0 0;
+    padding-top: 1.6rem;
+    border-top: 1px solid rgba(14, 35, 88, 0.12);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(14, 35, 88, 0.45);
+}
 .article-body ul.article-sources {
-    margin: 1.3rem 0 0;
-    padding: 1.2rem 1.4rem;
-    border: 1px solid rgba(14, 35, 88, 0.1);
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.55);
+    margin: 1rem 0 0;
+    padding: 0;
+    /* two columns on a wide screen: eight one-line references down the page reads
+       as an appendix nobody finishes */
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.15rem 2.2rem;
 }
 .article-body ul.article-sources li {
-    padding-left: 1.4rem;
-    margin-bottom: 0.55rem;
-    font-size: 0.98rem;
-    line-height: 1.55;
+    padding: 0.5rem 0 0.5rem 1.5rem;
+    margin: 0;
+    font-size: 0.94rem;
+    line-height: 1.5;
+    border-bottom: 1px solid rgba(14, 35, 88, 0.06);
 }
-.article-body ul.article-sources li:last-child { margin-bottom: 0; }
 .article-body ul.article-sources li::before {
-    /* a link mark rather than the body's bullet: these are references, not points */
+    /* an outward arrow, not the body's bullet: these lead off the page */
     content: '';
     position: absolute;
-    left: 0.1rem;
-    top: 0.55em;
-    width: 8px;
-    height: 8px;
-    border-radius: 2px;
-    border: 1.5px solid rgba(0, 145, 200, 0.5);
+    left: 0.15rem;
+    top: 0.95em;
+    width: 7px;
+    height: 7px;
+    border: 1.5px solid rgba(0, 145, 200, 0.45);
+    border-left: 0;
+    border-bottom: 0;
+    border-radius: 1px;
     background: none;
+    transform: rotate(45deg);
+    transition: border-color 0.18s ease, transform 0.18s ease;
+}
+.article-body ul.article-sources li:hover::before {
+    border-color: #0091c8;
+    transform: rotate(45deg) translate(1px, -1px);
 }
 .article-body ul.article-sources a {
-    color: #0e2358;
-    border-bottom-color: rgba(14, 35, 88, 0.2);
-    /* a full regulation title is long and must not push the card sideways */
+    color: rgba(42, 53, 80, 0.9);
+    border-bottom: 0;
+    /* a full regulation title is long and must not push the page sideways */
     overflow-wrap: anywhere;
+    transition: color 0.18s ease;
 }
-.article-body ul.article-sources a:hover { color: #0091c8; border-bottom-color: #0091c8; }
-@media (max-width: 640px) {
-    .article-body ul.article-sources { padding: 1rem 1.1rem; }
-    .article-body ul.article-sources li { font-size: 0.92rem; }
+.article-body ul.article-sources a:hover { color: #0091c8; }
+@media (max-width: 720px) {
+    .article-body ul.article-sources { grid-template-columns: 1fr; gap: 0; }
+    .article-body ul.article-sources li { font-size: 0.9rem; }
 }
