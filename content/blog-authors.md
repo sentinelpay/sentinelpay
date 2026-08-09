@@ -93,3 +93,5 @@ two rules:
   because you do not translate the title of an official document.
 - only sources the author actually used. an article with nothing to cite has no
   sources block rather than a decorative one.
+- check every link before it ships. fatf and jmlsg refuse automated clients, so
+  those two cannot be verified with a script: open them in a browser once.
