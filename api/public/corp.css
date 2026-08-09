@@ -801,7 +801,10 @@ html.theme-light .lp-nav .auth-nav-btn:hover::after {
     /* full-width light panel pinned under the nav */
     html.theme-light .lp-nav .lp-nav-dd.lp-mega {
         position: fixed;
-        top: 64px;
+        /* pinned under the nav, and the nav itself moves down by the status
+           banner. the variable is 0px when there is no banner, so this is the
+           same 64px in the ordinary case. */
+        top: calc(64px + var(--sp-status-h));
         left: 0;
         right: 0;
         width: 100%;
