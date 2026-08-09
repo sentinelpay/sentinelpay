@@ -318,6 +318,12 @@ function homepageLinkTags(forced) {
 // variants ride on the element as attributes and the client picks one, which keeps
 // the banner correct even when the visitor's language differs from what the
 // server guessed.
+const STATUS_DISMISS = {
+    en: 'dismiss this message',
+    hr: 'zatvori ovu poruku',
+    de: 'diese meldung schliessen',
+};
+
 const STATUS_PRESETS = {
     'email-outage': {
         message: {
@@ -394,8 +400,21 @@ function statusBanner() {
         inner += '<a class="sp-status-btn" href="' + escapeHtml(STATUS_LINK) + '">' +
             '<span' + langAttrs('data-sp', STATUS_COPY.button) + '>' + escapeHtml(STATUS_COPY.button.en) + '</span></a>';
     }
-    return '<div class="sp-status" role="status" data-i18n-skip>' +
-        '<div class="sp-status-inner">' + inner + '</div></div>';
+    // dismiss control. desktop only, hidden by css below 860px, because on a phone
+    // the bar is already two lines and a target that small next to the edge is a
+    // mis-tap waiting to happen.
+    const dismiss =
+        '<button type="button" class="sp-status-x"' +
+        langAttrs('data-sp-label', STATUS_DISMISS) +
+        ' aria-label="' + escapeHtml(STATUS_DISMISS.en) + '">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
+        'stroke-linecap="round" aria-hidden="true">' +
+        '<path d="M6 6l12 12M18 6L6 18"></path></svg></button>';
+
+    // armed in the markup, not from javascript: the class has to be on the
+    // element before first paint or the banner flashes in at full opacity
+    return '<div class="sp-status sp-status-armed" role="status" data-i18n-skip>' +
+        '<div class="sp-status-inner">' + inner + '</div>' + dismiss + '</div>';
 }
 
 function renderPage(file, req, forcedLang) {

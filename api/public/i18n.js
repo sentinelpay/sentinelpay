@@ -1344,6 +1344,8 @@
     // written by the server. It is not looked up in the dictionary: an incident is
     // wording someone types today, not shipped copy, so it cannot be a key. English
     // is already in the element, so anything without a variant simply stays as-is.
+    var STATUS_DISMISSED = 'sp-status-dismissed';
+
     function paintStatusBanner(lang) {
         var bar = document.querySelector('.sp-status');
         if (!bar) return;
@@ -1351,7 +1353,58 @@
             var text = el.getAttribute('data-sp-' + lang);
             if (text) el.textContent = text;
         });
+        var x = bar.querySelector('.sp-status-x');
+        if (x) {
+            var label = x.getAttribute('data-sp-label-' + lang);
+            if (label) x.setAttribute('aria-label', label);
+        }
+
+        // a message the visitor already closed should not come back on every page.
+        // keyed on the message itself, so the next incident is a new message and
+        // shows again even though the last one was dismissed.
+        var text = bar.querySelector('.sp-status-text');
+        var key = text ? text.textContent.replace(/\s+/g, ' ').trim() : '';
+        var seen = '';
+        try { seen = sessionStorage.getItem(STATUS_DISMISSED) || ''; } catch (e) {}
+        if (key && seen === key) { hideStatusBanner(bar, true); return; }
+
+        if (x) {
+            x.addEventListener('click', function () {
+                try { sessionStorage.setItem(STATUS_DISMISSED, key); } catch (e) {}
+                hideStatusBanner(bar, false);
+            });
+        }
+
         fitStatusBanner(bar);
+        revealStatusBanner(bar);
+    }
+
+    // Takes the bar out and gives the page back the space it was holding. the
+    // custom property is what the nav offset and the fold pages are built on, so
+    // setting it to zero is the whole reversal.
+    function hideStatusBanner(bar, immediate) {
+        var done = function () {
+            bar.remove();
+            document.documentElement.style.setProperty('--sp-status-h', '0px');
+            document.documentElement.removeAttribute('data-status');
+        };
+        if (immediate) { done(); return; }
+        bar.classList.remove('sp-status-in');
+        bar.classList.add('sp-status-out');
+        setTimeout(done, 220);
+    }
+
+    // The loader sits over the page until everything has loaded. releasing the bar
+    // as that starts to fade reads as one movement rather than two.
+    function revealStatusBanner(bar) {
+        bar.classList.add('sp-status-armed');
+        var show = function () {
+            setTimeout(function () {
+                bar.classList.add('sp-status-in');
+            }, 180);
+        };
+        if (document.readyState === 'complete') show();
+        else window.addEventListener('load', show, { once: true });
     }
 
     // The bar's height is a custom property because the fixed nav and the fold pages

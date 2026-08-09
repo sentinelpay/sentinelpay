@@ -2768,6 +2768,58 @@ html[data-status] { --sp-status-h: 46px; }
     font-size: 0.84rem; line-height: 1.35;
     color: rgba(255,236,214,0.92);
 }
+
+/* --- coming in --------------------------------------------------------------
+   the loader covers the page until everything has loaded, so the bar must not
+   animate behind it. the script arms this state before first paint and releases
+   it as the loader starts to fade, which reads as one continuous movement.
+   the height is reserved the whole time, so nothing below ever reflows. */
+.sp-status.sp-status-armed {
+    opacity: 0;
+    transform: translateY(-8px);
+}
+.sp-status.sp-status-in {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.42s ease, transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* leaving is quicker than arriving: dismissing should feel like a decision */
+.sp-status.sp-status-out {
+    opacity: 0;
+    transform: translateY(-8px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+    .sp-status.sp-status-armed { opacity: 1; transform: none; }
+    .sp-status.sp-status-in,
+    .sp-status.sp-status-out { transition: none; }
+}
+
+/* a heading scrolled to must clear the fixed nav and, when it is up, the banner.
+   scroll-margin is honoured by scrollIntoView, so this is the whole offset. */
+[id]:target,
+h2[tabindex="-1"] { scroll-margin-top: calc(64px + var(--sp-status-h) + 1.5rem); }
+
+/* --- dismiss ----------------------------------------------------------------
+   absolutely positioned so the message stays centred in the bar. as a flex child
+   it would push the content off centre by half its width. */
+.sp-status-x {
+    position: absolute;
+    right: 0.6rem;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px;
+    padding: 0;
+    border: 0; border-radius: 7px;
+    background: transparent;
+    color: rgba(255,236,214,0.55);
+    cursor: pointer;
+    transition: color 0.18s ease, background 0.18s ease;
+}
+.sp-status-x svg { width: 14px; height: 14px; }
+.sp-status-x:hover { color: #ffd8a0; background: rgba(255,176,60,0.14); }
+.sp-status-x:focus-visible { outline: 2px solid rgba(255,176,60,0.6); outline-offset: 2px; }
 .sp-status-inner { display: flex; align-items: center; gap: 0.7rem; max-width: 1200px; }
 /* a triangle box-centres high: its mass is at the base and its apex is a point,
    so it needs a nudge down to sit on the same line as the type beside it. */
@@ -2850,6 +2902,9 @@ html[data-status] .bad-fold .lp-section.bad-demo { padding-bottom: 0; }
 }
 
 @media (max-width: 860px) {
+    /* no dismiss on a phone: the bar is already two lines and a 26px target next
+       to the edge is a mis-tap waiting to happen */
+    .sp-status-x { display: none; }
     .sp-status { padding: calc(0.6rem + 1px) 0.8rem 0.6rem; font-size: 0.78rem; }
     .sp-status-inner {
         gap: 0.4rem 0.45rem; flex-wrap: wrap; justify-content: center; text-align: center;
