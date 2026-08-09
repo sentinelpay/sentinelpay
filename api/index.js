@@ -711,29 +711,33 @@ app.all('/v1/mail-status', async (req, res) => {
 // email is at your company's own domain", which a visitor can otherwise satisfy by
 // entering the provider's domain as their website: x@gmail.com + gmail.com matched
 // and let anyone in. Checked on both sides of the pair.
-// Two lists, because they are two different things.
+// Two lists of mailbox providers, refreshed by tools/refresh-mail-domains.js and
+// read once at boot. Around thirteen thousand domains between them, which is why
+// they are files rather than something anyone maintains by hand.
 //
-// A free mailbox is where a real person at a real company sometimes writes from:
-// a founder before the domain is set up, someone whose it department has not
-// given them an alias yet, a consultant. Refusing those turned away business to
-// catch abuse, so they come in and get flagged for a human to look at instead.
-const FREE_MAIL_DOMAINS = new Set([
-    'gmail.com', 'googlemail.com', 'outlook.com', 'hotmail.com', 'live.com', 'msn.com',
-    'yahoo.com', 'yahoo.co.uk', 'ymail.com', 'aol.com', 'icloud.com', 'me.com', 'mac.com',
-    'proton.me', 'protonmail.com', 'pm.me', 'gmx.com', 'gmx.de', 'gmx.net', 'web.de',
-    't-online.de', 'freenet.de', 'mail.com', 'zoho.com', 'yandex.com', 'yandex.ru',
-    'mail.ru', 'inbox.lv', 'seznam.cz', 'net.hr', 'gmail.hr', 'vip.hr', 'hi.t-com.hr',
-    'a1.hr', 'optinet.hr', 'inet.hr', 'email.t-com.hr',
-]);
+// Neither list decides whether a submission is accepted. That is the domain
+// match, and it applies to everybody equally. These only decide what the
+// submission is tagged with, so a stale or wrong entry costs a misleading tag,
+// never a lost lead.
+function loadDomainFile(name) {
+    try {
+        const raw = fsSync.readFileSync(path.join(__dirname, 'data', name), 'utf8');
+        const set = new Set();
+        for (const line of raw.split('\n')) {
+            const d = line.trim().toLowerCase();
+            if (d && d[0] !== '#') set.add(d);
+        }
+        return set;
+    } catch (err) {
+        // the lists are a nicety, not a gate: without them submissions still come
+        // in and are still judged by the domain match, they just arrive untagged
+        console.error('[mail-domains] cannot read ' + name + ': ' + err.message);
+        return new Set();
+    }
+}
 
-// A throwaway address is not a person who might buy something. The mailbox is
-// designed to stop existing, so there is nobody to follow up with and nothing to
-// review. These stay refused.
-const DISPOSABLE_EMAIL_DOMAINS = new Set([
-    'mailinator.com', 'guerrillamail.com', 'yopmail.com', '10minutemail.com',
-    'tempmail.com', 'temp-mail.org', 'trashmail.com', 'sharklasers.com',
-    'dispostable.com', 'getnada.com', 'maildrop.cc', 'fakeinbox.com', 'throwawaymail.com',
-]);
+const FREE_MAIL_DOMAINS = loadDomainFile('free-email-domains.txt');
+const DISPOSABLE_EMAIL_DOMAINS = loadDomainFile('disposable-email-domains.txt');
 
 function isFreeMailDomain(domain) {
     return FREE_MAIL_DOMAINS.has(String(domain || '').toLowerCase());
@@ -749,8 +753,9 @@ function isDisposableDomain(domain) {
 // The same tags, written out for whoever opens the notification. A code in an
 // inbox gets ignored; a sentence gets read.
 const FLAG_NOTES = {
-    'free-email': 'signed up from a free mailbox, not a company domain. could be a founder before the domain is set up, or somebody farming trials. worth thirty seconds on the company name before you reply.',
-    'website-is-a-mailbox': 'the website they gave is a mail provider, not a company site. either a slip in the form or not a real company.',
+    'free-email': 'the address is on a free consumer mailbox, and the website they gave is on that same domain. worth thirty seconds on the company name before you reply.',
+    'disposable-email': 'the address is on a throwaway service, the kind built to stop existing. treat anything here as unverified.',
+    'website-is-a-mailbox': 'the website they gave is a mail provider, not a company site.',
     'domain-mismatch': 'the website and the work email are on different domains.',
 };
 function reviewNotes(flags) {
@@ -759,9 +764,16 @@ function reviewNotes(flags) {
 
 function reviewFlags(emailDomain, websiteHost) {
     const flags = [];
-    if (isFreeMailDomain(emailDomain)) flags.push('free-email');
-    if (websiteHost && isFreeMailDomain(websiteHost)) flags.push('website-is-a-mailbox');
-    if (websiteHost && !isFreeMailDomain(emailDomain) && !(
+    // one or the other, never both: the generated lists do not overlap
+    if (isDisposableDomain(emailDomain)) flags.push('disposable-email');
+    else if (isFreeMailDomain(emailDomain)) flags.push('free-email');
+
+    if (websiteHost && (isFreeMailDomain(websiteHost) || isDisposableDomain(websiteHost))) {
+        flags.push('website-is-a-mailbox');
+    }
+    // the one rule that decides anything, and it decides it for everybody. no
+    // exemption by provider: whoever you write from, the site has to agree.
+    if (websiteHost && !(
         websiteHost === emailDomain ||
         websiteHost.endsWith('.' + emailDomain) ||
         emailDomain.endsWith('.' + websiteHost)
@@ -806,13 +818,10 @@ app.post('/v1/trial-request', requireCloudflareOrigin, trialRequestLimiter, asyn
         const host = website.replace(/^https?:\/\//i, '').replace(/\/.*$/, '').replace(/^www\./i, '').toLowerCase();
         const emailDomain = email.split('@').pop().toLowerCase();
 
-        // a throwaway address has nobody behind it to follow up with
-        if (isDisposableDomain(emailDomain) || isDisposableDomain(host)) {
-            return res.status(400).json({ error: 'please use an address we can reply to' });
-        }
-        // A work email at the company's own domain is what stands in for a manual
-        // check. When it is a free mailbox there is no domain to match against, so
-        // the pair cannot be required: it goes through tagged for review instead.
+        // One rule stands between a stranger and a trial: the address has to be on
+        // the same domain as the site. Every address is welcome to try, from any
+        // provider, and none of them get an exemption. What the provider is only
+        // decides what the submission is tagged with afterwards.
         const flags = reviewFlags(emailDomain, host);
         if (flags.indexOf('domain-mismatch') !== -1) {
             return res.status(400).json({ error: 'website domain must match your work email domain' });
@@ -924,15 +933,11 @@ app.post('/v1/demo-request', requireCloudflareOrigin, demoRequestLimiter, async 
             return res.status(400).json({ error: 'we do not onboard gambling operators' });
         }
 
-        // same rule as the trial: throwaway addresses out, free mailboxes in and
-        // tagged, and the pair only has to match when there is a domain to match
+        // same rule as the trial: any provider, as long as the site agrees with it
         const emailDomain = email.split('@').pop().toLowerCase();
         const host = website
             ? website.replace(/^https?:\/\//i, '').replace(/\/.*$/, '').replace(/^www\./i, '').toLowerCase()
             : '';
-        if (isDisposableDomain(emailDomain) || (host && isDisposableDomain(host))) {
-            return res.status(400).json({ error: 'please use an address we can reply to' });
-        }
         const flags = reviewFlags(emailDomain, host);
         if (flags.indexOf('domain-mismatch') !== -1) {
             return res.status(400).json({ error: 'website domain must match your work email domain' });

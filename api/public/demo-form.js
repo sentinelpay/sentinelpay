@@ -41,20 +41,10 @@
             // is picked rather than letting someone fill four steps and be rejected by
             // the server. the server checks it too; this is the courteous half.
             var gamblingRe = /gambling|igaming|casino|betting|sportsbook|wager/i;
-            // Mirrors FREE_MAIL_DOMAINS in api/index.js. Only used to decide whether
-            // to ask that the website match the email, so a domain missing here costs
-            // one confusing error message, not a wrong decision: the server does the
-            // real check and tags the submission either way.
-            var freeMail = {};
-            [
-                'gmail.com', 'googlemail.com', 'outlook.com', 'hotmail.com', 'live.com',
-                'msn.com', 'yahoo.com', 'yahoo.co.uk', 'ymail.com', 'aol.com', 'icloud.com',
-                'me.com', 'mac.com', 'proton.me', 'protonmail.com', 'pm.me', 'gmx.com',
-                'gmx.de', 'gmx.net', 'web.de', 't-online.de', 'freenet.de', 'mail.com',
-                'zoho.com', 'yandex.com', 'yandex.ru', 'mail.ru', 'inbox.lv', 'seznam.cz',
-                'net.hr', 'gmail.hr', 'vip.hr', 'hi.t-com.hr', 'a1.hr', 'optinet.hr',
-                'inet.hr', 'email.t-com.hr'
-            ].forEach(function (d) { freeMail[d] = true; });
+            // The browser needs no list of providers. The rule is the same for every
+            // address, whoever it is with: the site has to be on the same domain.
+            // The lists live on the server and only decide how a submission is
+            // tagged once it is in, which is not a question the form has to answer.
             var domainRe = /^([a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/i;
             var headEl = document.getElementById('lp-demo-formhead');
             function setError(input, msg) {
@@ -92,10 +82,6 @@
                         if (!domainRe.test(host)) return t('enter a valid domain, e.g. company.com');
                         var emailInp = form.querySelector('input[name="email"]');
                         var emailDomain = emailInp && emailInp.value.indexOf('@') !== -1 ? emailInp.value.trim().split('@').pop().toLowerCase() : '';
-                        // a free mailbox has no company domain to match against, so
-                        // requiring the pair here would block the exact people we
-                        // decided to let through and review by hand
-                        if (freeMail[emailDomain]) return '';
                         if (emailDomain && host !== emailDomain && host.slice(-(emailDomain.length + 1)) !== '.' + emailDomain && emailDomain.slice(-(host.length + 1)) !== '.' + host) {
                             return t('must match your work email domain') + ' (@' + emailDomain + ')';
                         }

@@ -89,9 +89,9 @@ flash, and zero missing translations.
 - the site is in production. it is the only thing customers can see
 - the product behind it does not exist yet. copy must not promise what is not built
 - gambling operators are refused, by policy, in the form and again on the server
-- a free mailbox is not a refusal, it is a tag. the list of free domains is in
-  `api/index.js` and mirrored in `demo-form.js`, which only uses it to decide
-  whether to ask that the website match the email. a domain missing from the
-  client copy costs one confusing error message; the server is the authority and
-  tags the submission either way
+- one rule accepts or refuses a sign-up: the work email and the website on the
+  same domain, for everybody, no exemption by provider. the mailbox lists in
+  `api/data/` only decide what a submission is tagged with, so a wrong entry
+  there costs a misleading tag and never a lost lead. refresh them monthly with
+  `node tools/refresh-mail-domains.js` and commit the two files
 - secrets never go in the repo, in chat, or in a url that gets pasted anywhere

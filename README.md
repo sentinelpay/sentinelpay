@@ -78,7 +78,7 @@ english, croatian and german. **592 translated strings per language**, keyed on 
 | origin lockdown | a secret injected by a cloudflare transform rule; with `CF_ORIGIN_STRICT` the origin answers 403 to anything that did not come through cloudflare |
 | rate limits | 300/min per ip site-wide, 5/hour for demo requests, 3/hour for trial sign-ups |
 | ip trust | `cf-connecting-ip` is trusted only when the request proves it came through our own cloudflare, so a forged header cannot buy a fresh rate-limit bucket |
-| input | 10kb body cap, parameter pollution guard, strict field validation, throwaway mailboxes refused and free ones tagged for review |
+| input | 10kb body cap, parameter pollution guard, strict field validation, work email and website required to be on one domain |
 | headers | `nosniff`, `no-referrer`, and a permissions policy that turns off every sensor api |
 
 the site works with javascript switched off far enough to say so: the loader stays, and underneath it a message in the visitor's language links to instructions for their exact browser.
@@ -90,17 +90,32 @@ the site works with javascript switched off far enough to say so: the loader sta
 | homepage, `/book-a-demo` | the team, at `MAIL_TO` | yes |
 | `/start-free-trial` | the applicant, in their own language, plus a copy to the team | yes |
 
-a trial sign-up is verified automatically: when the work email sits on a real domain, the website has to match it. gambling operators are declined by policy in the form and again on the server, and throwaway mailboxes are refused because there is nobody behind them to reply to.
+**one rule decides whether a sign-up is accepted: the work email and the website must be on the same domain.** subdomains either way are fine. it applies to every address from every provider, with no exemptions, and it is the whole of the automatic check that stands in for reading a form by hand. gambling operators are declined by policy, in the form and again on the server.
 
-free mailboxes go through. someone at a real company writes from gmail more often than anyone likes, and refusing them turned away business to catch abuse. instead the submission is tagged and a person decides:
+what the provider is does not decide anything. it decides what the submission is **tagged** with, and a person takes it from there:
 
 | tag | what it means |
 | --- | --- |
-| `free-email` | signed up from a free mailbox rather than a company domain |
-| `website-is-a-mailbox` | the website they gave is a mail provider, not a company site |
-| `domain-mismatch` | website and work email on different domains. still refused: both look real, so they should agree |
+| `free-email` | the address is on a consumer mailbox: gmail, outlook, aol, net.hr |
+| `disposable-email` | a throwaway service, the kind built to stop existing |
+| `website-is-a-mailbox` | the site they gave is a mail provider rather than a company |
+| `domain-mismatch` | the pair disagrees. this one is a refusal, not a tag |
 
 a tagged submission puts an amber band at the top of the notification with the reason in words, prefixes the subject with `review:`, and stores the tags in a column of their own so `GET /v1/submissions?flagged=1` answers "what needs a look" without decrypting every row.
+
+### the mailbox lists
+
+`api/data/free-email-domains.txt` and `api/data/disposable-email-domains.txt`, around thirteen thousand domains, read once at boot. the upstream free list contains the whole disposable list, so the two are separated when they are written: a domain is one or the other, never both, and a tag therefore says exactly one thing.
+
+refresh them monthly:
+
+```bash
+node tools/refresh-mail-domains.js
+```
+
+it rewrites both files, prints what was added and removed, and refuses to write a suspiciously small download over a good one. croatian consumer providers are not carried upstream, so they live in the script and survive every refresh. the files are plain sorted text, one domain per line, so a month of drift reads as an ordinary diff.
+
+if a domain is missing or wrong, nothing is accepted or refused that would not have been anyway. the cost is a submission that arrives without a tag, or with one it did not deserve.
 
 every submission is written to stdout **and** to postgres before any email is attempted, so a bounce, an outage or a missed inbox never costs a lead. emails are sent through resend from `noreply@sentinelpay.org`, in the site's own dark house style, with a plain-text alternative.
 
