@@ -2937,3 +2937,54 @@ html[data-mail-down] a[data-mail-subject] {
     font-size: 0.82rem; line-height: 1.5;
     color: rgba(255,224,190,0.92);
 }
+
+/* ============ mobile corrections, measured across 320-768px ============ */
+
+/* Safari on ios zooms the whole page in when a field smaller than 16px takes
+   focus, and it never zooms back out. the padding comes down by the same
+   amount the text grows, so the fields keep the height the fold is tuned to. */
+@media (max-width: 900px) {
+    .lp-demo-field input,
+    .lp-demo-field select,
+    .lp-demo-field textarea {
+        font-size: 16px;
+        padding: 0.68rem 0.85rem;
+    }
+}
+
+/* Between the phone breakpoint and the desktop layout the five footer columns
+   sat on one nowrap row and the last one fell off the right edge, invisible
+   because the page cannot scroll sideways. let them wrap instead. */
+@media (min-width: 601px) and (max-width: 900px) {
+    .lp-footer-top { flex-wrap: wrap; gap: 2.5rem; }
+    .lp-footer-links { flex-wrap: wrap; gap: 2rem 2.5rem; }
+}
+
+/* Touch targets. 35px is comfortable with a mouse and fiddly with a thumb. */
+@media (max-width: 900px) {
+    .lp-roles-dd-btn,
+    .lp-roles-dd-opt {
+        min-height: 44px;
+    }
+    a.article-back {
+        min-height: 44px;
+        box-sizing: border-box;
+        align-items: center;
+    }
+}
+
+/* The smallest labels were under 11px on a phone, which is below what most
+   people can read at arm's length. the desktop sizes are left alone. */
+@media (max-width: 900px) {
+    .lp-intel-guide-kicker { font-size: 0.72rem; }
+    .lp-footer-col-title { font-size: 0.74rem; }
+}
+
+/* The privacy table scrolls sideways inside its own box, which is right, but
+   560px of minimum width means a phone scrolls almost the whole way. tighter
+   cells fit more of it on screen before anyone has to. */
+@media (max-width: 640px) {
+    table.pp-table { min-width: 460px; font-size: 0.88rem; }
+    table.pp-table th,
+    table.pp-table td { padding: 0.7rem 0.75rem; }
+}
