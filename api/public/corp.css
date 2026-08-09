@@ -3030,3 +3030,45 @@ html[data-mail-down] a[data-mail-subject] {
     table.pp-table th,
     table.pp-table td { padding: 0.7rem 0.75rem; }
 }
+
+/* ============ article sources ============
+   every article carries the reading behind it. the list sits at the end, quieter
+   than the body: it is there to be checked, not read straight through. shared
+   here rather than in each article's own style block so the next one gets it. */
+.article-body ul.article-sources {
+    margin: 1.3rem 0 0;
+    padding: 1.2rem 1.4rem;
+    border: 1px solid rgba(14, 35, 88, 0.1);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.55);
+}
+.article-body ul.article-sources li {
+    padding-left: 1.4rem;
+    margin-bottom: 0.55rem;
+    font-size: 0.98rem;
+    line-height: 1.55;
+}
+.article-body ul.article-sources li:last-child { margin-bottom: 0; }
+.article-body ul.article-sources li::before {
+    /* a link mark rather than the body's bullet: these are references, not points */
+    content: '';
+    position: absolute;
+    left: 0.1rem;
+    top: 0.55em;
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    border: 1.5px solid rgba(0, 145, 200, 0.5);
+    background: none;
+}
+.article-body ul.article-sources a {
+    color: #0e2358;
+    border-bottom-color: rgba(14, 35, 88, 0.2);
+    /* a full regulation title is long and must not push the card sideways */
+    overflow-wrap: anywhere;
+}
+.article-body ul.article-sources a:hover { color: #0091c8; border-bottom-color: #0091c8; }
+@media (max-width: 640px) {
+    .article-body ul.article-sources { padding: 1rem 1.1rem; }
+    .article-body ul.article-sources li { font-size: 0.92rem; }
+}

@@ -77,3 +77,19 @@ reference piece: "why criminals target small businesses (and exactly how they do
 - "you shouldn't have to become a bank to stay compliant" -> **ceem**
 - "you don't have an aml problem, you have a speed problem" -> **mind, chibby**
 - "why criminals target small businesses (and exactly how they do it)" -> **chibby**
+
+---
+
+## sources
+
+from august 2026 every article ends with the reading behind it, under a `sources`
+heading, in a `<ul class="article-sources">`. the styling is shared in `corp.css`,
+so a new article gets it by using that class.
+
+two rules:
+
+- link text is lowercase like everything else, but the **name of a regulation is
+  not translated**. the hr and de dictionaries carry those titles unchanged,
+  because you do not translate the title of an official document.
+- only sources the author actually used. an article with nothing to cite has no
+  sources block rather than a decorative one.
