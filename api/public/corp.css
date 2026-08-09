@@ -2849,12 +2849,22 @@ h2[tabindex="-1"] { scroll-margin-top: calc(64px + var(--sp-status-h) + 1.5rem);
 /* everything fixed to the top moves down by the banner's height */
 html[data-status] .lp-nav { top: var(--sp-status-h); }
 html[data-status] .lp-mobile-menu { top: calc(64px + var(--sp-status-h)); }
+
+/* The bar is fixed, so it pushes nothing on its own. the nav moves down by its
+   height, which means every page's own top padding is now short by exactly that
+   much and the first heading ends up behind the nav. one shift on the body
+   covers every page at once, which is the point: a per-page list of selectors is
+   how the next page added here would quietly go back to being broken.
+   margin rather than padding on purpose: landing.css pins the body's padding to
+   zero with !important, so a padding here would silently do nothing. */
+html[data-status] body.lp-body { margin-top: var(--sp-status-h); }
 /* the fold owns exactly one viewport. a fixed banner does not push content, so the
    fold has to be told: start below it, and be that much shorter. its inner padding
    then still clears the nav, because the nav moved down by the same amount. this is
    the whole adjustment, and it tracks whatever height the banner turns out to be. */
 html[data-status] .bad-fold {
-    margin-top: var(--sp-status-h);
+    /* the body shift above already moved it down, so only the height is left */
+    margin-top: 0;
     min-height: calc(100vh - var(--sp-status-h));
     min-height: calc(100dvh - var(--sp-status-h));
 }
