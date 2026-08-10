@@ -3793,3 +3793,107 @@ h2.faq-group {
 }
 .lp-faq-all svg { width: 15px; height: 15px; transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1); }
 .lp-faq-all:hover svg { transform: translateX(3px); }
+
+/* ============ what does not exist yet ============
+   the nav and the footer promised a documentation site, a glossary, a careers
+   page and a handful of others. on the homepage those were href="#" and did
+   nothing; everywhere else they pointed back at the homepage, which reads as a
+   misclick rather than as an answer.
+
+   they are not links now. they still say what is coming, they carry a quiet
+   mark saying it is not here yet, and nothing on the site takes a click and
+   gives nothing back. the day a page exists, the span becomes an anchor again
+   and this class comes off. */
+.is-soon { cursor: default; }
+
+/* the mark. the promo card cannot use its own ::after, which is already the
+   glow behind it, so there the mark hangs off the title instead. */
+.is-soon:not(.lp-mega-promo)::after,
+.lp-mega-promo.is-soon .lp-mega-promo-title::after {
+    content: 'soon';
+    display: inline-block;
+    margin-left: 0.45em;
+    padding: 0.08em 0.42em;
+    border-radius: 5px;
+    border: 1px solid rgba(0, 145, 200, 0.25);
+    background: rgba(0, 145, 200, 0.07);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #0091c8;
+    vertical-align: 1.5px;
+    white-space: nowrap;
+}
+/* on the dark promo card the cyan on near-black needs its own values */
+.lp-mega-promo.is-soon .lp-mega-promo-title::after {
+    border-color: rgba(0, 240, 255, 0.3);
+    background: rgba(0, 240, 255, 0.1);
+    color: #7bdcff;
+}
+
+/* inside the mega menu the mark belongs beside the title, not under the card */
+.lp-mega-item.is-soon { position: relative; }
+.lp-mega-item.is-soon::after { position: absolute; top: 0.85rem; right: 0.9rem; margin: 0; }
+.lp-mega-item.is-soon:hover { background: none !important; }
+.lp-mega-item.is-soon .lp-mega-title,
+.lp-mega-item.is-soon .lp-mega-desc { opacity: 0.62; }
+
+.lp-mega-rail-cta.is-soon { opacity: 0.6; }
+.lp-mega-rail-cta.is-soon .lp-mega-cta-arrow { display: none; }
+.lp-mega-rail-cta.is-soon::after { vertical-align: 0; }
+
+.lp-mega-promo.is-soon { opacity: 0.72; }
+.lp-mega-promo.is-soon:hover { transform: none; }
+/* "learn more" that leads nowhere is the thing this whole block exists to
+   remove, so on a card that is not a link the invitation goes with it */
+.lp-mega-promo.is-soon .lp-mega-promo-cta { display: none !important; }
+
+/* the footer and the mobile menu are plain lists, so the mark sits inline */
+.lp-footer-link.is-soon,
+.lp-mobile-sub-link.is-soon { opacity: 0.55; }
+.lp-footer-link.is-soon::after,
+.lp-mobile-sub-link.is-soon::after { font-size: 0.58rem; padding: 0.05em 0.35em; }
+
+/* the mark is css content, so the translation walker never sees it. an english
+   "soon" in the middle of a croatian menu is exactly the kind of seam that
+   makes a translated site feel translated. */
+html[lang="hr"] .is-soon:not(.lp-mega-promo)::after,
+html[lang="hr"] .lp-mega-promo.is-soon .lp-mega-promo-title::after { content: 'uskoro'; }
+html[lang="de"] .is-soon:not(.lp-mega-promo)::after,
+html[lang="de"] .lp-mega-promo.is-soon .lp-mega-promo-title::after { content: 'bald'; }
+
+/* ============ moving around the page ============
+   two things the site was missing and every in-page link needed.
+
+   an anchor jump landed the heading exactly under the fixed nav, so "solutions"
+   in the menu took you to a screen whose first line was hidden. scroll-padding
+   moves the landing point down by the nav, plus the status banner when one is
+   up, and it works for a click, for a bookmark and for the keyboard alike.
+
+   and the jump was instant. a page that teleports gives no sense of where you
+   went; the same jump animated takes a third of a second and keeps the thread.
+   anyone who has asked for less motion still gets the instant one. */
+html {
+    scroll-padding-top: calc(64px + var(--sp-status-h, 0px) + 1rem);
+    scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+}
+
+/* ============ a thumb is not a mouse pointer ============
+   the footer and the mobile menu are lists of plain text links. on a desktop
+   that is fine; on a phone the tappable box was the height of the line, around
+   20px, which is half of what a thumb needs and puts two links inside one
+   press. the padding grows the target without moving the text apart much: the
+   gap between them is reduced by the same amount the padding adds. */
+@media (max-width: 900px) {
+    .lp-footer-link,
+    .lp-mobile-sub-link {
+        display: block;
+        padding-top: 0.45rem;
+        padding-bottom: 0.45rem;
+    }
+    .lp-footer-col { gap: 0 !important; }
+}
