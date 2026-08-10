@@ -13,6 +13,18 @@
        and marketing lines are rewritten for the language rather than word-for-word. */
     var T = {
         hr: {
+            "what happens to a form you send us": "što se događa s obrascem koji nam pošaljete",
+            "when you fill in the demo or free trial form, we store what you typed: your name, work email, job title, company name and website, and the industry and country you selected. we also store the ip address the request came from, the browser you used and the time, because without those we cannot tell a genuine enquiry from an automated one.": "kad ispunite obrazac za demo ili besplatnu probu, spremamo ono što ste upisali: vaše ime, poslovni email, radno mjesto, naziv i web stranicu tvrtke te djelatnost i državu koje ste odabrali. spremamo i ip adresu s koje je zahtjev došao, preglednik koji ste koristili i vrijeme, jer bez toga ne možemo razlikovati pravi upit od automatiziranog.",
+            "we keep it to answer you, to decide whether to open a trial account, and to be able to show later what we checked and when. that is our legitimate interest in running and protecting the service.": "čuvamo to da vam odgovorimo, da odlučimo hoćemo li otvoriti probni račun i da kasnije možemo pokazati što smo provjerili i kada. to je naš legitimni interes u vođenju i zaštiti usluge.",
+            "where it is kept": "gdje se čuva",
+            "in a database, not in email. the personal fields are encrypted before they leave our server, so a copy of the database on its own does not reveal them. your email address is additionally stored as a keyed hash, which lets us find your records without the address itself sitting in the table.": "u bazi podataka, ne u mailu. osobna polja šifriraju se prije nego napuste naš server, pa ih kopija baze sama po sebi ne otkriva. vaša email adresa dodatno se sprema kao hash s ključem, što nam omogućuje da pronađemo vaše zapise bez da sama adresa stoji u tablici.",
+            "how long": "koliko dugo",
+            "365 days from the day you send it. a job runs daily and deletes anything past that, automatically, whether or not anyone remembers to.": "365 dana od dana kad ste ga poslali. svaki dan se pokreće posao koji briše sve starije od toga, automatski, bez obzira sjeti li se itko toga.",
+            "who can reach it": "tko mu može pristupiti",
+            "only the sentinelpay team, through an interface that requires a separate secret. it is not connected to the product, it is not shared with customers, and it is never used for advertising.": "samo tim sentinelpaya, kroz sučelje koje traži zasebnu tajnu. nije povezano s proizvodom, ne dijeli se s klijentima i nikad se ne koristi za oglašavanje.",
+            "deleting it sooner": "brisanje prije roka",
+            "and ask. we remove every record tied to your address, and we do not need you to prove anything beyond controlling that mailbox. you do not have to explain why.": "i zatražite. uklonit ćemo svaki zapis vezan uz vašu adresu, a ne tražimo da dokazujete išta osim da kontrolirate taj sandučić. ne morate objašnjavati zašto.",
+            "email": "pošaljite mail na",
             "elliptic, chain-hopping as the defining laundering method of 2025": "elliptic, chain-hopping as the defining laundering method of 2025",
             "elliptic, the state of cross-chain crime 2025": "elliptic, the state of cross-chain crime 2025",
             "chainalysis, the 2026 crypto crime report": "chainalysis, the 2026 crypto crime report",
@@ -689,6 +701,18 @@
             "sentinelpay requires javascript to initialize secure sessions.": "sentinelpayu treba javascript za pokretanje sigurne sesije."
         },
         de: {
+            "what happens to a form you send us": "was mit einem formular passiert, das sie uns schicken",
+            "when you fill in the demo or free trial form, we store what you typed: your name, work email, job title, company name and website, and the industry and country you selected. we also store the ip address the request came from, the browser you used and the time, because without those we cannot tell a genuine enquiry from an automated one.": "wenn sie das formular für eine demo oder die kostenlose testphase ausfüllen, speichern wir, was sie eingetragen haben: ihren namen, ihre arbeits-e-mail, ihre position, den namen und die website ihres unternehmens sowie branche und land, die sie ausgewählt haben. wir speichern auch die ip-adresse, von der die anfrage kam, den verwendeten browser und die uhrzeit, denn ohne diese angaben können wir eine echte anfrage nicht von einer automatisierten unterscheiden.",
+            "we keep it to answer you, to decide whether to open a trial account, and to be able to show later what we checked and when. that is our legitimate interest in running and protecting the service.": "wir bewahren das auf, um ihnen zu antworten, um zu entscheiden, ob wir ein testkonto eröffnen, und um später zeigen zu können, was wir wann geprüft haben. das ist unser berechtigtes interesse am betrieb und schutz des dienstes.",
+            "where it is kept": "wo es liegt",
+            "in a database, not in email. the personal fields are encrypted before they leave our server, so a copy of the database on its own does not reveal them. your email address is additionally stored as a keyed hash, which lets us find your records without the address itself sitting in the table.": "in einer datenbank, nicht in e-mails. die persönlichen felder werden verschlüsselt, bevor sie unseren server verlassen, eine kopie der datenbank allein gibt sie also nicht preis. ihre e-mail-adresse wird zusätzlich als schlüsselbasierter hash gespeichert, damit wir ihre einträge finden können, ohne dass die adresse selbst in der tabelle steht.",
+            "how long": "wie lange",
+            "365 days from the day you send it. a job runs daily and deletes anything past that, automatically, whether or not anyone remembers to.": "365 tage ab dem tag, an dem sie es senden. täglich läuft ein prozess, der alles ältere löscht, automatisch, ganz gleich ob jemand daran denkt.",
+            "who can reach it": "wer darauf zugreifen kann",
+            "only the sentinelpay team, through an interface that requires a separate secret. it is not connected to the product, it is not shared with customers, and it is never used for advertising.": "nur das sentinelpay-team, über eine schnittstelle, die ein eigenes geheimnis verlangt. es ist nicht mit dem produkt verbunden, wird nicht an kunden weitergegeben und nie für werbung genutzt.",
+            "deleting it sooner": "früher löschen lassen",
+            "and ask. we remove every record tied to your address, and we do not need you to prove anything beyond controlling that mailbox. you do not have to explain why.": "und fragen sie danach. wir entfernen jeden eintrag, der mit ihrer adresse verknüpft ist, und sie müssen nichts weiter nachweisen, als dass sie dieses postfach kontrollieren. eine begründung brauchen wir nicht.",
+            "email": "schreiben sie an",
             "elliptic, chain-hopping as the defining laundering method of 2025": "elliptic, chain-hopping as the defining laundering method of 2025",
             "elliptic, the state of cross-chain crime 2025": "elliptic, the state of cross-chain crime 2025",
             "chainalysis, the 2026 crypto crime report": "chainalysis, the 2026 crypto crime report",
