@@ -9,6 +9,7 @@
     <title>sentinelpay | sign in</title>
     <script>/* tab title before first paint; for articles this is the h1 translation */(function(){var T={"hr":"sentinelpay | prijava","de":"sentinelpay | anmelden"},m=document.cookie.match(/(?:^|; )sp-lang=([^;]*)/),l=m?decodeURIComponent(m[1]):null;if(!l){try{l=localStorage.getItem("sp-lang")}catch(e){}}if(l!=="hr"&&l!=="de"&&l!=="en")l=document.documentElement.getAttribute("data-geo-lang");if(l!=="hr"&&l!=="de")return;document.documentElement.lang=l;if(!T)return;window.__SP_TITLE_SRC=document.title.replace(/\s+/g," ").trim();document.title=T[l];})();</script>
     <meta name="description" content="connect a key and sentinelpay screens what has already touched your wallets. no call to book and nobody to wait for.">
+    <script>document.documentElement.classList.add('theme-light');</script>
     <script>if(history.scrollRestoration)history.scrollRestoration='manual';window.scrollTo(0,0);</script>
     <script>window.__TURNSTILE_SITEKEY='0x4AAAAAAD6yvLDIagSfULi7';</script>
     <script>window.intercomSettings={api_base:'https://api-iam.intercom.io',app_id:'obn3omwl',hide_default_launcher:true,language_override:'en'};</script>
@@ -128,13 +129,10 @@
         .lp-demo-consent a:hover { border-bottom-color: #7bdcff; }
 
         /* ============ auth ============
-           not another page of the site. signing in is the door into the product, so
-           it gets its own screen: no nav, no footer, no marketing column, one card
-           in the middle of a dark canvas. everything else here is the same brand
-           the rest of the site uses, so it does not read as a different company. */
-        html { background: #05060a; }
-        body.lp-body { background: #05060a; min-height: 100vh; }
-
+           the site's light style, with the layout doing the differentiating: one
+           card in the middle of the screen instead of the two columns the demo and
+           trial pages use, and no nav or footer around it. signing in is not
+           browsing, so there is nowhere else to go from here on purpose. */
         .sp-auth-shell {
             position: relative;
             min-height: 100vh;
@@ -143,133 +141,133 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 5.5rem 1.25rem 4.5rem;
+            padding: 5.5rem 1.25rem 4rem;
             box-sizing: border-box;
             overflow: hidden;
         }
-        /* two soft lights instead of the hero's animated orbs: the same palette,
-           none of the movement, because nothing on this screen should pull the eye
-           away from one field at a time */
+        /* the faintest wash of the brand behind the card, so the page is not a
+           blank sheet. still, not animated: nothing here should move. */
         .sp-auth-glow { position: absolute; border-radius: 50%; filter: blur(90px); pointer-events: none; }
-        .sp-auth-glow-a { top: -14vh; left: 50%; width: 46rem; height: 30rem; transform: translateX(-62%); background: rgba(0, 200, 255, 0.16); }
-        .sp-auth-glow-b { bottom: -18vh; left: 50%; width: 40rem; height: 28rem; transform: translateX(-24%); background: rgba(160, 32, 240, 0.16); }
+        .sp-auth-glow-a { top: -16vh; left: 50%; width: 44rem; height: 28rem; transform: translateX(-64%); background: rgba(0, 145, 200, 0.1); }
+        .sp-auth-glow-b { bottom: -20vh; left: 50%; width: 38rem; height: 26rem; transform: translateX(-20%); background: rgba(160, 32, 240, 0.07); }
 
         .sp-auth-back {
-            position: absolute; top: 1.6rem; left: 1.6rem;
+            position: absolute; top: 1.5rem; left: 1.5rem;
             display: inline-flex; align-items: center; gap: 0.4rem;
-            font-size: 0.85rem; color: rgba(255, 255, 255, 0.5);
+            font-size: 0.86rem; font-weight: 500; color: rgba(14, 35, 88, 0.55);
             text-decoration: none; padding: 0.5rem 0.7rem; border-radius: 9px;
             transition: color 0.18s ease, background 0.18s ease;
         }
         .sp-auth-back svg { width: 15px; height: 15px; }
-        .sp-auth-back:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
+        .sp-auth-back:hover { color: #0e2358; background: rgba(14, 35, 88, 0.05); }
 
-        .sp-auth-stage { position: relative; z-index: 1; width: 100%; max-width: 27rem; text-align: center; }
+        .sp-auth-stage { position: relative; z-index: 1; width: 100%; max-width: 26.5rem; text-align: center; }
 
-        .sp-auth-brand { display: inline-flex; align-items: center; gap: 0.55rem; text-decoration: none; margin-bottom: 1.8rem; }
+        .sp-auth-brand { display: inline-flex; align-items: center; gap: 0.55rem; text-decoration: none; margin-bottom: 1.7rem; }
         .sp-auth-brand svg { width: 30px; height: 30px; }
-        .sp-auth-brand span { font-size: 1.02rem; font-weight: 700; letter-spacing: -0.01em; color: #fff; }
+        .sp-auth-brand span { font-size: 1.02rem; font-weight: 700; letter-spacing: -0.01em; color: #0e2358; }
 
-        .sp-auth-h { margin: 0 0 0.5rem; font-size: 1.9rem; font-weight: 800; line-height: 1.15; letter-spacing: -0.02em; color: #fff; }
+        .sp-auth-h { margin: 0 0 0.5rem; font-size: 2rem; font-weight: 800; line-height: 1.14; letter-spacing: -0.02em; color: #0e2358; text-transform: lowercase; }
         .sp-auth-h[hidden] { display: none; }
-        .sp-auth-p { margin: 0 0 1.8rem; font-size: 0.96rem; line-height: 1.6; color: rgba(255, 255, 255, 0.52); }
+        .sp-auth-p { margin: 0 0 1.8rem; font-size: 0.98rem; line-height: 1.6; color: rgba(14, 35, 88, 0.58); }
         .sp-auth-p[hidden] { display: none; }
 
         .sp-auth-card {
             position: relative;
-            padding: 1.7rem 1.7rem 1.5rem;
+            padding: 1.8rem 1.8rem 1.5rem;
             border-radius: 18px;
-            border: 1px solid rgba(255, 255, 255, 0.09);
-            background: rgba(255, 255, 255, 0.028);
-            backdrop-filter: blur(14px);
-            -webkit-backdrop-filter: blur(14px);
-            box-shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.9);
+            border: 1px solid rgba(14, 35, 88, 0.1);
+            background: #ffffff;
+            box-shadow: 0 24px 60px -30px rgba(14, 35, 88, 0.28), 0 2px 8px rgba(14, 35, 88, 0.04);
             text-align: left;
             overflow: hidden;
         }
-        /* the hairline the site puts on top of every card it cares about */
+        /* the hairline the site puts on every card it cares about */
         .sp-auth-card::before {
             content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
             background: linear-gradient(90deg, #00f0ff 0%, #a020f0 100%);
         }
 
-        .sp-auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 0.25rem; padding: 0.25rem; margin-bottom: 1.5rem; border-radius: 11px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.07); }
+        .sp-auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 0.25rem; padding: 0.25rem; margin-bottom: 1.5rem; border-radius: 11px; background: #f1f4f9; border: 1px solid rgba(14, 35, 88, 0.07); }
         .sp-auth-tab {
             padding: 0.58rem 0.5rem; border: 0; border-radius: 8px; background: none;
-            font-family: inherit; font-size: 0.86rem; font-weight: 600; color: rgba(255, 255, 255, 0.5);
-            white-space: nowrap; cursor: pointer; transition: background 0.18s ease, color 0.18s ease;
+            font-family: inherit; font-size: 0.86rem; font-weight: 600; color: rgba(14, 35, 88, 0.5);
+            white-space: nowrap; cursor: pointer; transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
         }
-        .sp-auth-tab:hover { color: #fff; }
-        .sp-auth-tab.is-active { color: #fff; background: linear-gradient(120deg, rgba(0, 240, 255, 0.16), rgba(160, 32, 240, 0.16)); box-shadow: inset 0 0 0 1px rgba(123, 108, 255, 0.45); }
-        .sp-auth-tab:focus-visible { outline: 2px solid rgba(0, 240, 255, 0.5); outline-offset: 2px; }
+        .sp-auth-tab:hover { color: #0e2358; }
+        .sp-auth-tab.is-active { color: #0e2358; background: #ffffff; box-shadow: 0 1px 3px rgba(14, 35, 88, 0.12); }
+        .sp-auth-tab:focus-visible { outline: 2px solid rgba(0, 145, 200, 0.5); outline-offset: 2px; }
 
         .sp-auth-form { display: grid; gap: 1rem; }
         .sp-auth-form[hidden] { display: none; }
         .sp-auth-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
         .sp-auth-field { display: grid; gap: 0.4rem; }
-        .sp-auth-field label { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.02em; color: rgba(255, 255, 255, 0.6); }
+        .sp-auth-field label { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.02em; color: rgba(14, 35, 88, 0.62); }
         .sp-auth-field input {
             width: 100%; box-sizing: border-box;
-            font-family: inherit; font-size: 0.95rem; color: #fff;
+            font-family: inherit; font-size: 0.95rem; color: #0e2358;
             padding: 0.72rem 0.85rem;
             border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.11);
-            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(14, 35, 88, 0.14);
+            background: #fbfcfd;
             outline: none;
+            /* style.css still carries a dark inset shadow for the old app's inputs,
+               which on a light field reads as a second, dirty border */
+            box-shadow: none;
             transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
         }
-        .sp-auth-field input::placeholder { color: rgba(255, 255, 255, 0.26); }
-        .sp-auth-field input:focus { border-color: rgba(0, 240, 255, 0.5); background: rgba(255, 255, 255, 0.06); box-shadow: 0 0 0 3px rgba(0, 240, 255, 0.1); }
+        .sp-auth-field input::placeholder { color: rgba(14, 35, 88, 0.3); }
+        .sp-auth-field input:focus { border-color: #0091c8; background: #fff; box-shadow: 0 0 0 3px rgba(0, 145, 200, 0.12); }
 
         .sp-auth-row { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; flex-wrap: wrap; }
-        .sp-auth-remember { display: flex; align-items: center; gap: 0.5rem; font-size: 0.84rem; color: rgba(255, 255, 255, 0.6); cursor: pointer; }
-        .sp-auth-remember input { width: 15px; height: 15px; flex: 0 0 auto; accent-color: #7b6cff; cursor: pointer; }
+        .sp-auth-remember { display: flex; align-items: center; gap: 0.5rem; font-size: 0.84rem; color: rgba(14, 35, 88, 0.6); cursor: pointer; }
+        .sp-auth-remember input { width: 15px; height: 15px; flex: 0 0 auto; accent-color: #0091c8; cursor: pointer; }
 
-        /* the same surface as every other checkbox on the site */
+        /* the same surface every other checkbox on the site sits on */
         .sp-auth-consent {
             display: flex; align-items: flex-start; gap: 0.55rem;
-            padding: 0.6rem 0.75rem; border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.03);
-            font-size: 0.82rem; line-height: 1.5; color: rgba(255, 255, 255, 0.62); cursor: pointer;
+            padding: 0.65rem 0.8rem; border-radius: 10px;
+            border: 1px solid rgba(14, 35, 88, 0.1); background: #fbfcfd;
+            font-size: 0.82rem; line-height: 1.5; color: rgba(14, 35, 88, 0.62); cursor: pointer;
             transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
         }
-        .sp-auth-consent:hover { border-color: rgba(0, 240, 255, 0.4); color: #fff; }
-        .sp-auth-consent input { width: 16px; height: 16px; margin-top: 0.1rem; flex: 0 0 auto; accent-color: #7b6cff; cursor: pointer; }
-        .sp-auth-consent:has(input:checked) { border-color: transparent; background: linear-gradient(120deg, rgba(0, 240, 255, 0.16), rgba(160, 32, 240, 0.16)); color: #fff; box-shadow: inset 0 0 0 1px rgba(123, 108, 255, 0.5); }
-        .sp-auth-consent a { color: #7bdcff; text-decoration: none; border-bottom: 1px solid rgba(123, 220, 255, 0.35); }
+        .sp-auth-consent:hover { border-color: rgba(0, 145, 200, 0.45); color: #0e2358; }
+        .sp-auth-consent input { width: 16px; height: 16px; margin-top: 0.1rem; flex: 0 0 auto; accent-color: #0091c8; cursor: pointer; }
+        .sp-auth-consent:has(input:checked) { border-color: rgba(0, 145, 200, 0.4); background: rgba(0, 145, 200, 0.06); color: #0e2358; }
+        .sp-auth-consent a { color: #0091c8; text-decoration: none; border-bottom: 1px solid rgba(0, 145, 200, 0.35); }
 
         .sp-auth-submit {
             width: 100%; margin-top: 0.2rem; padding: 0.85rem 1rem;
             border: 0; border-radius: 10px; cursor: pointer;
-            font-family: inherit; font-size: 0.95rem; font-weight: 700; color: #05060a;
-            background: #fff;
-            transition: box-shadow 0.22s ease, transform 0.18s ease, opacity 0.18s ease;
+            font-family: inherit; font-size: 0.95rem; font-weight: 700; color: #fff;
+            background: #0e2358;
+            transition: box-shadow 0.22s ease, background 0.18s ease, transform 0.18s ease;
         }
-        .sp-auth-submit:hover { box-shadow: 0 12px 32px -8px rgba(123, 108, 255, 0.55); }
+        .sp-auth-submit:hover { background: #16305f; box-shadow: 0 12px 28px -12px rgba(14, 35, 88, 0.6); }
         .sp-auth-submit:active { transform: scale(0.99); }
 
-        .sp-auth-link { font-size: 0.84rem; color: #7bdcff; text-decoration: none; border-bottom: 1px solid rgba(123, 220, 255, 0.3); white-space: nowrap; }
-        .sp-auth-link:hover { border-bottom-color: #7bdcff; }
-        .sp-auth-link-btn { border: 0; border-bottom: 1px solid rgba(123, 220, 255, 0.3); background: none; padding: 0; font-family: inherit; cursor: pointer; }
+        .sp-auth-link { font-size: 0.84rem; color: #0091c8; text-decoration: none; border-bottom: 1px solid rgba(0, 145, 200, 0.3); white-space: nowrap; }
+        .sp-auth-link:hover { border-bottom-color: #0091c8; }
+        .sp-auth-link-btn { border: 0; border-bottom: 1px solid rgba(0, 145, 200, 0.3); background: none; padding: 0; font-family: inherit; cursor: pointer; }
 
-        .sp-auth-note { margin: 1.3rem 0 0; padding-top: 1.1rem; border-top: 1px solid rgba(255, 255, 255, 0.07); font-size: 0.78rem; line-height: 1.55; color: rgba(255, 255, 255, 0.38); }
+        .sp-auth-note { margin: 1.3rem 0 0; padding-top: 1.1rem; border-top: 1px solid rgba(14, 35, 88, 0.08); font-size: 0.78rem; line-height: 1.55; color: rgba(14, 35, 88, 0.42); }
 
-        .sp-auth-alt { margin: 1.5rem 0 0; font-size: 0.88rem; color: rgba(255, 255, 255, 0.5); }
+        .sp-auth-alt { margin: 1.5rem 0 0; font-size: 0.88rem; color: rgba(14, 35, 88, 0.55); }
         .sp-auth-alt[hidden] { display: none; }
 
         .sp-auth-foot {
             position: relative; z-index: 1;
-            margin-top: 2.6rem; display: flex; align-items: center; gap: 0.6rem;
-            font-size: 0.78rem; color: rgba(255, 255, 255, 0.26);
+            margin-top: 2.4rem; display: flex; align-items: center; gap: 0.6rem;
+            font-size: 0.78rem; color: rgba(14, 35, 88, 0.28);
         }
-        .sp-auth-foot a { color: rgba(255, 255, 255, 0.42); text-decoration: none; }
-        .sp-auth-foot a:hover { color: rgba(255, 255, 255, 0.75); }
+        .sp-auth-foot a { color: rgba(14, 35, 88, 0.45); text-decoration: none; }
+        .sp-auth-foot a:hover { color: #0e2358; }
 
         @media (max-width: 560px) {
             .sp-auth-shell { padding: 4.5rem 1rem 3rem; justify-content: flex-start; }
             .sp-auth-back { top: 0.9rem; left: 0.9rem; }
-            .sp-auth-h { font-size: 1.6rem; }
-            .sp-auth-card { padding: 1.4rem 1.2rem 1.2rem; }
+            .sp-auth-h { font-size: 1.7rem; }
+            .sp-auth-card { padding: 1.5rem 1.25rem 1.25rem; }
             .sp-auth-pair { grid-template-columns: 1fr; gap: 1rem; }
             /* ios zooms the page in on any field under 16px and never zooms back */
             .sp-auth-field input { font-size: 16px; padding: 0.68rem 0.8rem; }
@@ -311,7 +309,7 @@
                 <svg viewBox="0 0 120 120" fill="none" aria-hidden="true">
                     <defs>
                         <linearGradient id="spAuthGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stop-color="#00ffff"/><stop offset="100%" stop-color="#a020f0"/>
+                            <stop offset="0%" stop-color="#00c8ff"/><stop offset="100%" stop-color="#a020f0"/>
                         </linearGradient>
                     </defs>
                     <g fill="none" stroke="url(#spAuthGrad)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
