@@ -124,6 +124,24 @@ function codeMeta(items) {
         '</div></td></tr>';
 }
 
+// One line of a checklist. The site draws this as a twenty pixel circle filled
+// with the brand gradient and a white tick masked out of it; a mask is no use in
+// an inbox, so here it is a filled cell with a white tick in it. outlook has no
+// border-radius and shows a square, which still reads as a marker rather than as
+// a broken glyph, and that is the point of doing it this way rather than leaving
+// a bare tick floating beside the text.
+function tickRow(b) {
+    return '<tr>' +
+        '<td width="20" style="padding:8px 14px 8px 0;vertical-align:top;">' +
+        '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="20" style="width:20px;">' +
+        '<tr><td align="center" height="20" bgcolor="' + C.cyan + '" ' +
+        'style="width:20px;height:20px;border-radius:50%;font-family:' + FONT + ';' +
+        'font-size:11px;line-height:20px;font-weight:700;color:#ffffff;">&#10003;</td></tr>' +
+        '</table></td>' +
+        '<td style="padding:8px 0;font-size:15px;line-height:23px;color:' + C.text + ';">' + esc(b) + '</td>' +
+        '</tr>';
+}
+
 // A button that survives outlook: a table with a background colour and padding,
 // rather than a styled anchor, which outlook renders as plain blue text.
 //
@@ -204,13 +222,8 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff, 
         // checklist, the same cyan tick the trial page uses
         (bullets && bullets.length ? '<tr><td style="padding:0 36px;">' +
             '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">' +
-            bullets.map(function (b) {
-                return '<tr>' +
-                    '<td width="1%" style="padding:6px 12px 6px 0;vertical-align:top;font-size:15px;line-height:23px;color:' + C.cyan + ';font-weight:700;">&#10003;</td>' +
-                    '<td style="padding:6px 0;font-size:15px;line-height:23px;color:' + C.text + ';">' + esc(b) + '</td>' +
-                    '</tr>';
-            }).join('') +
-            '</table></td></tr><tr><td style="height:24px;line-height:24px;font-size:0;">&nbsp;</td></tr>' : '') +
+            bullets.map(tickRow).join('') +
+            '</table></td></tr><tr><td style="height:26px;line-height:26px;font-size:0;">&nbsp;</td></tr>' : '') +
 
         button(cta) +
         (cta ? '<tr><td style="height:28px;line-height:28px;font-size:0;">&nbsp;</td></tr>' : '') +
@@ -351,11 +364,11 @@ const TRIAL_COPY = {
         bullets: [
             'one free scan plus one from your history, right away',
             'the rest of your history is already there, just locked',
-            'confirm by sms to unlock it all and 10 live checks',
+            'verify your number and the rest opens, plus 10 live checks',
             'every scan logged, so you can prove what you checked',
         ],
         ctaLabel: 'open your trial',
-        pending: 'we are opening your account now and this link will follow in a separate email shortly.',
+        viaAccount: 'your trial lives in your sentinelpay account, so the button opens the account first.',
         footnote: 'you are getting this because this address was used to start a trial at sentinelpay.org. if that was not you, ignore this email and nothing happens.',
         signoff: 'sent by sentinelpay.org. need a hand? open the live chat on our site.',
     },
@@ -367,11 +380,11 @@ const TRIAL_COPY = {
         bullets: [
             'odmah jedna besplatna provjera i jedna iz vaše povijesti',
             'ostatak povijesti već je tu, samo je zaključan',
-            'potvrdite se sms-om i otključavate sve i 10 provjera uživo',
+            'potvrdite broj i otvara se ostatak, uz 10 provjera uživo',
             'svaka provjera zapisana, pa možete dokazati što ste provjerili',
         ],
         ctaLabel: 'otvorite svoju probu',
-        pending: 'upravo otvaramo vaš račun i ovaj link stiže u zasebnom mailu ubrzo.',
+        viaAccount: 'vaša proba živi u vašem sentinelpay računu, pa vas gumb prvo vodi na račun.',
         footnote: 'ovaj mail dobivate jer je s ove adrese pokrenuta proba na sentinelpay.org. ako to niste bili vi, samo ga zanemarite i ništa se ne događa.',
         signoff: 'šalje sentinelpay.org. trebate pomoć? otvorite chat uživo na našoj stranici.',
     },
@@ -383,11 +396,11 @@ const TRIAL_COPY = {
         bullets: [
             'sofort eine kostenlose prüfung und eine aus ihrer historie',
             'der rest ihrer historie ist schon da, nur gesperrt',
-            'per sms bestätigen und alles plus 10 live-prüfungen freischalten',
+            'bestätigen sie ihre nummer, dann öffnet sich der rest, plus 10 live-prüfungen',
             'jede prüfung protokolliert, damit sie belegen können, was sie geprüft haben',
         ],
         ctaLabel: 'testphase öffnen',
-        pending: 'wir richten ihr konto gerade ein, der link folgt in kürze in einer separaten e-mail.',
+        viaAccount: 'ihre testphase liegt in ihrem sentinelpay konto, der button öffnet also zuerst das konto.',
         footnote: 'sie erhalten diese e-mail, weil mit dieser adresse eine testphase auf sentinelpay.org gestartet wurde. waren sie das nicht, ignorieren sie die e-mail einfach.',
         signoff: 'gesendet von sentinelpay.org. brauchen sie hilfe? öffnen sie den live-chat auf unserer website.',
     },
@@ -406,8 +419,11 @@ function trialWelcomeMessage({ to, lang }) {
         title: copy.title,
         intro: copy.intro,
         bullets: copy.bullets,
-        cta: appUrl ? { href: appUrl, label: copy.ctaLabel } : null,
-        footnote: appUrl ? copy.footnote : copy.pending + ' ' + copy.footnote,
+        // there is a way in either way. until the trial app exists it is the
+        // account, which is where the trial will live, rather than a sentence
+        // promising a link that has never been sent.
+        cta: { href: appUrl || (SITE + '/auth'), label: copy.ctaLabel },
+        footnote: (appUrl ? '' : copy.viaAccount + ' ') + copy.footnote,
         signoff: copy.signoff,
     };
 }
