@@ -89,7 +89,10 @@
     var lastFocus = null;
     var t = function (x) { return window.SentinelI18n ? window.SentinelI18n.t(x) : x; };
 
-    function swap(login) {
+    var panelEl = box.querySelector('.sp-authm-panel');
+    var swapTimer = null;
+
+    function apply(login) {
         tabIn.classList.toggle('is-active', login);
         tabUp.classList.toggle('is-active', !login);
         tabIn.setAttribute('aria-selected', login ? 'true' : 'false');
@@ -102,6 +105,53 @@
             if (b) b.hidden = login;
         });
         box.setAttribute('aria-labelledby', login ? 'sp-authm-h-in' : 'sp-authm-h-up');
+    }
+
+    // restart an animation: removing the class is not enough on its own, the
+    // element has to be laid out again in between or the browser sees no change
+    function replay(el, cls) {
+        if (!el) return;
+        el.classList.remove(cls);
+        void el.offsetWidth;
+        el.classList.add(cls);
+    }
+
+    function swap(login, animate) {
+        var already = !panelIn.hidden === login;
+        var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (!animate || already || reduced || !panelEl) { apply(login); return; }
+
+        // measure, switch, measure again, then glide between the two
+        var from = panelEl.getBoundingClientRect().height;
+        panelEl.style.height = '';
+        apply(login);
+        var to = panelEl.getBoundingClientRect().height;
+
+        clearTimeout(swapTimer);
+        panelEl.classList.remove('sp-auth-swapping');
+        panelEl.style.height = from + 'px';
+        void panelEl.offsetHeight;
+        panelEl.classList.add('sp-auth-swapping');
+        panelEl.style.height = to + 'px';
+
+        var incoming = login ? panelIn : panelUp;
+        // it arrives from the side its tab is on
+        incoming.style.setProperty('--sp-auth-dir', login ? '-12px' : '12px');
+        replay(incoming, 'sp-auth-enter');
+        var head = document.getElementById(login ? 'sp-authm-h-in' : 'sp-authm-h-up');
+        var sub = document.getElementById(login ? 'sp-authm-p-in' : 'sp-authm-p-up');
+        [head, sub].forEach(function (el) {
+            if (!el) return;
+            el.style.setProperty('--sp-auth-dir', login ? '-12px' : '12px');
+            replay(el, 'sp-auth-enter-head');
+        });
+
+        // hand the height back to the content once it has arrived, so a field
+        // growing later is not trapped inside a fixed box
+        swapTimer = setTimeout(function () {
+            panelEl.classList.remove('sp-auth-swapping');
+            panelEl.style.height = '';
+        }, 320);
     }
 
     function open(mode) {
@@ -147,8 +197,8 @@
         setTimeout(finish, 450);
     }
 
-    tabIn.addEventListener('click', function () { swap(true); });
-    tabUp.addEventListener('click', function () { swap(false); });
+    tabIn.addEventListener('click', function () { swap(true, true); });
+    tabUp.addEventListener('click', function () { swap(false, true); });
     closeBtn.addEventListener('click', close);
     wrap.addEventListener('mousedown', function (e) { if (e.target === wrap) close(); });
     document.addEventListener('keydown', function (e) {

@@ -18,7 +18,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/style.css?v=24">
     <link rel="stylesheet" href="/landing.css?v=4.4">
-    <link rel="stylesheet" href="/corp.css?v=177">
+    <link rel="stylesheet" href="/corp.css?v=178">
     <style>
         /* page loader */
         #sp-loader{position:fixed;inset:0;z-index:99999;background:#050505;display:flex;align-items:center;justify-content:center;transition:opacity 0.55s ease;}
@@ -315,7 +315,8 @@
     pin=document.getElementById('auth-panel-in'),pup=document.getElementById('auth-panel-up');
     if(!tin||!tup||!pin||!pup)return;
     var pair=function(id){return document.getElementById(id);};
-    function show(login){tin.classList.toggle('is-active',login);tup.classList.toggle('is-active',!login);
+    var panelEl=document.querySelector('.sp-auth-panel'),swapTimer=null;
+    function apply(login){tin.classList.toggle('is-active',login);tup.classList.toggle('is-active',!login);
     tin.setAttribute('aria-selected',login?'true':'false');tup.setAttribute('aria-selected',login?'false':'true');
     pin.hidden=!login;pup.hidden=login;
     /* the copy beside the card belongs to the panel: leaving "welcome back" up
@@ -323,8 +324,30 @@
     ['auth-h-','auth-s-'].forEach(function(k){
       var a=pair(k+'in'),b=pair(k+'up');if(a)a.hidden=!login;if(b)b.hidden=login;});
     var f=(login?pin:pup).querySelector('input');if(f&&document.activeElement!==document.body)f.focus({preventScroll:true});}
-    tin.addEventListener('click',function(){show(true);});
-    tup.addEventListener('click',function(){show(false);});
+    /* removing the class is not enough to restart an animation: the element has
+       to be laid out again in between or the browser sees no change */
+    function replay(el,cls){if(!el)return;el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls);}
+    function show(login,animate){
+      var already=!pin.hidden===login;
+      var reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if(!animate||already||reduced||!panelEl){apply(login);return;}
+      /* the two panels are different heights: measure, switch, measure again,
+         and glide between them so the card does not jump */
+      var from=panelEl.getBoundingClientRect().height;
+      panelEl.style.height='';apply(login);
+      var to=panelEl.getBoundingClientRect().height;
+      clearTimeout(swapTimer);
+      panelEl.classList.remove('sp-auth-swapping');
+      panelEl.style.height=from+'px';void panelEl.offsetHeight;
+      panelEl.classList.add('sp-auth-swapping');panelEl.style.height=to+'px';
+      var incoming=login?pin:pup;
+      incoming.style.setProperty('--sp-auth-dir',login?'-12px':'12px');
+      replay(incoming,'sp-auth-enter');
+      [pair(login?'auth-h-in':'auth-h-up'),pair(login?'auth-s-in':'auth-s-up')].forEach(function(el){
+        if(!el)return;el.style.setProperty('--sp-auth-dir',login?'-12px':'12px');replay(el,'sp-auth-enter-head');});
+      swapTimer=setTimeout(function(){panelEl.classList.remove('sp-auth-swapping');panelEl.style.height='';},320);}
+    tin.addEventListener('click',function(){show(true,true);});
+    tup.addEventListener('click',function(){show(false,true);});
     /* /auth#create opens straight on the second panel, so a "get started" link can
        point at the right half of the card without a second page */
     if(location.hash==='#create')show(false);

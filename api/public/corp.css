@@ -3371,3 +3371,22 @@ html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }
 .sp-auth-remember { color: rgba(14, 35, 88, 0.6); }
 .sp-auth-link { color: #0091c8; border-bottom-color: rgba(0, 145, 200, 0.3); }
 .sp-auth-link:hover { border-bottom-color: #0091c8; }
+
+/* ============ switching between log in and create account ============
+   the two panels are different heights, so without this the card jumps and the
+   page under it reflows. the card is given the old height, then the new one, and
+   glides between them while the arriving panel fades in from the side it came
+   from: right when you move to create an account, left when you come back. */
+.sp-auth-swapping { transition: height 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
+.sp-auth-enter { animation: spAuthEnter 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes spAuthEnter {
+    from { opacity: 0; transform: translateX(var(--sp-auth-dir, 12px)); }
+    to { opacity: 1; transform: none; }
+}
+/* the heading follows the panel, a touch ahead of it */
+.sp-auth-enter-head { animation: spAuthEnter 0.26s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+    .sp-auth-swapping { transition: none; }
+    .sp-auth-enter, .sp-auth-enter-head { animation: none; }
+}
