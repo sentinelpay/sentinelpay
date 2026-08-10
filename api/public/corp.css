@@ -3218,7 +3218,19 @@ html[data-mail-down] a[data-mail-subject] {
 .sp-authm-x:focus-visible { outline: 2px solid rgba(0, 240, 255, 0.5); outline-offset: 2px; }
 
 /* the page behind must not scroll while the dialog is up */
+/* the page behind must not scroll while the dialog is up. taking the scrollbar
+   away frees its width, and everything behind slides across by exactly that, so
+   the width is handed back as padding: to the body for the page, and to anything
+   fixed, which is not inside the body's box and would otherwise move on its own.
+   --sp-sbw is measured before the lock and is 0 where scrollbars overlay. */
 html.sp-authm-open, html.sp-authm-open body { overflow: hidden; }
+/* margin, not padding: landing.css pins the body's padding to zero with
+   !important, so a padding here would silently do nothing. same trap the status
+   banner hit. */
+html.sp-authm-open body { margin-right: var(--sp-sbw, 0px); }
+html.sp-authm-open .lp-nav,
+html.sp-authm-open .sp-status,
+html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }
 
 @media (max-width: 560px) {
     .sp-authm-backdrop { padding: 0.9rem; align-items: flex-start; padding-top: 3.5rem; }

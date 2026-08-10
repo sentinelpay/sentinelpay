@@ -110,6 +110,10 @@
         wrap.hidden = false;
         // one frame, so the transition has a state to move from
         requestAnimationFrame(function () { wrap.classList.add('is-open'); });
+        // measure the scrollbar before it is taken away, so the page behind can be
+        // handed its width back and does not slide sideways as the dialog appears
+        var sbw = window.innerWidth - document.documentElement.clientWidth;
+        document.documentElement.style.setProperty('--sp-sbw', (sbw > 0 ? sbw : 0) + 'px');
         document.documentElement.classList.add('sp-authm-open');
         var first = (mode === 'create' ? panelUp : panelIn).querySelector('input');
         if (first) setTimeout(function () { first.focus({ preventScroll: true }); }, 60);
@@ -118,6 +122,7 @@
     function close() {
         wrap.classList.remove('is-open');
         document.documentElement.classList.remove('sp-authm-open');
+        document.documentElement.style.removeProperty('--sp-sbw');
         setTimeout(function () { wrap.hidden = true; }, 200);
         // back to the button that opened it, so the keyboard does not lose its place
         if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
