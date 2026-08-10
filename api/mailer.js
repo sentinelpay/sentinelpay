@@ -50,10 +50,24 @@ const LOGO = SITE + '/logo.png';
 // The footer is the same in every message, so its copy lives here rather than in
 // each template. it follows the language of the message: an english row of links
 // under a croatian letter is the seam people notice first.
+// The legal identity of the sender. In the eu a commercial email carries the
+// company's registered name, its seat and its registration numbers, and for a
+// company that sells compliance this is the first thing a careful reader looks
+// for. Placeholders until the d.o.o. is registered; set them without a code
+// change once it is.
+const LEGAL = {
+    name: process.env.COMPANY_LEGAL_NAME || 'sentinelpay d.o.o. (in registration)',
+    address: process.env.COMPANY_ADDRESS || 'ulica i kucni broj, 10000 zagreb, croatia',
+    reg: process.env.COMPANY_REG || 'oib 00000000000 · mbs 000000000',
+};
+
 const FOOTER = {
-    en: { questions: 'questions', privacy: 'privacy', terms: 'terms', blog: 'blog' },
-    hr: { questions: 'pitanja', privacy: 'privatnost', terms: 'uvjeti', blog: 'blog' },
-    de: { questions: 'fragen', privacy: 'datenschutz', terms: 'bedingungen', blog: 'blog' },
+    en: { questions: 'questions', privacy: 'privacy', terms: 'terms', blog: 'blog',
+          contact: 'need a hand? write to', seat: 'registered office' },
+    hr: { questions: 'pitanja', privacy: 'privatnost', terms: 'uvjeti', blog: 'blog',
+          contact: 'trebate pomoć? pišite na', seat: 'sjedište' },
+    de: { questions: 'fragen', privacy: 'datenschutz', terms: 'bedingungen', blog: 'blog',
+          contact: 'brauchen sie hilfe? schreiben sie an', seat: 'sitz' },
 };
 
 function row(label, value) {
@@ -90,9 +104,24 @@ function codeBlock(code) {
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" ' +
         'style="background:' + C.tint + ';border:1px solid ' + C.tintLine + ';border-radius:14px;">' +
         '<tr><td align="center" style="padding:22px 14px;">' +
-        '<div style="font-size:36px;line-height:44px;font-weight:800;letter-spacing:0.3em;' +
-        'text-indent:0.3em;color:' + C.text + ';font-family:Menlo,Consolas,monospace;">' + esc(code) + '</div>' +
+        '<div style="font-family:' + FONT + ';font-size:38px;line-height:46px;font-weight:800;' +
+        'letter-spacing:0.24em;text-indent:0.24em;color:' + C.text + ';' +
+        // tabular figures so the six digits sit on an even rhythm. most clients
+        // ignore it and inter's default figures are even anyway, so it costs
+        // nothing where it is not honoured.
+        'font-variant-numeric:tabular-nums;font-feature-settings:\'tnum\';">' + esc(code) + '</div>' +
         '</td></tr></table></td></tr>';
+}
+
+// The facts about the code, under it, as a quiet line rather than as a bullet
+// with a tick. a tick means "done"; nothing here is done, these are the terms
+// the code comes with.
+function codeMeta(items) {
+    if (!items || !items.length) return '';
+    return '<tr><td align="center" style="padding:0 36px 28px;">' +
+        '<div style="font-size:12px;line-height:19px;color:' + C.muted + ';">' +
+        items.map(esc).join('<span style="color:' + C.faint + ';"> &nbsp;·&nbsp; </span>') +
+        '</div></td></tr>';
 }
 
 // A button that survives outlook: a table with a background colour and padding,
@@ -113,7 +142,7 @@ function divider(pad) {
         '<div style="height:1px;line-height:1px;font-size:0;background:' + C.line + ';">&nbsp;</div></td></tr>';
 }
 
-function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff, review, code, lang }) {
+function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff, review, code, meta, lang }) {
     const f = FOOTER[lang] || FOOTER.en;
     return '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
         '<meta name="viewport" content="width=device-width,initial-scale=1">' +
@@ -159,6 +188,7 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff, 
 
         reviewBand(review) +
         codeBlock(code) +
+        codeMeta(meta) +
 
         (rows ? '<tr><td style="padding:0 36px 4px;">' +
             '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">' + rows + '</table>' +
@@ -197,8 +227,18 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff, 
         '<span style="color:' + C.faint + ';"> &nbsp;·&nbsp; </span>' +
         '<a href="https://blog.sentinelpay.org" style="color:' + C.muted + ';text-decoration:none;">' + esc(f.blog) + '</a>' +
         '</div>' +
-        '<div style="margin-top:12px;font-size:11px;line-height:18px;color:' + C.faint + ';">' +
+        '<div style="margin-top:14px;font-size:12px;line-height:19px;color:' + C.muted + ';">' +
+        esc(f.contact) + ' <a href="mailto:' + MAIL_TO + '" style="color:' + C.cyan + ';text-decoration:none;">' + MAIL_TO + '</a>' +
+        '</div>' +
+        '<div style="margin-top:16px;font-size:11px;line-height:18px;color:' + C.faint + ';">' +
         esc(signoff || 'sent automatically by sentinelpay.org. reply to this email to answer the sender directly.') +
+        '</div>' +
+        // who is writing to you, in the sense a company register understands
+        '<div style="margin-top:14px;padding-top:14px;border-top:1px solid ' + C.lineSoft + ';' +
+        'font-size:11px;line-height:18px;color:' + C.faint + ';">' +
+        '<span style="color:' + C.muted + ';font-weight:600;">' + esc(LEGAL.name) + '</span><br>' +
+        esc(f.seat) + ': ' + esc(LEGAL.address) + '<br>' +
+        esc(LEGAL.reg) +
         '</div>' +
         '</td></tr>' +
 
@@ -208,9 +248,11 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff, 
 
 // Plain-text alternative. Without it, spam filters mark an html-only mail down and
 // some clients render nothing at all.
-function textVersion({ title, intro, pairs, bullets, cta, footnote, review, code }) {
+function textVersion({ title, intro, pairs, bullets, cta, footnote, review, code, meta, lang }) {
+    const f = FOOTER[lang] || FOOTER.en;
     const lines = [title, '', intro, ''];
     if (code) lines.push(code, '');
+    if (meta && meta.length) lines.push(meta.join(' · '), '');
     if (review && review.length) {
         lines.push('worth a look:');
         review.forEach((n) => lines.push('  - ' + n));
@@ -220,7 +262,8 @@ function textVersion({ title, intro, pairs, bullets, cta, footnote, review, code
     (bullets || []).forEach((b) => lines.push('- ' + b));
     if (cta) lines.push('', cta.label + ': ' + cta.href);
     if (footnote) lines.push('', footnote);
-    lines.push('', 'sent automatically by sentinelpay.org');
+    lines.push('', f.contact + ' ' + MAIL_TO);
+    lines.push('', SITE, LEGAL.name, f.seat + ': ' + LEGAL.address, LEGAL.reg);
     return lines.join('\n');
 }
 
@@ -230,12 +273,12 @@ function textVersion({ title, intro, pairs, bullets, cta, footnote, review, code
 // preview and the real thing cannot drift: whatever you look at in the browser
 // is byte for byte what lands in the inbox.
 function compose(msg) {
-    const { subject, eyebrow, title, intro, pairs, bullets, cta, footnote, signoff, review, code, lang } = msg;
+    const { subject, eyebrow, title, intro, pairs, bullets, cta, footnote, signoff, review, code, meta, lang } = msg;
     const rows = (pairs || []).map(([k, v]) => row(k, v)).join('');
     return {
         subject: subject,
-        html: layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff, review, code, lang }),
-        text: textVersion({ title, intro, pairs, bullets, cta, footnote, review, code }),
+        html: layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff, review, code, meta, lang }),
+        text: textVersion({ title, intro, pairs, bullets, cta, footnote, review, code, meta, lang }),
     };
 }
 
@@ -374,7 +417,7 @@ const SIGNUP_COPY = {
         eyebrow: 'verify your email',
         title: 'here is your code',
         intro: 'enter this to finish creating your sentinelpay account.',
-        note: (m) => 'the code is good for ' + m + ' minutes and can be used once.',
+        meta: (m) => ['expires in ' + m + ' minutes', 'single use'],
         footnote: 'if you did not try to create an account, ignore this email. nothing has been created and nobody can use this code without it.',
         signoff: 'sent by sentinelpay.org. we will never ask you for this code, by email, chat or phone.',
         existsSubject: 'about your sentinelpay account',
@@ -388,7 +431,7 @@ const SIGNUP_COPY = {
         eyebrow: 'potvrdite svoj email',
         title: 'evo vašeg koda',
         intro: 'unesite ga da dovršite izradu sentinelpay računa.',
-        note: (m) => 'kod vrijedi ' + m + ' minuta i može se iskoristiti jednom.',
+        meta: (m) => ['istječe za ' + m + ' minuta', 'jednokratan'],
         footnote: 'ako niste vi pokušali izraditi račun, samo zanemarite ovaj mail. ništa nije izrađeno i bez njega nitko ne može iskoristiti ovaj kod.',
         signoff: 'šalje sentinelpay.org. nikada vas nećemo tražiti ovaj kod, ni mailom, ni chatom, ni telefonom.',
         existsSubject: 'o vašem sentinelpay računu',
@@ -402,7 +445,7 @@ const SIGNUP_COPY = {
         eyebrow: 'bestätigen sie ihre e-mail',
         title: 'hier ist ihr code',
         intro: 'geben sie ihn ein, um ihr sentinelpay konto fertig anzulegen.',
-        note: (m) => 'der code gilt ' + m + ' minuten und lässt sich einmal verwenden.',
+        meta: (m) => ['läuft in ' + m + ' minuten ab', 'einmalig'],
         footnote: 'wenn sie kein konto anlegen wollten, ignorieren sie diese e-mail. es wurde nichts angelegt, und ohne sie kann niemand diesen code verwenden.',
         signoff: 'gesendet von sentinelpay.org. wir fragen sie nie nach diesem code, weder per e-mail noch im chat oder am telefon.',
         existsSubject: 'zu ihrem sentinelpay konto',
@@ -423,7 +466,7 @@ function signupCodeMessage({ to, code, lang, minutes }) {
         title: copy.title,
         intro: copy.intro,
         code: code,
-        bullets: [copy.note(minutes)],
+        meta: copy.meta(minutes),
         footnote: copy.footnote,
         signoff: copy.signoff,
     };

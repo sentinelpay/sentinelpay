@@ -212,6 +212,7 @@ nothing is required to boot. everything below changes behaviour when set.
 | --- | --- |
 | `RESEND_API_KEY` | enables outbound email. in production its absence is a hard failure, never a silent one |
 | `MAIL_TO`, `MAIL_FROM` | where form notifications land and who they come from |
+| `COMPANY_LEGAL_NAME`, `COMPANY_ADDRESS`, `COMPANY_REG` | the sender's legal identity in every email footer: registered name, seat, and registration numbers. placeholders until the d.o.o. exists, and settable without a code change once it does |
 | `TRIAL_APP_URL` | adds the "open your trial" button to the welcome email |
 | `TURNSTILE_SECRET_KEY` | enforces the bot challenge. without it the forms accept unverified submissions |
 | `CF_ORIGIN_SECRET`, `CF_ORIGIN_HEADER` | the shared secret a cloudflare transform rule injects |
