@@ -350,4 +350,39 @@ function status() {
     };
 }
 
-module.exports = { insert, recent, purge, forget, startRetention, status, available: () => Boolean(pool) };
+// ---------------------------------------------------------------------------
+// shared with accounts.js
+// ---------------------------------------------------------------------------
+//
+// The accounts module owns its own tables but not its own connection: one pool,
+// one set of tls rules, one key. These are the handles it borrows. seal/open are
+// the same aes-256-gcm as above, with the caller naming what the ciphertext is
+// bound to, so a blob cannot be lifted from one column into another.
+
+function query(text, params) {
+    if (!pool) return Promise.reject(new Error('no database configured'));
+    return pool.query(text, params);
+}
+function connect() {
+    if (!pool) return Promise.reject(new Error('no database configured'));
+    return pool.connect();
+}
+function seal(aad, plain) {
+    return ENCRYPTED ? encrypt(String(plain == null ? '' : plain), aad) : String(plain == null ? '' : plain);
+}
+function open(aad, blob) {
+    if (!ENCRYPTED) return String(blob == null ? '' : blob);
+    try {
+        return decrypt(blob, aad);
+    } catch (err) {
+        return '';
+    }
+}
+
+module.exports = {
+    insert, recent, purge, forget, startRetention, status,
+    available: () => Boolean(pool),
+    query, connect, seal, open, blindIndex,
+    indexKey: () => INDEX_KEY,
+    encrypted: () => ENCRYPTED,
+};

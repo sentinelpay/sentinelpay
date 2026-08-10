@@ -3390,3 +3390,129 @@ html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }
     .sp-auth-swapping { transition: none; }
     .sp-auth-enter, .sp-auth-enter-head { animation: none; }
 }
+
+/* ============ verifying an email address ============
+   creating an account is two steps: the details, then a six digit code from the
+   inbox. the second step is a panel in the same card rather than a page of its
+   own, so nothing anybody typed is lost and there is no address to land on in
+   the middle of a sign-up.
+
+   the six boxes are one control. they look like the site's fields, sized for a
+   thumb, and the caret moves itself, so the whole code is typed or pasted
+   without the person ever choosing a box. */
+.sp-auth-vhead { text-align: center; margin-bottom: 1.3rem; }
+.sp-auth-vhead h3 {
+    margin: 0 0 0.4rem;
+    font-size: 1.15rem; font-weight: 800; letter-spacing: -0.01em;
+    color: #0e2358; text-transform: lowercase;
+}
+.sp-auth-vhead p { margin: 0; font-size: 0.88rem; line-height: 1.55; color: rgba(14, 35, 88, 0.58); }
+.sp-auth-vhead b { color: #0e2358; font-weight: 600; overflow-wrap: anywhere; }
+
+.sp-auth-code { display: flex; justify-content: center; gap: 0.5rem; }
+.sp-auth-code input {
+    width: 3rem; height: 3.5rem; padding: 0;
+    box-sizing: border-box;
+    text-align: center;
+    font-family: inherit; font-size: 1.45rem; font-weight: 700; letter-spacing: 0;
+    color: #0e2358; background: #fbfcfd;
+    border: 1px solid rgba(14, 35, 88, 0.14); border-radius: 12px;
+    transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+    -moz-appearance: textfield;
+}
+.sp-auth-code input::-webkit-outer-spin-button,
+.sp-auth-code input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.sp-auth-code input:focus {
+    outline: none;
+    border-color: #0091c8; background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(0, 145, 200, 0.12);
+}
+/* a filled box is done with, and should look it */
+.sp-auth-code input.is-filled { border-color: rgba(0, 145, 200, 0.4); background: rgba(0, 145, 200, 0.05); }
+.sp-auth-code.is-wrong input { border-color: rgba(192, 48, 74, 0.55); background: rgba(192, 48, 74, 0.04); }
+/* a wrong code is worth a flinch: it says "that was read, and it was wrong"
+   without a line of text having to appear and move everything down */
+.sp-auth-code.is-wrong { animation: spAuthShake 0.4s ease; }
+@keyframes spAuthShake {
+    10%, 90% { transform: translateX(-2px); }
+    30%, 70% { transform: translateX(4px); }
+    50% { transform: translateX(-4px); }
+}
+
+.sp-auth-verr { margin: 0; text-align: center; font-size: 0.85rem; line-height: 1.5; color: #c0304a; }
+.sp-auth-verr[hidden] { display: none; }
+
+.sp-auth-vfoot {
+    display: flex; align-items: center; justify-content: center;
+    gap: 0.4rem 0.9rem; flex-wrap: wrap;
+    font-size: 0.84rem; color: rgba(14, 35, 88, 0.45);
+}
+.sp-auth-linkbtn {
+    padding: 0; border: 0; background: none; font: inherit; cursor: pointer;
+    color: #0091c8; border-bottom: 1px solid rgba(0, 145, 200, 0.3);
+    transition: border-color 0.16s ease, color 0.16s ease;
+}
+.sp-auth-linkbtn:hover { border-bottom-color: #0091c8; }
+.sp-auth-linkbtn[disabled] { color: rgba(14, 35, 88, 0.35); border-bottom-color: transparent; cursor: default; }
+
+/* the bot challenge, on every form that can send mail */
+.sp-auth-turnstile { display: flex; justify-content: center; min-height: 65px; }
+
+/* the end of it: no form left, because there is nothing more to fill in */
+.sp-auth-done { text-align: center; padding: 0.6rem 0 0.2rem; }
+.sp-auth-done-mark {
+    width: 46px; height: 46px; margin: 0 auto 1rem;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; background: rgba(0, 145, 200, 0.1); color: #0091c8;
+}
+.sp-auth-done-mark svg { width: 22px; height: 22px; }
+.sp-auth-done h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1.25rem; font-weight: 800; letter-spacing: -0.01em;
+    color: #0e2358; text-transform: lowercase;
+}
+.sp-auth-done p { margin: 0; font-size: 0.92rem; line-height: 1.6; color: rgba(14, 35, 88, 0.6); }
+
+@media (max-width: 560px) {
+    /* six boxes plus five gaps have to fit a 320px screen with the card's padding
+       already taken out, so they stop being a fixed width and share what is left */
+    .sp-auth-code { gap: 0.4rem; }
+    .sp-auth-code input { width: auto; flex: 1 1 0; min-width: 0; height: 3.2rem; font-size: 1.3rem; }
+}
+
+/* ============ the submission forms' dropdowns ============
+   two of these menus are a bare <ul>, and two wrap a <ul> that scrolls on its
+   own. both were set to scroll, so the wrapped ones had a scroller inside a
+   scroller: a wheel over the options moved the inner list, a wheel over the
+   padding moved the outer box, and on a phone the whole menu drifted while a
+   finger was dragging the list. the box that holds a scrolling list does not
+   scroll; it clips, and the list inside it is the only thing that moves. */
+.lp-demo-select-menu:has(.lp-demo-select-list) { overflow-y: hidden; }
+/* the search row above the list must stay put while the options move under it */
+.lp-demo-select-menu:has(.lp-demo-select-search) { overflow-y: hidden; }
+
+/* the line under the address: quieter than the rest, because it is a caveat */
+.sp-auth-vnote { margin: 0.5rem 0 0 !important; font-size: 0.8rem !important; color: rgba(14, 35, 88, 0.42) !important; }
+
+/* the tab row is display:flex, which beats the browser's own rule for [hidden],
+   so it stayed on screen through the code step: two tabs offering to leave a
+   sign-up that has already sent a code */
+.sp-auth-tabs[hidden] { display: none !important; }
+
+/* the card is a grid, and a grid item's default minimum is its content, not zero.
+   six inputs in a row have a wide minimum of their own, so the panel demanded
+   1748px inside a 361px card and everything after the first box was clipped away.
+   the panels are told they may be as narrow as the card. */
+.sp-auth-form, .sp-auth-done, .sp-auth-code { min-width: 0; }
+.sp-auth-form, .sp-auth-done { width: 100%; }
+
+/* the dialog's close button sits in the same corner the heading is centred
+   against, and the german heading is long enough to run under it */
+.sp-authm-panel .sp-auth-vhead { padding: 0 1.5rem; }
+
+@media (max-width: 560px) {
+    /* the two links do not fit one line on a phone, and the separator between
+       them ended up on a line of its own, which reads as a bullet point */
+    .sp-auth-vfoot { flex-direction: column; gap: 0.55rem; }
+    .sp-auth-vfoot > span { display: none; }
+}

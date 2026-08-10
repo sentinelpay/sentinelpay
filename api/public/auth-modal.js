@@ -37,7 +37,7 @@
                     '<button type="button" class="sp-auth-tab" id="sp-authm-tab-up" role="tab" aria-selected="false" aria-controls="sp-authm-panel-up">create account</button>' +
                 '</div>' +
 
-                '<form class="sp-auth-form" id="sp-authm-panel-in" role="tabpanel" novalidate>' +
+                '<form class="sp-auth-form" id="sp-authm-panel-in" role="tabpanel" data-auth="login" novalidate>' +
                     '<div class="lp-demo-field lp-demo-field-full">' +
                         '<label for="sp-authm-email">work email</label>' +
                         '<input id="sp-authm-email" name="email" type="email" autocomplete="email" placeholder="you@yourcompany.com">' +
@@ -53,7 +53,7 @@
                     '<button type="submit" class="lp-demo-submit sp-auth-submit">log in</button>' +
                 '</form>' +
 
-                '<form class="sp-auth-form" id="sp-authm-panel-up" role="tabpanel" novalidate hidden>' +
+                '<form class="sp-auth-form" id="sp-authm-panel-up" role="tabpanel" data-auth="register" novalidate hidden>' +
                     '<div class="lp-demo-grid">' +
                         '<div class="lp-demo-field">' +
                             '<label for="sp-authm-first">first name</label>' +
@@ -97,6 +97,10 @@
         tabUp.classList.toggle('is-active', !login);
         tabIn.setAttribute('aria-selected', login ? 'true' : 'false');
         tabUp.setAttribute('aria-selected', login ? 'false' : 'true');
+        // a sign-up mid flight owns the card: the code panel is up, and putting
+        // the empty form back because the dialog was reopened would throw away
+        // both what was typed and the code already sent
+        if (panelEl && panelEl.dataset.authStep && panelEl.dataset.authStep !== 'register') return;
         panelIn.hidden = !login;
         panelUp.hidden = login;
         ['sp-authm-h-', 'sp-authm-p-'].forEach(function (k) {
@@ -215,13 +219,17 @@
         else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     });
 
-    [panelIn, panelUp].forEach(function (f) {
-        f.addEventListener('submit', function (e) {
-            e.preventDefault();
-            var msg = 'accounts are not open yet. start a free trial and we will email you the way in.';
-            if (window.SentinelToast) window.SentinelToast.show(t(msg), 'info');
-        });
+    // creating an account is handled by auth-flow.js. signing in is not built yet,
+    // so that form says so rather than pretending to try.
+    panelIn.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var msg = 'signing in is not open yet. create an account and we will email you the moment it is.';
+        if (window.SentinelToast) window.SentinelToast.show(t(msg), 'info');
     });
+
+    // this script may run before or after the flow: whichever is second picks the
+    // other up, so the dialog is never left as a form that does nothing
+    if (window.SentinelAuthFlow) window.SentinelAuthFlow.scan();
 
     // the nav keeps pointing at /auth, so this is an enhancement rather than the
     // only way in. anything linking there opens the dialog instead.

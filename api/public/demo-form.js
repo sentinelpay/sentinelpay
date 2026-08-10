@@ -408,7 +408,8 @@
                     if (!window.turnstile) return;
                     window.turnstile.render(holder, {
                         sitekey: siteKey,
-                        theme: 'dark',
+                        // the cards are white now: a dark widget on one read as a hole
+                        theme: 'light',
                         callback: function(t) { turnstileToken = t; },
                         'expired-callback': function() { turnstileToken = ''; },
                         'error-callback': function() { turnstileToken = ''; }

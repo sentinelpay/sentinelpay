@@ -9,6 +9,7 @@ require('dotenv').config();
 const mailer = require('./mailer');
 const submissions = require('./submissions-log');
 const db = require('./db');
+const accounts = require('./accounts');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -608,6 +609,43 @@ const trialRequestLimiter = rateLimit({
     message: { error: 'too many requests, please try again later' }
 });
 
+// Creating an account is the most attackable thing on the site: it sends mail to
+// an address a stranger chose, and it writes a row that is meant to last. So the
+// limits here are tighter than the forms', and there are three of them because
+// the three steps are abused differently.
+//
+// These bound what one ip can do. The limits that follow the address itself
+// (five codes an hour, a minute between them, five wrong guesses) live in
+// accounts.js, because an attacker with a thousand ips still only gets five
+// emails sent to any one victim.
+const authRegisterLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => `auth_register:${req.realIp}`,
+    message: { error: 'too many attempts, please try again later' }
+});
+// Guessing is the attack here, and a six digit code has a million answers. Twenty
+// tries an hour per ip on top of five per sign-up leaves nothing worth trying.
+const authVerifyLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => `auth_verify:${req.realIp}`,
+    message: { error: 'too many attempts, please try again later' }
+});
+// A resend button is a button that sends mail to somebody else's inbox on demand.
+const authResendLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => `auth_resend:${req.realIp}`,
+    message: { error: 'too many attempts, please try again later' }
+});
+
 // Diagnostics for outbound mail. Off unless ADMIN_TOKEN is set, and it answers 404
 // rather than 403 when the token is wrong so its existence is not discoverable.
 // GET  /v1/mail-status?token=...            what the server thinks it is configured with
@@ -656,9 +694,14 @@ app.post('/v1/forget', async (req, res) => {
     if (!email || email.length > 254) return res.status(400).json({ error: 'email required' });
     try {
         const removed = await db.forget(email);
-        console.log('[submissions] erasure request removed ' + removed + ' rows');
+        // an erasure request covers the account too, and anything half-made under
+        // the same address: leaving those behind would make the deletion a lie
+        let account = 0;
+        try { account = await accounts.forget(email); }
+        catch (accErr) { console.error('[forget accounts]', accErr.message); }
+        console.log('[submissions] erasure request removed ' + (removed + account) + ' rows');
         res.set('Cache-Control', 'no-store, private');
-        res.json({ removed: removed });
+        res.json({ removed: removed + account });
     } catch (err) {
         console.error('[forget]', err.message);
         res.status(500).json({ error: 'delete failed' });
@@ -686,6 +729,7 @@ app.all('/v1/mail-status', async (req, res) => {
         turnstile: process.env.TURNSTILE_SECRET_KEY ? 'enforced' : 'OFF (forms accept unverified submissions)',
         submissionLog: submissions.LOG_DIR,
         database: db.status(),
+        accounts: accounts.status(),
     };
 
     // sending is a side effect, so it needs POST: a token that leaks into a url
@@ -782,6 +826,189 @@ function reviewFlags(emailDomain, websiteHost) {
     )) flags.push('domain-mismatch');
     return flags;
 }
+
+// --- accounts ---------------------------------------------------------------
+//
+// Two steps, and the second one is the account. /register writes nothing that can
+// be logged into: it takes the details, hashes the password, and mails a six digit
+// code to the address given. /verify is where the account appears, and only if the
+// code comes back. An address whose mail the person cannot read therefore never
+// becomes an account.
+//
+// Every answer here is deliberately incurious. Registering an address that already
+// has an account gets the same reply as one that does not, and the person at the
+// address is told what happened instead. A wrong code and an address with no
+// sign-up in progress are the same error. Neither the form nor its timing should
+// be usable to find out who has an account on this site.
+
+// The password rules are the ones that matter and no more. Length is what a hash
+// cannot buy you, so twelve is the floor; the rest of the usual advice (a symbol,
+// a capital) makes passwords harder to remember without making them harder to
+// guess. Anything the person has already typed into the form is refused, because
+// "my email again" is the first thing anyone tries.
+function passwordProblem(password, email, firstName, lastName) {
+    if (typeof password !== 'string' || password.length < 12) return 'password must be at least 12 characters';
+    if (password.length > 200) return 'password must be at least 12 characters';
+    const low = password.toLowerCase();
+    const local = String(email || '').split('@')[0].toLowerCase();
+    const parts = [local, String(email || '').toLowerCase(), String(firstName || '').toLowerCase(), String(lastName || '').toLowerCase(), 'sentinelpay']
+        .filter((p) => p && p.length >= 4);
+    if (parts.some((p) => low.includes(p))) return 'please choose a password that is not your name or email';
+    return '';
+}
+
+app.post('/v1/auth/register', requireCloudflareOrigin, authRegisterLimiter, async (req, res) => {
+    try {
+        const b = req.body || {};
+        // the same hidden field the forms use: filled in means a bot, and a bot is
+        // told the same thing a person is, so the trap stays a trap
+        if (typeof b.company_url === 'string' && b.company_url.trim() !== '') {
+            return res.json({ ok: true, next: 'verify' });
+        }
+        if (!(await verifyTurnstile(b['cf-turnstile-response'] || b.turnstileToken, req.realIp))) {
+            return res.status(400).json({ error: 'verification failed, please try again' });
+        }
+
+        const clean = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+        const firstName = clean(b.firstName, 80);
+        const lastName = clean(b.lastName, 80);
+        const email = clean(b.email, 160).toLowerCase();
+        const password = typeof b.password === 'string' ? b.password : '';
+        const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const nameRe = /^[a-zA-ZÀ-ɏ'’.\- ]{2,}$/;
+        const lang = ['hr', 'de', 'en'].includes(b.lang) ? b.lang : 'en';
+
+        if (!nameRe.test(firstName) || !nameRe.test(lastName) || !emailRe.test(email) || b.consent !== true) {
+            return res.status(400).json({ error: 'invalid submission' });
+        }
+        const pwProblem = passwordProblem(password, email, firstName, lastName);
+        if (pwProblem) return res.status(400).json({ error: pwProblem });
+
+        if (!db.available()) {
+            return res.status(503).json({ error: 'accounts are not available right now. please try again shortly.' });
+        }
+
+        const emailDomain = email.split('@').pop();
+        // there is no website to compare against here, so the mailbox lists only
+        // tag the account for a person to look at later. they turn nobody away.
+        const flags = reviewFlags(emailDomain, '');
+
+        const started = await accounts.startSignup({
+            email,
+            name: `${firstName} ${lastName}`,
+            password,
+            lang,
+            flags,
+        });
+
+        if (started.reason === 'exists') {
+            // the reply below is identical to the success one. the difference goes
+            // to the inbox, where only the owner of the address can read it.
+            try { await mailer.sendSignupExists({ to: email, lang }); }
+            catch (err) { console.error('[auth register notice failed]', err.message); }
+            return res.json({ ok: true, next: 'verify' });
+        }
+        if (started.reason === 'slow-down') {
+            return res.status(429).json({ error: 'a code was just sent. check your inbox, or ask for another in a minute.', retryIn: started.retryIn });
+        }
+        if (started.reason === 'too-many-sends') {
+            return res.status(429).json({ error: 'too many codes sent to this address. please try again later.' });
+        }
+        if (!started.ok) {
+            return res.status(503).json({ error: 'accounts are not available right now. please try again shortly.' });
+        }
+
+        try {
+            await mailer.sendSignupCode({ to: email, code: started.code, lang, minutes: started.expiresInMin });
+        } catch (mailErr) {
+            console.error('[auth register mail failed]', mailErr.code || '', mailErr.message);
+            return res.status(500).json({ error: 'could not send the code. please try again shortly.' });
+        }
+
+        // the code itself is never written anywhere we can read: not here, not in
+        // the row, not in the log line
+        console.log('[auth] sign-up code sent, flags: ' + (flags.join(',') || 'none'));
+        res.json({ ok: true, next: 'verify' });
+    } catch (err) {
+        console.error('[auth register error]', err.message);
+        res.status(500).json({ error: 'could not create the account right now. please try again shortly.' });
+    }
+});
+
+app.post('/v1/auth/resend', requireCloudflareOrigin, authResendLimiter, async (req, res) => {
+    try {
+        const email = String((req.body && req.body.email) || '').trim().toLowerCase().slice(0, 160);
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'invalid submission' });
+        if (!db.available()) return res.status(503).json({ error: 'accounts are not available right now. please try again shortly.' });
+
+        const again = await accounts.resendSignup(email);
+        if (again.reason === 'slow-down') {
+            return res.status(429).json({ error: 'a code was just sent. check your inbox, or ask for another in a minute.', retryIn: again.retryIn });
+        }
+        if (again.reason === 'too-many-sends') {
+            return res.status(429).json({ error: 'too many codes sent to this address. please try again later.' });
+        }
+        // no pending sign-up and an expired one are both answered as if a code went
+        // out: otherwise this endpoint tells anyone which addresses are mid sign-up
+        if (!again.ok) return res.json({ ok: true });
+
+        try {
+            await mailer.sendSignupCode({ to: email, code: again.code, lang: again.lang, minutes: again.expiresInMin });
+        } catch (mailErr) {
+            console.error('[auth resend mail failed]', mailErr.code || '', mailErr.message);
+            return res.status(500).json({ error: 'could not send the code. please try again shortly.' });
+        }
+        res.json({ ok: true, sendsLeft: again.sendsLeft });
+    } catch (err) {
+        console.error('[auth resend error]', err.message);
+        res.status(500).json({ error: 'could not send the code. please try again shortly.' });
+    }
+});
+
+app.post('/v1/auth/verify', requireCloudflareOrigin, authVerifyLimiter, async (req, res) => {
+    try {
+        const b = req.body || {};
+        const email = String(b.email || '').trim().toLowerCase().slice(0, 160);
+        const code = String(b.code || '').replace(/\s+/g, '').slice(0, 6);
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'invalid submission' });
+        if (!db.available()) return res.status(503).json({ error: 'accounts are not available right now. please try again shortly.' });
+
+        const out = await accounts.verifySignup(email, code);
+        if (out.reason === 'expired') {
+            return res.status(400).json({ error: 'that code has expired. ask for a new one.' });
+        }
+        if (out.reason === 'too-many-attempts') {
+            return res.status(429).json({ error: 'too many wrong codes. ask for a new one.' });
+        }
+        if (out.reason === 'bad-code') {
+            return res.status(400).json({ error: 'that code is not right. check your email and try again.', attemptsLeft: out.attemptsLeft });
+        }
+        if (!out.ok) return res.status(503).json({ error: 'accounts are not available right now. please try again shortly.' });
+
+        // a record of the account, kept next to the form submissions so there is one
+        // place a person looks to see who arrived and how
+        submissions.record('account', req, { email, name: out.name, lang: out.lang }, 'created');
+
+        // best effort, and never allowed to fail the sign-up: the account exists
+        try {
+            await mailer.send({
+                subject: 'new account: ' + (out.name || email),
+                replyTo: email,
+                eyebrow: 'accounts',
+                title: 'somebody created an account',
+                intro: 'the address was verified by code before the account was written.',
+                pairs: [['name', out.name], ['email', email], ['language', out.lang]],
+            });
+        } catch (notifyErr) {
+            console.error('[auth verify notify failed]', notifyErr.message);
+        }
+
+        res.json({ ok: true });
+    } catch (err) {
+        console.error('[auth verify error]', err.message);
+        res.status(500).json({ error: 'could not create the account right now. please try again shortly.' });
+    }
+});
 
 app.post('/v1/trial-request', requireCloudflareOrigin, trialRequestLimiter, async (req, res) => {
     try {
@@ -1027,5 +1254,8 @@ app.listen(PORT, () => {
             console.error('[db] SUBMISSIONS_KEY is not set: personal data will be stored unencrypted');
         }
         db.startRetention();
+        // unfinished sign-ups expire with everything else
+        setTimeout(() => { accounts.purge(); }, 45000).unref();
+        setInterval(() => { accounts.purge(); }, 6 * 60 * 60 * 1000).unref();
     }
 });

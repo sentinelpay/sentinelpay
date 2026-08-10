@@ -152,6 +152,39 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON submissions TO sentinelpay_app;
 GRANT USAGE ON SEQUENCE submissions_id_seq TO sentinelpay_app;
 ```
 
+## accounts
+
+creating an account is two steps, and the account only exists after the second one.
+
+1. `POST /v1/auth/register` takes the name, the work email, a password and the consent tickbox. it hashes the password, writes a **pending** row, and emails a six digit code. nothing that can be logged into has been created.
+2. `POST /v1/auth/verify` takes the address and the code. it checks the code, then writes the user, in one transaction.
+
+`POST /v1/auth/resend` sends a fresh code for a sign-up already in progress. signing in is not built yet: the log in form says so.
+
+what is deliberate:
+
+| control | how |
+| --- | --- |
+| the address is proved | a code that only the inbox receives, so an address nobody can read the mail for never becomes an account |
+| the code is not stored | only an hmac of it, bound to the address it was sent to, compared in constant time. a copy of the table verifies nothing |
+| the password is not stored | scrypt (n=32768, r=8) with a per-user salt, hashed in the process before the pending row is written. argon2id is the better hash and the only reason it is not here is that it is a native module |
+| the address is not readable | encrypted like the submissions, found through the same blind index |
+| guessing | five wrong codes end the code, twenty verify attempts an hour per ip. a million answers, and nothing like enough tries |
+| mailbombing | five codes an hour per address and sixty seconds between them, enforced on the row rather than the ip, plus five registers and five resends an hour per ip |
+| enumeration | registering an address that already has an account gets the same reply as one that does not. the difference goes to the inbox, where only its owner can read it. an unknown address asked to resend is answered as though a code went out |
+| replay | a code is consumed inside the transaction that writes the user, so two requests with the same code cannot make two accounts |
+| expiry | codes last `SIGNUP_CODE_TTL_MIN` minutes, and unfinished sign-ups are swept every six hours |
+| erasure | `POST /v1/forget` removes the account and anything half-made under the same address |
+
+there are no accounts without `DATABASE_URL` and `SUBMISSIONS_KEY`. registration answers "not available" rather than falling back to a file: a lead in a file is a lead, an account in a file is a security problem.
+
+the tables are `users` and `signup_codes`, created on boot. a hand-made role needs them too:
+
+```sql
+GRANT SELECT, INSERT, UPDATE, DELETE ON users, signup_codes TO sentinelpay_app;
+GRANT USAGE ON SEQUENCE users_id_seq TO sentinelpay_app;
+```
+
 ## contributing
 
 `CONTRIBUTING.md` is the short list of things that are easy to get wrong here: the
@@ -185,6 +218,7 @@ nothing is required to boot. everything below changes behaviour when set.
 | `SUBMISSIONS_KEY` | 32 bytes base64. encrypts the personal fields at rest. without it they are stored in the clear and the log says so at boot |
 | `SUBMISSIONS_INDEX_KEY` | 32 bytes base64 for the blind index. derived from `SUBMISSIONS_KEY` when unset |
 | `SUBMISSIONS_RETENTION_DAYS` | how long a lead is kept, 365 by default |
+| `SIGNUP_CODE_TTL_MIN` | how long a verification code is good for, 15 by default, clamped to 5 to 60 |
 | `LOG_DIR` | the fallback submission log, used only when there is no database or it is unreachable |
 | `ADMIN_TOKEN` | enables the operations endpoints below |
 | `CSP_STRICT` | set to `false` only to fall back to `unsafe-inline` in an emergency |

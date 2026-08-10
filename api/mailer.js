@@ -57,7 +57,21 @@ function reviewBand(notes) {
         '</td></tr></table></td></tr>';
 }
 
-function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff, review }) {
+// The six digit code, big enough to read off a phone and spaced so it is not
+// mistaken for a number. Rendered as text rather than an image: an image is
+// blocked by default in most inboxes, and a code nobody can see is no code.
+function codeBlock(code) {
+    if (!code) return '';
+    return '<tr><td style="padding:24px 28px 0;">' +
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" ' +
+        'style="background:rgba(0,240,255,0.06);border:1px solid rgba(0,240,255,0.3);border-radius:12px;">' +
+        '<tr><td align="center" style="padding:20px 14px;">' +
+        '<div style="font-size:34px;line-height:42px;font-weight:800;letter-spacing:0.34em;' +
+        'text-indent:0.34em;color:#f2f5f8;font-family:Menlo,Consolas,monospace;">' + esc(code) + '</div>' +
+        '</td></tr></table></td></tr>';
+}
+
+function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff, review, code }) {
     const font = "-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Roboto,Helvetica,Arial,sans-serif";
     return '<!doctype html><html><head><meta charset="utf-8">' +
         '<meta name="viewport" content="width=device-width,initial-scale=1">' +
@@ -84,6 +98,7 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff, 
         '</td></tr>' +
 
         reviewBand(review) +
+        codeBlock(code) +
 
         (rows ? '<tr><td style="padding:20px 28px 4px;">' +
             '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">' + rows + '</table>' +
@@ -119,8 +134,9 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff, 
 
 // Plain-text alternative. Without it, spam filters mark an html-only mail down and
 // some clients render nothing at all.
-function textVersion({ title, intro, pairs, bullets, cta, footnote, review }) {
+function textVersion({ title, intro, pairs, bullets, cta, footnote, review, code }) {
     const lines = [title, '', intro, ''];
+    if (code) lines.push(code, '');
     if (review && review.length) {
         lines.push('worth a look:');
         review.forEach((n) => lines.push('  - ' + n));
@@ -136,10 +152,10 @@ function textVersion({ title, intro, pairs, bullets, cta, footnote, review }) {
 
 // Sends, or throws. It never resolves quietly when nothing was sent: an endpoint
 // that answers "ok" while the inbox stays empty is the worst possible outcome.
-async function send({ to, subject, replyTo, eyebrow, title, intro, pairs, bullets, cta, footnote, signoff, review }) {
+async function send({ to, subject, replyTo, eyebrow, title, intro, pairs, bullets, cta, footnote, signoff, review, code }) {
     const rows = (pairs || []).map(([k, v]) => row(k, v)).join('');
-    const html = layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff, review });
-    const text = textVersion({ title, intro, pairs, bullets, cta, footnote, review });
+    const html = layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff, review, code });
+    const text = textVersion({ title, intro, pairs, bullets, cta, footnote, review, code });
 
     if (!isConfigured()) {
         // in production a missing key is a hard failure: the form must not claim
@@ -248,4 +264,83 @@ async function sendTrialWelcome({ to, lang }) {
     });
 }
 
-module.exports = { send, sendTrialWelcome, isConfigured, MAIL_FROM, MAIL_TO };
+// The verification code, and the message that goes out instead when the address
+// already has an account. Both exist so that registering tells the person at the
+// address what happened, and tells whoever typed it in the form nothing at all:
+// the form's answer is identical either way, so it cannot be used to find out
+// who has an account here.
+const SIGNUP_COPY = {
+    en: {
+        subject: 'your sentinelpay code',
+        eyebrow: 'verify your email',
+        title: 'here is your code',
+        intro: 'enter this to finish creating your sentinelpay account.',
+        note: (m) => 'the code is good for ' + m + ' minutes and can be used once.',
+        footnote: 'if you did not try to create an account, ignore this email. nothing has been created and nobody can use this code without it.',
+        signoff: 'sent by sentinelpay.org. we will never ask you for this code, by email, chat or phone.',
+        existsSubject: 'about your sentinelpay account',
+        existsTitle: 'you already have an account',
+        existsCta: 'sign in',
+        existsIntro: 'somebody tried to create an account with this address, so we did not make a second one.',
+        existsFootnote: 'if that was you, sign in instead. if it was not, you do not need to do anything: no account was created and nothing has changed.',
+    },
+    hr: {
+        subject: 'vaš sentinelpay kod',
+        eyebrow: 'potvrdite svoj email',
+        title: 'evo vašeg koda',
+        intro: 'unesite ga da dovršite izradu sentinelpay računa.',
+        note: (m) => 'kod vrijedi ' + m + ' minuta i može se iskoristiti jednom.',
+        footnote: 'ako niste vi pokušali izraditi račun, samo zanemarite ovaj mail. ništa nije izrađeno i bez njega nitko ne može iskoristiti ovaj kod.',
+        signoff: 'šalje sentinelpay.org. nikada vas nećemo tražiti ovaj kod, ni mailom, ni chatom, ni telefonom.',
+        existsSubject: 'o vašem sentinelpay računu',
+        existsTitle: 'račun s ovom adresom već postoji',
+        existsCta: 'prijavite se',
+        existsIntro: 'netko je pokušao izraditi račun s ovom adresom, pa nismo izradili drugi.',
+        existsFootnote: 'ako ste to bili vi, samo se prijavite. ako niste, ne morate ništa napraviti: račun nije izrađen i ništa se nije promijenilo.',
+    },
+    de: {
+        subject: 'ihr sentinelpay code',
+        eyebrow: 'bestätigen sie ihre e-mail',
+        title: 'hier ist ihr code',
+        intro: 'geben sie ihn ein, um ihr sentinelpay konto fertig anzulegen.',
+        note: (m) => 'der code gilt ' + m + ' minuten und lässt sich einmal verwenden.',
+        footnote: 'wenn sie kein konto anlegen wollten, ignorieren sie diese e-mail. es wurde nichts angelegt, und ohne sie kann niemand diesen code verwenden.',
+        signoff: 'gesendet von sentinelpay.org. wir fragen sie nie nach diesem code, weder per e-mail noch im chat oder am telefon.',
+        existsSubject: 'zu ihrem sentinelpay konto',
+        existsTitle: 'sie haben bereits ein konto',
+        existsCta: 'anmelden',
+        existsIntro: 'jemand hat versucht, mit dieser adresse ein konto anzulegen, deshalb haben wir kein zweites erstellt.',
+        existsFootnote: 'waren sie das, melden sie sich einfach an. waren sie es nicht, müssen sie nichts tun: es wurde kein konto angelegt und nichts hat sich geändert.',
+    },
+};
+
+async function sendSignupCode({ to, code, lang, minutes }) {
+    const copy = SIGNUP_COPY[lang] || SIGNUP_COPY.en;
+    return send({
+        to: to,
+        subject: copy.subject,
+        eyebrow: copy.eyebrow,
+        title: copy.title,
+        intro: copy.intro,
+        code: code,
+        bullets: [copy.note(minutes)],
+        footnote: copy.footnote,
+        signoff: copy.signoff,
+    });
+}
+
+async function sendSignupExists({ to, lang }) {
+    const copy = SIGNUP_COPY[lang] || SIGNUP_COPY.en;
+    return send({
+        to: to,
+        subject: copy.existsSubject,
+        eyebrow: copy.eyebrow,
+        title: copy.existsTitle,
+        intro: copy.existsIntro,
+        cta: { href: SITE + '/auth', label: copy.existsCta },
+        footnote: copy.existsFootnote,
+        signoff: copy.signoff,
+    });
+}
+
+module.exports = { send, sendTrialWelcome, sendSignupCode, sendSignupExists, isConfigured, MAIL_FROM, MAIL_TO };
