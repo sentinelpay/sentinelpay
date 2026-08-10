@@ -124,21 +124,18 @@ function codeMeta(items) {
         '</div></td></tr>';
 }
 
-// One line of a checklist. The site draws this as a twenty pixel circle filled
-// with the brand gradient and a white tick masked out of it; a mask is no use in
-// an inbox, so here it is a filled cell with a white tick in it. outlook has no
-// border-radius and shows a square, which still reads as a marker rather than as
-// a broken glyph, and that is the point of doing it this way rather than leaving
-// a bare tick floating beside the text.
+// One line of a checklist. The site paints the marker by masking the brand
+// gradient into the shape of a stroked check, so what you see is a thin tick in
+// cyan going to purple, not a filled shape. neither a mask nor an svg survives
+// an inbox, and a png marker disappears the moment a client blocks images, so
+// this is the check character itself: same shape, one colour instead of two,
+// at the weight and the size the site draws it, sitting on the same baseline as
+// the first line of the text beside it.
 function tickRow(b) {
     return '<tr>' +
-        '<td width="20" style="padding:8px 14px 8px 0;vertical-align:top;">' +
-        '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="20" style="width:20px;">' +
-        '<tr><td align="center" height="20" bgcolor="' + C.cyan + '" ' +
-        'style="width:20px;height:20px;border-radius:50%;font-family:' + FONT + ';' +
-        'font-size:11px;line-height:20px;font-weight:700;color:#ffffff;">&#10003;</td></tr>' +
-        '</table></td>' +
-        '<td style="padding:8px 0;font-size:15px;line-height:23px;color:' + C.text + ';">' + esc(b) + '</td>' +
+        '<td width="16" style="padding:7px 14px 7px 0;vertical-align:top;font-family:' + FONT + ';' +
+        'font-size:16px;line-height:23px;font-weight:400;color:' + C.cyan + ';">&#10003;</td>' +
+        '<td style="padding:7px 0;font-size:15px;line-height:23px;color:' + C.text + ';">' + esc(b) + '</td>' +
         '</tr>';
 }
 
