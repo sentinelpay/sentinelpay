@@ -3259,4 +3259,86 @@ html.sp-authm-open, html.sp-authm-open body { overflow: hidden; }
     .sp-authm-panel { padding: 1.6rem 1.4rem 1.4rem !important; }
     .sp-authm-h { font-size: 1.35rem; }
 }
+
+/* ============ auth card, light ============
+   the same card the demo form uses, with its colours turned over: white surface,
+   navy text, navy button. it is scoped to the auth panel so the demo and trial
+   forms keep the dark original, and every accent that carries the brand, the
+   gradient edge and the cyan focus, stays exactly where it was. */
+.sp-auth-panel, .sp-authm-panel {
+    border-color: rgba(14, 35, 88, 0.1);
+    /* the demo card declares its background !important, so turning it over needs
+       the same weight. nothing else here does. */
+    background:
+        radial-gradient(ellipse 50% 70% at 100% 0%, rgba(160, 32, 240, 0.06), transparent 55%),
+        radial-gradient(ellipse 45% 70% at 0% 100%, rgba(0, 190, 220, 0.06), transparent 55%),
+        #ffffff !important;
+    box-shadow: 0 24px 60px -30px rgba(14, 35, 88, 0.3), 0 2px 8px rgba(14, 35, 88, 0.04);
+}
+/* the dotted corner is the same texture, drawn in the ink this page writes in */
+.sp-auth-panel .lp-demo-dots, .sp-authm-panel .lp-demo-dots {
+    background-image: radial-gradient(circle at 1px 1px, rgba(14, 35, 88, 0.16) 1.3px, transparent 0);
+}
+
+.sp-auth-panel .sp-authm-h, .sp-authm-panel .sp-authm-h { color: #0e2358; }
+.sp-auth-panel .sp-authm-p, .sp-authm-panel .sp-authm-p { color: rgba(14, 35, 88, 0.58); }
+.sp-authm-panel .sp-authm-x { color: rgba(14, 35, 88, 0.45); }
+.sp-authm-panel .sp-authm-x:hover { color: #0e2358; background: rgba(14, 35, 88, 0.06); }
+
+.sp-auth-panel .sp-auth-tabs, .sp-authm-panel .sp-auth-tabs {
+    background: #f1f4f9;
+    border-color: rgba(14, 35, 88, 0.07);
+}
+.sp-auth-panel .sp-auth-tab, .sp-authm-panel .sp-auth-tab { color: rgba(14, 35, 88, 0.5); }
+.sp-auth-panel .sp-auth-tab:hover, .sp-authm-panel .sp-auth-tab:hover { color: #0e2358; }
+.sp-auth-panel .sp-auth-tab.is-active, .sp-authm-panel .sp-auth-tab.is-active {
+    color: #0e2358;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(14, 35, 88, 0.12);
+}
+
+.sp-auth-panel .lp-demo-field > label, .sp-authm-panel .lp-demo-field > label { color: rgba(14, 35, 88, 0.62); }
+.sp-auth-panel .lp-demo-field input, .sp-authm-panel .lp-demo-field input {
+    color: #0e2358;
+    background: #fbfcfd;
+    border-color: rgba(14, 35, 88, 0.14);
+    /* style.css still carries a dark inset shadow for the old app's inputs, which
+       on a light field reads as a second, dirty border */
+    box-shadow: none;
+}
+.sp-auth-panel .lp-demo-field input::placeholder, .sp-authm-panel .lp-demo-field input::placeholder { color: rgba(14, 35, 88, 0.3); }
+.sp-auth-panel .lp-demo-field input:focus, .sp-authm-panel .lp-demo-field input:focus {
+    border-color: #0091c8;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(0, 145, 200, 0.12);
+}
+
+.sp-auth-panel .lp-demo-consent, .sp-authm-panel .lp-demo-consent {
+    border-color: rgba(14, 35, 88, 0.1);
+    background: #fbfcfd;
+    color: rgba(14, 35, 88, 0.62);
+}
+.sp-auth-panel .lp-demo-consent:hover, .sp-authm-panel .lp-demo-consent:hover { border-color: rgba(0, 145, 200, 0.45); color: #0e2358; }
+.sp-auth-panel .lp-demo-consent:has(input:checked), .sp-authm-panel .lp-demo-consent:has(input:checked) {
+    border-color: rgba(0, 145, 200, 0.4);
+    background: rgba(0, 145, 200, 0.06);
+    color: #0e2358;
+    box-shadow: none;
+}
+.sp-auth-panel .lp-demo-consent input, .sp-authm-panel .lp-demo-consent input,
+.sp-auth-panel .sp-auth-remember input, .sp-authm-panel .sp-auth-remember input { accent-color: #0091c8; }
+.sp-auth-panel .lp-demo-consent a, .sp-authm-panel .lp-demo-consent a { color: #0091c8; border-bottom-color: rgba(0, 145, 200, 0.35); }
+
+.sp-auth-panel .sp-auth-remember, .sp-authm-panel .sp-auth-remember { color: rgba(14, 35, 88, 0.6); }
+.sp-auth-panel .sp-auth-link, .sp-authm-panel .sp-auth-link { color: #0091c8; border-bottom-color: rgba(0, 145, 200, 0.3); }
+.sp-auth-panel .sp-auth-link:hover, .sp-authm-panel .sp-auth-link:hover { border-bottom-color: #0091c8; }
+
+/* the button turns over with everything else: dark on a light card */
+.sp-auth-panel .lp-demo-submit, .sp-authm-panel .lp-demo-submit {
+    background: #0e2358;
+    color: #ffffff;
+}
+.sp-auth-panel .lp-demo-submit:hover, .sp-authm-panel .lp-demo-submit:hover {
+    background: #16305f;
+    box-shadow: 0 12px 28px -12px rgba(14, 35, 88, 0.6);
 }
