@@ -84,33 +84,107 @@
         // the register form can make us send mail to an address a stranger chose,
         // which is exactly what turnstile is for. it is skipped when no site key
         // is set, so the form still works before the keys exist.
+        //
+        // two things this has to get right, and the first version got neither:
+        //
+        //   the widget is not rendered until the panel is actually on screen. the
+        //   dialog is display:none until somebody opens it, and a challenge that
+        //   runs inside a hidden box is a challenge nobody can see or finish.
+        //
+        //   the token is not reused. cloudflare gives it a few minutes and then
+        //   refuses it, so a page left open while somebody reads the pricing
+        //   arrives at the form with a token the server will not accept: the
+        //   answer is "verification failed" for a check the visitor passed. the
+        //   token's age is checked at submit, and a stale one is replaced before
+        //   anything is sent.
         var turnstileToken = '';
-        var turnstileOn = false;
+        var turnstileAt = 0;
+        var turnstileId = null;
+        var turnstileOn = Boolean(window.__TURNSTILE_SITEKEY);
+        var waitingFor = null;
         var holder = null;
-        (function initTurnstile() {
-            var siteKey = window.__TURNSTILE_SITEKEY;
-            if (!siteKey) return;
-            turnstileOn = true;
-            holder = el('div', 'sp-auth-turnstile');
-            form.insertBefore(holder, submitBtn);
-            function render() {
-                if (!window.turnstile) return;
-                window.turnstile.render(holder, {
-                    sitekey: siteKey,
+        // cloudflare's own window is five minutes. four leaves room for a slow
+        // connection to still be inside it when the request lands.
+        var TOKEN_GOOD_FOR = 4 * 60 * 1000;
+
+        function tokenArrived(tok) {
+            turnstileToken = tok || '';
+            turnstileAt = tok ? Date.now() : 0;
+            if (waitingFor) { var go = waitingFor; waitingFor = null; go(turnstileToken); }
+        }
+
+        function renderTurnstile() {
+            if (!window.turnstile || turnstileId !== null || !holder) return;
+            try {
+                turnstileId = window.turnstile.render(holder, {
+                    sitekey: window.__TURNSTILE_SITEKEY,
                     // the card is white now, and a dark widget on it read as a hole
                     theme: 'light',
-                    callback: function (tok) { turnstileToken = tok; },
-                    'expired-callback': function () { turnstileToken = ''; },
-                    'error-callback': function () { turnstileToken = ''; }
+                    callback: tokenArrived,
+                    'expired-callback': function () { tokenArrived(''); },
+                    'error-callback': function () { tokenArrived(''); }
                 });
+            } catch (err) {
+                // a widget that will not render must not take the form down with it
+                console.error('[turnstile] ' + err.message);
             }
-            if (window.turnstile) { render(); return; }
+        }
+
+        function loadTurnstile() {
+            if (!turnstileOn) return;
+            if (window.turnstile) { renderTurnstile(); return; }
+            var existing = document.getElementById('sp-turnstile-src');
+            if (existing) { existing.addEventListener('load', renderTurnstile); return; }
             var s = document.createElement('script');
+            s.id = 'sp-turnstile-src';
             s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
             s.async = true; s.defer = true;
-            s.onload = render;
+            s.onload = renderTurnstile;
             document.head.appendChild(s);
-        })();
+        }
+
+        if (turnstileOn) {
+            holder = el('div', 'sp-auth-turnstile');
+            form.insertBefore(holder, submitBtn);
+            // rendered the moment the panel is on screen for the first time, and
+            // not a moment before
+            if (window.IntersectionObserver) {
+                var io = new IntersectionObserver(function (entries) {
+                    for (var n = 0; n < entries.length; n++) {
+                        if (!entries[n].isIntersecting) continue;
+                        io.disconnect();
+                        loadTurnstile();
+                        return;
+                    }
+                }, { threshold: 0.01 });
+                io.observe(form);
+            } else {
+                loadTurnstile();
+            }
+        }
+
+        // hands back a token the server will still accept, replacing a stale one
+        // first. resolves with an empty string if the widget cannot produce one,
+        // and the caller says so plainly rather than sending a request that is
+        // going to be refused.
+        function freshToken() {
+            if (!turnstileOn) return Promise.resolve('');
+            if (turnstileToken && Date.now() - turnstileAt < TOKEN_GOOD_FOR) {
+                return Promise.resolve(turnstileToken);
+            }
+            loadTurnstile();
+            return new Promise(function (resolve) {
+                waitingFor = resolve;
+                try {
+                    if (turnstileId !== null) window.turnstile.reset(turnstileId);
+                } catch (err) { /* not rendered yet: the render itself will answer */ }
+                // a challenge that needs a click, or a network that is not there,
+                // must not leave the button spinning for ever
+                setTimeout(function () {
+                    if (waitingFor === resolve) { waitingFor = null; resolve(turnstileToken); }
+                }, 9000);
+            });
+        }
 
         // ---- the panels this file owns ---------------------------------------
 
@@ -374,18 +448,22 @@
                 toast(t('please accept the terms of service to continue.'), 'warning');
                 return;
             }
-            if (turnstileOn && !turnstileToken) {
-                toast(t('please complete the verification below.'), 'warning');
-                return;
-            }
-            if (turnstileToken) data['cf-turnstile-response'] = turnstileToken;
-
             busy = true;
             submitBtn.disabled = true;
             var label = submitBtn.textContent;
-            submitBtn.textContent = t('sending…');
+            submitBtn.textContent = t('creating your account…');
 
-            post('/v1/auth/register', data).then(function () {
+            // the check comes first, and it may have to run again: a page that has
+            // been open a while is holding a token the server will refuse
+            freshToken().then(function (tok) {
+                if (turnstileOn && !tok) {
+                    var err = new Error('no_token');
+                    err.noToken = true;
+                    throw err;
+                }
+                if (tok) data['cf-turnstile-response'] = tok;
+                return post('/v1/auth/register', data);
+            }).then(function () {
                 pendingEmail = data.email;
                 vmail.textContent = data.email;
                 clearCode(false);
@@ -394,6 +472,10 @@
                 holdResend(RESEND_WAIT);
                 setTimeout(function () { boxes[0].focus(); }, 340);
             }).catch(function (err) {
+                if (err.noToken) {
+                    toast(t('the check below did not finish. please try again in a moment.'), 'warning');
+                    return;
+                }
                 if (err.retryIn) {
                     // a code is already out there: send them to the box for it
                     // rather than making them fill the form in again
@@ -407,8 +489,12 @@
                 busy = false;
                 submitBtn.disabled = false;
                 submitBtn.textContent = label;
-                turnstileToken = '';
-                if (turnstileOn && window.turnstile) { try { window.turnstile.reset(); } catch (resetErr) { /* widget already gone */ } }
+                // the token is spent whether or not it worked, so the next attempt
+                // starts by asking for a new one
+                tokenArrived('');
+                if (turnstileOn && turnstileId !== null) {
+                    try { window.turnstile.reset(turnstileId); } catch (resetErr) { /* widget already gone */ }
+                }
             });
         });
 

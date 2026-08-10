@@ -99,7 +99,13 @@ async function verifyTurnstile(token, ip) {
             body: new URLSearchParams({ secret: turnstileSecret, response: token, remoteip: ip || '' })
         });
         const data = await resp.json();
-        return data && data.success === true;
+        if (data && data.success === true) return true;
+        // cloudflare says why, and the difference matters: timeout-or-duplicate is
+        // a token that sat on an open page too long, invalid-input-secret is a
+        // misconfigured deploy. without this line both look like "the form is
+        // broken" and there is nothing to tell them apart by.
+        console.error('[turnstile refused]', (data && data['error-codes'] || ['no reason given']).join(', '));
+        return false;
     } catch (err) {
         console.error('[turnstile verify error]', err.message);
         return false;
