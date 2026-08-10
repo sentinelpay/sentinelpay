@@ -3652,3 +3652,99 @@ html.theme-light .lp-demo-select-menu { scrollbar-color: rgba(14, 35, 88, 0.2) #
     .sp-auth-code input { width: auto; flex: 1 1 0; min-width: 0; height: 3.4rem; font-size: 1.35rem; }
     .sp-auth-vfoot { flex-direction: column; gap: 0.5rem; }
 }
+
+/* ============ questions and answers ============
+   the shape everyone uses for this, done in the site's own materials: the white
+   card with the hairline border and the soft shadow the solution cards use, the
+   navy for the question, the brand gradient on the sign.
+
+   the answer is not display:none when it opens. its height is measured and
+   animated, so the card grows rather than the page jumping, and the one already
+   open closes at the same time so only ever one is up. */
+.lp-faq-list { margin-top: 2.6rem; display: grid; gap: 0.7rem; }
+
+.lp-faq-item {
+    border: 1px solid rgba(14, 35, 88, 0.1);
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 2px 10px rgba(14, 35, 88, 0.04);
+    overflow: hidden;
+    transition: border-color 0.22s ease, box-shadow 0.22s ease;
+}
+.lp-faq-item:hover { border-color: rgba(0, 145, 200, 0.35); }
+.lp-faq-item.is-open {
+    border-color: rgba(0, 145, 200, 0.4);
+    box-shadow: 0 14px 34px -22px rgba(14, 35, 88, 0.5);
+}
+
+.lp-faq-q {
+    width: 100%;
+    display: flex; align-items: center; justify-content: space-between; gap: 1.2rem;
+    padding: 1.25rem 1.5rem;
+    border: 0; background: none;
+    font-family: inherit; font-size: 1.06rem; font-weight: 700; line-height: 1.4;
+    letter-spacing: -0.01em;
+    color: #0e2358;
+    text-align: left; text-transform: lowercase;
+    cursor: pointer;
+    transition: color 0.18s ease;
+}
+.lp-faq-q:hover { color: #0091c8; }
+.lp-faq-q:focus-visible { outline: 2px solid rgba(0, 145, 200, 0.5); outline-offset: -2px; border-radius: 16px; }
+
+/* a plus that becomes a minus: two bars, one of which turns. drawn rather than
+   set in text so it lines up at any size and carries the brand gradient. */
+.lp-faq-sign {
+    position: relative;
+    flex: 0 0 auto;
+    width: 22px; height: 22px;
+    border-radius: 7px;
+    background: rgba(0, 145, 200, 0.08);
+    transition: background 0.22s ease, transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.lp-faq-sign::before,
+.lp-faq-sign::after {
+    content: '';
+    position: absolute; top: 50%; left: 50%;
+    width: 10px; height: 2px; margin: -1px 0 0 -5px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #0091c8, #7b6cff);
+    transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s ease;
+}
+.lp-faq-sign::after { transform: rotate(90deg); }
+.lp-faq-item.is-open .lp-faq-sign { background: rgba(0, 145, 200, 0.14); }
+.lp-faq-item.is-open .lp-faq-sign::after { transform: rotate(0deg); }
+
+.lp-faq-a {
+    overflow: hidden;
+    height: 0;
+    transition: height 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.lp-faq-a[hidden] { display: block; }  /* the script owns the height, not the browser */
+.lp-faq-a p {
+    margin: 0;
+    padding: 0 1.5rem 1.4rem;
+    font-size: 1rem; line-height: 1.75;
+    color: rgba(14, 35, 88, 0.66);
+}
+.lp-faq-a a { color: #0091c8; text-decoration: none; border-bottom: 1px solid rgba(0, 145, 200, 0.35); }
+.lp-faq-a a:hover { border-bottom-color: #0091c8; }
+
+.lp-faq-more {
+    margin: 2rem 0 0;
+    text-align: center;
+    font-size: 0.98rem;
+    color: rgba(14, 35, 88, 0.5);
+}
+.lp-faq-more a { color: #0091c8; text-decoration: none; border-bottom: 1px solid rgba(0, 145, 200, 0.35); }
+.lp-faq-more a:hover { border-bottom-color: #0091c8; }
+
+@media (max-width: 640px) {
+    .lp-faq-q { padding: 1.05rem 1.15rem; font-size: 0.99rem; gap: 0.8rem; }
+    .lp-faq-a p { padding: 0 1.15rem 1.2rem; font-size: 0.95rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lp-faq-a { transition: none; }
+    .lp-faq-sign, .lp-faq-sign::before, .lp-faq-sign::after { transition: none; }
+}
