@@ -35,8 +35,7 @@
             ', in plain words. to have your data erased, email': ', jednostavnim riječima. za brisanje svojih podataka pišite na',
             'and we answer within one month.': 'i odgovaramo u roku od mjesec dana.',
             'did not find it?': 'niste našli?',
-            'open the chat in the corner, or': 'otvorite chat u kutu, ili',
-            'and ask us directly. if a question comes up more than once it ends up on this page.': 'i pitajte nas izravno. ako se pitanje ponovi više puta, završi na ovoj stranici.',
+            'ask us in the chat in the corner. a real person answers, and if the same question comes up more than once it ends up on this page.': 'pitajte nas u chatu u kutu. odgovara vam pravi čovjek, a ako se isto pitanje ponovi više puta, završi na ovoj stranici.',
             // homepage: the questions people ask before they get in touch
             'straight answers': 'jasni odgovori',
             'questions': 'pitanja',
@@ -861,8 +860,7 @@
             ', in plain words. to have your data erased, email': ', in klaren worten. für die löschung ihrer daten schreiben sie an',
             'and we answer within one month.': 'und wir antworten innerhalb eines monats.',
             'did not find it?': 'nicht gefunden?',
-            'open the chat in the corner, or': 'öffnen sie den chat in der ecke, oder',
-            'and ask us directly. if a question comes up more than once it ends up on this page.': 'und fragen sie uns direkt. kommt eine frage mehr als einmal, landet sie auf dieser seite.',
+            'ask us in the chat in the corner. a real person answers, and if the same question comes up more than once it ends up on this page.': 'fragen sie uns im chat in der ecke. dort antwortet ein mensch, und kommt dieselbe frage mehr als einmal, landet sie auf dieser seite.',
             // homepage: the questions people ask before they get in touch
             'straight answers': 'klare antworten',
             'questions': 'fragen',
