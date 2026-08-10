@@ -3171,10 +3171,15 @@ html[data-mail-down] a[data-mail-subject] {
     backdrop-filter: blur(7px);
     -webkit-backdrop-filter: blur(7px);
     opacity: 0;
-    transition: opacity 0.2s ease;
+    /* the same duration the panel leaves in, so the two finish together and the
+       dim is not still visible when the card has gone */
+    transition: opacity 0.16s ease;
 }
-.sp-authm-backdrop.is-open { opacity: 1; }
+.sp-authm-backdrop.is-open { opacity: 1; transition: opacity 0.22s ease; }
 .sp-authm-backdrop[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) {
+    .sp-authm-backdrop, .sp-authm { transition: none; }
+}
 
 .sp-authm {
     position: relative;
@@ -3184,9 +3189,12 @@ html[data-mail-down] a[data-mail-subject] {
     overflow-y: auto;
     overscroll-behavior: contain;
     /* a short lift on the way in, the same easing the rest of the site uses */
-    transform: translateY(10px) scale(0.99);
+    transform: translateY(10px) scale(0.985);
     opacity: 0;
-    transition: opacity 0.24s ease, transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: opacity 0.16s ease, transform 0.16s ease;
+}
+.sp-authm-backdrop.is-open .sp-authm {
+    transition: opacity 0.26s ease, transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .sp-authm-backdrop.is-open .sp-authm { transform: none; opacity: 1; }
 

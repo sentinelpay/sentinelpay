@@ -108,8 +108,11 @@
         lastFocus = document.activeElement;
         swap(mode !== 'create');
         wrap.hidden = false;
-        // one frame, so the transition has a state to move from
-        requestAnimationFrame(function () { wrap.classList.add('is-open'); });
+        // force a layout between showing it and starting the transition, so the
+        // browser has a state to move from. a frame usually does it; a reflow
+        // always does.
+        void wrap.offsetWidth;
+        wrap.classList.add('is-open');
         // measure the scrollbar before it is taken away, so the page behind can be
         // handed its width back and does not slide sideways as the dialog appears
         var sbw = window.innerWidth - document.documentElement.clientWidth;
@@ -120,12 +123,28 @@
     }
 
     function close() {
+        if (wrap.hidden) return;
+        var done = false;
+        // the fade out has to finish before anything is taken away. hiding on a
+        // timer cut it off a third of the way through, and unlocking the page
+        // first made everything behind jump while the dialog was still visible.
+        function finish() {
+            if (done) return;
+            done = true;
+            box.removeEventListener('transitionend', onEnd);
+            wrap.hidden = true;
+            document.documentElement.classList.remove('sp-authm-open');
+            document.documentElement.style.removeProperty('--sp-sbw');
+            // back to the button that opened it, so the keyboard keeps its place
+            if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
+        }
+        function onEnd(e) {
+            if (e.target === box && e.propertyName === 'opacity') finish();
+        }
+        box.addEventListener('transitionend', onEnd);
         wrap.classList.remove('is-open');
-        document.documentElement.classList.remove('sp-authm-open');
-        document.documentElement.style.removeProperty('--sp-sbw');
-        setTimeout(function () { wrap.hidden = true; }, 200);
-        // back to the button that opened it, so the keyboard does not lose its place
-        if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
+        // a safety net: if the transition never runs, nothing should be stuck open
+        setTimeout(finish, 450);
     }
 
     tabIn.addEventListener('click', function () { swap(true); });
