@@ -194,6 +194,14 @@
         verify.hidden = true;
 
         var vhead = el('div', 'sp-auth-vhead');
+        // the same mark the finished panel uses, so the two steps read as one
+        // piece of design rather than two screens that happen to follow
+        var vmark = el('div', 'sp-auth-vmark');
+        vmark.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
+            'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<rect x="2.5" y="4.5" width="19" height="15" rx="2.5"></rect>' +
+            '<polyline points="3 6.5 12 13 21 6.5"></polyline></svg>';
+        vhead.appendChild(vmark);
         vhead.appendChild(el('h3', null, 'check your email'));
         var vsub = el('p');
         vsub.appendChild(document.createTextNode('we sent a 6 digit code to'));
@@ -204,7 +212,6 @@
         var vmail = el('b');
         vsub.appendChild(vmail);
         vhead.appendChild(vsub);
-        vhead.appendChild(el('p', 'sp-auth-vnote', 'it expires shortly, so it is worth doing now.'));
         verify.appendChild(vhead);
 
         var codeWrap = el('div', 'sp-auth-code');
@@ -240,7 +247,6 @@
         var backBtn = el('button', 'sp-auth-linkbtn', 'use a different email');
         backBtn.type = 'button';
         vfoot.appendChild(resendBtn);
-        vfoot.appendChild(el('span', null, '·'));
         vfoot.appendChild(backBtn);
         verify.appendChild(vfoot);
 

@@ -17,7 +17,6 @@
             // answer while somebody is in the middle of it
             'check your email': 'provjerite svoj mail',
             'we sent a 6 digit code to': 'poslali smo šesteroznamenkasti kod na',
-            'it expires shortly, so it is worth doing now.': 'uskoro istječe, pa je najbolje odmah ga unijeti.',
             'verification code': 'kod za potvrdu',
             'digit': 'znamenka',
             'verify and create account': 'potvrdi i izradi račun',
@@ -760,7 +759,6 @@
             // answer while somebody is in the middle of it
             'check your email': 'sehen sie in ihrer e-mail nach',
             'we sent a 6 digit code to': 'wir haben einen 6-stelligen code geschickt an',
-            'it expires shortly, so it is worth doing now.': 'er läuft bald ab, geben sie ihn also am besten gleich ein.',
             'verification code': 'bestätigungscode',
             'digit': 'ziffer',
             'verify and create account': 'bestätigen und konto anlegen',

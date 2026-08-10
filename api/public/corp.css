@@ -3491,9 +3491,6 @@ html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }
 /* the search row above the list must stay put while the options move under it */
 .lp-demo-select-menu:has(.lp-demo-select-search) { overflow-y: hidden; }
 
-/* the line under the address: quieter than the rest, because it is a caveat */
-.sp-auth-vnote { margin: 0.5rem 0 0 !important; font-size: 0.8rem !important; color: rgba(14, 35, 88, 0.42) !important; }
-
 /* the tab row is display:flex, which beats the browser's own rule for [hidden],
    so it stayed on screen through the code step: two tabs offering to leave a
    sign-up that has already sent a code */
@@ -3515,4 +3512,143 @@ html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }
        them ended up on a line of its own, which reads as a bullet point */
     .sp-auth-vfoot { flex-direction: column; gap: 0.55rem; }
     .sp-auth-vfoot > span { display: none; }
+}
+
+/* ============ the forms, second pass on the light card ============
+   the placeholder was 0.30 of the navy, which on a white card reads as almost
+   nothing: the two dropdowns looked empty rather than waiting. it is the same
+   value on the inputs and the selects, so it moves in one place and the two
+   cannot drift apart. still clearly lighter than typed text, which stays at
+   full strength. */
+.lp-demo-field input::placeholder,
+.lp-demo-field textarea::placeholder,
+.lp-demo-select-val.is-placeholder,
+.lp-demo-select-search::placeholder { color: rgba(14, 35, 88, 0.5); }
+.lp-demo-field select { color: rgba(14, 35, 88, 0.5); }
+
+/* the dropdown's scrollbar kept the dark theme's colours: a black stripe down
+   the side of a white menu. it stays, it just belongs to the card now. */
+.lp-demo-select-list::-webkit-scrollbar-track,
+html.theme-light .lp-demo-select-list::-webkit-scrollbar-track,
+.lp-demo-select-menu::-webkit-scrollbar-track,
+html.theme-light .lp-demo-select-menu::-webkit-scrollbar-track { background: #f1f4f9; border-radius: 10px; }
+.lp-demo-select-list::-webkit-scrollbar-thumb,
+html.theme-light .lp-demo-select-list::-webkit-scrollbar-thumb,
+.lp-demo-select-menu::-webkit-scrollbar-thumb,
+html.theme-light .lp-demo-select-menu::-webkit-scrollbar-thumb {
+    background: rgba(14, 35, 88, 0.2);
+    border: 1px solid rgba(14, 35, 88, 0.06);
+    box-shadow: none;
+}
+.lp-demo-select-list::-webkit-scrollbar-thumb:hover,
+html.theme-light .lp-demo-select-list::-webkit-scrollbar-thumb:hover,
+.lp-demo-select-menu::-webkit-scrollbar-thumb:hover,
+html.theme-light .lp-demo-select-menu::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 145, 200, 0.55);
+    box-shadow: none;
+}
+.lp-demo-select-list,
+html.theme-light .lp-demo-select-list,
+.lp-demo-select-menu,
+html.theme-light .lp-demo-select-menu { scrollbar-color: rgba(14, 35, 88, 0.2) #f1f4f9; }
+
+/* ============ the code step, second pass ============
+   the first version was six plain fields and two underlined words. it worked and
+   it looked like scaffolding. this is the same layout done properly: the mark and
+   the heading say where you are, the six boxes are the one thing to look at, and
+   the two ways out are quiet buttons in the site's own shape rather than links
+   pretending to be one. */
+.sp-auth-vmark {
+    width: 46px; height: 46px; margin: 0 auto 1.1rem;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 14px;
+    color: #0091c8;
+    background: linear-gradient(160deg, rgba(0, 145, 200, 0.12), rgba(160, 32, 240, 0.08));
+    border: 1px solid rgba(0, 145, 200, 0.18);
+}
+.sp-auth-vmark svg { width: 22px; height: 22px; }
+
+.sp-auth-vhead h3 { font-size: 1.3rem; }
+
+/* the boxes: bigger, softer, and lit from the brand when they are focused or
+   filled. the whole row is one control, so the gap is tight enough to read as
+   a group and wide enough that a thumb lands on one box and not two. */
+.sp-auth-code { display: flex; justify-content: center; gap: 0.55rem; padding: 0.15rem 0; }
+.sp-auth-code input {
+    width: 3.25rem; height: 3.75rem; padding: 0;
+    box-sizing: border-box;
+    text-align: center;
+    font-family: inherit; font-size: 1.55rem; font-weight: 700; line-height: 1;
+    color: #0e2358;
+    background: #fbfcfd;
+    border: 1.5px solid rgba(14, 35, 88, 0.12);
+    border-radius: 14px;
+    caret-color: #0091c8;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+    -moz-appearance: textfield;
+}
+.sp-auth-code input::-webkit-outer-spin-button,
+.sp-auth-code input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+/* the box you are in lifts a little, so the row shows where the caret is even
+   at a glance across the screen */
+.sp-auth-code input:focus {
+    outline: none;
+    border-color: #0091c8;
+    background: #ffffff;
+    box-shadow: 0 0 0 4px rgba(0, 145, 200, 0.13), 0 6px 16px -8px rgba(0, 145, 200, 0.55);
+    transform: translateY(-1px);
+}
+.sp-auth-code input.is-filled {
+    border-color: rgba(0, 145, 200, 0.35);
+    background: linear-gradient(180deg, rgba(0, 145, 200, 0.07), rgba(0, 145, 200, 0.03));
+}
+.sp-auth-code.is-wrong input {
+    border-color: rgba(192, 48, 74, 0.5);
+    background: rgba(192, 48, 74, 0.045);
+    box-shadow: none;
+    transform: none;
+}
+
+/* the two ways out of this step: quiet, but buttons, with the same corners and
+   the same hover the rest of the card uses */
+.sp-auth-vfoot {
+    display: flex; align-items: stretch; justify-content: center;
+    gap: 0.5rem; flex-wrap: wrap;
+}
+.sp-auth-linkbtn {
+    /* the two share the row and shrink to do it: at 26rem the german pair only
+       fits if neither insists on its full width */
+    flex: 1 1 0; min-width: 0;
+    white-space: nowrap;
+    padding: 0.6rem 0.55rem;
+    border: 1px solid rgba(14, 35, 88, 0.12);
+    border-radius: 11px;
+    background: #fbfcfd;
+    font: inherit; font-size: 0.8rem; font-weight: 600;
+    color: rgba(14, 35, 88, 0.62);
+    text-transform: lowercase;
+    cursor: pointer;
+    transition: border-color 0.18s ease, color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+}
+.sp-auth-linkbtn:hover {
+    border-color: rgba(0, 145, 200, 0.45);
+    color: #0e2358;
+    background: #ffffff;
+    box-shadow: 0 6px 16px -12px rgba(14, 35, 88, 0.7);
+}
+.sp-auth-linkbtn:focus-visible { outline: 2px solid rgba(0, 145, 200, 0.5); outline-offset: 2px; }
+/* waiting out the minute is a state, not a broken button: it stays legible and
+   simply stops responding */
+.sp-auth-linkbtn[disabled] {
+    color: rgba(14, 35, 88, 0.34);
+    border-color: rgba(14, 35, 88, 0.08);
+    background: rgba(14, 35, 88, 0.02);
+    box-shadow: none;
+    cursor: default;
+}
+
+@media (max-width: 560px) {
+    .sp-auth-code { gap: 0.4rem; }
+    .sp-auth-code input { width: auto; flex: 1 1 0; min-width: 0; height: 3.4rem; font-size: 1.35rem; }
+    .sp-auth-vfoot { flex-direction: column; gap: 0.5rem; }
 }
