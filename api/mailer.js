@@ -128,8 +128,8 @@ function codeMeta(items) {
 // rather than a styled anchor, which outlook renders as plain blue text.
 function button(cta) {
     if (!cta) return '';
-    return '<tr><td style="padding:6px 36px 0;">' +
-        '<table role="presentation" cellpadding="0" cellspacing="0" border="0">' +
+    return '<tr><td align="center" style="padding:6px 36px 0;">' +
+        '<table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">' +
         '<tr><td align="center" bgcolor="' + C.text + '" style="border-radius:11px;">' +
         '<a href="' + esc(cta.href) + '" style="display:inline-block;padding:14px 30px;font-family:' + FONT + ';' +
         'font-size:14px;font-weight:700;line-height:18px;color:#ffffff;text-decoration:none;border-radius:11px;">' +
@@ -420,6 +420,7 @@ const SIGNUP_COPY = {
         meta: (m) => ['expires in ' + m + ' minutes', 'single use'],
         footnote: 'if you did not try to create an account, ignore this email. nothing has been created and nobody can use this code without it.',
         signoff: 'sent by sentinelpay.org. we will never ask you for this code, by email, chat or phone.',
+        existsEyebrow: 'your account',
         existsSubject: 'about your sentinelpay account',
         existsTitle: 'you already have an account',
         existsCta: 'sign in',
@@ -434,6 +435,7 @@ const SIGNUP_COPY = {
         meta: (m) => ['istječe za ' + m + ' minuta', 'jednokratan'],
         footnote: 'ako niste vi pokušali izraditi račun, samo zanemarite ovaj mail. ništa nije izrađeno i bez njega nitko ne može iskoristiti ovaj kod.',
         signoff: 'šalje sentinelpay.org. nikada vas nećemo tražiti ovaj kod, ni mailom, ni chatom, ni telefonom.',
+        existsEyebrow: 'vaš račun',
         existsSubject: 'o vašem sentinelpay računu',
         existsTitle: 'račun s ovom adresom već postoji',
         existsCta: 'prijavite se',
@@ -448,6 +450,7 @@ const SIGNUP_COPY = {
         meta: (m) => ['läuft in ' + m + ' minuten ab', 'einmalig'],
         footnote: 'wenn sie kein konto anlegen wollten, ignorieren sie diese e-mail. es wurde nichts angelegt, und ohne sie kann niemand diesen code verwenden.',
         signoff: 'gesendet von sentinelpay.org. wir fragen sie nie nach diesem code, weder per e-mail noch im chat oder am telefon.',
+        existsEyebrow: 'ihr konto',
         existsSubject: 'zu ihrem sentinelpay konto',
         existsTitle: 'sie haben bereits ein konto',
         existsCta: 'anmelden',
@@ -479,7 +482,7 @@ function signupExistsMessage({ to, lang }) {
         to: to,
         lang: lang,
         subject: copy.existsSubject,
-        eyebrow: copy.eyebrow,
+        eyebrow: copy.existsEyebrow,
         title: copy.existsTitle,
         intro: copy.existsIntro,
         cta: { href: SITE + '/auth', label: copy.existsCta },
