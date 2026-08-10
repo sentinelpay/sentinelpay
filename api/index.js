@@ -748,7 +748,9 @@ app.get('/v1/mail-preview', (req, res) => {
 
     res.set('Cache-Control', 'no-store, private');
     res.set('Content-Security-Policy',
-        "default-src 'none'; style-src 'unsafe-inline'; style-src-attr 'unsafe-inline'; img-src data:; font-src 'none'");
+        "default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; " +
+        "style-src-attr 'unsafe-inline'; img-src 'self' https://sentinelpay.org data:; " +
+        "font-src https://fonts.gstatic.com");
 
     if (!name) {
         const rows = mailer.previewNames().map((t) =>
@@ -775,16 +777,16 @@ app.get('/v1/mail-preview', (req, res) => {
     // design, they are the first thing anybody actually reads, and there is
     // nowhere else in a rendered email to see them.
     const bar =
-        '<div style="max-width:560px;margin:0 auto 18px;padding:14px 16px;border-radius:12px;' +
-        'background:#11151f;border:1px solid rgba(255,255,255,0.09);' +
+        '<div style="max-width:560px;margin:0 auto 20px;padding:14px 16px;border-radius:12px;' +
+        'background:#ffffff;border:1px solid #e6e9f0;' +
         'font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Inter,sans-serif;">' +
-        '<div style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#8b93a1;">subject</div>' +
-        '<div style="margin-top:3px;font-size:15px;font-weight:700;color:#f2f5f8;">' + escapeHtml(out.subject) + '</div>' +
-        '<div style="margin-top:10px;font-size:12px;color:#8b93a1;">from ' + escapeHtml(mailer.MAIL_FROM) +
+        '<div style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;font-weight:700;color:#94a0bd;">subject</div>' +
+        '<div style="margin-top:3px;font-size:15px;font-weight:700;color:#0e2358;">' + escapeHtml(out.subject) + '</div>' +
+        '<div style="margin-top:10px;font-size:12px;color:#6b7899;">from ' + escapeHtml(mailer.MAIL_FROM) +
         ' &nbsp;·&nbsp; ' + escapeHtml(name) + ' &nbsp;·&nbsp; ' + escapeHtml(lang) + '</div></div>';
     const html = out.html
         .replace('</head>', '<title>' + escapeHtml(out.subject) + '</title></head>')
-        .replace(/(<body[^>]*>)/, '$1<div style="padding:28px 16px 0;background:#050505;">' + bar + '</div>');
+        .replace(/(<body[^>]*>)/, '$1<div style="padding:32px 16px 0;background:#f4f6fa;">' + bar + '</div>');
     return res.type('html').send(html);
 });
 

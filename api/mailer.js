@@ -21,115 +21,189 @@ function esc(s) {
 
 // Email clients strip <style> blocks, ignore custom properties and mostly ignore
 // flexbox, so the site's look is rebuilt here with tables and inline styles only.
-// The palette is the site's: near-black panel, cyan-to-purple accent, lowercase.
+//
+// The palette is the site's, which is light: white card on a pale ground, navy
+// text, one cyan accent, and the cyan to purple hairline the cards carry. it was
+// dark until now, from back when the site was, and a dark email from a white
+// site reads as coming from somewhere else.
+//
+// Every colour is a solid hex rather than rgba. Outlook drops rgba entirely and
+// renders the element with no colour at all, which is how a border becomes a
+// black line and muted text becomes unreadable.
 const C = {
-    page: '#050505',
-    card: '#0b0e13',
-    line: 'rgba(255,255,255,0.09)',
-    text: '#f2f5f8',
-    muted: '#8b93a1',
-    cyan: '#00f0ff',
-    purple: '#a020f0',
+    page: '#f4f6fa',
+    card: '#ffffff',
+    line: '#e6e9f0',
+    lineSoft: '#f0f2f7',
+    text: '#0e2358',
+    muted: '#6b7899',
+    faint: '#94a0bd',
+    cyan: '#0091c8',
+    purple: '#7b6cff',
+    tint: '#f2f9fc',
+    tintLine: '#cfe9f4',
+};
+
+const FONT = "Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+const LOGO = SITE + '/logo.png';
+
+// The footer is the same in every message, so its copy lives here rather than in
+// each template. it follows the language of the message: an english row of links
+// under a croatian letter is the seam people notice first.
+const FOOTER = {
+    en: { questions: 'questions', privacy: 'privacy', terms: 'terms', blog: 'blog' },
+    hr: { questions: 'pitanja', privacy: 'privatnost', terms: 'uvjeti', blog: 'blog' },
+    de: { questions: 'fragen', privacy: 'datenschutz', terms: 'bedingungen', blog: 'blog' },
 };
 
 function row(label, value) {
     if (!value) return '';
     return '<tr>' +
-        '<td width="1%" style="padding:11px 18px 11px 0;vertical-align:top;font-size:12px;line-height:18px;color:' + C.muted + ';white-space:nowrap;border-bottom:1px solid ' + C.line + ';">' + esc(label) + '</td>' +
-        '<td style="padding:11px 0;vertical-align:top;font-size:14px;line-height:20px;color:' + C.text + ';border-bottom:1px solid ' + C.line + ';">' + esc(value) + '</td>' +
+        '<td width="34%" style="padding:12px 18px 12px 0;vertical-align:top;font-size:13px;line-height:20px;color:' + C.muted + ';border-bottom:1px solid ' + C.lineSoft + ';">' + esc(label) + '</td>' +
+        '<td style="padding:12px 0;vertical-align:top;font-size:14px;line-height:21px;color:' + C.text + ';font-weight:500;border-bottom:1px solid ' + C.lineSoft + ';">' + esc(value) + '</td>' +
         '</tr>';
 }
 
-// Builds the full document. `rows` is already-escaped markup from row().
 // An amber band above everything else, the same colour the site's incident
 // banner uses. It exists so a submission that needs a person to look at it
 // cannot be skimmed past: the reasons are spelled out in words, not codes.
 function reviewBand(notes) {
     if (!notes || !notes.length) return '';
-    return '<tr><td style="padding:18px 28px 0;">' +
+    return '<tr><td style="padding:0 36px 24px;">' +
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" ' +
-        'style="background:rgba(255,176,60,0.10);border:1px solid rgba(255,176,60,0.35);border-radius:10px;">' +
-        '<tr><td style="padding:12px 14px;">' +
-        '<div style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#ffb03c;">worth a look</div>' +
+        'style="background:#fff8ee;border:1px solid #f6dfbc;border-radius:12px;">' +
+        '<tr><td style="padding:14px 16px;">' +
+        '<div style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;font-weight:700;color:#b26a00;">worth a look</div>' +
         notes.map((n) =>
-            '<div style="margin-top:6px;font-size:13px;line-height:19px;color:#ffe0bd;">' + esc(n) + '</div>'
+            '<div style="margin-top:7px;font-size:13px;line-height:20px;color:#7a5417;">' + esc(n) + '</div>'
         ).join('') +
         '</td></tr></table></td></tr>';
 }
 
-// The six digit code, big enough to read off a phone and spaced so it is not
-// mistaken for a number. Rendered as text rather than an image: an image is
-// blocked by default in most inboxes, and a code nobody can see is no code.
+// The six digit code, big enough to read off a phone at arm's length and spaced
+// so it is not mistaken for a number. Rendered as text rather than an image: an
+// image is blocked by default in most inboxes, and a code nobody can see is no
+// code at all.
 function codeBlock(code) {
     if (!code) return '';
-    return '<tr><td style="padding:24px 28px 0;">' +
+    return '<tr><td style="padding:4px 36px 26px;">' +
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" ' +
-        'style="background:rgba(0,240,255,0.06);border:1px solid rgba(0,240,255,0.3);border-radius:12px;">' +
-        '<tr><td align="center" style="padding:20px 14px;">' +
-        '<div style="font-size:34px;line-height:42px;font-weight:800;letter-spacing:0.34em;' +
-        'text-indent:0.34em;color:#f2f5f8;font-family:Menlo,Consolas,monospace;">' + esc(code) + '</div>' +
+        'style="background:' + C.tint + ';border:1px solid ' + C.tintLine + ';border-radius:14px;">' +
+        '<tr><td align="center" style="padding:22px 14px;">' +
+        '<div style="font-size:36px;line-height:44px;font-weight:800;letter-spacing:0.3em;' +
+        'text-indent:0.3em;color:' + C.text + ';font-family:Menlo,Consolas,monospace;">' + esc(code) + '</div>' +
         '</td></tr></table></td></tr>';
 }
 
-function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff, review, code }) {
-    const font = "-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Roboto,Helvetica,Arial,sans-serif";
-    return '<!doctype html><html><head><meta charset="utf-8">' +
+// A button that survives outlook: a table with a background colour and padding,
+// rather than a styled anchor, which outlook renders as plain blue text.
+function button(cta) {
+    if (!cta) return '';
+    return '<tr><td style="padding:6px 36px 0;">' +
+        '<table role="presentation" cellpadding="0" cellspacing="0" border="0">' +
+        '<tr><td align="center" bgcolor="' + C.text + '" style="border-radius:11px;">' +
+        '<a href="' + esc(cta.href) + '" style="display:inline-block;padding:14px 30px;font-family:' + FONT + ';' +
+        'font-size:14px;font-weight:700;line-height:18px;color:#ffffff;text-decoration:none;border-radius:11px;">' +
+        esc(cta.label) + '</a>' +
+        '</td></tr></table></td></tr>';
+}
+
+function divider(pad) {
+    return '<tr><td style="padding:' + (pad || '28px 36px') + ';">' +
+        '<div style="height:1px;line-height:1px;font-size:0;background:' + C.line + ';">&nbsp;</div></td></tr>';
+}
+
+function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff, review, code, lang }) {
+    const f = FOOTER[lang] || FOOTER.en;
+    return '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
         '<meta name="viewport" content="width=device-width,initial-scale=1">' +
-        '<meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark">' +
+        '<meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light">' +
+        // apple mail and a few others honour this; everyone else falls through the
+        // stack to the system font, which is what the site uses anyway
+        '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">' +
         '</head>' +
         '<body style="margin:0;padding:0;background:' + C.page + ';">' +
-        // preheader: what the inbox list shows, kept out of the visible body
+
+        // preheader: what the inbox list shows next to the subject, kept out of
+        // the visible body
         '<div style="display:none;max-height:0;overflow:hidden;opacity:0;">' + esc(intro) + '</div>' +
-        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:' + C.page + ';padding:32px 16px;">' +
+
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:' + C.page + ';padding:40px 16px;">' +
         '<tr><td align="center">' +
-        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background:' + C.card + ';border:1px solid ' + C.line + ';border-radius:16px;overflow:hidden;font-family:' + font + ';">' +
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" ' +
+        'style="max-width:560px;background:' + C.card + ';border:1px solid ' + C.line + ';border-radius:18px;overflow:hidden;font-family:' + FONT + ';">' +
 
-        // the gradient hairline the site uses on top of its cards
-        '<tr><td style="height:3px;line-height:3px;font-size:0;background:' + C.cyan + ';background-image:linear-gradient(90deg,' + C.cyan + ' 0%,' + C.purple + ' 100%);">&nbsp;</td></tr>' +
+        // the gradient hairline every card on the site carries. outlook drops the
+        // gradient and keeps the background colour, which is the cyan end of it,
+        // so it degrades to a plain accent line rather than to nothing.
+        '<tr><td style="height:3px;line-height:3px;font-size:0;background:' + C.cyan + ';' +
+        'background-image:linear-gradient(90deg,#00d5ff 0%,' + C.purple + ' 100%);">&nbsp;</td></tr>' +
 
-        '<tr><td style="padding:28px 28px 0;">' +
-        '<a href="' + SITE + '" style="text-decoration:none;color:' + C.text + ';font-size:16px;font-weight:700;letter-spacing:-0.01em;">sentinelpay</a>' +
+        // the mark on its own. no wordmark beside it: the logo is the signature,
+        // and the name is in the sender line anyway.
+        '<tr><td style="padding:30px 36px 0;">' +
+        '<a href="' + SITE + '" style="text-decoration:none;">' +
+        '<img src="' + LOGO + '" width="44" height="44" alt="sentinelpay" ' +
+        'style="display:block;width:44px;height:44px;border:0;outline:none;text-decoration:none;">' +
+        '</a></td></tr>' +
+
+        divider('24px 36px 26px') +
+
+        '<tr><td style="padding:0 36px;">' +
+        (eyebrow ? '<div style="font-size:11px;letter-spacing:0.11em;text-transform:uppercase;font-weight:700;color:' + C.cyan + ';">' + esc(eyebrow) + '</div>' : '') +
+        '<div style="margin-top:10px;font-size:26px;line-height:33px;font-weight:800;letter-spacing:-0.02em;color:' + C.text + ';">' + esc(title) + '</div>' +
+        '<div style="margin-top:12px;font-size:15px;line-height:24px;color:' + C.muted + ';">' + esc(intro) + '</div>' +
         '</td></tr>' +
 
-        '<tr><td style="padding:22px 28px 0;">' +
-        '<div style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:' + C.cyan + ';">' + esc(eyebrow) + '</div>' +
-        '<div style="margin-top:8px;font-size:22px;line-height:30px;font-weight:700;color:' + C.text + ';">' + esc(title) + '</div>' +
-        '<div style="margin-top:8px;font-size:14px;line-height:21px;color:' + C.muted + ';">' + esc(intro) + '</div>' +
-        '</td></tr>' +
+        '<tr><td style="height:26px;line-height:26px;font-size:0;">&nbsp;</td></tr>' +
 
         reviewBand(review) +
         codeBlock(code) +
 
-        (rows ? '<tr><td style="padding:20px 28px 4px;">' +
+        (rows ? '<tr><td style="padding:0 36px 4px;">' +
             '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">' + rows + '</table>' +
-            '</td></tr>' : '') +
+            '</td></tr><tr><td style="height:22px;line-height:22px;font-size:0;">&nbsp;</td></tr>' : '') +
 
-        // checklist, styled like the one on the trial page: a cyan tick per line
-        (bullets && bullets.length ? '<tr><td style="padding:20px 28px 0;">' +
+        // checklist, the same cyan tick the trial page uses
+        (bullets && bullets.length ? '<tr><td style="padding:0 36px;">' +
             '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">' +
             bullets.map(function (b) {
                 return '<tr>' +
-                    '<td width="1%" style="padding:5px 10px 5px 0;vertical-align:top;font-size:14px;line-height:21px;color:' + C.cyan + ';">&#10003;</td>' +
-                    '<td style="padding:5px 0;font-size:14px;line-height:21px;color:' + C.text + ';">' + esc(b) + '</td>' +
+                    '<td width="1%" style="padding:6px 12px 6px 0;vertical-align:top;font-size:15px;line-height:23px;color:' + C.cyan + ';font-weight:700;">&#10003;</td>' +
+                    '<td style="padding:6px 0;font-size:15px;line-height:23px;color:' + C.text + ';">' + esc(b) + '</td>' +
                     '</tr>';
             }).join('') +
-            '</table></td></tr>' : '') +
+            '</table></td></tr><tr><td style="height:24px;line-height:24px;font-size:0;">&nbsp;</td></tr>' : '') +
 
-        // bulletproof-ish button: a padded anchor, which every client renders
-        (cta ? '<tr><td style="padding:26px 28px 0;">' +
-            '<a href="' + esc(cta.href) + '" style="display:inline-block;padding:13px 26px;border-radius:10px;background:' + C.cyan + ';color:#04252b;font-size:14px;font-weight:700;text-decoration:none;">' + esc(cta.label) + '</a>' +
-            '</td></tr>' : '') +
+        button(cta) +
+        (cta ? '<tr><td style="height:28px;line-height:28px;font-size:0;">&nbsp;</td></tr>' : '') +
 
-        (footnote ? '<tr><td style="padding:18px 28px 0;">' +
-            '<div style="padding:12px 14px;border:1px solid ' + C.line + ';border-radius:10px;font-size:12px;line-height:18px;color:' + C.muted + ';">' + esc(footnote) + '</div>' +
-            '</td></tr>' : '') +
+        (footnote ? '<tr><td style="padding:0 36px;">' +
+            '<div style="padding:14px 16px;background:#f7f9fc;border:1px solid ' + C.lineSoft + ';border-radius:12px;' +
+            'font-size:12px;line-height:19px;color:' + C.muted + ';">' + esc(footnote) + '</div>' +
+            '</td></tr><tr><td style="height:8px;line-height:8px;font-size:0;">&nbsp;</td></tr>' : '') +
 
-        '<tr><td style="padding:22px 28px 26px;">' +
-        '<div style="border-top:1px solid ' + C.line + ';padding-top:14px;font-size:11px;line-height:17px;color:' + C.muted + ';">' +
+        divider('24px 36px') +
+
+        // the footer, the way the site's is: a line of places to go, then the
+        // quiet line nobody reads until they need it
+        '<tr><td style="padding:0 36px 30px;">' +
+        '<div style="font-size:12px;line-height:20px;color:' + C.faint + ';">' +
+        '<a href="' + SITE + '/faq" style="color:' + C.muted + ';text-decoration:none;">' + esc(f.questions) + '</a>' +
+        '<span style="color:' + C.faint + ';"> &nbsp;·&nbsp; </span>' +
+        '<a href="' + SITE + '/privacy-policy" style="color:' + C.muted + ';text-decoration:none;">' + esc(f.privacy) + '</a>' +
+        '<span style="color:' + C.faint + ';"> &nbsp;·&nbsp; </span>' +
+        '<a href="' + SITE + '/terms-of-service" style="color:' + C.muted + ';text-decoration:none;">' + esc(f.terms) + '</a>' +
+        '<span style="color:' + C.faint + ';"> &nbsp;·&nbsp; </span>' +
+        '<a href="https://blog.sentinelpay.org" style="color:' + C.muted + ';text-decoration:none;">' + esc(f.blog) + '</a>' +
+        '</div>' +
+        '<div style="margin-top:12px;font-size:11px;line-height:18px;color:' + C.faint + ';">' +
         esc(signoff || 'sent automatically by sentinelpay.org. reply to this email to answer the sender directly.') +
-        '</div></td></tr>' +
+        '</div>' +
+        '</td></tr>' +
 
-        '</table></td></tr></table></body></html>';
+        '</table>' +
+        '</td></tr></table></body></html>';
 }
 
 // Plain-text alternative. Without it, spam filters mark an html-only mail down and
@@ -156,11 +230,11 @@ function textVersion({ title, intro, pairs, bullets, cta, footnote, review, code
 // preview and the real thing cannot drift: whatever you look at in the browser
 // is byte for byte what lands in the inbox.
 function compose(msg) {
-    const { subject, eyebrow, title, intro, pairs, bullets, cta, footnote, signoff, review, code } = msg;
+    const { subject, eyebrow, title, intro, pairs, bullets, cta, footnote, signoff, review, code, lang } = msg;
     const rows = (pairs || []).map(([k, v]) => row(k, v)).join('');
     return {
         subject: subject,
-        html: layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff, review, code }),
+        html: layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff, review, code, lang }),
         text: textVersion({ title, intro, pairs, bullets, cta, footnote, review, code }),
     };
 }
@@ -276,6 +350,7 @@ function trialWelcomeMessage({ to, lang }) {
     const appUrl = process.env.TRIAL_APP_URL || '';
     return {
         to: to,
+        lang: lang,
         subject: copy.subject,
         eyebrow: copy.eyebrow,
         title: copy.title,
@@ -342,6 +417,7 @@ function signupCodeMessage({ to, code, lang, minutes }) {
     const copy = SIGNUP_COPY[lang] || SIGNUP_COPY.en;
     return {
         to: to,
+        lang: lang,
         subject: copy.subject,
         eyebrow: copy.eyebrow,
         title: copy.title,
@@ -358,6 +434,7 @@ function signupExistsMessage({ to, lang }) {
     const copy = SIGNUP_COPY[lang] || SIGNUP_COPY.en;
     return {
         to: to,
+        lang: lang,
         subject: copy.existsSubject,
         eyebrow: copy.eyebrow,
         title: copy.existsTitle,
