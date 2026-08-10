@@ -13,6 +13,7 @@
        and marketing lines are rewritten for the language rather than word-for-word. */
     var T = {
         hr: {
+            "sign in to check a wallet and pick up where you left off.": "prijavite se da provjerite novčanik i nastavite gdje ste stali.",
             "create your account": "otvorite svoj račun",
             "one account for your whole team, with every wallet you check kept in one place.": "jedan račun za cijeli vaš tim, sa svim novčanicima koje provjerite na jednom mjestu.",
             "already have an account?": "već imate račun?",
@@ -722,6 +723,7 @@
             "sentinelpay requires javascript to initialize secure sessions.": "sentinelpayu treba javascript za pokretanje sigurne sesije."
         },
         de: {
+            "sign in to check a wallet and pick up where you left off.": "melden sie sich an, um eine wallet zu prüfen und dort weiterzumachen, wo sie aufgehört haben.",
             "create your account": "legen sie ihr konto an",
             "one account for your whole team, with every wallet you check kept in one place.": "ein konto für ihr ganzes team, mit jeder geprüften wallet an einem ort.",
             "already have an account?": "sie haben schon ein konto?",
