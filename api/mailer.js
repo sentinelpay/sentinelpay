@@ -46,6 +46,9 @@ const C = {
 
 const FONT = "Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
 const LOGO = SITE + '/logo.png';
+// the site's checklist marker, rendered once to a png at three times the size it
+// is used at, so it stays sharp on a retina screen
+const CHECK = SITE + '/mail-check.png';
 
 // The footer is the same in every message, so its copy lives here rather than in
 // each template. it follows the language of the message: an english row of links
@@ -124,17 +127,22 @@ function codeMeta(items) {
         '</div></td></tr>';
 }
 
-// One line of a checklist. The site paints the marker by masking the brand
-// gradient into the shape of a stroked check, so what you see is a thin tick in
-// cyan going to purple, not a filled shape. neither a mask nor an svg survives
-// an inbox, and a png marker disappears the moment a client blocks images, so
-// this is the check character itself: same shape, one colour instead of two,
-// at the weight and the size the site draws it, sitting on the same baseline as
-// the first line of the text beside it.
+// One line of a checklist. The site paints its marker by masking the brand
+// gradient into the shape of a stroked check, and neither a mask nor an svg
+// survives an inbox, so the same thing is baked into a small png. it is the
+// site's own path and its own gradient, at three times the size it is drawn.
+//
+// The alt text is the check character on purpose. a client that blocks images
+// blocks this one too, and then the marker is a tick rather than an empty box.
+// so the good case is the site's exact marker and the bad case is what the
+// email had before, which is the right way round.
 function tickRow(b) {
     return '<tr>' +
-        '<td width="16" style="padding:7px 14px 7px 0;vertical-align:top;font-family:' + FONT + ';' +
-        'font-size:16px;line-height:23px;font-weight:400;color:' + C.cyan + ';">&#10003;</td>' +
+        '<td width="16" style="padding:9px 14px 0 0;vertical-align:top;font-family:' + FONT + ';' +
+        'font-size:15px;line-height:16px;font-weight:400;color:' + C.cyan + ';">' +
+        '<img src="' + CHECK + '" width="16" height="16" alt="&#10003;" ' +
+        'style="display:block;width:16px;height:16px;border:0;outline:none;">' +
+        '</td>' +
         '<td style="padding:7px 0;font-size:15px;line-height:23px;color:' + C.text + ';">' + esc(b) + '</td>' +
         '</tr>';
 }
