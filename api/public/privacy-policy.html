@@ -295,8 +295,8 @@
                 </div>
             </div>
             <div id="auth-nav-container" style="display: flex; gap: 0.5rem; align-items: center;">
-                <a href="https://sentinelpay.org/#demo" class="auth-nav-btn lp-btn-ghost lp-desktop-auth">log in</a>
-                <a href="https://sentinelpay.org/start-free-trial" class="auth-nav-btn lp-btn-solid lp-desktop-auth">get started</a>
+                <a href="https://sentinelpay.org/auth" class="auth-nav-btn lp-btn-ghost lp-desktop-auth">log in</a>
+                <a href="https://sentinelpay.org/auth#create" class="auth-nav-btn lp-btn-solid lp-desktop-auth">get started</a>
                 <button class="lp-hamburger" id="lp-hamburger" aria-label="menu">
                     <span class="lp-hb-line"></span><span class="lp-hb-line"></span><span class="lp-hb-line"></span>
                 </button>
@@ -627,6 +627,6 @@
     </script>
     <script>window.addEventListener('load',function(){window.scrollTo(0,0);var l=document.getElementById('sp-loader');if(!l)return;var finish=function(){l.classList.add('spl-done');setTimeout(function(){l.remove();},620);};/* the load event does not wait for lazy images, and nearly every image on the site is lazy, so the loader used to clear while the first screen was still filling in. wait for the ones that will actually be visible: an image further down has not started loading yet and never would, so waiting for all of them would hold the loader open for ever. */var pending=[],im,r,i;for(i=0;i<document.images.length;i++){im=document.images[i];r=im.getBoundingClientRect();if(r.bottom<0||r.top>window.innerHeight*1.2)continue;if(im.complete&&im.naturalWidth>0)continue;pending.push(im);}if(!pending.length){finish();return;}var left=pending.length,fired=false;var one=function(){if(--left<=0&&!fired){fired=true;finish();}};pending.forEach(function(x){x.addEventListener('load',one,{once:true});x.addEventListener('error',one,{once:true});});/* a slow or broken image must never trap anybody behind the loader */setTimeout(function(){if(!fired){fired=true;finish();}},2500);});</script>
     <script>/* in-page link scrolls instead of jumping, and leaves the address bar alone */(function(){document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[data-scroll][href^="#"]');if(!a)return;var t=document.getElementById(a.getAttribute('href').slice(1));if(!t)return;e.preventDefault();t.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(function(){try{t.focus({preventScroll:true})}catch(err){}},600);});})();</script>
-    <script src="/i18n.js?v=54" defer></script>
+    <script src="/i18n.js?v=56" defer></script>
 </body>
 </html>

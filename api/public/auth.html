@@ -6,11 +6,12 @@
     <!-- ios turns things like "1-10" and "51-200" into phone links, which made
          the company-size options open the call sheet instead of selecting -->
     <meta name="format-detection" content="telephone=no">
-    <title>sentinelpay | terms of service</title>
-    <script>/* tab title before first paint; for articles this is the h1 translation */(function(){var T={"hr":"sentinelpay | uvjeti korištenja","de":"sentinelpay | nutzungsbedingungen"},m=document.cookie.match(/(?:^|; )sp-lang=([^;]*)/),l=m?decodeURIComponent(m[1]):null;if(!l){try{l=localStorage.getItem("sp-lang")}catch(e){}}if(l!=="hr"&&l!=="de"&&l!=="en")l=document.documentElement.getAttribute("data-geo-lang");if(l!=="hr"&&l!=="de")return;document.documentElement.lang=l;if(!T)return;window.__SP_TITLE_SRC=document.title.replace(/\s+/g," ").trim();document.title=T[l];})();</script>
-    <meta name="description" content="the terms that govern your use of sentinelpay's website, product and services.">
+    <title>sentinelpay | sign in</title>
+    <script>/* tab title before first paint; for articles this is the h1 translation */(function(){var T={"hr":"sentinelpay | prijava","de":"sentinelpay | anmelden"},m=document.cookie.match(/(?:^|; )sp-lang=([^;]*)/),l=m?decodeURIComponent(m[1]):null;if(!l){try{l=localStorage.getItem("sp-lang")}catch(e){}}if(l!=="hr"&&l!=="de"&&l!=="en")l=document.documentElement.getAttribute("data-geo-lang");if(l!=="hr"&&l!=="de")return;document.documentElement.lang=l;if(!T)return;window.__SP_TITLE_SRC=document.title.replace(/\s+/g," ").trim();document.title=T[l];})();</script>
+    <meta name="description" content="connect a key and sentinelpay screens what has already touched your wallets. no call to book and nobody to wait for.">
     <script>document.documentElement.classList.add('theme-light');</script>
     <script>if(history.scrollRestoration)history.scrollRestoration='manual';window.scrollTo(0,0);</script>
+    <script>window.__TURNSTILE_SITEKEY='0x4AAAAAAD6yvLDIagSfULi7';</script>
     <script>window.intercomSettings={api_base:'https://api-iam.intercom.io',app_id:'obn3omwl',hide_default_launcher:true,language_override:'en'};</script>
     <script>(function(){var w=window;var ic=w.Intercom;if(typeof ic==="function"){ic('reattach_activator');ic('update',w.intercomSettings);}else{var d=document;var i=function(){i.c(arguments);};i.q=[];i.c=function(a){i.q.push(a);};w.Intercom=i;var l=function(){var s=d.createElement('script');s.type='text/javascript';s.async=true;s.src='https://widget.intercom.io/widget/obn3omwl';var x=d.getElementsByTagName('script')[0];x.parentNode.insertBefore(s,x);};if(document.readyState==='complete'){l();}else if(w.attachEvent){w.attachEvent('onload',l);}else{w.addEventListener('load',l,false);}}})()</script>
     <link rel="icon" type="image/svg+xml" href="/logo.svg">
@@ -117,8 +118,53 @@
         .pp-contact p { margin: 0.4rem 0; font-size: 0.98rem; }
 
         @media (max-width: 640px) {
+            .bad-net-mark { height: 36px; margin-right: 2.2rem; }
+            .bad-net-mark img { transform: scale(0.78); }
             .pp-title { font-size: 2rem; }
             .lp-section.pp { padding-top: 6.5rem; }
+        }
+
+        /* the only consent line on the site carrying a link, so it needs the dark-card treatment */
+        .lp-demo-consent a { color: #7bdcff; text-decoration: none; border-bottom: 1px solid rgba(123,220,255,0.35); }
+        .lp-demo-consent a:hover { border-bottom-color: #7bdcff; }
+
+        /* ============ auth ============
+           the same two columns as book a demo, reusing that page's left-hand
+           classes so the copy is coloured for a light page. the card is short, so
+           this one is laid out normally rather than pinned to a viewport: there is
+           nothing below the fold to protect. */
+        .lp-section.sp-auth-section { padding: 9rem 0 5rem; }
+        .sp-auth-grid { align-items: center; }
+        .sp-auth-card { padding: 2.2rem 2.4rem 2rem !important; }
+        .sp-auth-card-inner { position: relative; z-index: 1; }
+
+        /* segmented control, not two links: switching is a state of this card */
+        .sp-auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 0.25rem; padding: 0.25rem; margin-bottom: 1.6rem; border-radius: 12px; background: rgba(255,255,255,0.045); border: 1px solid rgba(255,255,255,0.08); }
+        .sp-auth-tab {
+            padding: 0.62rem 0.5rem; border: 0; border-radius: 9px; background: none;
+            font-family: inherit; font-size: 0.88rem; font-weight: 600; color: rgba(255,255,255,0.55);
+            white-space: nowrap; cursor: pointer; transition: background 0.18s ease, color 0.18s ease;
+        }
+        .sp-auth-tab:hover { color: #fff; }
+        .sp-auth-tab.is-active { color: #fff; background: linear-gradient(120deg, rgba(0,240,255,0.16), rgba(160,32,240,0.16)); box-shadow: inset 0 0 0 1px rgba(123,108,255,0.5); }
+        .sp-auth-tab:focus-visible { outline: 2px solid rgba(0,240,255,0.5); outline-offset: 2px; }
+
+        .sp-auth-form { display: grid; gap: 1.1rem; }
+        .sp-auth-form[hidden] { display: none; }
+        .sp-auth-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+        .sp-auth-remember { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: rgba(255,255,255,0.62); cursor: pointer; }
+        .sp-auth-remember input { width: 15px; height: 15px; flex: 0 0 auto; accent-color: #7b6cff; cursor: pointer; }
+        .sp-auth-link { font-size: 0.85rem; color: #7bdcff; text-decoration: none; border-bottom: 1px solid rgba(123,220,255,0.3); white-space: nowrap; }
+        .sp-auth-link:hover { border-bottom-color: #7bdcff; }
+        .sp-auth-link-btn { border: 0; border-bottom: 1px solid rgba(123,220,255,0.3); background: none; padding: 0; font-family: inherit; cursor: pointer; }
+        .sp-auth-submit { width: 100%; margin-top: 0.2rem; }
+        .sp-auth-note { margin: 0; font-size: 0.8rem; line-height: 1.55; color: rgba(255,255,255,0.4); }
+        .sp-auth-alt { margin: 1.4rem 0 0; padding-top: 1.2rem; border-top: 1px solid rgba(255,255,255,0.08); font-size: 0.88rem; color: rgba(255,255,255,0.55); text-align: center; }
+
+        @media (max-width: 900px) {
+            .lp-section.sp-auth-section { padding: 7rem 0 3.5rem; }
+            .sp-auth-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+            .sp-auth-card { padding: 1.7rem 1.5rem 1.5rem !important; }
         }
     </style>
     <noscript><style>
@@ -175,9 +221,9 @@
                                 <a href="https://sentinelpay.org/#solutions" class="lp-mega-item"><span class="lp-mega-title">wallet investigations</span><span class="lp-mega-desc">from suspicion to attribution with on-demand scans</span></a>
                                 <a href="https://sentinelpay.org/#solutions" class="lp-mega-item"><span class="lp-mega-title">threat intelligence</span><span class="lp-mega-desc">emerging typologies with flag-level context</span></a>
                                 <a href="https://sentinelpay.org/#solutions" class="lp-mega-item"><span class="lp-mega-title">real-time alerting</span><span class="lp-mega-desc">instant email alerts with score and flags</span></a>
-                                <a href="https://sentinelpay.org/#demo" class="lp-mega-item"><span class="lp-mega-title">pricing</span><span class="lp-mega-desc">talk to us. plans shaped around your volume</span></a>
+                                <a href="https://sentinelpay.org/start-free-trial" class="lp-mega-item"><span class="lp-mega-title">pricing</span><span class="lp-mega-desc">talk to us. plans shaped around your volume</span></a>
                             </div>
-                            <a href="https://sentinelpay.org/#demo" class="lp-mega-promo">
+                            <a href="https://sentinelpay.org/start-free-trial" class="lp-mega-promo">
                                 <div class="lp-mega-promo-visual"><svg viewBox="0 0 120 120" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M60 16 L26 30 V56 C26 80 50 99 60 104 C70 99 94 80 94 56 V30 Z"/><path d="M40 60 Q60 42 80 60 Q60 78 40 60 Z"/><circle cx="60" cy="60" r="6" fill="#fff" stroke="none"/></svg></div>
                                 <span class="lp-mega-promo-title">try a live wallet scan</span>
                                 <span class="lp-mega-promo-desc">score any wallet against known threats in seconds.</span>
@@ -313,7 +359,7 @@
                     <a href="https://sentinelpay.org/#solutions" class="lp-mobile-sub-link">transaction screening</a>
                     <a href="https://sentinelpay.org/#solutions" class="lp-mobile-sub-link">wallet investigations</a>
                     <a href="https://sentinelpay.org/#solutions" class="lp-mobile-sub-link">threat intelligence</a>
-                    <a href="https://sentinelpay.org/#demo" class="lp-mobile-sub-link">pricing</a>
+                    <a href="https://sentinelpay.org/start-free-trial" class="lp-mobile-sub-link">pricing</a>
                 </div>
             </div>
             <div class="lp-mm-acc">
@@ -347,97 +393,85 @@
             <div class="lp-mobile-ctas">
                 <a href="#" id="lp-mm-livechat" class="lp-mm-btn-ghost">live chat</a>
                 <div class="lp-mm-ctas-row">
-                    <a href="https://sentinelpay.org/#demo" class="lp-mm-btn-ghost">log in</a>
+                    <a href="https://sentinelpay.org/start-free-trial" class="lp-mm-btn-ghost">log in</a>
                     <a href="https://sentinelpay.org/start-free-trial" class="lp-mm-btn-solid">get started</a>
                 </div>
             </div>
         </div>
     </div>
 
-    <section class="lp-section pp">
-        <div class="pp-shell">
-            <h1 class="pp-title">terms of service</h1>
-            <p class="pp-meta">last updated: july 2026</p>
-            <p class="pp-intro">these terms are the agreement between you and sentinelpay for the use of our website, product and services. by using sentinelpay you accept them, so please actually read them. we have kept them as plain as terms can be.</p>
-        </div>
+    <section class="lp-section sp-auth-section" id="auth">
+        <div class="lp-section-inner">
+            <div class="bad-grid sp-auth-grid">
+                <div class="bad-copy">
+                    <h1 class="bad-title" id="auth-h-in">welcome back</h1>
+                    <h1 class="bad-title" id="auth-h-up" hidden>create your account</h1>
+                    <p class="bad-sub" id="auth-s-in">sign in to check a wallet, review what you already checked, and pick up where you left off.</p>
+                    <p class="bad-sub" id="auth-s-up" hidden>one account for your whole team, with every wallet you check kept in one place.</p>
+                    <ul class="bad-checklist">
+                        <li>every scan you have run, kept and searchable</li>
+                        <li>one score per wallet, with the reason spelled out</li>
+                        <li>your team on the same account, seeing the same history</li>
+                    </ul>
+                    <p class="bad-smallprint">accounts are opening with the product. if you do not have one yet, start a free trial and we will send yours to your work email.</p>
+                </div>
 
-        <div class="pp-shell pp-body">
-            <h2>who these terms are between</h2>
-            <p>these terms are between sentinelpay ("sentinelpay", "we", "us") and you, or the organisation you represent ("you"). if you accept these terms on behalf of a company or other entity, you confirm you have authority to bind it, and "you" means that entity. our full legal entity name, company registration number and registered office will be published here before we launch commercially.</p>
+                <div class="lp-demo-card bad-form-card sp-auth-card">
+                    <span class="lp-demo-dots" aria-hidden="true"></span>
+                    <span class="lp-demo-edge" aria-hidden="true"></span>
+                    <div class="sp-auth-card-inner">
+                        <div class="sp-auth-tabs" role="tablist">
+                            <button type="button" class="sp-auth-tab is-active" id="auth-tab-in" role="tab" aria-selected="true" aria-controls="auth-panel-in">log in</button>
+                            <button type="button" class="sp-auth-tab" id="auth-tab-up" role="tab" aria-selected="false" aria-controls="auth-panel-up">create account</button>
+                        </div>
 
-            <h2>who can use sentinelpay</h2>
-            <p>you must be at least 18 and using sentinelpay for genuine business purposes. by using the service you confirm that you and your business are not subject to sanctions, are not located in a sanctioned or embargoed territory, and are not otherwise barred from receiving the service under applicable law. sentinelpay is a business-to-business product and is not intended for consumers or for personal use.</p>
+                        <form class="sp-auth-form" id="auth-panel-in" role="tabpanel" aria-labelledby="auth-tab-in" novalidate>
+                            <div class="lp-demo-field lp-demo-field-full">
+                                <label for="auth-in-email">work email<i>*</i></label>
+                                <input id="auth-in-email" name="email" type="email" autocomplete="email" placeholder="you@yourcompany.com">
+                            </div>
+                            <div class="lp-demo-field lp-demo-field-full">
+                                <label for="auth-in-pass">password<i>*</i></label>
+                                <input id="auth-in-pass" name="password" type="password" autocomplete="current-password">
+                            </div>
+                            <div class="sp-auth-row">
+                                <label class="sp-auth-remember"><input type="checkbox" name="remember"><span>keep me signed in</span></label>
+                                <a class="sp-auth-link" href="/start-free-trial">forgot your password?</a>
+                            </div>
+                            <button type="submit" class="lp-demo-submit sp-auth-submit">log in</button>
+                            <p class="sp-auth-note">accounts open when the product launches. until then the trial link we email you is the way in.</p>
+                        </form>
 
-            <h2>what sentinelpay does</h2>
-            <p>sentinelpay is a crypto risk and compliance tool. you connect a public key, and we scan the wallets and transactions that touch your business and return a risk score built from signals such as sanctions lists, known darknet clusters, scam and fraud patterns, mixer exposure and freeze history.</p>
-            <div class="pp-callout">the score is information to help you decide. sentinelpay does not move, hold, freeze or block funds, and it does not act on your behalf. the decision to accept, hold or decline any transaction is always yours.</div>
+                        <form class="sp-auth-form" id="auth-panel-up" role="tabpanel" aria-labelledby="auth-tab-up" novalidate hidden>
+                            <div class="lp-demo-grid">
+                                <div class="lp-demo-field">
+                                    <label for="auth-up-first">first name<i>*</i></label>
+                                    <input id="auth-up-first" name="firstName" type="text" autocomplete="given-name">
+                                </div>
+                                <div class="lp-demo-field">
+                                    <label for="auth-up-last">last name<i>*</i></label>
+                                    <input id="auth-up-last" name="lastName" type="text" autocomplete="family-name">
+                                </div>
+                            </div>
+                            <div class="lp-demo-field lp-demo-field-full">
+                                <label for="auth-up-email">work email<i>*</i></label>
+                                <input id="auth-up-email" name="email" type="email" autocomplete="email" placeholder="you@yourcompany.com">
+                            </div>
+                            <div class="lp-demo-field lp-demo-field-full">
+                                <label for="auth-up-pass">password<i>*</i></label>
+                                <input id="auth-up-pass" name="password" type="password" autocomplete="new-password">
+                                <span class="lp-demo-count">at least 12 characters</span>
+                            </div>
+                            <label class="lp-demo-consent"><input type="checkbox" name="consent"><span>i agree to <a href="/terms-of-service">the terms of service</a> and to be contacted about this account.</span></label>
+                            <button type="submit" class="lp-demo-submit sp-auth-submit">create account</button>
+                            <p class="sp-auth-note">sign-ups run through the free trial for now, so we can check the domain before an account exists. it takes the same two minutes.</p>
+                        </form>
 
-            <h2>the product is still being built</h2>
-            <p>sentinelpay is in active development and is not yet a finished product. features, data coverage, scoring and availability may change, break or be withdrawn at any time. until we tell you otherwise in writing, the service is provided for early access and evaluation, may contain errors or gaps, and must not be relied on as your sole or complete compliance control. you are responsible for keeping appropriate independent controls in place.</p>
-
-            <h2>not legal, financial or compliance advice</h2>
-            <p>nothing sentinelpay provides is legal, financial, tax or compliance advice. a risk score is a signal, not a verdict: it does not prove that a wallet, transaction or counterparty is, or is not, involved in illicit activity, and it does not guarantee any particular regulatory outcome. you remain solely responsible for your own legal and regulatory obligations, including your kyc and aml decisions, and for how you act on our output.</p>
-
-            <h2>your account and responsibilities</h2>
-            <ul>
-                <li>keep your login credentials and any keys you connect secure, and do not share them.</li>
-                <li>give us accurate information and keep it up to date.</li>
-                <li>you are responsible for all activity that happens under your account.</li>
-                <li>tell us promptly at <a href="mailto:support@sentinelpay.org">support@sentinelpay.org</a> if you suspect any unauthorised use.</li>
-            </ul>
-
-            <h2>acceptable use</h2>
-            <p>you agree not to:</p>
-            <ul>
-                <li>use the service unlawfully, or to breach sanctions or any applicable law or regulation.</li>
-                <li>use it to facilitate crime, launder funds, or help anyone evade compliance obligations.</li>
-                <li>resell, sublicense, rent or provide the service to a third party without our written agreement.</li>
-                <li>copy, scrape, reverse-engineer, or use our output to build or train a competing product or dataset.</li>
-                <li>probe, overload, disrupt or attempt to gain unauthorised access to the service or its infrastructure.</li>
-                <li>misrepresent your identity, your business or your right to use the service.</li>
-            </ul>
-            <p>separately, and by choice, we do not onboard online gambling operators. that is our policy, and we may decline or end service to any business whose core product is gambling.</p>
-
-            <h2>fees and payment</h2>
-            <p>where the service is paid, the fees, billing cycle and any usage limits will be set out in the plan or order you agree with us. fees are payable as stated, are exclusive of taxes unless we say otherwise, and are non-refundable except where required by law. we may change pricing on reasonable notice. during early access, some or all of the service may be provided free of charge or at a discount, and we may change or end that at any time.</p>
-
-            <h2>intellectual property</h2>
-            <p>we own the sentinelpay platform, software, risk database, scoring, branding and all related intellectual property. while these terms are in force, we grant you a limited, non-exclusive, non-transferable, revocable licence to use the service for your own internal business. you keep ownership of the data you submit, and you grant us the licence we need to process it in order to provide and improve the service. if you send us feedback or suggestions, we may use them freely without obligation to you.</p>
-
-            <h2>third-party services</h2>
-            <p>the service depends on third parties, including public blockchains, data and intelligence providers, cloud hosting and our live chat provider. we do not control them and are not responsible for their availability, accuracy or actions, and your use of any third-party service may be subject to its own terms.</p>
-
-            <h2>privacy</h2>
-            <p>how we handle personal data is explained in our <a href="/privacy-policy">privacy policy</a>, which forms part of your agreement with us. please read it alongside these terms.</p>
-
-            <h2>disclaimers</h2>
-            <p>the service is provided "as is" and "as available", without warranties of any kind, whether express or implied, including any implied warranties of accuracy, completeness, merchantability, fitness for a particular purpose, or non-infringement. we do not warrant that the service will be uninterrupted, error-free, or that any risk score is correct or complete. you use the service at your own risk.</p>
-
-            <h2>limitation of liability</h2>
-            <p>to the maximum extent permitted by law, sentinelpay is not liable for any indirect, incidental, special, consequential or punitive damages, or for any loss of profits, revenue, data, goodwill or business, arising out of or related to your use of the service. to the maximum extent permitted by law, our total liability for all claims arising out of or related to these terms or the service is limited to the greater of the fees you paid to us in the twelve months before the event giving rise to the claim, or one hundred euros. nothing in these terms limits any liability that cannot be limited under applicable law.</p>
-
-            <h2>indemnity</h2>
-            <p>you agree to indemnify and hold sentinelpay harmless from any claims, losses, liabilities and reasonable costs arising out of your misuse of the service, your breach of these terms, or your breach of any law or the rights of a third party.</p>
-
-            <h2>suspension and termination</h2>
-            <p>you may stop using the service at any time. we may suspend or terminate your access if you breach these terms, if your use creates risk for us or others, or where we are required to by law. we will give reasonable notice where we can, but may act immediately in serious cases. on termination your licence to use the service ends, and any terms that by their nature should survive, including intellectual property, disclaimers, limitation of liability and governing law, will continue to apply.</p>
-
-            <h2>changes to the service</h2>
-            <p>because the product is still being built, we may add, change, suspend or discontinue features at any time. we will try to avoid unnecessary disruption to paying customers, but early-access features carry no guarantee of continuity.</p>
-
-            <h2>governing law and disputes</h2>
-            <p>these terms, and any dispute arising out of or in connection with them, are governed by the laws of the jurisdiction in which sentinelpay is established, which will be confirmed here before commercial launch, and are subject to the exclusive jurisdiction of its courts. before starting any formal dispute, we ask that you contact us so we can try to resolve it directly.</p>
-
-            <h2 id="reach-us">how to reach us</h2>
-            <p>pick the lane that fits. a real person is on the other end, and we would rather answer early than have you guess.</p>
-            <div class="pp-dl">
-                <div class="pp-dl-row"><b>privacy &amp; your data</b><span>to access, correct or delete your data, or ask anything about how we handle it, email <a href="mailto:privacy@sentinelpay.org">privacy@sentinelpay.org</a>. once appointed, our data protection officer can be reached at the same address.</span></div>
-                <div class="pp-dl-row"><b>sales, product &amp; support</b><span>questions about the product, pricing, onboarding or your account? open a <a href="#" id="pp-open-chat">live chat</a> from the button in the bottom-right corner, or email <a href="mailto:support@sentinelpay.org">support@sentinelpay.org</a>. live chat is usually the fastest way to reach us.</span></div>
-                <div class="pp-dl-row"><b>complaints</b><span>if you are unhappy with how we have handled your data, you can complain to your local data protection authority. we would genuinely appreciate the chance to put it right first.</span></div>
+                        <p class="sp-auth-alt" id="auth-alt-in">no account yet? <a class="sp-auth-link" href="/start-free-trial">start a free trial</a></p>
+                        <p class="sp-auth-alt" id="auth-alt-up" hidden>already have an account? <button type="button" class="sp-auth-link sp-auth-link-btn" id="auth-back-in">log in</button></p>
+                    </div>
+                </div>
             </div>
-
-            <h2>changes to these terms</h2>
-            <p>we may update these terms as our product and the law evolve. where a change is significant, we will make reasonable efforts to tell customers in advance, but please check back from time to time. if you keep using sentinelpay after a change takes effect, you accept the updated terms. the date at the top always shows when they were last updated.</p>
         </div>
     </section>
 
@@ -470,7 +504,7 @@
                         <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">wallet investigations</a>
                         <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">threat intelligence</a>
                         <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">real-time alerting</a>
-                        <a href="https://sentinelpay.org/#demo" class="lp-footer-link">pricing</a>
+                        <a href="https://sentinelpay.org/start-free-trial" class="lp-footer-link">pricing</a>
                     </div>
                     <div class="lp-footer-col">
                         <span class="lp-footer-col-title">industries</span>
@@ -582,6 +616,34 @@
             });
         })();
     </script>
+    <script>/* the two panels are one control: switching is a state of the card, so it is
+       done here rather than by loading a second page. nothing is submitted yet, so the
+       buttons say what they say and the forms do not pretend otherwise. */
+    (function(){var tin=document.getElementById('auth-tab-in'),tup=document.getElementById('auth-tab-up'),
+    pin=document.getElementById('auth-panel-in'),pup=document.getElementById('auth-panel-up');
+    if(!tin||!tup||!pin||!pup)return;
+    var pair=function(id){return document.getElementById(id);};
+    function show(login){tin.classList.toggle('is-active',login);tup.classList.toggle('is-active',!login);
+    tin.setAttribute('aria-selected',login?'true':'false');tup.setAttribute('aria-selected',login?'false':'true');
+    pin.hidden=!login;pup.hidden=login;
+    /* the copy beside the card belongs to the panel: leaving "welcome back" up
+       while somebody is creating an account reads like the page did not notice */
+    ['auth-h-','auth-s-','auth-alt-'].forEach(function(k){
+      var a=pair(k+'in'),b=pair(k+'up');if(a)a.hidden=!login;if(b)b.hidden=login;});
+    var f=(login?pin:pup).querySelector('input');if(f&&document.activeElement!==document.body)f.focus({preventScroll:true});}
+    tin.addEventListener('click',function(){show(true);});
+    tup.addEventListener('click',function(){show(false);});
+    var back=document.getElementById('auth-back-in');if(back)back.addEventListener('click',function(){show(true);});
+    /* /auth#create opens straight on the second panel, so a "get started" link can
+       point at the right half of the card without a second page */
+    if(location.hash==='#create')show(false);
+    [pin,pup].forEach(function(f){f.addEventListener('submit',function(e){e.preventDefault();
+    var msg='accounts are not open yet. start a free trial and we will email you the way in.';
+    var t=window.SentinelI18n?window.SentinelI18n.t(msg):msg;
+    if(window.SentinelToast)window.SentinelToast.show(t,'info');});});})();
+    </script>
+    <!-- the house toast: without it the form falls back to the browser alert -->
+    <script src="/toast.js?v=2" defer></script>
     <script>window.addEventListener('load',function(){window.scrollTo(0,0);var l=document.getElementById('sp-loader');if(!l)return;var finish=function(){l.classList.add('spl-done');setTimeout(function(){l.remove();},620);};/* the load event does not wait for lazy images, and nearly every image on the site is lazy, so the loader used to clear while the first screen was still filling in. wait for the ones that will actually be visible: an image further down has not started loading yet and never would, so waiting for all of them would hold the loader open for ever. */var pending=[],im,r,i;for(i=0;i<document.images.length;i++){im=document.images[i];r=im.getBoundingClientRect();if(r.bottom<0||r.top>window.innerHeight*1.2)continue;if(im.complete&&im.naturalWidth>0)continue;pending.push(im);}if(!pending.length){finish();return;}var left=pending.length,fired=false;var one=function(){if(--left<=0&&!fired){fired=true;finish();}};pending.forEach(function(x){x.addEventListener('load',one,{once:true});x.addEventListener('error',one,{once:true});});/* a slow or broken image must never trap anybody behind the loader */setTimeout(function(){if(!fired){fired=true;finish();}},2500);});</script>
     <script src="/i18n.js?v=56" defer></script>
 </body>
