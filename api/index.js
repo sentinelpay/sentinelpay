@@ -705,9 +705,16 @@ app.post('/v1/forget', async (req, res) => {
         let account = 0;
         try { account = await accounts.forget(email); }
         catch (accErr) { console.error('[forget accounts]', accErr.message); }
-        console.log('[submissions] erasure request removed ' + (removed + account) + ' rows');
+        // and the fallback file, which holds the same fields the database does.
+        // deleting the row and leaving the file would make the answer below a
+        // number that is true about one copy and silent about the other.
+        let files = 0;
+        try { files = submissions.forgetInFiles(email); }
+        catch (fileErr) { console.error('[forget files]', fileErr.message); }
+        const removedTotal = removed + account + files;
+        console.log('[submissions] erasure request removed ' + removedTotal + ' rows');
         res.set('Cache-Control', 'no-store, private');
-        res.json({ removed: removed + account });
+        res.json({ removed: removedTotal });
     } catch (err) {
         console.error('[forget]', err.message);
         res.status(500).json({ error: 'delete failed' });
@@ -1250,6 +1257,10 @@ app.listen(PORT, () => {
     } else {
         console.error('[mail] RESEND_API_KEY is not set: form submissions will fail with a 500 instead of sending');
     }
+
+    // the fallback file is swept whether or not there is a database: it is the
+    // copy that exists precisely when the database is not there
+    submissions.startRetention();
 
     const dbState = db.status();
     if (!dbState.configured) {

@@ -4,20 +4,32 @@
 //
 // There are three copies and they exist for different reasons:
 //
-//   stdout    written first, always, before anything can fail. the platform's
-//             own log retention picks it up, so even a total database outage
-//             leaves a trace of who came in
+//   stdout    a line per submission, carrying no personal data at all: what kind
+//             of form, how it went, which country, and a short reference. it
+//             goes to the platform's log store, which is somebody else's system
+//             with somebody else's retention, and which we cannot delete a line
+//             out of when a person asks us to. so nothing personal goes in it.
 //   postgres  the real store: queryable, encrypted, and it survives a redeploy
 //   file      the fallback for local development and for the minutes when the
-//             database is unreachable
+//             database is unreachable. ours, on our disk, swept on the same
+//             schedule as the database and scrubbed by the same erasure request
 //
 // Mail can bounce, a provider can be down, an inbox can be missed and a
 // database can be restarting. A lead must survive all four.
+//
+// The reference in the log line is the thread back to the row: it says nothing
+// about anybody on its own, and it is deleted with the row it belongs to, so it
+// buys us a debuggable log without buying us a second copy of the personal data.
 
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const crypto = require('crypto');
 const db = require('./db');
+
+// The fallback file holds the same personal data the database does, so it lives
+// under the same promise: the retention window the privacy policy quotes.
+const RETENTION_DAYS = Math.max(Number(process.env.SUBMISSIONS_RETENTION_DAYS || 365), 1);
 
 // Only used when there is no database. Railway's filesystem is ephemeral: a
 // redeploy wipes it, which is the whole reason the database exists.
@@ -55,8 +67,13 @@ function writeFile(entry, when) {
 // trip, so the durable copy goes out first and the insert catches up.
 function record(kind, req, fields, outcome) {
     const when = new Date();
+    // short, random, and meaningless on its own: enough to tie a log line to a
+    // row while looking at both, and nothing at all to somebody holding only the
+    // log
+    const ref = crypto.randomBytes(4).toString('hex');
     const entry = Object.assign({
         ts: when.toISOString(),
+        ref: ref,
         kind: kind,
         outcome: outcome,
         ip: req && req.realIp ? req.realIp : null,
@@ -64,8 +81,18 @@ function record(kind, req, fields, outcome) {
         ua: req && req.headers ? String(req.headers['user-agent'] || '').slice(0, 200) : null,
     }, fields);
 
-    // first, and synchronously: this is the copy that survives everything else
-    console.log('[submission] ' + JSON.stringify(entry));
+    // What goes to stdout. Not the entry: a name, an address and an ip printed
+    // here end up in a log store we do not control, cannot scope, and cannot
+    // erase from when somebody exercises their right to be forgotten. an ip is
+    // personal data on its own, so this line is the shape of the traffic and
+    // nothing more.
+    console.log('[submission] ' + [
+        'ref=' + ref,
+        'kind=' + kind,
+        'outcome=' + outcome,
+        'country=' + (entry.country || '-'),
+        'flags=' + ((fields && Array.isArray(fields.flags) && fields.flags.join('|')) || 'none'),
+    ].join(' '));
 
     if (!db.available()) {
         writeFile(entry, when);
@@ -89,6 +116,90 @@ function record(kind, req, fields, outcome) {
             console.error('[submissions] insert threw: ' + err.message);
             writeFile(entry, when);
         });
+}
+
+// ---------------------------------------------------------------------------
+// the fallback file, under the same rules as the database
+// ---------------------------------------------------------------------------
+
+// Monthly files past the retention window. A file is a whole month, so it goes
+// only once every day in it is out of the window, which errs on keeping rather
+// than on deleting something still inside it.
+function purgeFiles() {
+    if (!ensureDir()) return 0;
+    const cutoff = new Date(Date.now() - RETENTION_DAYS * 86400000);
+    let removed = 0;
+    let files;
+    try {
+        files = fs.readdirSync(LOG_DIR).filter((f) => /^submissions-\d{4}-\d{2}\.jsonl$/.test(f));
+    } catch (err) {
+        return 0;
+    }
+    for (const file of files) {
+        const stamp = file.slice('submissions-'.length, -'.jsonl'.length);
+        // the last instant of that month: while it is in the future, some of the
+        // month is still inside the window
+        const end = new Date(Date.UTC(Number(stamp.slice(0, 4)), Number(stamp.slice(5, 7)), 1) - 1);
+        if (end >= cutoff) continue;
+        try {
+            fs.unlinkSync(path.join(LOG_DIR, file));
+            removed++;
+        } catch (err) {
+            console.error('[submissions] cannot remove ' + file + ': ' + err.message);
+        }
+    }
+    if (removed) console.log('[submissions] retention: removed ' + removed + ' fallback file(s) past ' + RETENTION_DAYS + ' days');
+    return removed;
+}
+
+// An erasure request has to reach this copy too. Without it, deleting the row
+// and leaving the file is a promise we did not keep.
+function forgetInFiles(email) {
+    if (!ensureDir()) return 0;
+    const target = String(email || '').trim().toLowerCase();
+    if (!target) return 0;
+    let files;
+    try {
+        files = fs.readdirSync(LOG_DIR).filter((f) => /^submissions-\d{4}-\d{2}\.jsonl$/.test(f));
+    } catch (err) {
+        return 0;
+    }
+    let removed = 0;
+    for (const file of files) {
+        const full = path.join(LOG_DIR, file);
+        let lines;
+        try {
+            lines = fs.readFileSync(full, 'utf8').split('\n').filter(Boolean);
+        } catch (err) {
+            continue;
+        }
+        const keep = lines.filter((line) => {
+            try {
+                const row = JSON.parse(line);
+                if (String(row.email || '').trim().toLowerCase() === target) { removed++; return false; }
+                return true;
+            } catch (err) {
+                return true; // a torn line names nobody we can match
+            }
+        });
+        if (keep.length === lines.length) continue;
+        try {
+            // written whole and moved into place, so an interrupted erasure
+            // cannot leave a half file behind
+            const tmp = full + '.tmp';
+            fs.writeFileSync(tmp, keep.length ? keep.join('\n') + '\n' : '');
+            fs.renameSync(tmp, full);
+        } catch (err) {
+            console.error('[submissions] cannot rewrite ' + file + ': ' + err.message);
+        }
+    }
+    return removed;
+}
+
+// Once shortly after boot, then daily, next to the database's own sweep.
+function startRetention() {
+    setTimeout(() => { purgeFiles(); }, 40000).unref();
+    setInterval(() => { purgeFiles(); }, 24 * 60 * 60 * 1000).unref();
 }
 
 // Newest first. Reads the database when there is one, and only falls back to
@@ -136,4 +247,4 @@ function fromFiles(limit, kind, flaggedOnly) {
     return out;
 }
 
-module.exports = { record, recent, LOG_DIR };
+module.exports = { record, recent, purgeFiles, forgetInFiles, startRetention, LOG_DIR, RETENTION_DAYS };

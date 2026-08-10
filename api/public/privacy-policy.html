@@ -357,7 +357,7 @@
     <section class="lp-section pp">
         <div class="pp-shell">
             <h1 class="pp-title">privacy policy</h1>
-            <p class="pp-meta">last updated: july 2026</p>
+            <p class="pp-meta">last updated: august 2026</p>
             <p class="pp-intro">this policy explains, in plain terms, what personal data sentinelpay collects, why we collect it, how we use and protect it, and the rights you have over it. we wrote it to be read, not filed away.</p>
         </div>
 
@@ -421,13 +421,21 @@
                 <li><strong>authorities</strong>, where we are legally required to disclose data to a court, regulator or law enforcement, or where disclosure helps prevent serious unlawful activity.</li>
                 <li><strong>professional advisers and potential acquirers</strong>, in connection with legal advice or a corporate transaction, under appropriate confidentiality.</li>
             </ul>
-            <p>we do not sell your personal data, and we do not share it for third-party advertising.</p>
+            <p>the providers that touch personal data on our behalf, and what each of them is for:</p>
+            <div class="pp-dl">
+                <div class="pp-dl-row"><b>railway</b><span>hosting. it runs our servers and holds the database and the server logs.</span></div>
+                <div class="pp-dl-row"><b>cloudflare</b><span>the network in front of the site. it sees the ip address of every request and runs the check that tells a person from a bot.</span></div>
+                <div class="pp-dl-row"><b>resend</b><span>email delivery. it handles the messages we send you, such as a verification code or a reply to your enquiry.</span></div>
+                <div class="pp-dl-row"><b>intercom</b><span>the live chat, if you open it.</span></div>
+            </div>
+            <p>each is bound by a data processing agreement to use your data only on our instructions and to protect it to at least our standard. we do not sell your personal data, and we do not share it for third-party advertising.</p>
 
             <h2>international transfers</h2>
             <p>we may transfer personal data to countries outside your own, including to service providers located elsewhere. where we do, we use appropriate safeguards recognised under applicable data protection law, such as standard contractual clauses, so your data keeps a comparable level of protection.</p>
 
             <h2>how long we keep it</h2>
             <p>we keep personal data only as long as we need it for the purpose we collected it, plus any period required by law. after that we anonymise it (if we still want it for analytics), pseudonymise it (if we may need it again for a legitimate purpose), or delete it. crypto activity data is an exception: because the integrity of our risk analysis depends on historical context, we may retain it for as long as necessary to provide our services.</p>
+            <p>the periods we hold ourselves to, and none of them depend on anyone remembering: <strong>form submissions, 365 days</strong>. <strong>accounts, until 24 months with no sign-in</strong>. <strong>server logs, 30 days</strong>. a job runs every day and deletes whatever is past its date.</p>
 
             <h2>what happens to a form you send us</h2>
             <p>when you fill in the demo or free trial form, we store what you typed: your name, work email, job title, company name and website, and the industry and country you selected. we also store the ip address the request came from, the browser you used and the time, because without those we cannot tell a genuine enquiry from an automated one.</p>
@@ -436,7 +444,16 @@
                 <div class="pp-dl-row"><b>where it is kept</b><span>in a database, not in email. the personal fields are encrypted before they leave our server, so a copy of the database on its own does not reveal them. your email address is additionally stored as a keyed hash, which lets us find your records without the address itself sitting in the table.</span></div>
                 <div class="pp-dl-row"><b>how long</b><span>365 days from the day you send it. a job runs daily and deletes anything past that, automatically, whether or not anyone remembers to.</span></div>
                 <div class="pp-dl-row"><b>who can reach it</b><span>only the sentinelpay team, through an interface that requires a separate secret. it is not connected to the product, it is not shared with customers, and it is never used for advertising.</span></div>
-                <div class="pp-dl-row"><b>deleting it sooner</b><span>email <a href="mailto:privacy@sentinelpay.org">privacy@sentinelpay.org</a> and ask. we remove every record tied to your address, and we do not need you to prove anything beyond controlling that mailbox. you do not have to explain why.</span></div>
+                <div class="pp-dl-row"><b>what our servers write down</b><span>one line per submission, with nothing personal in it: which form, whether it was accepted, the country and a short reference. your name, your address and your ip address are not in that line. it goes to our hosting provider's log store, which we cannot delete a single line out of, so nothing that identifies you is put there in the first place. those logs are kept 30 days.</span></div>
+                <div class="pp-dl-row"><b>deleting it sooner</b><span>email <a href="mailto:privacy@sentinelpay.org">privacy@sentinelpay.org</a> and ask. we remove every record tied to your address, from the database and from the backup file alike, and we do not need you to prove anything beyond controlling that mailbox. you do not have to explain why.</span></div>
+            </div>
+
+            <h2>if you create an account</h2>
+            <p>an account holds your name, your work email and your password. the password is never stored: what we keep is a slow one-way hash of it, which can check a password you type but cannot be turned back into one. your email address is encrypted, and stored a second time as a keyed hash so we can find your account without the address itself sitting in the table.</p>
+            <p>before an account exists we email a six digit code to the address you gave and wait for you to type it back. that is how we know the address is really yours. the code is not stored either, only a hash of it, and it is deleted the moment it is used, expires, or is guessed wrong too many times. if you never finish, the half-made sign-up deletes itself within a day.</p>
+            <div class="pp-dl">
+                <div class="pp-dl-row"><b>how long</b><span>for as long as you use the account. after 24 months with no sign-in we delete it, automatically, on the same daily job that clears everything else.</span></div>
+                <div class="pp-dl-row"><b>deleting it sooner</b><span>the same address as above. asking us to erase your data removes the account and anything half-made under the same address.</span></div>
             </div>
 
             <h2>your rights</h2>
@@ -450,7 +467,7 @@
                 <li>receive your data in a portable format, or ask us to transfer it.</li>
                 <li>withdraw consent where you previously gave it.</li>
             </ul>
-            <p>to exercise any of these, email <a href="mailto:privacy@sentinelpay.org">privacy@sentinelpay.org</a>. we may first need to verify your identity, so that personal data is never disclosed to the wrong person. we will respond within the timeframe the law requires, and these rights are free to exercise in normal circumstances.</p>
+            <p>to exercise any of these, email <a href="mailto:privacy@sentinelpay.org">privacy@sentinelpay.org</a>. we may first need to verify your identity, so that personal data is never disclosed to the wrong person. we answer within one month of receiving your request, and we write back to confirm once it is done. if a request is unusually complex we may need up to two months more, and we will tell you inside the first month if that happens. these rights are free to exercise in normal circumstances.</p>
 
             <h2>cookies</h2>
             <p>our website uses cookies, small text files stored on your device, in two main ways:</p>
@@ -630,6 +647,6 @@
     <!-- the sign-in dialog. loaded before i18n so its copy is translated too -->
     <script src="/auth-modal.js?v=8" defer></script>
     <script src="/auth-flow.js?v=3" defer></script>
-    <script src="/i18n.js?v=58" defer></script>
+    <script src="/i18n.js?v=59" defer></script>
 </body>
 </html>

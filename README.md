@@ -132,7 +132,9 @@ leads live in postgres, not on the container's disk. everything a form collects 
 | blast radius | pool capped, ten second statement timeout, and the row is written inside one transaction so a half-written lead is impossible |
 | retention | rows delete themselves after `SUBMISSIONS_RETENTION_DAYS`, swept at boot and once a day |
 | erasure | `POST /v1/forget` removes every row for an address, matched through the blind index |
-| never losing a lead | stdout first, always. if the database is unreachable the row falls back to `LOG_DIR/submissions-YYYY-MM.jsonl` and the visitor still gets a 200 |
+| never losing a lead | a line to stdout first, always, then the row. if the database is unreachable the row falls back to `LOG_DIR/submissions-YYYY-MM.jsonl` and the visitor still gets a 200 |
+| nothing personal in the platform log | the stdout line is `ref=… kind=… outcome=… country=… flags=…` and no more. a name, an address or an ip printed there ends up in the hosting provider's log store, which we cannot scope, cannot set a retention on and cannot delete a single line out of when somebody exercises their right to erasure. the `ref` is random, meaningless alone, and stored on the row, so a log line can still be tied back to a submission while looking at both |
+| the fallback file follows the same rules | monthly files past the retention window are deleted daily, and `POST /v1/forget` rewrites them without the matching lines. a promise kept about one copy and not the other is not a promise |
 
 generate the keys once, and keep them somewhere other than the database backups:
 
@@ -174,6 +176,7 @@ what is deliberate:
 | enumeration | registering an address that already has an account gets the same reply as one that does not. the difference goes to the inbox, where only its owner can read it. an unknown address asked to resend is answered as though a code went out |
 | replay | a code is consumed inside the transaction that writes the user, so two requests with the same code cannot make two accounts |
 | expiry | codes last `SIGNUP_CODE_TTL_MIN` minutes, and unfinished sign-ups are swept every six hours |
+| retention | an account with no sign-in for `ACCOUNT_RETENTION_MONTHS` is deleted on the same sweep. there is no sign-in yet, so the clock runs from when the account was made and starts measuring properly the day signing in exists, without a migration |
 | erasure | `POST /v1/forget` removes the account and anything half-made under the same address |
 
 there are no accounts without `DATABASE_URL` and `SUBMISSIONS_KEY`. registration answers "not available" rather than falling back to a file: a lead in a file is a lead, an account in a file is a security problem.
@@ -219,6 +222,7 @@ nothing is required to boot. everything below changes behaviour when set.
 | `SUBMISSIONS_INDEX_KEY` | 32 bytes base64 for the blind index. derived from `SUBMISSIONS_KEY` when unset |
 | `SUBMISSIONS_RETENTION_DAYS` | how long a lead is kept, 365 by default |
 | `SIGNUP_CODE_TTL_MIN` | how long a verification code is good for, 15 by default, clamped to 5 to 60 |
+| `ACCOUNT_RETENTION_MONTHS` | how long an account survives without a sign-in, 24 by default |
 | `LOG_DIR` | the fallback submission log, used only when there is no database or it is unreachable |
 | `ADMIN_TOKEN` | enables the operations endpoints below |
 | `CSP_STRICT` | set to `false` only to fall back to `unsafe-inline` in an emergency |

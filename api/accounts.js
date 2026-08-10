@@ -35,6 +35,10 @@ const CODE_MAX_ATTEMPTS = 5;
 const CODE_MAX_SENDS = 5;          // per pending sign-up, counting the first one
 const CODE_RESEND_WAIT_S = 60;     // between one send and the next
 const PENDING_MAX_AGE_H = 24;      // an abandoned sign-up is swept after this
+// An account nobody has signed into in two years is not an account, it is a row
+// with somebody's name in it. Storage limitation applies to us as much as to the
+// leads: the data goes when the reason for holding it does.
+const ACCOUNT_MAX_IDLE_MONTHS = Math.max(Number(process.env.ACCOUNT_RETENTION_MONTHS || 24), 1);
 
 // ---------------------------------------------------------------------------
 // schema
@@ -321,17 +325,36 @@ async function verifySignup(email, code) {
 // Expired codes and abandoned sign-ups. Runs with the submissions sweep.
 async function purge() {
     if (!(await init())) return 0;
+    let swept = 0;
     try {
         const res = await db.query(
             "DELETE FROM signup_codes WHERE expires_at < now() - interval '1 hour' OR created_at < now() - ($1 || ' hours')::interval",
             [String(PENDING_MAX_AGE_H)]
         );
-        if (res.rowCount) console.log('[accounts] swept ' + res.rowCount + ' unfinished sign-ups');
-        return res.rowCount;
+        swept = res.rowCount;
+        if (swept) console.log('[accounts] swept ' + swept + ' unfinished sign-ups');
     } catch (err) {
         console.error('[accounts] sweep failed: ' + err.message);
-        return 0;
     }
+
+    // Idle accounts, measured from the last sign-in. There is no sign-in yet, so
+    // last_login_at is null on every row and the clock runs from when the account
+    // was made; coalesce keeps that working and starts measuring properly the day
+    // signing in exists, without a migration.
+    try {
+        const res = await db.query(
+            "DELETE FROM users WHERE COALESCE(last_login_at, created_at) < now() - ($1 || ' months')::interval",
+            [String(ACCOUNT_MAX_IDLE_MONTHS)]
+        );
+        if (res.rowCount) {
+            console.log('[accounts] retention: removed ' + res.rowCount +
+                ' account(s) idle for more than ' + ACCOUNT_MAX_IDLE_MONTHS + ' months');
+        }
+        swept += res.rowCount;
+    } catch (err) {
+        console.error('[accounts] account retention failed: ' + err.message);
+    }
+    return swept;
 }
 
 // Erasure: an account and anything half-made under the same address.
@@ -351,6 +374,7 @@ function status() {
         maxAttempts: CODE_MAX_ATTEMPTS,
         maxSends: CODE_MAX_SENDS,
         resendWaitSeconds: CODE_RESEND_WAIT_S,
+        idleRetentionMonths: ACCOUNT_MAX_IDLE_MONTHS,
     };
 }
 
