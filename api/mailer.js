@@ -152,10 +152,22 @@ function textVersion({ title, intro, pairs, bullets, cta, footnote, review, code
 
 // Sends, or throws. It never resolves quietly when nothing was sent: an endpoint
 // that answers "ok" while the inbox stays empty is the worst possible outcome.
-async function send({ to, subject, replyTo, eyebrow, title, intro, pairs, bullets, cta, footnote, signoff, review, code }) {
+// The finished message, without sending it. Pulled out of send() so that the
+// preview and the real thing cannot drift: whatever you look at in the browser
+// is byte for byte what lands in the inbox.
+function compose(msg) {
+    const { subject, eyebrow, title, intro, pairs, bullets, cta, footnote, signoff, review, code } = msg;
     const rows = (pairs || []).map(([k, v]) => row(k, v)).join('');
-    const html = layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff, review, code });
-    const text = textVersion({ title, intro, pairs, bullets, cta, footnote, review, code });
+    return {
+        subject: subject,
+        html: layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff, review, code }),
+        text: textVersion({ title, intro, pairs, bullets, cta, footnote, review, code }),
+    };
+}
+
+async function send(msg) {
+    const { to, subject, replyTo } = msg;
+    const { html, text } = compose(msg);
 
     if (!isConfigured()) {
         // in production a missing key is a hard failure: the form must not claim
@@ -259,10 +271,10 @@ const TRIAL_COPY = {
 
 // The trial app does not exist yet. Until TRIAL_APP_URL is set the mail says so
 // plainly rather than shipping a button that leads nowhere.
-async function sendTrialWelcome({ to, lang }) {
+function trialWelcomeMessage({ to, lang }) {
     const copy = TRIAL_COPY[lang] || TRIAL_COPY.en;
     const appUrl = process.env.TRIAL_APP_URL || '';
-    return send({
+    return {
         to: to,
         subject: copy.subject,
         eyebrow: copy.eyebrow,
@@ -272,8 +284,9 @@ async function sendTrialWelcome({ to, lang }) {
         cta: appUrl ? { href: appUrl, label: copy.ctaLabel } : null,
         footnote: appUrl ? copy.footnote : copy.pending + ' ' + copy.footnote,
         signoff: copy.signoff,
-    });
+    };
 }
+async function sendTrialWelcome(opts) { return send(trialWelcomeMessage(opts)); }
 
 // The verification code, and the message that goes out instead when the address
 // already has an account. Both exist so that registering tells the person at the
@@ -325,9 +338,9 @@ const SIGNUP_COPY = {
     },
 };
 
-async function sendSignupCode({ to, code, lang, minutes }) {
+function signupCodeMessage({ to, code, lang, minutes }) {
     const copy = SIGNUP_COPY[lang] || SIGNUP_COPY.en;
-    return send({
+    return {
         to: to,
         subject: copy.subject,
         eyebrow: copy.eyebrow,
@@ -337,12 +350,13 @@ async function sendSignupCode({ to, code, lang, minutes }) {
         bullets: [copy.note(minutes)],
         footnote: copy.footnote,
         signoff: copy.signoff,
-    });
+    };
 }
+async function sendSignupCode(opts) { return send(signupCodeMessage(opts)); }
 
-async function sendSignupExists({ to, lang }) {
+function signupExistsMessage({ to, lang }) {
     const copy = SIGNUP_COPY[lang] || SIGNUP_COPY.en;
-    return send({
+    return {
         to: to,
         subject: copy.existsSubject,
         eyebrow: copy.eyebrow,
@@ -351,7 +365,60 @@ async function sendSignupExists({ to, lang }) {
         cta: { href: SITE + '/auth', label: copy.existsCta },
         footnote: copy.existsFootnote,
         signoff: copy.signoff,
-    });
+    };
+}
+async function sendSignupExists(opts) { return send(signupExistsMessage(opts)); }
+
+// ---------------------------------------------------------------------------
+// previews
+// ---------------------------------------------------------------------------
+//
+// Every message the site sends, built with sample values and handed back rather
+// than sent. Editing a template and reloading a page beats editing a template
+// and posting a form to find out what it looks like, and because the preview
+// runs through compose() it cannot show something the inbox will not.
+
+const PREVIEWS = {
+    'signup-code': (lang) => signupCodeMessage({ to: 'ana@primjer.hr', code: '481902', lang, minutes: 15 }),
+    'signup-exists': (lang) => signupExistsMessage({ to: 'ana@primjer.hr', lang }),
+    'trial-welcome': (lang) => trialWelcomeMessage({ to: 'ana@primjer.hr', lang }),
+    // the two that go to us rather than to a customer. these are written where
+    // they are sent, so the sample here mirrors them rather than sharing code:
+    // if the endpoint changes and this does not, the preview is stale, and the
+    // note below says so out loud.
+    'trial-notice': () => ({
+        subject: 'review: new trial sign-up: ana anic @ primjer d.o.o.',
+        eyebrow: 'free trial',
+        title: 'a company signed up for the trial',
+        intro: 'the welcome email has been sent to them, but something here is worth a second look.',
+        review: ['the address is on a free consumer mailbox, and the website they gave is on that same domain. worth thirty seconds on the company name before you reply.'],
+        pairs: [
+            ['name', 'ana anic'], ['job title', 'head of compliance'],
+            ['work email', 'ana@primjer.hr'], ['company', 'primjer d.o.o.'],
+            ['website', 'primjer.hr'], ['industry', 'payments'],
+            ['country', 'croatia'], ['language', 'hr'],
+            ['domain check', 'free-email'],
+        ],
+    }),
+    'account-notice': () => ({
+        subject: 'new account: ana anic',
+        eyebrow: 'accounts',
+        title: 'somebody created an account',
+        intro: 'the address was verified by code before the account was written.',
+        pairs: [['name', 'ana anic'], ['email', 'ana@primjer.hr'], ['language', 'hr']],
+    }),
+};
+
+function previewNames() { return Object.keys(PREVIEWS); }
+
+function render(name, lang) {
+    const make = PREVIEWS[name];
+    if (!make) return null;
+    const msg = make(['hr', 'de', 'en'].includes(lang) ? lang : 'en');
+    return Object.assign({ name: name, lang: lang }, compose(msg));
 }
 
-module.exports = { send, sendTrialWelcome, sendSignupCode, sendSignupExists, isConfigured, MAIL_FROM, MAIL_TO };
+module.exports = {
+    send, compose, sendTrialWelcome, sendSignupCode, sendSignupExists,
+    render, previewNames, isConfigured, MAIL_FROM, MAIL_TO,
+};

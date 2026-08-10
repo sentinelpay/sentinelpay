@@ -721,6 +721,73 @@ app.post('/v1/forget', async (req, res) => {
     }
 });
 
+function escapeHtml(v) {
+    return String(v).replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+}
+
+// Every email the site sends, rendered in the browser instead of sent. Same
+// token gate, same 404 when it is wrong.
+//
+//     /v1/mail-preview                        the index, every template and language
+//     /v1/mail-preview?t=signup-code&lang=hr  one message as the inbox will show it
+//     /v1/mail-preview?t=signup-code&raw=text the plain text alternative
+//
+// The page carries its own content security policy. The site's policy forbids
+// inline styles on style attributes, and an email is nothing but inline styles,
+// so without this the preview would render as unstyled text and lie about how
+// the message looks. The document it serves is our own html and loads nothing.
+app.get('/v1/mail-preview', (req, res) => {
+    if (!adminOk(req)) {
+        return sendPage(res, req, '404.html', 404);
+    }
+    const name = String(req.query.t || '');
+    const lang = String(req.query.lang || 'en');
+    const token = String(req.get('x-admin-token') || req.query.token || '');
+    const link = (t, l) => '/v1/mail-preview?t=' + encodeURIComponent(t) + '&lang=' + l +
+        (req.query.token ? '&token=' + encodeURIComponent(token) : '');
+
+    res.set('Cache-Control', 'no-store, private');
+    res.set('Content-Security-Policy',
+        "default-src 'none'; style-src 'unsafe-inline'; style-src-attr 'unsafe-inline'; img-src data:; font-src 'none'");
+
+    if (!name) {
+        const rows = mailer.previewNames().map((t) =>
+            '<tr><td style="padding:10px 18px 10px 0;font-weight:600;">' + t + '</td>' +
+            ['en', 'hr', 'de'].map((l) =>
+                '<td style="padding:10px 12px 10px 0;"><a href="' + link(t, l) + '">' + l + '</a></td>').join('') +
+            '<td style="padding:10px 0;"><a href="' + link(t, 'en') + '&raw=text">text</a></td></tr>'
+        ).join('');
+        return res.type('html').send(
+            '<!doctype html><meta charset="utf-8"><title>mail previews</title>' +
+            '<body style="margin:0;padding:40px;background:#f6f7f9;font-family:system-ui,sans-serif;color:#0e2358;">' +
+            '<h1 style="font-size:20px;font-weight:800;margin:0 0 4px;">mail previews</h1>' +
+            '<p style="margin:0 0 24px;color:rgba(14,35,88,0.6);font-size:14px;">exactly what the mailer builds. nothing is sent.</p>' +
+            '<table style="border-collapse:collapse;font-size:14px;">' + rows + '</table></body>');
+    }
+
+    const out = mailer.render(name, lang);
+    if (!out) return res.status(404).json({ error: 'unknown template', templates: mailer.previewNames() });
+
+    if (String(req.query.raw || '') === 'text') {
+        return res.type('text/plain; charset=utf-8').send('subject: ' + out.subject + '\n\n' + out.text);
+    }
+    // the subject and the sender ride above the message. they are part of the
+    // design, they are the first thing anybody actually reads, and there is
+    // nowhere else in a rendered email to see them.
+    const bar =
+        '<div style="max-width:560px;margin:0 auto 18px;padding:14px 16px;border-radius:12px;' +
+        'background:#11151f;border:1px solid rgba(255,255,255,0.09);' +
+        'font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Inter,sans-serif;">' +
+        '<div style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#8b93a1;">subject</div>' +
+        '<div style="margin-top:3px;font-size:15px;font-weight:700;color:#f2f5f8;">' + escapeHtml(out.subject) + '</div>' +
+        '<div style="margin-top:10px;font-size:12px;color:#8b93a1;">from ' + escapeHtml(mailer.MAIL_FROM) +
+        ' &nbsp;·&nbsp; ' + escapeHtml(name) + ' &nbsp;·&nbsp; ' + escapeHtml(lang) + '</div></div>';
+    const html = out.html
+        .replace('</head>', '<title>' + escapeHtml(out.subject) + '</title></head>')
+        .replace(/(<body[^>]*>)/, '$1<div style="padding:28px 16px 0;background:#050505;">' + bar + '</div>');
+    return res.type('html').send(html);
+});
+
 // What the account store knows about one address. Same token gate, same 404 when
 // it is wrong. It exists because the sign-up form cannot tell you why no code
 // arrived without telling every stranger who has an account here, so the answer
