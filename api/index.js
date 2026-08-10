@@ -747,8 +747,14 @@ app.get('/v1/mail-preview', (req, res) => {
         (req.query.token ? '&token=' + encodeURIComponent(token) : '');
 
     res.set('Cache-Control', 'no-store, private');
+    // script-src 'self' is here for one reason: cloudflare rewrites every email
+    // address in an html response into [email protected] and ships a same-origin
+    // script to decode it again. with no script-src the decoder was blocked and
+    // the preview showed the placeholder, which is not what the message contains
+    // and is not what the recipient sees. the email itself never passes through
+    // cloudflare at all.
     res.set('Content-Security-Policy',
-        "default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; " +
+        "default-src 'none'; script-src 'self'; style-src 'unsafe-inline' https://fonts.googleapis.com; " +
         "style-src-attr 'unsafe-inline'; img-src 'self' https://sentinelpay.org data:; " +
         "font-src https://fonts.gstatic.com");
 
