@@ -178,6 +178,7 @@ what is deliberate:
 | expiry | codes last `SIGNUP_CODE_TTL_MIN` minutes, and unfinished sign-ups are swept every six hours |
 | retention | an account with no sign-in for `ACCOUNT_RETENTION_MONTHS` is deleted on the same sweep. there is no sign-in yet, so the clock runs from when the account was made and starts measuring properly the day signing in exists, without a migration |
 | erasure | `POST /v1/forget` removes the account and anything half-made under the same address |
+| when no code arrives | `GET /v1/account-status?email=…` behind `ADMIN_TOKEN` says whether the address already has an account, whether a sign-up is in progress, how many codes went out and how many wrong guesses are left. the form cannot answer that without telling every stranger who has an account here, so the answer lives behind the token |
 
 there are no accounts without `DATABASE_URL` and `SUBMISSIONS_KEY`. registration answers "not available" rather than falling back to a file: a lead in a file is a lead, an account in a file is a security problem.
 

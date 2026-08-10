@@ -357,6 +357,45 @@ async function purge() {
     return swept;
 }
 
+// What we know about one address, for whoever holds the admin token. It answers
+// the question the form deliberately cannot: "i asked for a code and nothing
+// came". An address that already has an account never gets a code, and a
+// pending sign-up that is at its ceiling explains the silence too.
+async function inspect(email) {
+    if (!(await init())) return { available: false };
+    const hash = db.blindIndex(email);
+    if (!hash) return { available: false };
+
+    const user = await db.query('SELECT created_at, last_login_at, flags FROM users WHERE email_hash = $1', [hash]);
+    const pending = await db.query(
+        'SELECT created_at, expires_at, attempts, sends, last_sent_at FROM signup_codes WHERE email_hash = $1', [hash]);
+
+    const p = pending.rows[0];
+    return {
+        available: true,
+        hasAccount: user.rowCount > 0,
+        account: user.rows[0] ? {
+            createdAt: user.rows[0].created_at,
+            lastLoginAt: user.rows[0].last_login_at,
+            flags: user.rows[0].flags || '',
+        } : null,
+        pendingSignup: p ? {
+            startedAt: p.created_at,
+            expiresAt: p.expires_at,
+            expired: new Date(p.expires_at).getTime() < Date.now(),
+            wrongAttempts: p.attempts,
+            attemptsLeft: Math.max(0, CODE_MAX_ATTEMPTS - p.attempts),
+            codesSent: p.sends,
+            sendsLeft: Math.max(0, CODE_MAX_SENDS - p.sends),
+            lastSentAt: p.last_sent_at,
+        } : null,
+        // the one sentence that usually answers it
+        note: user.rowCount > 0
+            ? 'this address already has an account, so registering again sends the "you already have one" notice rather than a code'
+            : (p ? 'a sign-up is in progress and a code has been sent' : 'no account and no sign-up in progress for this address'),
+    };
+}
+
 // Erasure: an account and anything half-made under the same address.
 async function forget(email) {
     if (!(await init())) return 0;
@@ -379,7 +418,7 @@ function status() {
 }
 
 module.exports = {
-    startSignup, resendSignup, verifySignup, exists, purge, forget, status,
+    startSignup, resendSignup, verifySignup, exists, inspect, purge, forget, status,
     hashPassword, verifyPassword,
     CODE_TTL_MIN, CODE_MAX_SENDS, CODE_RESEND_WAIT_S,
 };

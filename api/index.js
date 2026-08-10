@@ -721,6 +721,26 @@ app.post('/v1/forget', async (req, res) => {
     }
 });
 
+// What the account store knows about one address. Same token gate, same 404 when
+// it is wrong. It exists because the sign-up form cannot tell you why no code
+// arrived without telling every stranger who has an account here, so the answer
+// lives behind the admin token instead.
+//     curl -H "x-admin-token: ..." "https://sentinelpay.org/v1/account-status?email=someone@example.com"
+app.get('/v1/account-status', async (req, res) => {
+    if (!adminOk(req)) {
+        return sendPage(res, req, '404.html', 404);
+    }
+    const email = String(req.query.email || '').trim().toLowerCase();
+    if (!email || email.length > 254) return res.status(400).json({ error: 'email required' });
+    try {
+        res.set('Cache-Control', 'no-store, private');
+        res.json(await accounts.inspect(email));
+    } catch (err) {
+        console.error('[account-status]', err.message);
+        res.status(500).json({ error: 'lookup failed' });
+    }
+});
+
 app.all('/v1/mail-status', async (req, res) => {
     if (!adminOk(req)) {
         return sendPage(res, req, '404.html', 404);
@@ -917,17 +937,26 @@ app.post('/v1/auth/register', requireCloudflareOrigin, authRegisterLimiter, asyn
         if (started.reason === 'exists') {
             // the reply below is identical to the success one. the difference goes
             // to the inbox, where only the owner of the address can read it.
+            //
+            // this branch is why "i got no code" is not the same as "the mail is
+            // broken": the address already has an account, so a different message
+            // went out. the form cannot say so without telling every stranger who
+            // has an account here, but the log can.
+            console.log('[auth] register: address already has an account, sent the notice instead');
             try { await mailer.sendSignupExists({ to: email, lang }); }
-            catch (err) { console.error('[auth register notice failed]', err.message); }
+            catch (err) { console.error('[auth] the notice failed to send: ' + err.message); }
             return res.json({ ok: true, next: 'verify' });
         }
         if (started.reason === 'slow-down') {
+            console.log('[auth] register: a code went out less than a minute ago, asked them to wait');
             return res.status(429).json({ error: 'a code was just sent. check your inbox, or ask for another in a minute.', retryIn: started.retryIn });
         }
         if (started.reason === 'too-many-sends') {
+            console.log('[auth] register: this address is at its hourly send ceiling');
             return res.status(429).json({ error: 'too many codes sent to this address. please try again later.' });
         }
         if (!started.ok) {
+            console.error('[auth] register: the account store is unavailable (' + (started.reason || 'no reason') + ')');
             return res.status(503).json({ error: 'accounts are not available right now. please try again shortly.' });
         }
 
@@ -939,8 +968,10 @@ app.post('/v1/auth/register', requireCloudflareOrigin, authRegisterLimiter, asyn
         }
 
         // the code itself is never written anywhere we can read: not here, not in
-        // the row, not in the log line
-        console.log('[auth] sign-up code sent, flags: ' + (flags.join(',') || 'none'));
+        // the row, not in the log line. the provider's message id is logged by the
+        // mailer on the line above this one, which is the thread to pull on when
+        // somebody says the code never arrived.
+        console.log('[auth] register: code sent, flags: ' + (flags.join(',') || 'none'));
         res.json({ ok: true, next: 'verify' });
     } catch (err) {
         console.error('[auth register error]', err.message);

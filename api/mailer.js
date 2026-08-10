@@ -173,21 +173,32 @@ async function send({ to, subject, replyTo, eyebrow, title, intro, pairs, bullet
 
     const { Resend } = require('resend');
     const resend = new Resend(process.env.RESEND_API_KEY);
-    const result = await resend.emails.send({
+    // the field is reply_to on the v3 sdk, not replyTo. spelled the other way it
+    // is simply an unknown property: no error, and every reply to a lead
+    // notification went to noreply@ instead of to the person who wrote in.
+    const payload = {
         from: MAIL_FROM,
         to: to || MAIL_TO,
-        replyTo: replyTo,
         subject: subject,
         html: html,
         text: text,
-    });
+    };
+    if (replyTo) payload.reply_to = replyTo;
+    const result = await resend.emails.send(payload);
 
     // the sdk reports api errors in the payload rather than by rejecting
     if (result && result.error) {
         const err = new Error(result.error.message || 'resend rejected the message');
         err.code = 'MAIL_REJECTED';
+        err.detail = result.error;
+        console.error('[mail] rejected: ' + JSON.stringify(result.error));
         throw err;
     }
+    // the provider's own id for the message. without it, "the email never
+    // arrived" cannot be told apart from "we never sent it", and neither can be
+    // looked up in the provider's dashboard.
+    const id = result && result.data && result.data.id;
+    console.log('[mail] sent "' + subject + '" id=' + (id || 'no id returned'));
     return result;
 }
 
