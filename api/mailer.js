@@ -126,13 +126,20 @@ function codeMeta(items) {
 
 // A button that survives outlook: a table with a background colour and padding,
 // rather than a styled anchor, which outlook renders as plain blue text.
+//
+// It spans the column rather than sitting as a pill in the middle of it.
+// everything else in the card starts and ends on the same two edges, and a small
+// centred element was the only thing breaking that line, so it read as floating
+// rather than as the next step. full width keeps the centred label and gives it
+// the same edges as the note below it.
 function button(cta) {
     if (!cta) return '';
-    return '<tr><td align="center" style="padding:6px 36px 0;">' +
-        '<table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">' +
-        '<tr><td align="center" bgcolor="' + C.text + '" style="border-radius:11px;">' +
-        '<a href="' + esc(cta.href) + '" style="display:inline-block;padding:14px 30px;font-family:' + FONT + ';' +
-        'font-size:14px;font-weight:700;line-height:18px;color:#ffffff;text-decoration:none;border-radius:11px;">' +
+    return '<tr><td style="padding:6px 36px 0;">' +
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">' +
+        '<tr><td align="center" bgcolor="' + C.text + '" style="border-radius:12px;">' +
+        '<a href="' + esc(cta.href) + '" style="display:block;padding:15px 24px;font-family:' + FONT + ';' +
+        'font-size:14.5px;font-weight:700;line-height:19px;color:#ffffff;text-decoration:none;' +
+        'border-radius:12px;text-align:center;">' +
         esc(cta.label) + '</a>' +
         '</td></tr></table></td></tr>';
 }
