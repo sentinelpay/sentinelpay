@@ -3246,3 +3246,128 @@ html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }
     .sp-authm-panel { padding: 1.6rem 1.4rem 1.4rem !important; }
     .sp-authm-h { font-size: 1.35rem; }
 }
+
+/* ============ forms, light ============
+   every form on the site sits on this card: the homepage, book a demo, start a
+   free trial and the sign-in dialog. it was dark on a light page, which read as
+   a panel dropped onto the site rather than part of it. the colours are turned
+   over here, in one place, so the four cannot drift.
+
+   what does not change: the gradient edge, the dotted corner, the cyan focus and
+   the lit state on a chosen option. those carry the brand and they read on white
+   as well as they did on black. */
+.lp-demo-card {
+    border-color: rgba(14, 35, 88, 0.1);
+    background:
+        radial-gradient(ellipse 50% 70% at 100% 0%, rgba(160, 32, 240, 0.05), transparent 55%),
+        radial-gradient(ellipse 45% 70% at 0% 100%, rgba(0, 190, 220, 0.05), transparent 55%),
+        #ffffff !important;
+    box-shadow: 0 24px 60px -34px rgba(14, 35, 88, 0.3), 0 2px 8px rgba(14, 35, 88, 0.04);
+}
+.lp-demo-dots { background-image: radial-gradient(circle at 1px 1px, rgba(14, 35, 88, 0.14) 1.3px, transparent 0); }
+
+/* the title sets -webkit-text-fill-color too, which wins over colour on its own */
+.lp-demo-card .lp-demo-title { color: #0e2358; -webkit-text-fill-color: #0e2358; }
+.lp-demo-card .lp-demo-sub { color: rgba(14, 35, 88, 0.6); }
+.lp-demo-formhead { color: #0e2358; }
+.lp-demo-hint, .lp-demo-note, .lp-demo-note-inline, .lp-demo-count, .lp-demo-declare-lead { color: rgba(14, 35, 88, 0.5); }
+
+/* fields */
+.lp-demo-field > label { color: rgba(14, 35, 88, 0.62); }
+.lp-demo-field input,
+.lp-demo-field select,
+.lp-demo-field textarea {
+    color: #0e2358;
+    background: #fbfcfd;
+    border-color: rgba(14, 35, 88, 0.14);
+    /* style.css carries a dark inset shadow for the old app's inputs, which on a
+       light field reads as a second, dirty border */
+    box-shadow: none;
+}
+.lp-demo-field input::placeholder,
+.lp-demo-field textarea::placeholder { color: rgba(14, 35, 88, 0.3); }
+.lp-demo-field select { color: rgba(14, 35, 88, 0.55); }
+.lp-demo-field input:focus,
+.lp-demo-field select:focus,
+.lp-demo-field textarea:focus {
+    border-color: #0091c8;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(0, 145, 200, 0.12);
+}
+.lp-demo-field:has(.lp-demo-checks):hover > label { color: #0091c8; }
+
+/* the custom select and its menu */
+.lp-demo-select-btn {
+    color: #0e2358;
+    background: #fbfcfd;
+    border-color: rgba(14, 35, 88, 0.14);
+    box-shadow: none;
+}
+.lp-demo-select-val.is-placeholder { color: rgba(14, 35, 88, 0.3); }
+.lp-demo-select-caret { color: rgba(14, 35, 88, 0.45); }
+.lp-demo-select.is-open .lp-demo-select-btn { border-color: #0091c8; background: #ffffff; }
+.lp-demo-select-menu {
+    background: #ffffff;
+    border-color: rgba(14, 35, 88, 0.12);
+    box-shadow: 0 18px 40px rgba(14, 35, 88, 0.16);
+}
+.lp-demo-select-opt { color: rgba(14, 35, 88, 0.75); }
+.lp-demo-select-opt:hover { background: rgba(14, 35, 88, 0.05); color: #0e2358; }
+.lp-demo-select-search {
+    color: #0e2358;
+    background: #fbfcfd;
+    border-color: rgba(14, 35, 88, 0.12);
+}
+.lp-demo-select-search::placeholder { color: rgba(14, 35, 88, 0.35); }
+.lp-demo-select-empty { color: rgba(14, 35, 88, 0.45); }
+
+/* the tickable surfaces: unchosen is quiet, chosen keeps the brand's lit state */
+.lp-demo-check, .lp-demo-consent {
+    color: rgba(14, 35, 88, 0.66);
+    background: #fbfcfd;
+    border-color: rgba(14, 35, 88, 0.1);
+}
+.lp-demo-check:hover, .lp-demo-consent:hover { border-color: rgba(0, 145, 200, 0.45); color: #0e2358; }
+.lp-demo-check:has(input:checked), .lp-demo-consent:has(input:checked) {
+    color: #0e2358;
+    border-color: rgba(0, 145, 200, 0.4);
+    background: rgba(0, 145, 200, 0.07);
+    box-shadow: none;
+}
+.lp-demo-check input, .lp-demo-consent input, .sp-auth-remember input { accent-color: #0091c8; }
+.lp-demo-consent a { color: #0091c8; border-bottom-color: rgba(0, 145, 200, 0.35); }
+.lp-demo-consent a:hover { border-bottom-color: #0091c8; }
+
+/* the progress rail and the step counter */
+.lp-demo-track { background: rgba(14, 35, 88, 0.09); }
+.lp-demo-pct { color: rgba(14, 35, 88, 0.5); }
+
+/* buttons: the primary turns over with the card, the quiet one stays quiet */
+.lp-demo-next, .lp-demo-submit { background: #0e2358; color: #ffffff; }
+.lp-demo-next:hover, .lp-demo-submit:hover { background: #16305f; box-shadow: 0 12px 28px -12px rgba(14, 35, 88, 0.6); }
+.lp-demo-back { color: rgba(14, 35, 88, 0.55); }
+.lp-demo-back:hover { color: #0e2358; background: rgba(14, 35, 88, 0.05); }
+
+/* the panel that replaces the form once it is sent */
+.lp-demo-success h3 { color: #0e2358; }
+.lp-demo-success p { color: rgba(14, 35, 88, 0.62); }
+.lp-demo-success p em { color: #0e2358; }
+.lp-demo-success-eyebrow { color: #0091c8; }
+.bad-form-card .lp-demo-success:not([hidden]) { background: none; }
+
+/* errors read the same, on a surface that is now light */
+.lp-demo-error { color: #c0304a; }
+.lp-demo-mail-down { color: rgba(14, 35, 88, 0.6); }
+
+/* the sign-in dialog's own pieces */
+.sp-authm-h { color: #0e2358; }
+.sp-authm-p { color: rgba(14, 35, 88, 0.58); }
+.sp-authm-x { color: rgba(14, 35, 88, 0.45); }
+.sp-authm-x:hover { color: #0e2358; background: rgba(14, 35, 88, 0.06); }
+.sp-auth-tabs { background: #f1f4f9; border-color: rgba(14, 35, 88, 0.07); }
+.sp-auth-tab { color: rgba(14, 35, 88, 0.5); }
+.sp-auth-tab:hover { color: #0e2358; }
+.sp-auth-tab.is-active { color: #0e2358; background: #ffffff; box-shadow: 0 1px 3px rgba(14, 35, 88, 0.12); }
+.sp-auth-remember { color: rgba(14, 35, 88, 0.6); }
+.sp-auth-link { color: #0091c8; border-bottom-color: rgba(0, 145, 200, 0.3); }
+.sp-auth-link:hover { border-bottom-color: #0091c8; }
