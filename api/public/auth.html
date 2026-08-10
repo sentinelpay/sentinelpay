@@ -18,7 +18,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/style.css?v=24">
     <link rel="stylesheet" href="/landing.css?v=4.4">
-    <link rel="stylesheet" href="/corp.css?v=164">
+    <link rel="stylesheet" href="/corp.css?v=167">
     <style>
         /* page loader */
         #sp-loader{position:fixed;inset:0;z-index:99999;background:#050505;display:flex;align-items:center;justify-content:center;transition:opacity 0.55s ease;}
@@ -163,19 +163,13 @@
 
         .sp-auth-stage { position: relative; z-index: 1; width: 100%; max-width: 26.5rem; text-align: center; }
 
-        .sp-auth-brand { display: inline-flex; align-items: center; gap: 0.55rem; text-decoration: none; margin-bottom: 1.7rem; }
-        .sp-auth-brand svg { width: 30px; height: 30px; }
-        .sp-auth-brand span { font-size: 1.02rem; font-weight: 700; letter-spacing: -0.01em; color: #0e2358; }
 
         .sp-auth-h { margin: 0 0 0.5rem; font-size: 2rem; font-weight: 800; line-height: 1.14; letter-spacing: -0.02em; color: #0e2358; text-transform: lowercase; }
         .sp-auth-h[hidden] { display: none; }
         .sp-auth-p { margin: 0 0 1.8rem; font-size: 0.98rem; line-height: 1.6; color: rgba(14, 35, 88, 0.58); }
         .sp-auth-p[hidden] { display: none; }
 
-        .sp-auth-note { margin: 1.3rem 0 0; padding-top: 1.1rem; border-top: 1px solid rgba(14, 35, 88, 0.08); font-size: 0.78rem; line-height: 1.55; color: rgba(14, 35, 88, 0.42); }
 
-        .sp-auth-alt { margin: 1.5rem 0 0; font-size: 0.88rem; color: rgba(14, 35, 88, 0.55); }
-        .sp-auth-alt[hidden] { display: none; }
 
         .sp-auth-foot {
             position: relative; z-index: 1;
@@ -223,39 +217,26 @@
         </a>
 
         <div class="sp-auth-stage">
-            <a class="sp-auth-brand" href="https://sentinelpay.org" aria-label="sentinelpay">
-                <svg viewBox="0 0 120 120" fill="none" aria-hidden="true">
-                    <defs>
-                        <linearGradient id="spAuthGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stop-color="#00c8ff"/><stop offset="100%" stop-color="#a020f0"/>
-                        </linearGradient>
-                    </defs>
-                    <g fill="none" stroke="url(#spAuthGrad)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/>
-                        <path d="M38 60 Q 60 40 82 60 Q 60 80 38 60 Z"/>
-                        <circle cx="60" cy="60" r="6"/>
-                    </g>
-                </svg>
-                <span>sentinelpay</span>
-            </a>
 
             <h1 class="sp-auth-h" id="auth-h-in">welcome back</h1>
             <h1 class="sp-auth-h" id="auth-h-up" hidden>create your account</h1>
             <p class="sp-auth-p" id="auth-s-in">sign in to check a wallet and pick up where you left off.</p>
             <p class="sp-auth-p" id="auth-s-up" hidden>one account for your whole team, with every wallet you check kept in one place.</p>
 
-            <div class="sp-auth-panel">
+            <div class="lp-demo-card bad-form-card sp-auth-panel">
+                    <span class="lp-demo-dots" aria-hidden="true"></span>
+                    <span class="lp-demo-edge" aria-hidden="true"></span>
                 <div class="sp-auth-tabs" role="tablist">
                     <button type="button" class="sp-auth-tab is-active" id="auth-tab-in" role="tab" aria-selected="true" aria-controls="auth-panel-in">log in</button>
                     <button type="button" class="sp-auth-tab" id="auth-tab-up" role="tab" aria-selected="false" aria-controls="auth-panel-up">create account</button>
                 </div>
 
                 <form class="sp-auth-form" id="auth-panel-in" role="tabpanel" aria-labelledby="auth-tab-in" novalidate>
-                    <div class="sp-auth-field">
+                    <div class="lp-demo-field lp-demo-field-full">
                         <label for="auth-in-email">work email</label>
                         <input id="auth-in-email" name="email" type="email" autocomplete="email" placeholder="you@yourcompany.com">
                     </div>
-                    <div class="sp-auth-field">
+                    <div class="lp-demo-field lp-demo-field-full">
                         <label for="auth-in-pass">password</label>
                         <input id="auth-in-pass" name="password" type="password" autocomplete="current-password" placeholder="••••••••••••">
                     </div>
@@ -263,37 +244,32 @@
                         <label class="sp-auth-remember"><input type="checkbox" name="remember"><span>keep me signed in</span></label>
                         <a class="sp-auth-link" href="/start-free-trial">forgot your password?</a>
                     </div>
-                    <button type="submit" class="sp-auth-submit">log in</button>
+                    <button type="submit" class="lp-demo-submit sp-auth-submit">log in</button>
                 </form>
 
                 <form class="sp-auth-form" id="auth-panel-up" role="tabpanel" aria-labelledby="auth-tab-up" novalidate hidden>
-                    <div class="sp-auth-pair">
-                        <div class="sp-auth-field">
+                    <div class="lp-demo-grid">
+                        <div class="lp-demo-field">
                             <label for="auth-up-first">first name</label>
                             <input id="auth-up-first" name="firstName" type="text" autocomplete="given-name">
                         </div>
-                        <div class="sp-auth-field">
+                        <div class="lp-demo-field">
                             <label for="auth-up-last">last name</label>
                             <input id="auth-up-last" name="lastName" type="text" autocomplete="family-name">
                         </div>
                     </div>
-                    <div class="sp-auth-field">
+                    <div class="lp-demo-field lp-demo-field-full">
                         <label for="auth-up-email">work email</label>
                         <input id="auth-up-email" name="email" type="email" autocomplete="email" placeholder="you@yourcompany.com">
                     </div>
-                    <div class="sp-auth-field">
+                    <div class="lp-demo-field lp-demo-field-full">
                         <label for="auth-up-pass">password</label>
                         <input id="auth-up-pass" name="password" type="password" autocomplete="new-password" placeholder="at least 12 characters">
                     </div>
-                    <label class="sp-auth-consent"><input type="checkbox" name="consent"><span>i agree to <a href="/terms-of-service">the terms of service</a> and to be contacted about this account.</span></label>
-                    <button type="submit" class="sp-auth-submit">create account</button>
+                    <label class="lp-demo-consent"><input type="checkbox" name="consent"><span>i agree to <a href="/terms-of-service">the terms of service</a> and to be contacted about this account.</span></label>
+                    <button type="submit" class="lp-demo-submit sp-auth-submit">create account</button>
                 </form>
-
-                <p class="sp-auth-note">accounts open when the product launches. until then the trial link we email you is the way in.</p>
             </div>
-
-            <p class="sp-auth-alt" id="auth-alt-in">no account yet? <a class="sp-auth-link" href="/start-free-trial">start a free trial</a></p>
-            <p class="sp-auth-alt" id="auth-alt-up" hidden>already have an account? <button type="button" class="sp-auth-link sp-auth-link-btn" id="auth-back-in">log in</button></p>
         </div>
 
         <div class="sp-auth-foot">
@@ -344,12 +320,11 @@
     pin.hidden=!login;pup.hidden=login;
     /* the copy beside the card belongs to the panel: leaving "welcome back" up
        while somebody is creating an account reads like the page did not notice */
-    ['auth-h-','auth-s-','auth-alt-'].forEach(function(k){
+    ['auth-h-','auth-s-'].forEach(function(k){
       var a=pair(k+'in'),b=pair(k+'up');if(a)a.hidden=!login;if(b)b.hidden=login;});
     var f=(login?pin:pup).querySelector('input');if(f&&document.activeElement!==document.body)f.focus({preventScroll:true});}
     tin.addEventListener('click',function(){show(true);});
     tup.addEventListener('click',function(){show(false);});
-    var back=document.getElementById('auth-back-in');if(back)back.addEventListener('click',function(){show(true);});
     /* /auth#create opens straight on the second panel, so a "get started" link can
        point at the right half of the card without a second page */
     if(location.hash==='#create')show(false);

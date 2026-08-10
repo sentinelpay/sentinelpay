@@ -3116,17 +3116,19 @@ html[data-mail-down] a[data-mail-subject] {
         background: linear-gradient(90deg, #00f0ff 0%, #a020f0 100%);
     }
 
-    .sp-auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 0.25rem; padding: 0.25rem; margin-bottom: 1.5rem; border-radius: 11px; background: #f1f4f9; border: 1px solid rgba(14, 35, 88, 0.07); }
+    .lp-demo-consent a { color: #7bdcff; text-decoration: none; border-bottom: 1px solid rgba(123, 220, 255, 0.35); }
+    .lp-demo-consent a:hover { border-bottom-color: #7bdcff; }
+    .sp-auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 0.25rem; padding: 0.25rem; margin-bottom: 1.4rem; border-radius: 11px; background: rgba(255, 255, 255, 0.045); border: 1px solid rgba(255, 255, 255, 0.08); position: relative; z-index: 1; }
     .sp-auth-tab {
         padding: 0.58rem 0.5rem; border: 0; border-radius: 8px; background: none;
-        font-family: inherit; font-size: 0.86rem; font-weight: 600; color: rgba(14, 35, 88, 0.5);
-        white-space: nowrap; cursor: pointer; transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+        font-family: inherit; font-size: 0.86rem; font-weight: 600; color: rgba(255, 255, 255, 0.55);
+        white-space: nowrap; cursor: pointer; transition: background 0.18s ease, color 0.18s ease;
     }
-    .sp-auth-tab:hover { color: #0e2358; }
-    .sp-auth-tab.is-active { color: #0e2358; background: #ffffff; box-shadow: 0 1px 3px rgba(14, 35, 88, 0.12); }
-    .sp-auth-tab:focus-visible { outline: 2px solid rgba(0, 145, 200, 0.5); outline-offset: 2px; }
-
-    .sp-auth-form { display: grid; gap: 1rem; }
+    .sp-auth-tab:hover { color: #fff; }
+    .sp-auth-tab.is-active { color: #fff; background: linear-gradient(120deg, rgba(0, 240, 255, 0.16), rgba(160, 32, 240, 0.16)); box-shadow: inset 0 0 0 1px rgba(123, 108, 255, 0.5); }
+    .sp-auth-tab:focus-visible { outline: 2px solid rgba(0, 240, 255, 0.5); outline-offset: 2px; }
+.sp-auth-form { display: grid; gap: 1rem; position: relative; z-index: 1; }
+    .sp-auth-form .lp-demo-grid { gap: 0 1.1rem; }
     .sp-auth-form[hidden] { display: none; }
     .sp-auth-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
     .sp-auth-field { display: grid; gap: 0.4rem; }
@@ -3147,9 +3149,9 @@ html[data-mail-down] a[data-mail-subject] {
     .sp-auth-field input::placeholder { color: rgba(14, 35, 88, 0.3); }
     .sp-auth-field input:focus { border-color: #0091c8; background: #fff; box-shadow: 0 0 0 3px rgba(0, 145, 200, 0.12); }
 
-    .sp-auth-row { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; flex-wrap: wrap; }
-    .sp-auth-remember { display: flex; align-items: center; gap: 0.5rem; font-size: 0.84rem; color: rgba(14, 35, 88, 0.6); cursor: pointer; }
-    .sp-auth-remember input { width: 15px; height: 15px; flex: 0 0 auto; accent-color: #0091c8; cursor: pointer; }
+    .sp-auth-row { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; flex-wrap: wrap; }
+    .sp-auth-remember { display: flex; align-items: center; gap: 0.5rem; font-size: 0.84rem; color: rgba(255, 255, 255, 0.6); cursor: pointer; }
+    .sp-auth-remember input { width: 15px; height: 15px; flex: 0 0 auto; accent-color: #7b6cff; cursor: pointer; }
 
     /* the same surface every other checkbox on the site sits on */
     .sp-auth-consent {
@@ -3164,23 +3166,14 @@ html[data-mail-down] a[data-mail-subject] {
     .sp-auth-consent:has(input:checked) { border-color: rgba(0, 145, 200, 0.4); background: rgba(0, 145, 200, 0.06); color: #0e2358; }
     .sp-auth-consent a { color: #0091c8; text-decoration: none; border-bottom: 1px solid rgba(0, 145, 200, 0.35); }
 
-    .sp-auth-submit {
-        width: 100%; margin-top: 0.2rem; padding: 0.85rem 1rem;
-        border: 0; border-radius: 10px; cursor: pointer;
-        font-family: inherit; font-size: 0.95rem; font-weight: 700; color: #fff;
-        background: #0e2358;
-        transition: box-shadow 0.22s ease, background 0.18s ease, transform 0.18s ease;
-    }
-    .sp-auth-submit:hover { background: #16305f; box-shadow: 0 12px 28px -12px rgba(14, 35, 88, 0.6); }
-    .sp-auth-submit:active { transform: scale(0.99); }
+    .sp-auth-submit { width: 100%; margin-top: 0.3rem; }
+.sp-auth-link { font-size: 0.84rem; color: #7bdcff; text-decoration: none; border-bottom: 1px solid rgba(123, 220, 255, 0.3); white-space: nowrap; }
+    .sp-auth-link:hover { border-bottom-color: #7bdcff; }
+    .sp-auth-link-btn { border: 0; border-bottom: 1px solid rgba(123, 220, 255, 0.3); background: none; padding: 0; font-family: inherit; cursor: pointer; }
 
-    .sp-auth-link { font-size: 0.84rem; color: #0091c8; text-decoration: none; border-bottom: 1px solid rgba(0, 145, 200, 0.3); white-space: nowrap; }
-    .sp-auth-link:hover { border-bottom-color: #0091c8; }
-    .sp-auth-link-btn { border: 0; border-bottom: 1px solid rgba(0, 145, 200, 0.3); background: none; padding: 0; font-family: inherit; cursor: pointer; }
-
-    .sp-auth-link { font-size: 0.84rem; color: #0091c8; text-decoration: none; border-bottom: 1px solid rgba(0, 145, 200, 0.3); white-space: nowrap; }
-    .sp-auth-link:hover { border-bottom-color: #0091c8; }
-    .sp-auth-link-btn { border: 0; border-bottom: 1px solid rgba(0, 145, 200, 0.3); background: none; padding: 0; font-family: inherit; cursor: pointer; }
+    .sp-auth-link { font-size: 0.84rem; color: #7bdcff; text-decoration: none; border-bottom: 1px solid rgba(123, 220, 255, 0.3); white-space: nowrap; }
+    .sp-auth-link:hover { border-bottom-color: #7bdcff; }
+    .sp-auth-link-btn { border: 0; border-bottom: 1px solid rgba(123, 220, 255, 0.3); background: none; padding: 0; font-family: inherit; cursor: pointer; }
 
     .sp-auth-note { margin: 1.3rem 0 0; padding-top: 1.1rem; border-top: 1px solid rgba(14, 35, 88, 0.08); font-size: 0.78rem; line-height: 1.55; color: rgba(14, 35, 88, 0.42); }
 
@@ -3195,7 +3188,10 @@ html[data-mail-down] a[data-mail-subject] {
    the nav opens this over whatever page you were on rather than sending you
    somewhere: signing in is not a change of place, and the address bar should not
    pretend it is. /auth still exists and still works, so a visitor without
-   javascript follows the same links to a real page. */
+   javascript follows the same links to a real page.
+
+   the panel is the demo form's card, dots, gradient edge and all, because that
+   is the surface this site puts a form on. */
 .sp-authm-backdrop {
     position: fixed;
     inset: 0;
@@ -3204,7 +3200,7 @@ html[data-mail-down] a[data-mail-subject] {
     align-items: center;
     justify-content: center;
     padding: 1.25rem;
-    background: rgba(10, 18, 40, 0.5);
+    background: rgba(6, 12, 28, 0.55);
     backdrop-filter: blur(7px);
     -webkit-backdrop-filter: blur(7px);
     opacity: 0;
@@ -3216,7 +3212,7 @@ html[data-mail-down] a[data-mail-subject] {
 .sp-authm {
     position: relative;
     width: 100%;
-    max-width: 25.5rem;
+    max-width: 26rem;
     max-height: calc(100vh - 2.5rem);
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -3227,34 +3223,32 @@ html[data-mail-down] a[data-mail-subject] {
 }
 .sp-authm-backdrop.is-open .sp-authm { transform: none; opacity: 1; }
 
-.sp-authm-panel { padding-top: 1.6rem; }
-.sp-authm-head { text-align: center; margin-bottom: 1.3rem; }
-.sp-authm-brand { display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.9rem; }
-.sp-authm-brand svg { width: 26px; height: 26px; }
-.sp-authm-brand span { font-size: 0.95rem; font-weight: 700; letter-spacing: -0.01em; color: #0e2358; }
-.sp-authm-h { margin: 0 0 0.35rem; font-size: 1.5rem; font-weight: 800; line-height: 1.2; letter-spacing: -0.02em; color: #0e2358; text-transform: lowercase; }
+/* the demo card is a grid with a 3rem gap between its two columns of content.
+   here the card holds one stack, so that gap turned into 48px of dead air under
+   the tabs. the pieces carry their own spacing. */
+.sp-auth-panel, .sp-authm-panel { gap: 0; }
+.sp-authm-panel { padding: 2rem 2rem 1.8rem !important; border-radius: 22px; }
+.sp-authm-head { position: relative; z-index: 1; text-align: center; margin-bottom: 1.4rem; }
+.sp-authm-h { margin: 0 0 0.4rem; font-size: 1.55rem; font-weight: 800; line-height: 1.18; letter-spacing: -0.02em; color: #fff; text-transform: lowercase; }
 .sp-authm-h[hidden] { display: none; }
-.sp-authm-p { margin: 0; font-size: 0.9rem; line-height: 1.55; color: rgba(14, 35, 88, 0.58); }
+.sp-authm-p { margin: 0; font-size: 0.9rem; line-height: 1.55; color: rgba(255, 255, 255, 0.55); }
 .sp-authm-p[hidden] { display: none; }
 
 .sp-authm-x {
     position: absolute;
-    top: 0.6rem;
-    right: 0.6rem;
+    top: 0.7rem;
+    right: 0.7rem;
     z-index: 2;
     display: flex; align-items: center; justify-content: center;
     width: 30px; height: 30px; padding: 0;
     border: 0; border-radius: 8px; background: transparent;
-    color: rgba(14, 35, 88, 0.45);
+    color: rgba(255, 255, 255, 0.45);
     cursor: pointer;
     transition: color 0.18s ease, background 0.18s ease;
 }
 .sp-authm-x svg { width: 15px; height: 15px; }
-.sp-authm-x:hover { color: #0e2358; background: rgba(14, 35, 88, 0.06); }
-.sp-authm-x:focus-visible { outline: 2px solid rgba(0, 145, 200, 0.5); outline-offset: 2px; }
-
-.sp-authm-alt { margin: 0.9rem 0 0; text-align: center; font-size: 0.86rem; color: rgba(14, 35, 88, 0.55); }
-.sp-authm-alt[hidden] { display: none; }
+.sp-authm-x:hover { color: #fff; background: rgba(255, 255, 255, 0.09); }
+.sp-authm-x:focus-visible { outline: 2px solid rgba(0, 240, 255, 0.5); outline-offset: 2px; }
 
 /* the page behind must not scroll while the dialog is up */
 html.sp-authm-open, html.sp-authm-open body { overflow: hidden; }
@@ -3262,5 +3256,7 @@ html.sp-authm-open, html.sp-authm-open body { overflow: hidden; }
 @media (max-width: 560px) {
     .sp-authm-backdrop { padding: 0.9rem; align-items: flex-start; padding-top: 3.5rem; }
     .sp-authm { max-height: calc(100dvh - 5rem); }
+    .sp-authm-panel { padding: 1.6rem 1.4rem 1.4rem !important; }
     .sp-authm-h { font-size: 1.35rem; }
+}
 }
