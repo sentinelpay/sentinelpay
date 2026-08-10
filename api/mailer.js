@@ -138,7 +138,9 @@ function codeMeta(items) {
 // email had before, which is the right way round.
 function tickRow(b) {
     return '<tr>' +
-        '<td width="16" style="padding:9px 14px 0 0;vertical-align:top;font-family:' + FONT + ';' +
+        // measured rather than guessed: at 9px the tick sat a pixel and a half above
+        // the middle of the first line of text next to it
+        '<td width="16" style="padding:11px 14px 0 0;vertical-align:top;font-family:' + FONT + ';' +
         'font-size:15px;line-height:16px;font-weight:400;color:' + C.cyan + ';">' +
         '<img src="' + CHECK + '" width="16" height="16" alt="&#10003;" ' +
         'style="display:block;width:16px;height:16px;border:0;outline:none;">' +
@@ -172,7 +174,7 @@ function divider(pad) {
         '<div style="height:1px;line-height:1px;font-size:0;background:' + C.line + ';">&nbsp;</div></td></tr>';
 }
 
-function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff, review, code, meta, lang }) {
+function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, code, meta, lang }) {
     const f = FOOTER[lang] || FOOTER.en;
     return '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
         '<meta name="viewport" content="width=device-width,initial-scale=1">' +
@@ -200,10 +202,10 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff, 
 
         // the mark on its own. no wordmark beside it: the logo is the signature,
         // and the name is in the sender line anyway.
-        '<tr><td style="padding:30px 36px 0;">' +
+        '<tr><td align="center" style="padding:32px 36px 0;">' +
         '<a href="' + SITE + '" style="text-decoration:none;">' +
         '<img src="' + LOGO + '" width="44" height="44" alt="sentinelpay" ' +
-        'style="display:block;width:44px;height:44px;border:0;outline:none;text-decoration:none;">' +
+        'style="display:inline-block;width:44px;height:44px;border:0;outline:none;text-decoration:none;">' +
         '</a></td></tr>' +
 
         divider('24px 36px 26px') +
@@ -242,7 +244,7 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff, 
 
         // the footer, the way the site's is: a line of places to go, then the
         // quiet line nobody reads until they need it
-        '<tr><td style="padding:0 36px 30px;">' +
+        '<tr><td align="center" style="padding:0 36px 30px;text-align:center;">' +
         '<div style="font-size:12px;line-height:20px;color:' + C.faint + ';">' +
         '<a href="' + SITE + '/faq" style="color:' + C.muted + ';text-decoration:none;">' + esc(f.questions) + '</a>' +
         '<span style="color:' + C.faint + ';"> &nbsp;·&nbsp; </span>' +
@@ -255,11 +257,8 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff, 
         '<div style="margin-top:14px;font-size:12px;line-height:19px;color:' + C.muted + ';">' +
         esc(f.contact) + ' <a href="mailto:' + MAIL_TO + '" style="color:' + C.cyan + ';text-decoration:none;">' + MAIL_TO + '</a>' +
         '</div>' +
-        '<div style="margin-top:16px;font-size:11px;line-height:18px;color:' + C.faint + ';">' +
-        esc(signoff || 'sent automatically by sentinelpay.org. reply to this email to answer the sender directly.') +
-        '</div>' +
         // who is writing to you, in the sense a company register understands
-        '<div style="margin-top:14px;padding-top:14px;border-top:1px solid ' + C.lineSoft + ';' +
+        '<div style="margin-top:18px;padding-top:16px;border-top:1px solid ' + C.lineSoft + ';' +
         'font-size:11px;line-height:18px;color:' + C.faint + ';">' +
         '<span style="color:' + C.muted + ';font-weight:600;">' + esc(LEGAL.name) + '</span><br>' +
         esc(f.seat) + ': ' + esc(LEGAL.address) + '<br>' +
@@ -298,11 +297,11 @@ function textVersion({ title, intro, pairs, bullets, cta, footnote, review, code
 // preview and the real thing cannot drift: whatever you look at in the browser
 // is byte for byte what lands in the inbox.
 function compose(msg) {
-    const { subject, eyebrow, title, intro, pairs, bullets, cta, footnote, signoff, review, code, meta, lang } = msg;
+    const { subject, eyebrow, title, intro, pairs, bullets, cta, footnote, review, code, meta, lang } = msg;
     const rows = (pairs || []).map(([k, v]) => row(k, v)).join('');
     return {
         subject: subject,
-        html: layout({ eyebrow, title, intro, rows, bullets, cta, footnote, signoff, review, code, meta, lang }),
+        html: layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, code, meta, lang }),
         text: textVersion({ title, intro, pairs, bullets, cta, footnote, review, code, meta, lang }),
     };
 }
@@ -375,7 +374,6 @@ const TRIAL_COPY = {
         ctaLabel: 'open your trial',
         viaAccount: 'your trial lives in your sentinelpay account, so the button opens the account first.',
         footnote: 'you are getting this because this address was used to start a trial at sentinelpay.org. if that was not you, ignore this email and nothing happens.',
-        signoff: 'sent by sentinelpay.org. need a hand? open the live chat on our site.',
     },
     hr: {
         subject: 'vaša sentinelpay proba je spremna',
@@ -391,7 +389,6 @@ const TRIAL_COPY = {
         ctaLabel: 'otvorite svoju probu',
         viaAccount: 'vaša proba živi u vašem sentinelpay računu, pa vas gumb prvo vodi na račun.',
         footnote: 'ovaj mail dobivate jer je s ove adrese pokrenuta proba na sentinelpay.org. ako to niste bili vi, samo ga zanemarite i ništa se ne događa.',
-        signoff: 'šalje sentinelpay.org. trebate pomoć? otvorite chat uživo na našoj stranici.',
     },
     de: {
         subject: 'ihre sentinelpay testphase ist bereit',
@@ -407,7 +404,6 @@ const TRIAL_COPY = {
         ctaLabel: 'testphase öffnen',
         viaAccount: 'ihre testphase liegt in ihrem sentinelpay konto, der button öffnet also zuerst das konto.',
         footnote: 'sie erhalten diese e-mail, weil mit dieser adresse eine testphase auf sentinelpay.org gestartet wurde. waren sie das nicht, ignorieren sie die e-mail einfach.',
-        signoff: 'gesendet von sentinelpay.org. brauchen sie hilfe? öffnen sie den live-chat auf unserer website.',
     },
 };
 
@@ -429,7 +425,6 @@ function trialWelcomeMessage({ to, lang }) {
         // promising a link that has never been sent.
         cta: { href: appUrl || (SITE + '/auth'), label: copy.ctaLabel },
         footnote: (appUrl ? '' : copy.viaAccount + ' ') + copy.footnote,
-        signoff: copy.signoff,
     };
 }
 async function sendTrialWelcome(opts) { return send(trialWelcomeMessage(opts)); }
@@ -447,7 +442,7 @@ const SIGNUP_COPY = {
         intro: 'enter this to finish creating your sentinelpay account.',
         meta: (m) => ['expires in ' + m + ' minutes', 'single use'],
         footnote: 'if you did not try to create an account, ignore this email. nothing has been created and nobody can use this code without it.',
-        signoff: 'sent by sentinelpay.org. we will never ask you for this code, by email, chat or phone.',
+        warning: 'we will never ask you for this code, by email, chat or phone.',
         existsEyebrow: 'your account',
         existsSubject: 'about your sentinelpay account',
         existsTitle: 'you already have an account',
@@ -462,7 +457,7 @@ const SIGNUP_COPY = {
         intro: 'unesite ga da dovršite izradu sentinelpay računa.',
         meta: (m) => ['istječe za ' + m + ' minuta', 'jednokratan'],
         footnote: 'ako niste vi pokušali izraditi račun, samo zanemarite ovaj mail. ništa nije izrađeno i bez njega nitko ne može iskoristiti ovaj kod.',
-        signoff: 'šalje sentinelpay.org. nikada vas nećemo tražiti ovaj kod, ni mailom, ni chatom, ni telefonom.',
+        warning: 'nikada vas nećemo tražiti ovaj kod, ni mailom, ni chatom, ni telefonom.',
         existsEyebrow: 'vaš račun',
         existsSubject: 'o vašem sentinelpay računu',
         existsTitle: 'račun s ovom adresom već postoji',
@@ -477,7 +472,7 @@ const SIGNUP_COPY = {
         intro: 'geben sie ihn ein, um ihr sentinelpay konto fertig anzulegen.',
         meta: (m) => ['läuft in ' + m + ' minuten ab', 'einmalig'],
         footnote: 'wenn sie kein konto anlegen wollten, ignorieren sie diese e-mail. es wurde nichts angelegt, und ohne sie kann niemand diesen code verwenden.',
-        signoff: 'gesendet von sentinelpay.org. wir fragen sie nie nach diesem code, weder per e-mail noch im chat oder am telefon.',
+        warning: 'wir fragen sie nie nach diesem code, weder per e-mail noch im chat oder am telefon.',
         existsEyebrow: 'ihr konto',
         existsSubject: 'zu ihrem sentinelpay konto',
         existsTitle: 'sie haben bereits ein konto',
@@ -498,8 +493,7 @@ function signupCodeMessage({ to, code, lang, minutes }) {
         intro: copy.intro,
         code: code,
         meta: copy.meta(minutes),
-        footnote: copy.footnote,
-        signoff: copy.signoff,
+        footnote: copy.footnote + ' ' + copy.warning,
     };
 }
 async function sendSignupCode(opts) { return send(signupCodeMessage(opts)); }
@@ -515,7 +509,6 @@ function signupExistsMessage({ to, lang }) {
         intro: copy.existsIntro,
         cta: { href: SITE + '/auth', label: copy.existsCta },
         footnote: copy.existsFootnote,
-        signoff: copy.signoff,
     };
 }
 async function sendSignupExists(opts) { return send(signupExistsMessage(opts)); }
