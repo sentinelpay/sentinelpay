@@ -317,7 +317,21 @@ async function domainStatus() {
     try {
         const { Resend } = require('resend');
         const list = await new Resend(process.env.RESEND_API_KEY).domains.list();
-        if (list && list.error) return 'could not ask the provider: ' + (list.error.message || 'unknown error');
+        if (list && list.error) {
+            const name = String(list.error.name || '');
+            // a key made with "sending access" can send perfectly well and still
+            // not be allowed to read the domain list. reported as it is, so a
+            // permission answer is not mistaken for a broken domain.
+            if (name === 'restricted_api_key') {
+                return 'the key may send but may not read the domain list, so this check cannot run. '
+                    + 'that is a permission on the key, not a problem with the domain.';
+            }
+            if (name === 'validation_error' || name === 'missing_api_key' || /api key/i.test(list.error.message || '')) {
+                return 'the provider refused the key: ' + (list.error.message || name)
+                    + '. it has most likely been revoked or rotated.';
+            }
+            return 'could not ask the provider: ' + (list.error.message || name || 'unknown error');
+        }
         // the sdk has moved this between data and data.data across versions
         const rows = (list && list.data && (list.data.data || list.data)) || [];
         if (!Array.isArray(rows)) return 'unexpected answer from the provider';
