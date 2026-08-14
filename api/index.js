@@ -888,6 +888,115 @@ app.get('/v1/mail-preview', (req, res) => {
     return res.type('html').send(html);
 });
 
+// The inbox: the submissions view a person opens, rather than the json a
+// developer curls.
+//
+// This is the other half of taking the personal data out of the notification
+// email. The notice is a doorbell now, and a doorbell is only an improvement if
+// there is a door: without somewhere to click through to, "the details are in
+// the submissions view" means whoever is on support cannot answer anybody.
+//
+// That is how it is done everywhere this is done properly. The message that
+// lands in the shared mailbox carries a reference and a link; the details live
+// in one system, behind a login, where looking is deliberate and can be logged.
+// The mailbox stops being a filing cabinet nobody can empty.
+//
+// What it is not: a real admin. There is one token rather than accounts, so it
+// cannot say who looked, only that somebody with the token did. That is the
+// next thing to build, and it is written here so it is not mistaken for done.
+app.get('/v1/inbox', async (req, res) => {
+    if (!adminOk(req)) {
+        return sendPage(res, req, '404.html', 404);
+    }
+    const token = String(req.get('x-admin-token') || req.query.token || '');
+    const kind = String(req.query.kind || '').slice(0, 32);
+    const ref = String(req.query.ref || '').slice(0, 32);
+    const flagged = String(req.query.flagged || '') === '1';
+
+    res.set('Cache-Control', 'no-store, private');
+    // the same reason the mail preview carries its own: this page is inline
+    // styles and nothing else, and it loads nothing from anywhere.
+    res.set('Content-Security-Policy',
+        "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; style-src-attr 'unsafe-inline'");
+    // it holds other people's details, so it is never to be indexed, cached or
+    // sent as a referrer to wherever a link in it goes
+    res.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
+    res.set('Referrer-Policy', 'no-referrer');
+
+    let rows = [];
+    try {
+        const out = await submissions.recent(200, kind, flagged);
+        rows = out.rows || [];
+    } catch (err) {
+        console.error('[inbox]', err.message);
+        return res.status(500).type('html').send('<p>could not read the submissions.</p>');
+    }
+    if (ref) rows = rows.filter((r) => r.ref === ref);
+
+    const q = (extra) => {
+        const parts = [];
+        if (token && req.query.token) parts.push('token=' + encodeURIComponent(token));
+        Object.keys(extra).forEach((k) => { if (extra[k]) parts.push(k + '=' + encodeURIComponent(extra[k])); });
+        return '/v1/inbox' + (parts.length ? '?' + parts.join('&') : '');
+    };
+
+    const HIDE = { ref: 1, id: 1, ts: 1, kind: 1, outcome: 1, flags: 1, ip: 1, ua: 1, country: 1 };
+    const card = (r) => {
+        const when = new Date(r.ts).toISOString().replace('T', ' ').slice(0, 16);
+        const detail = Object.keys(r)
+            .filter((k) => !HIDE[k] && r[k] !== '' && r[k] !== null && r[k] !== undefined)
+            .map((k) => '<tr><td style="padding:6px 16px 6px 0;color:#6b7899;white-space:nowrap;vertical-align:top;">' +
+                escapeHtml(k) + '</td><td style="padding:6px 0;color:#0e2358;font-weight:600;">' +
+                escapeHtml(Array.isArray(r[k]) ? r[k].join(', ') : String(r[k])) + '</td></tr>').join('');
+        // the one action this page exists for: answering the person
+        const reply = r.email
+            ? '<a href="mailto:' + escapeHtml(r.email) + '?subject=' + encodeURIComponent('re: your message to sentinelpay') +
+              '" style="display:inline-block;margin-top:12px;padding:8px 14px;border-radius:9px;' +
+              'background:#0e2358;color:#fff;text-decoration:none;font-size:13px;font-weight:700;">reply to ' +
+              escapeHtml(r.email) + '</a>'
+            : '';
+        const band = (r.flags && r.flags.length)
+            ? '<div style="margin:0 0 12px;padding:8px 12px;border-radius:9px;background:#fff8ee;border:1px solid #f6dfbc;' +
+              'font-size:12px;color:#7a5417;">worth a look: ' + escapeHtml(r.flags.join(', ')) + '</div>'
+            : '';
+        return '<div style="margin:0 0 14px;padding:18px 20px;border-radius:14px;background:#fff;border:1px solid #e6e9f0;">' +
+            '<div style="display:flex;justify-content:space-between;gap:12px;font-size:12px;color:#94a0bd;">' +
+            '<span>' + escapeHtml(r.kind) + ' &middot; ' + escapeHtml(r.outcome) + ' &middot; ' +
+            escapeHtml(r.country || '?') + '</span><span>' + escapeHtml(when) + ' &middot; ' +
+            escapeHtml(r.ref || '') + '</span></div>' + band +
+            '<table style="border-collapse:collapse;font-size:14px;margin-top:10px;">' + detail + '</table>' +
+            reply + '</div>';
+    };
+
+    const tab = (label, extra, on) =>
+        '<a href="' + q(extra) + '" style="padding:7px 13px;border-radius:9px;text-decoration:none;font-size:13px;font-weight:600;' +
+        (on ? 'background:#0e2358;color:#fff;' : 'background:#fff;color:#6b7899;border:1px solid #e6e9f0;') + '">' +
+        escapeHtml(label) + '</a>';
+
+    const head =
+        '<div style="display:flex;flex-wrap:wrap;gap:7px;margin:0 0 20px;">' +
+        tab('everything', {}, !kind && !flagged && !ref) +
+        tab('demo', { kind: 'demo' }, kind === 'demo') +
+        tab('trial', { kind: 'trial' }, kind === 'trial') +
+        tab('accounts', { kind: 'account' }, kind === 'account') +
+        tab('worth a look', { flagged: '1' }, flagged) +
+        '</div>';
+
+    res.type('html').send(
+        '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+        '<meta name="robots" content="noindex,nofollow"><title>inbox</title>' +
+        '<body style="margin:0;padding:32px 18px 64px;background:#f4f6fa;' +
+        'font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Inter,sans-serif;">' +
+        '<div style="max-width:720px;margin:0 auto;">' +
+        '<h1 style="font-size:20px;font-weight:800;margin:0 0 4px;color:#0e2358;">inbox</h1>' +
+        '<p style="margin:0 0 20px;color:rgba(14,35,88,0.6);font-size:13px;">' +
+        'everything the forms have sent us. this is the only place the details are kept.</p>' +
+        head +
+        (rows.length ? rows.map(card).join('') :
+            '<p style="color:rgba(14,35,88,0.5);font-size:14px;">nothing here.</p>') +
+        '</div></body>');
+});
+
 // What the account store knows about one address. Same token gate, same 404 when
 // it is wrong. It exists because the sign-up form cannot tell you why no code
 // arrived without telling every stranger who has an account here, so the answer
@@ -1281,8 +1390,8 @@ function notifyInternally({ kind, ref, country, lang, flags, subject, eyebrow, t
             ['domain check', flags && flags.length ? flags.join(', ') : 'passed'],
         ],
         bullets: [
-            'the details are in the submissions view, not in this message.',
-            'open ' + site + '/v1/submissions?kind=' + kind + ' with the admin token to read them.',
+            'the name, the address and everything else are in the inbox, not in this message.',
+            'open ' + site + '/v1/inbox?ref=' + (ref || '') + ' and reply from there.',
         ],
     });
 }
