@@ -1033,20 +1033,24 @@ app.post('/v1/auth/register', requireCloudflareOrigin, authRegisterLimiter, asyn
         });
 
         if (started.reason === 'exists') {
-            // the reply below is identical to the success one. the difference goes
-            // to the inbox, where only the owner of the address can read it.
+            // This says so plainly, and that is a decision rather than an oversight.
             //
-            // this branch is why "i got no code" is not the same as "the mail is
-            // broken": the address already has an account, so a different message
-            // went out. the form cannot say so without telling every stranger who
-            // has an account here, but the log can.
-            console.log('[auth] register: address already has an account, sent the notice instead');
-            try { await mailer.sendSignupExists({ to: email, lang }); }
-            catch (err) { console.error('[auth] the notice failed to send: ' + err.message); }
-            // the same shape and the same numbers as the success answer below.
-            // a reply that differs by one field is a reply that answers "does
-            // this address have an account here" to anyone who looks.
-            return res.json({ ok: true, next: 'verify', expiresInMin: accounts.status().codeTtlMinutes });
+            // The careful version answers exactly as it does for a new address and
+            // sends the owner a note instead, so that a stranger cannot learn who
+            // banks here by typing addresses into the form. The cost is that the
+            // person in front of it is shown a box for a code that will never
+            // arrive, and is sent mail they did not ask for and cannot act on.
+            //
+            // The secret was never well kept anyway: sign-in and password reset
+            // have to distinguish a known address from an unknown one, so anyone
+            // who wants the answer can have it there. What actually limits the
+            // guessing is the rate limit above, five attempts an hour from one
+            // address, which is the same wall either way.
+            //
+            // So the honest answer wins: the tab says the address is taken, no
+            // mail goes out, and nobody waits for a code that was never sent.
+            console.log('[auth] register: address already has an account, said so');
+            return res.status(409).json({ error: 'that email address already has an account. try logging in instead.' });
         }
         if (started.reason === 'slow-down') {
             console.log('[auth] register: a code went out less than a minute ago, asked them to wait');

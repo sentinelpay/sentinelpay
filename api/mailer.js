@@ -495,12 +495,6 @@ const SIGNUP_COPY = {
         meta: (m) => ['expires in ' + m + ' minutes', 'single use'],
         footnote: 'if you did not try to create an account, ignore this email. nothing has been created and nobody can use this code without it.',
         warning: 'we will never ask you for this code, by email, chat or phone.',
-        existsEyebrow: 'your account',
-        existsSubject: 'about your sentinelpay account',
-        existsTitle: 'you already have an account',
-        existsCta: 'sign in',
-        existsIntro: 'somebody tried to create an account with this address, so we did not make a second one.',
-        existsFootnote: 'if that was you, sign in instead. if it was not, you do not need to do anything: no account was created and nothing has changed.',
     },
     hr: {
         subject: 'vaš sentinelpay kod',
@@ -510,12 +504,6 @@ const SIGNUP_COPY = {
         meta: (m) => ['istječe za ' + m + ' minuta', 'jednokratan'],
         footnote: 'ako niste vi pokušali izraditi račun, samo zanemarite ovaj mail. ništa nije izrađeno i bez njega nitko ne može iskoristiti ovaj kod.',
         warning: 'nikada vas nećemo tražiti ovaj kod, ni mailom, ni chatom, ni telefonom.',
-        existsEyebrow: 'vaš račun',
-        existsSubject: 'o vašem sentinelpay računu',
-        existsTitle: 'račun s ovom adresom već postoji',
-        existsCta: 'prijavite se',
-        existsIntro: 'netko je pokušao izraditi račun s ovom adresom, pa nismo izradili drugi.',
-        existsFootnote: 'ako ste to bili vi, samo se prijavite. ako niste, ne morate ništa napraviti: račun nije izrađen i ništa se nije promijenilo.',
     },
     de: {
         subject: 'ihr sentinelpay code',
@@ -525,12 +513,6 @@ const SIGNUP_COPY = {
         meta: (m) => ['läuft in ' + m + ' minuten ab', 'einmalig'],
         footnote: 'wenn sie kein konto anlegen wollten, ignorieren sie diese e-mail. es wurde nichts angelegt, und ohne sie kann niemand diesen code verwenden.',
         warning: 'wir fragen sie nie nach diesem code, weder per e-mail noch im chat oder am telefon.',
-        existsEyebrow: 'ihr konto',
-        existsSubject: 'zu ihrem sentinelpay konto',
-        existsTitle: 'sie haben bereits ein konto',
-        existsCta: 'anmelden',
-        existsIntro: 'jemand hat versucht, mit dieser adresse ein konto anzulegen, deshalb haben wir kein zweites erstellt.',
-        existsFootnote: 'waren sie das, melden sie sich einfach an. waren sie es nicht, müssen sie nichts tun: es wurde kein konto angelegt und nichts hat sich geändert.',
     },
 };
 
@@ -550,20 +532,12 @@ function signupCodeMessage({ to, code, lang, minutes }) {
 }
 async function sendSignupCode(opts) { return send(signupCodeMessage(opts)); }
 
-function signupExistsMessage({ to, lang }) {
-    const copy = SIGNUP_COPY[lang] || SIGNUP_COPY.en;
-    return {
-        to: to,
-        lang: lang,
-        subject: copy.existsSubject,
-        eyebrow: copy.existsEyebrow,
-        title: copy.existsTitle,
-        intro: copy.existsIntro,
-        cta: { href: SITE + '/auth', label: copy.existsCta },
-        footnote: copy.existsFootnote,
-    };
-}
-async function sendSignupExists(opts) { return send(signupExistsMessage(opts)); }
+// There was a message here for "this address already has an account". It went
+// out instead of a code, so that the form could answer identically either way
+// and give nothing away. The form now says so itself, which means the person
+// reading it is not waiting on a code that was never sent, and nobody is mailed
+// about a sign-up they did not attempt. With no caller left, the template goes
+// too: an unreachable one is a thing somebody wires back up by mistake.
 
 // ---------------------------------------------------------------------------
 // previews
@@ -576,7 +550,6 @@ async function sendSignupExists(opts) { return send(signupExistsMessage(opts)); 
 
 const PREVIEWS = {
     'signup-code': (lang) => signupCodeMessage({ to: 'ana@primjer.hr', code: '481902', lang, minutes: 15 }),
-    'signup-exists': (lang) => signupExistsMessage({ to: 'ana@primjer.hr', lang }),
     'trial-welcome': (lang) => trialWelcomeMessage({ to: 'ana@primjer.hr', lang }),
     // the two that go to us rather than to a customer. these are written where
     // they are sent, so the sample here mirrors them rather than sharing code:
@@ -615,6 +588,6 @@ function render(name, lang) {
 }
 
 module.exports = {
-    send, compose, sendTrialWelcome, sendSignupCode, sendSignupExists,
+    send, compose, sendTrialWelcome, sendSignupCode,
     render, previewNames, isConfigured, domainStatus, MAIL_FROM, MAIL_TO,
 };

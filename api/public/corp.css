@@ -3338,6 +3338,22 @@ html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }
 .lp-demo-consent a { color: #0091c8; border-bottom-color: rgba(0, 145, 200, 0.35); }
 .lp-demo-consent a:hover { border-bottom-color: #0091c8; }
 
+/* inside the auth card the links sit in the middle of running text, and a rule
+   under one of them is a line drawn through the sentence: the row it lands in
+   grows taller than the row above it, and two lines of the same paragraph stop
+   looking like the same paragraph. the colour already says it is a link, and
+   the underline comes back on hover for anyone who is looking for one. */
+.sp-auth-form .lp-demo-consent a,
+.sp-auth-form .sp-auth-link {
+    border-bottom: 0;
+    text-decoration: none;
+}
+.sp-auth-form .lp-demo-consent a:hover,
+.sp-auth-form .sp-auth-link:hover {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
 /* the progress rail and the step counter */
 .lp-demo-track { background: rgba(14, 35, 88, 0.09); }
 .lp-demo-pct { color: rgba(14, 35, 88, 0.5); }
