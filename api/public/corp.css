@@ -3463,8 +3463,20 @@ html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }
     outline: none;
 }
 
-.lp-demo-consent a { color: #0091c8; border-bottom-color: rgba(0, 145, 200, 0.35); }
-.lp-demo-consent a:hover { border-bottom-color: #0091c8; }
+/* the link inside the sentence moves with the sentence. the row is quiet until
+   it is ticked and lights up when it is, and the link was staying at full
+   strength through both: bright cyan in the middle of a line of grey, which
+   read as a piece of a different, brighter component dropped into this one.
+   now it fades and lifts along with the words around it, and hover takes it to
+   full whichever state the row is in. */
+.lp-demo-consent a {
+    color: rgba(0, 145, 200, 0.72);
+    border-bottom-color: rgba(0, 145, 200, 0.25);
+    transition: color 0.16s ease, border-bottom-color 0.16s ease;
+}
+.lp-demo-consent:hover a,
+.lp-demo-consent:has(input:checked) a { color: #0091c8; border-bottom-color: rgba(0, 145, 200, 0.4); }
+.lp-demo-consent a:hover { color: #0091c8; border-bottom-color: #0091c8; }
 
 /* inside the auth card the links sit in the middle of running text, and a rule
    under one of them is a line drawn through the sentence: the row it lands in
