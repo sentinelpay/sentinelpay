@@ -3837,18 +3837,18 @@ html.theme-light .lp-demo-select-menu { scrollbar-color: rgba(14, 35, 88, 0.2) #
        so the two read as the same component in both panels. */
     .sp-auth-form .lp-demo-consent,
     .sp-auth-form .sp-auth-remember {
-        min-height: 44px;
-        width: 100%;
         text-align: left;
         align-items: center;
-        padding: 0.7rem 0.85rem;
-        gap: 0.7rem;
+        padding: 0.5rem 0.65rem;
+        gap: 0.6rem;
     }
     .sp-auth-form .lp-demo-consent input,
-    .sp-auth-form .sp-auth-remember input { width: 18px; height: 18px; margin-top: 0; }
-    /* with the tick box full width, the link underneath it is its own row */
-    .sp-auth-row { flex-direction: column; align-items: stretch; gap: 0.15rem; }
-    .sp-auth-form .sp-auth-link { align-self: center; }
+    .sp-auth-form .sp-auth-remember input { width: 17px; height: 17px; margin-top: 0; }
+    /* the terms box has the row to itself. the tick for staying signed in keeps
+       its place opposite the password link, which is where the pair belongs:
+       one is the choice, the other is the way out of it. */
+    .sp-auth-form .lp-demo-consent { width: 100%; }
+    .sp-auth-form .sp-auth-remember { width: auto; }
     /* padding rather than a bigger font: the link keeps its place in the row and
        becomes something a thumb can hit */
     .sp-auth-form .sp-auth-link { padding: 0.9rem 0.2rem; }
