@@ -3343,6 +3343,27 @@ html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }
    grows taller than the row above it, and two lines of the same paragraph stop
    looking like the same paragraph. the colour already says it is a link, and
    the underline comes back on hover for anyone who is looking for one. */
+/* "keep me signed in" is the same kind of thing as the terms tick: a choice
+   with a box beside it, sitting in a form full of framed fields. left bare it
+   read as a stray line of text between two bordered rows, so it gets the frame
+   the other one has, and lights up the same way when it is ticked. */
+.sp-auth-form .sp-auth-remember {
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 10px;
+    border: 1px solid rgba(14, 35, 88, 0.1);
+    background: #fbfcfd;
+    line-height: 1.4;
+    transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+}
+.sp-auth-form .sp-auth-remember:hover { border-color: rgba(0, 145, 200, 0.45); color: #0e2358; }
+.sp-auth-form .sp-auth-remember:has(input:checked) {
+    color: #0e2358;
+    border-color: rgba(0, 145, 200, 0.4);
+    background: rgba(0, 145, 200, 0.07);
+}
+
 .sp-auth-form .lp-demo-consent a,
 .sp-auth-form .sp-auth-link {
     border-bottom: 0;
@@ -3484,12 +3505,13 @@ html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }
 /* the eye that shows a password. it sits inside the field rather than beside
    it, so the row keeps its width and the button lands where every other form
    on the internet puts it. */
-.lp-demo-field.sp-has-eye { position: relative; }
+.sp-eye-box { position: relative; display: block; }
 .lp-demo-field.sp-has-eye input { padding-right: 2.9rem; }
 .sp-eye {
     position: absolute;
-    right: 0.55rem;
-    bottom: 0.5rem;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
     width: 2rem;
     height: 2rem;
     display: flex;

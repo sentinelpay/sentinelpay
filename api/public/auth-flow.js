@@ -682,6 +682,14 @@
         input.__spEye = true;
         field.classList.add('sp-has-eye');
 
+        // the button is placed against the input itself rather than against the
+        // field, which also holds the label above it. anchored to the field it
+        // could only be positioned by a number measured off one input height,
+        // and it sat three pixels high the moment anything else was styled.
+        var box = el('div', 'sp-eye-box');
+        input.parentNode.insertBefore(box, input);
+        box.appendChild(input);
+
         // a revealed password is a plain text field, and the browser will offer
         // to spellcheck and autocapitalise it: a red squiggle under somebody's
         // passphrase, and a capital letter they did not type
@@ -728,7 +736,7 @@
         });
 
         paint();
-        field.appendChild(btn);
+        box.appendChild(btn);
     }
 
     function scan() {
