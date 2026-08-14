@@ -1214,17 +1214,20 @@ app.post('/v1/auth/verify', requireCloudflareOrigin, authVerifyLimiter, async (r
 
         // a record of the account, kept next to the form submissions so there is one
         // place a person looks to see who arrived and how
-        submissions.record('account', req, { email, name: out.name, lang: out.lang }, 'created');
+        const ref = submissions.record('account', req, { email, name: out.name, lang: out.lang }, 'created');
 
         // best effort, and never allowed to fail the sign-up: the account exists
         try {
-            await mailer.send({
-                subject: 'new account: ' + (out.name || email),
-                replyTo: email,
+            await notifyInternally({
+                kind: 'account',
+                ref,
+                country: req.headers['cf-ipcountry'],
+                lang: out.lang,
+                flags: [],
+                subject: 'a new account',
                 eyebrow: 'accounts',
                 title: 'somebody created an account',
                 intro: 'the address was verified by code before the account was written.',
-                pairs: [['name', out.name], ['email', email], ['language', out.lang]],
             });
         } catch (notifyErr) {
             console.error('[auth verify notify failed]', notifyErr.message);
@@ -1244,6 +1247,46 @@ app.post('/v1/auth/verify', requireCloudflareOrigin, authVerifyLimiter, async (r
 
 // Signing in with a password. The reply says nothing about which half was
 // wrong, and accounts.signIn takes the same time either way.
+// ---------------------------------------------------------------------------
+// what we tell ourselves when something comes in
+// ---------------------------------------------------------------------------
+//
+// Not who it was. The shared inbox is a second copy of everything the database
+// holds, outside the encryption, outside the retention sweep, and outside the
+// reach of `/v1/forget`: erasing somebody from the database left their name and
+// address sitting in `support@` for ever, which made the deletion a half truth
+// and the privacy policy a promise we were not keeping.
+//
+// So the notification carries the reference, the country, and whether anything
+// needs a look. That is enough to decide whether to open it now or after lunch.
+// Everything else is one click away, in the one place that is encrypted, swept
+// and erasable.
+//
+// The reply-to went with it. Hitting reply used to answer the person directly,
+// which was convenient and was also the address arriving in the mailbox by
+// another door.
+function notifyInternally({ kind, ref, country, lang, flags, subject, eyebrow, title, intro }) {
+    const site = 'https://sentinelpay.org';
+    return mailer.send({
+        subject: (flags && flags.length ? 'review: ' : '') + subject + (ref ? ' (' + ref + ')' : ''),
+        eyebrow,
+        title,
+        intro,
+        review: reviewNotes(flags || []),
+        pairs: [
+            ['reference', ref || 'not recorded'],
+            ['kind', kind],
+            ['country', country || 'unknown'],
+            ['language', lang || 'en'],
+            ['domain check', flags && flags.length ? flags.join(', ') : 'passed'],
+        ],
+        bullets: [
+            'the details are in the submissions view, not in this message.',
+            'open ' + site + '/v1/submissions?kind=' + kind + ' with the admin token to read them.',
+        ],
+    });
+}
+
 app.post('/v1/auth/login', requireCloudflareOrigin, authLoginLimiter, async (req, res) => {
     try {
         const b = req.body || {};
@@ -1357,7 +1400,7 @@ app.post('/v1/trial-request', requireCloudflareOrigin, trialRequestLimiter, asyn
         const lang = ['hr', 'de', 'en'].includes(b.lang) ? b.lang : 'en';
 
         // written first: if the mail then fails, we still know who signed up
-        submissions.record('trial', req, {
+        const ref = submissions.record('trial', req, {
             name: `${firstName} ${lastName}`,
             email, company, website, jobTitle, industry, formCountry: country, lang,
             domainCheck: flags.length ? 'flagged' : 'passed',
@@ -1375,27 +1418,18 @@ app.post('/v1/trial-request', requireCloudflareOrigin, trialRequestLimiter, asyn
         // our own copy is best effort. it goes to a shared inbox that may not be
         // configured, and a bounce there must never cost the visitor their trial.
         try {
-            await mailer.send({
-                subject: (flags.length ? 'review: ' : '') +
-                    `new trial sign-up: ${firstName} ${lastName}${company ? ' @ ' + company : ''}`,
-                replyTo: email,
+            await notifyInternally({
+                kind: 'trial',
+                ref,
+                country,
+                lang,
+                flags,
+                subject: 'a new trial sign-up',
                 eyebrow: 'free trial',
                 title: 'a company signed up for the trial',
                 intro: flags.length
                     ? 'the welcome email has been sent to them, but something here is worth a second look.'
                     : 'the domain check passed and the welcome email has been sent to them.',
-                review: reviewNotes(flags),
-                pairs: [
-                    ['name', `${firstName} ${lastName}`],
-                    ['job title', jobTitle],
-                    ['work email', email],
-                    ['company', company],
-                    ['website', website],
-                    ['industry', industry],
-                    ['country', country],
-                    ['language', lang],
-                    ['domain check', flags.length ? flags.join(', ') : 'passed'],
-                ],
             });
         } catch (notifyErr) {
             console.error('[trial-request notify failed]', notifyErr.code || '', notifyErr.message);
@@ -1461,7 +1495,7 @@ app.post('/v1/demo-request', requireCloudflareOrigin, demoRequestLimiter, async 
             return res.status(400).json({ error: 'website domain must match your work email domain' });
         }
 
-        submissions.record('demo', req, {
+        const ref = submissions.record('demo', req, {
             name: `${firstName} ${lastName}`,
             email, company, website, jobTitle, industry, formCountry: country,
             size, volume, solutions, message,
@@ -1469,28 +1503,16 @@ app.post('/v1/demo-request', requireCloudflareOrigin, demoRequestLimiter, async 
         }, 'accepted');
 
         try {
-            await mailer.send({
-                subject: (flags.length ? 'review: ' : '') +
-                    `new demo request: ${firstName} ${lastName}${company ? ' @ ' + company : ''}`,
-                replyTo: email,
+            await notifyInternally({
+                kind: 'demo',
+                ref,
+                country,
+                lang: b.lang,
+                flags,
+                subject: 'a new demo request',
                 eyebrow: 'demo request',
                 title: 'someone asked for a demo',
                 intro: 'sent from the demo form on sentinelpay.org.',
-                review: reviewNotes(flags),
-                pairs: [
-                    ['name', `${firstName} ${lastName}`],
-                    ['job title', jobTitle],
-                    ['email', email],
-                    ['company', company],
-                    ['website', website],
-                    ['industry', industry],
-                    ['country', country],
-                    ['company size', size],
-                    ['wallets/txns per year', volume],
-                    ['solutions', solutions],
-                    ['message', message],
-                    ['domain check', flags.length ? flags.join(', ') : 'passed'],
-                ],
             });
         } catch (mailErr) {
             console.error('[demo-request mail failed]', mailErr.code || '', mailErr.message);

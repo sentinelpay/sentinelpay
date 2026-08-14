@@ -96,7 +96,7 @@ function record(kind, req, fields, outcome) {
 
     if (!db.available()) {
         writeFile(entry, when);
-        return;
+        return ref;
     }
 
     // The stored row carries the fields, not the envelope: kind and outcome are
@@ -116,6 +116,11 @@ function record(kind, req, fields, outcome) {
             console.error('[submissions] insert threw: ' + err.message);
             writeFile(entry, when);
         });
+
+    // handed back so the internal notification can carry the reference instead
+    // of the person: one short string that ties the mail, the log line and the
+    // row together, and means nothing to anybody who does not hold all three.
+    return ref;
 }
 
 // ---------------------------------------------------------------------------
