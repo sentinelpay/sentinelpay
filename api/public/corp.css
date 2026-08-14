@@ -1896,12 +1896,6 @@ html.theme-light .lp-demo-card .lp-cta-label {
     transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
 }
 .lp-demo-check:hover { border-color: rgba(0, 240, 255, 0.4); color: #fff; }
-.lp-demo-check input {
-    flex: 0 0 auto;
-    width: 16px; height: 16px;
-    accent-color: #7b6cff;
-    cursor: pointer;
-}
 .lp-demo-check:has(input:checked) {
     border-color: transparent;
     background: linear-gradient(120deg, rgba(0, 240, 255, 0.16), rgba(160, 32, 240, 0.16));
@@ -2042,12 +2036,6 @@ html.theme-light .lp-demo-select-list { scrollbar-width: thin; scrollbar-color: 
     transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
 }
 .lp-demo-consent:hover { border-color: rgba(0, 240, 255, 0.4); color: #fff; }
-.lp-demo-consent input {
-    flex: 0 0 auto;
-    width: 16px; height: 16px;
-    margin-top: 0.1rem;
-    accent-color: #7b6cff; cursor: pointer;
-}
 .lp-demo-consent:has(input:checked) {
     border-color: transparent;
     background: linear-gradient(120deg, rgba(0, 240, 255, 0.16), rgba(160, 32, 240, 0.16));
@@ -2218,7 +2206,6 @@ html.theme-light .lp-demo-select-list { scrollbar-width: thin; scrollbar-color: 
     background: rgba(255, 90, 122, 0.06) !important;
     box-shadow: none !important;
 }
-.lp-demo-consent.lp-demo-consent-err input { accent-color: #ff5a7a; outline: 2px solid rgba(255, 90, 122, 0.4); outline-offset: 1px; border-radius: 3px; }
 
 /* ============ latest insights (placeholder content) ============ */
 .lp-ins-featured {
@@ -3149,7 +3136,6 @@ html[data-mail-down] a[data-mail-subject] {
 
 .sp-auth-row { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; flex-wrap: wrap; }
 .sp-auth-remember { display: flex; align-items: center; gap: 0.5rem; font-size: 0.84rem; color: rgba(255, 255, 255, 0.6); cursor: pointer; }
-.sp-auth-remember input { width: 15px; height: 15px; flex: 0 0 auto; accent-color: #7b6cff; cursor: pointer; }
 
 .sp-auth-link { font-size: 0.84rem; color: #7bdcff; text-decoration: none; border-bottom: 1px solid rgba(123, 220, 255, 0.3); white-space: nowrap; }
 .sp-auth-link:hover { border-bottom-color: #7bdcff; }
@@ -3382,7 +3368,84 @@ html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }
     background: rgba(0, 145, 200, 0.07);
     box-shadow: none;
 }
-.lp-demo-check input, .lp-demo-consent input, .sp-auth-remember input { accent-color: #0091c8; }
+/* ---- the tick box, ours ---------------------------------------------------
+   every checkbox on the site, drawn by us. `accent-color` only recolours what
+   the browser was already going to draw, and what each browser draws is its
+   own: a square with a hairline on chrome, a rounded one on safari, something
+   else again on firefox and on android. that is four different shapes in a form
+   that is otherwise ours down to the corner radius.
+
+   this replaces the control rather than tinting it. `appearance: none` takes
+   the native drawing away and everything after it is the site's own materials:
+   the same 6px corner the small pills use, the same cyan the fields focus in,
+   and the brand gradient when it is on.
+
+   the input keeps being an input. it is not a span pretending to be one, so it
+   is still in the tab order, still toggles with the space bar, still announces
+   itself to a screen reader, and still works with the form. nothing here is
+   javascript, so it cannot break on a page where the script did not load.
+
+   the tick is a background image rather than a glyph or a pseudo-element:
+   `content` on an input is ignored, and a `✓` character is a different shape in
+   every font. this is the same path the site's checklist marker uses. */
+.lp-demo-check input[type="checkbox"],
+.lp-demo-consent input[type="checkbox"],
+.lp-demo-checks input[type="checkbox"],
+.sp-auth-remember input[type="checkbox"] {
+    -webkit-appearance: none;
+    appearance: none;
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    padding: 0;
+    border: 1.5px solid rgba(14, 35, 88, 0.22);
+    border-radius: 6px;
+    background: #ffffff;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 12px 12px;
+    cursor: pointer;
+    /* it sits on the first line of the text beside it, not on the middle of a
+       paragraph that happens to run to two lines */
+    vertical-align: middle;
+    transition: border-color 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease;
+}
+.lp-demo-check input[type="checkbox"]:hover,
+.lp-demo-consent input[type="checkbox"]:hover,
+.lp-demo-checks input[type="checkbox"]:hover,
+.sp-auth-remember input[type="checkbox"]:hover { border-color: rgba(0, 145, 200, 0.55); }
+
+.lp-demo-check input[type="checkbox"]:checked,
+.lp-demo-consent input[type="checkbox"]:checked,
+.lp-demo-checks input[type="checkbox"]:checked,
+.sp-auth-remember input[type="checkbox"]:checked {
+    border-color: transparent;
+    /* the brand's own two colours, in the order the site always runs them */
+    background-color: #0091c8;
+    background-image:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E"),
+        linear-gradient(135deg, #00b4d8, #7b6cff);
+    box-shadow: 0 2px 6px -2px rgba(0, 145, 200, 0.55);
+}
+
+/* the keyboard ring. it is on :focus-visible only, so it appears for somebody
+   tabbing through and not for somebody who has just clicked it. */
+.lp-demo-check input[type="checkbox"]:focus-visible,
+.lp-demo-consent input[type="checkbox"]:focus-visible,
+.lp-demo-checks input[type="checkbox"]:focus-visible,
+.sp-auth-remember input[type="checkbox"]:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 145, 200, 0.28);
+}
+
+/* the terms box, when it has not been ticked. the frame around the row already
+   says so; the box turns with it rather than shouting on its own. */
+.lp-demo-consent.lp-demo-consent-err input[type="checkbox"] {
+    border-color: rgba(192, 48, 74, 0.55);
+    outline: none;
+}
+
 .lp-demo-consent a { color: #0091c8; border-bottom-color: rgba(0, 145, 200, 0.35); }
 .lp-demo-consent a:hover { border-bottom-color: #0091c8; }
 
@@ -3597,10 +3660,6 @@ html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }
 .sp-auth-form .lp-demo-consent.lp-demo-consent-err a { color: #a8324f; border-bottom-color: rgba(168, 50, 79, 0.4); }
 /* the frame around the whole line carries it. ringing the tick box as well is
    two alarms for one thing, and it is the smaller, uglier of the two. */
-.sp-auth-form .lp-demo-consent.lp-demo-consent-err input {
-    outline: none;
-    accent-color: #0091c8;
-}
 
 /* the end of it: no form left, because there is nothing more to fill in */
 .sp-auth-done { text-align: center; padding: 0.6rem 0 0.2rem; }
@@ -3842,21 +3901,35 @@ html.theme-light .lp-demo-select-menu { scrollbar-color: rgba(14, 35, 88, 0.2) #
         padding: 0.5rem 0.65rem;
         gap: 0.6rem;
     }
-    .sp-auth-form .lp-demo-consent input,
-    .sp-auth-form .sp-auth-remember input { width: 17px; height: 17px; margin-top: 0; }
     /* the terms box has the row to itself. the tick for staying signed in keeps
        its place opposite the password link, which is where the pair belongs:
-       one is the choice, the other is the way out of it. */
+       one is the choice, the other is the way out of it.
+
+       on a phone the two only just missed sharing a line: 311.6px of content in
+       a 311.2px row at 390px wide, so the link dropped underneath by four
+       tenths of a pixel. the gap between them and the padding inside the box
+       give back the millimetre it needed, and now the pair sits the way it does
+       on a desktop from 360px up. */
     .sp-auth-form .lp-demo-consent { width: 100%; }
-    .sp-auth-form .sp-auth-remember { width: auto; }
-    /* padding rather than a bigger font: the link keeps its place in the row and
-       becomes something a thumb can hit */
-    .sp-auth-form .sp-auth-link { padding: 0.9rem 0.2rem; }
+    .sp-auth-form .sp-auth-remember { width: auto; padding-right: 0.5rem; padding-left: 0.55rem; }
+    .sp-auth-row { gap: 0.4rem; }
+    /* padding rather than a bigger font: the link becomes something a thumb can
+       hit without taking any more of the row's width than its own words */
+    .sp-auth-form .sp-auth-link { padding: 0.9rem 0; }
     .sp-auth-foot a { display: inline-block; padding: 0.45rem 0.2rem; }
     .sp-auth-back { min-height: 44px; }
     /* the support bubble is fixed to the bottom right and was sitting on top of
        the footer links. this is the room it needs */
     .sp-auth-foot { margin-bottom: 4.5rem; }
+}
+
+/* the pair needs 295px of room. that is there from 375px up, which covers the
+   iphone se and everything above it, and it is not there at 360, where holding
+   the line only squeezed "keep me signed in" onto two. so above the width where
+   it genuinely fits they share a line as they do on a desktop, and below it the
+   link goes underneath, which is the ordinary thing for a row out of room. */
+@media (pointer: coarse) and (min-width: 372px) {
+    .sp-auth-row { flex-wrap: nowrap; }
 }
 
 /* ============ questions and answers ============
