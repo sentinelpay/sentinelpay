@@ -3752,6 +3752,46 @@ html.theme-light .lp-demo-select-menu { scrollbar-color: rgba(14, 35, 88, 0.2) #
     .sp-auth-vfoot { flex-direction: column; gap: 0.5rem; }
 }
 
+/* ---- the card on a phone -------------------------------------------------
+   the desktop sizes were drawn for a mouse, which lands on a pixel. a fingertip
+   is about nine millimetres across and lands on a region, so every target here
+   is taken to 44px, the size both apple and the wcag guidance settle on.
+   measured before the change: the primary button was 40.6px, the tabs 33.5,
+   the eye 32, and the "forgot your password?" link 15.
+
+   the trigger is a coarse pointer rather than a narrow window. a phone held in
+   landscape is still a phone, and a narrow window on a laptop still has a mouse
+   in it, so asking what is doing the pointing is the question that matters. */
+@media (pointer: coarse) {
+    .sp-auth-form .sp-auth-submit,
+    .sp-auth-verify .sp-auth-submit {
+        min-height: 48px;
+        font-size: 0.95rem;
+    }
+    .sp-auth-tab { min-height: 44px; font-size: 0.9rem; }
+    .sp-auth-linkbtn { min-height: 44px; font-size: 0.86rem; }
+    /* the icon stays the size it was; it is the area around it that grows */
+    .sp-eye { width: 40px; height: 40px; right: 0.3rem; }
+    /* the close button was 30px, and it is the one control on the dialog that
+       has to work first time: a mis-hit lands on the form behind it */
+    .sp-authm-x { width: 44px; height: 44px; top: 0.35rem; right: 0.35rem; }
+    /* and the title gets out from under it. the padding is on both sides so it
+       stays centred in what is left, rather than centred in the panel and only
+       looking centred until a longer translation runs into the cross. the line
+       underneath keeps the full width: it sits below the button and squeezing
+       it in as well only bought an extra line of wrapping. */
+    .sp-authm-h { padding: 0 2.2rem; }
+    .sp-auth-remember { min-height: 44px; }
+    /* padding rather than a bigger font: the link keeps its place in the row and
+       becomes something a thumb can hit */
+    .sp-auth-form .sp-auth-link { padding: 0.9rem 0.2rem; }
+    .sp-auth-foot a { display: inline-block; padding: 0.45rem 0.2rem; }
+    .sp-auth-back { min-height: 44px; }
+    /* the support bubble is fixed to the bottom right and was sitting on top of
+       the footer links. this is the room it needs */
+    .sp-auth-foot { margin-bottom: 4.5rem; }
+}
+
 /* ============ questions and answers ============
    the shape everyone uses for this, done in the site's own materials: the white
    card with the hairline border and the soft shadow the solution cards use, the

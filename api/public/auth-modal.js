@@ -172,8 +172,12 @@
         var sbw = window.innerWidth - document.documentElement.clientWidth;
         document.documentElement.style.setProperty('--sp-sbw', (sbw > 0 ? sbw : 0) + 'px');
         document.documentElement.classList.add('sp-authm-open');
+        // the first field takes the focus on a desktop, where it saves a click.
+        // on a phone it throws the on-screen keyboard up over the dialog before
+        // anyone has read what the dialog says, so there it is left alone.
+        var coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
         var first = (mode === 'create' ? panelUp : panelIn).querySelector('input');
-        if (first) setTimeout(function () { first.focus({ preventScroll: true }); }, 60);
+        if (first && !coarse) setTimeout(function () { first.focus({ preventScroll: true }); }, 60);
     }
 
     function close() {
