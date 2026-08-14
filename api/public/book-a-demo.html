@@ -18,11 +18,24 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/style.css?v=24">
     <link rel="stylesheet" href="/landing.css?v=4.4">
-    <link rel="stylesheet" href="/corp.css?v=208">
+    <link rel="stylesheet" href="/corp.css?v=210">
     <style>
         /* page loader */
         #sp-loader{position:fixed;inset:0;z-index:99999;background:#050505;display:flex;align-items:center;justify-content:center;transition:opacity 0.55s ease;}
         #sp-loader.spl-done{opacity:0;pointer-events:none;}
+        /* nothing scrolls while the loader is up. the page behind it is already
+           laid out and a stray wheel or swipe used to move it, so the loader
+           lifted on a page halfway down itself. the gutter is held open so the
+           scrollbar coming back does not shift the whole layout sideways at the
+           exact moment the loader fades.
+
+           `:has` rather than a class toggled by script: the lock then ends the
+           moment the loader is marked done, and there is no state to leave
+           behind if the script never runs. where `:has` is not supported this
+           simply does nothing, which is how the page behaved before. */
+        html:has(#sp-loader:not(.spl-done)),
+        html:has(#sp-loader:not(.spl-done)) body { overflow: hidden; }
+        html:has(#sp-loader:not(.spl-done)) { scrollbar-gutter: stable; }
         html.theme-light #sp-loader{background:#fbfcfd;}
         .spl-logo-svg{width:130px;height:130px;animation:splPulse 2.5s ease-in-out infinite alternate;}
         @keyframes splPulse{from{filter:drop-shadow(0 0 6px rgba(0,255,255,0.3)) drop-shadow(0 0 14px rgba(160,32,240,0.2));}to{filter:drop-shadow(0 0 14px rgba(0,255,255,0.65)) drop-shadow(0 0 28px rgba(160,32,240,0.4));}}
