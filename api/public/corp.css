@@ -3466,6 +3466,7 @@ html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }
     margin: 0.45rem 0 0;
     font-size: 0.82rem;
     line-height: 1.4;
+    text-align: center;
     color: #d13a5c;
 }
 .sp-auth-consent-note.is-shown { animation: lpDemoStepIn 0.25s ease; }
@@ -3475,6 +3476,12 @@ html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }
     background: rgba(209, 58, 92, 0.05) !important;
 }
 .sp-auth-form .lp-demo-consent.lp-demo-consent-err a { color: #a8324f; border-bottom-color: rgba(168, 50, 79, 0.4); }
+/* the frame around the whole line carries it. ringing the tick box as well is
+   two alarms for one thing, and it is the smaller, uglier of the two. */
+.sp-auth-form .lp-demo-consent.lp-demo-consent-err input {
+    outline: none;
+    accent-color: #0091c8;
+}
 
 /* the end of it: no form left, because there is nothing more to fill in */
 .sp-auth-done { text-align: center; padding: 0.6rem 0 0.2rem; }
@@ -3602,6 +3609,9 @@ html.theme-light .lp-demo-select-menu { scrollbar-color: rgba(14, 35, 88, 0.2) #
     border: 1.5px solid rgba(14, 35, 88, 0.12);
     border-radius: 14px;
     caret-color: #0091c8;
+    /* chromium gives a bare input an inset shadow of its own, which reads as a
+       dent under every box. the boxes are drawn by the border, not by that. */
+    box-shadow: none;
     transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
     -moz-appearance: textfield;
 }
