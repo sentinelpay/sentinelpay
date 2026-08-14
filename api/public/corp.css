@@ -4193,3 +4193,139 @@ html {
     }
     .lp-footer-col { gap: 0 !important; }
 }
+
+/* ============ the signed-in page ============
+   the same shell the sign-in page uses, so arriving here after creating an
+   account does not feel like being handed to a different site. wider, because
+   it holds rows rather than a form, and left aligned, because rows read down a
+   column and a centred label above a centred value is a poster. */
+.sp-dash-shell { align-items: flex-start; }
+.sp-dash-stage { position: relative; z-index: 1; width: 100%; max-width: 34rem; margin: 0 auto; }
+
+.sp-dash-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.sp-dash-eyebrow {
+    margin: 0 0 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #0091c8;
+}
+.sp-dash-h {
+    margin: 0;
+    font-size: 1.9rem;
+    font-weight: 800;
+    line-height: 1.14;
+    letter-spacing: -0.02em;
+    color: #0e2358;
+    text-transform: lowercase;
+}
+.sp-dash-out {
+    flex: 0 0 auto;
+    padding: 0.55rem 0.95rem;
+    border-radius: 10px;
+    border: 1px solid rgba(14, 35, 88, 0.14);
+    background: #ffffff;
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(14, 35, 88, 0.7);
+    cursor: pointer;
+    transition: border-color 0.16s ease, color 0.16s ease, background 0.16s ease;
+}
+.sp-dash-out:hover { border-color: rgba(192, 48, 74, 0.45); color: #c0304a; }
+.sp-dash-out[disabled] { cursor: default; color: rgba(14, 35, 88, 0.4); border-color: rgba(14, 35, 88, 0.1); }
+
+.sp-dash-card { display: block; padding: 1.5rem 1.6rem !important; text-align: left; }
+.sp-dash-card + .sp-dash-card { margin-top: 1rem; }
+
+/* label on the left, fact on the right, a hairline between. the last row has no
+   line under it: a rule with nothing beneath it is a line, not a separator. */
+.sp-dash-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.72rem 0;
+    border-bottom: 1px solid rgba(14, 35, 88, 0.07);
+    font-size: 0.9rem;
+}
+.sp-dash-row:first-child { padding-top: 0; }
+.sp-dash-row:last-child { padding-bottom: 0; border-bottom: 0; }
+.sp-dash-row span { color: rgba(14, 35, 88, 0.55); }
+.sp-dash-row b {
+    font-weight: 600;
+    color: #0e2358;
+    text-align: right;
+    /* an address is one long word and will not wrap on its own */
+    overflow-wrap: anywhere;
+}
+.sp-dash-yes { color: #0a7b52 !important; }
+
+.sp-dash-h2 { margin: 0 0 0.5rem; font-size: 1.05rem; font-weight: 700; color: #0e2358; text-transform: lowercase; }
+.sp-dash-p { margin: 0; font-size: 0.92rem; line-height: 1.65; color: rgba(14, 35, 88, 0.62); }
+.sp-dash-links { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.1rem; }
+.sp-dash-link {
+    padding: 0.5rem 0.9rem;
+    border-radius: 10px;
+    border: 1px solid rgba(14, 35, 88, 0.12);
+    background: #fbfcfd;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(14, 35, 88, 0.72);
+    text-decoration: none;
+    transition: border-color 0.16s ease, color 0.16s ease, background 0.16s ease;
+}
+.sp-dash-link:hover { border-color: rgba(0, 145, 200, 0.45); color: #0e2358; background: #ffffff; }
+
+@media (max-width: 560px) {
+    .sp-dash-head { flex-direction: column; align-items: flex-start; gap: 0.9rem; }
+    /* stretched to the full width it read as the main thing to do on the page,
+       which is the opposite of what signing out is. the width is set as well as
+       the alignment: style.css carries a bare `button { width: 100% }` inside
+       its own mobile query, left over from the old app skin, and a rule on an
+       element beats nothing but loses to a class. */
+    .sp-dash-out { align-self: flex-start; width: auto; }
+    .sp-dash-h { font-size: 1.6rem; }
+    .sp-dash-card { padding: 1.25rem 1.15rem !important; }
+    .sp-dash-row { flex-direction: column; align-items: flex-start; gap: 0.15rem; }
+    .sp-dash-row b { text-align: left; }
+}
+@media (pointer: coarse) {
+    .sp-dash-out { min-height: 44px; }
+    .sp-dash-link { min-height: 44px; display: inline-flex; align-items: center; }
+}
+
+/* the navigation once somebody is signed in: a mark with their initials and one
+   button. hidden while we ask who they are, so nobody watches "log in" turn
+   into their own name. */
+#auth-nav-container.auth-nav-asking .auth-nav-btn { visibility: hidden; }
+.auth-nav-mark {
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    /* the brand's two colours, the same pair the tick boxes fill with */
+    background: linear-gradient(135deg, #00b4d8, #7b6cff);
+    color: #ffffff;
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+.auth-nav-mark:hover { transform: translateY(-1px); box-shadow: 0 4px 12px -4px rgba(0, 145, 200, 0.6); }
+.auth-nav-mark:focus-visible { outline: 2px solid #0091c8; outline-offset: 2px; }
+@media (pointer: coarse) {
+    .auth-nav-mark { width: 40px; height: 40px; }
+}

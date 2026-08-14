@@ -323,7 +323,10 @@
             'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>';
         done.appendChild(mark);
         done.appendChild(el('h3', null, 'your account is ready'));
-        done.appendChild(el('p', null, 'your email is verified and the account is yours. we are finishing sign-in and will email this address the moment it opens.'));
+        // said, and then done: the account exists, they are signed in, and the
+        // next screen follows on its own. the panel used to promise an email
+        // instead, which is what you write when there is nowhere to send anyone.
+        done.appendChild(el('p', null, 'you are signed in. taking you to your account…'));
 
         form.parentNode.insertBefore(verify, form.nextSibling);
         form.parentNode.insertBefore(done, verify.nextSibling);
@@ -613,11 +616,18 @@
             vBtn.textContent = t('checking…');
             showError('');
 
-            post('/v1/auth/verify', { email: pendingEmail, code: code }).then(function () {
+            post('/v1/auth/verify', { email: pendingEmail, code: code }).then(function (out) {
                 clearInterval(tick);
                 clearTimeout(expiryTimer);
                 forgetPending();
                 step('done');
+                // long enough to read the line and see the panel arrive, short
+                // enough that nobody wonders whether it is stuck. if the session
+                // could not be opened the account still exists, so they are sent
+                // to sign in rather than to a page that would turn them away.
+                setTimeout(function () {
+                    location.replace(out && out.signedIn === false ? '/auth' : '/dashboard');
+                }, 1400);
             }).catch(function (err) {
                 codeWrap.classList.remove('is-wrong');
                 void codeWrap.offsetWidth;
@@ -731,8 +741,68 @@
         box.appendChild(btn);
     }
 
+    // ---- signing in ----------------------------------------------------------
+    // small enough to live here rather than in a file of its own, and it belongs
+    // next to the sign-up it shares a card with: the same inline errors, the same
+    // eye on the password, the same rule that a message about this form appears
+    // on this form.
+    function attachLogin(form) {
+        if (form.__spAuthLogin) return;
+        form.__spAuthLogin = true;
+
+        var submitBtn = form.querySelector('button[type="submit"]');
+        if (!submitBtn) return;
+
+        var err = el('p', 'sp-auth-verr');
+        err.classList.add('sp-auth-ferr');
+        err.hidden = true;
+        err.setAttribute('role', 'alert');
+        form.insertBefore(err, submitBtn);
+
+        function say(msg) {
+            err.textContent = msg || '';
+            err.hidden = !msg;
+            if (msg) replay(err, 'sp-auth-enter');
+        }
+
+        var busy = false;
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (busy) return;
+
+            var emailInput = form.querySelector('input[type="email"]');
+            var passInput = form.querySelector('input[type="password"]');
+            var email = emailInput ? emailInput.value.trim() : '';
+            // never trimmed: a space is a character somebody chose
+            var password = passInput ? passInput.value : '';
+            if (!email || !password) {
+                say(t('please fill in every field.'));
+                return;
+            }
+
+            say('');
+            busy = true;
+            submitBtn.disabled = true;
+            var label = submitBtn.textContent;
+            submitBtn.textContent = t('signing you in…');
+
+            post('/v1/auth/login', { email: email, password: password }).then(function () {
+                // replace rather than assign: the back button should not come
+                // back to a sign-in form that is now signed in
+                location.replace('/dashboard');
+            }).catch(function (failed) {
+                say(reason(failed));
+                busy = false;
+                submitBtn.disabled = false;
+                submitBtn.textContent = label;
+                if (passInput) { passInput.value = ''; passInput.focus(); }
+            });
+        });
+    }
+
     function scan() {
         document.querySelectorAll('form[data-auth="register"]').forEach(attach);
+        document.querySelectorAll('form[data-auth="login"]').forEach(attachLogin);
         document.querySelectorAll('.sp-auth-form input[type="password"]').forEach(addEye);
     }
 

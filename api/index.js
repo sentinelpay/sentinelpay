@@ -561,6 +561,25 @@ app.get(HOMEPAGE_LANGS.flatMap((l) => ['/' + l, '/' + l + '/']), (req, res, next
 app.get('/privacy', (req, res) => res.redirect(301, '/privacy-policy'));
 app.get('/tos', (req, res) => res.redirect(301, '/terms-of-service'));
 
+// The dashboard is the one page that is not for everybody, so it is checked
+// here rather than in the browser. A page that renders and then redirects has
+// already been delivered: the markup is in the network tab, in the cache, and
+// in the back button. This one never leaves the server unless the cookie is
+// good, and somebody signed out is sent to sign in instead.
+app.get('/dashboard', async (req, res, next) => {
+    try {
+        const me = await currentUser(req);
+        if (!me) return res.redirect(302, '/auth');
+    } catch (err) {
+        console.error('[dashboard guard]', err.message);
+        return res.redirect(302, '/auth');
+    }
+    // no store rather than no cache: a signed-in page must not sit in a shared
+    // cache or come back from the back button after signing out
+    res.set('Cache-Control', 'no-store, private');
+    return next();
+});
+
 // Page requests go through the renderer above so the javascript-disabled notice
 // and the geo language land in the html. Assets fall straight through to
 // express.static below.
@@ -635,6 +654,53 @@ function limitHandler(req, res, next, options) {
     res.status(options.statusCode).json(Object.assign({}, options.message, { retryIn }));
 }
 
+// ---------------------------------------------------------------------------
+// the sign-in cookie
+// ---------------------------------------------------------------------------
+//
+// httpOnly so no script can read it, Secure so it never travels in the clear,
+// and SameSite=Lax so it is not sent on a cross site POST, which is csrf cover
+// for every endpoint that reads it. Lax rather than Strict on purpose: Strict
+// would drop the cookie when somebody arrives from a link in their own email,
+// and the whole flow here starts with a link in an email.
+//
+// Secure is off when there is no https, which is only ever the case on a
+// developer's own machine. Otherwise the browser would refuse to store it and
+// signing in would appear to do nothing.
+const SESSION_COOKIE = 'sp_session';
+const COOKIE_SECURE = process.env.NODE_ENV === 'production';
+
+function readCookie(req, name) {
+    const raw = String(req.headers.cookie || '');
+    const m = raw.match(new RegExp('(?:^|;\\s*)' + name + '=([^;]*)'));
+    return m ? decodeURIComponent(m[1]) : '';
+}
+
+function setSessionCookie(res, token, maxAgeSeconds) {
+    res.cookie(SESSION_COOKIE, token, {
+        httpOnly: true,
+        secure: COOKIE_SECURE,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: maxAgeSeconds * 1000,
+    });
+}
+
+function clearSessionCookie(res) {
+    res.clearCookie(SESSION_COOKIE, {
+        httpOnly: true, secure: COOKIE_SECURE, sameSite: 'lax', path: '/',
+    });
+}
+
+// Whoever is signed in, or null. Attached by the routes that need it rather
+// than by a global middleware: a database round trip on every request for a
+// static page is a cost with nothing to show for it.
+async function currentUser(req) {
+    const token = readCookie(req, SESSION_COOKIE);
+    if (!token) return null;
+    return accounts.readSession(token);
+}
+
 const authRegisterLimiter = rateLimit({
     handler: limitHandler,
     windowMs: 60 * 60 * 1000,
@@ -653,6 +719,18 @@ const authVerifyLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => `auth_verify:${req.realIp}`,
+    message: { error: 'too many attempts, please try again later' }
+});
+// Signing in is where a leaked password list gets tried. Ten an hour per ip is
+// generous for a person who has forgotten which password they used and useless
+// to anybody working through a list.
+const authLoginLimiter = rateLimit({
+    handler: limitHandler,
+    windowMs: 60 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => `auth_login:${req.realIp}`,
     message: { error: 'too many attempts, please try again later' }
 });
 // A resend button is a button that sends mail to somebody else's inbox on demand.
@@ -1152,10 +1230,72 @@ app.post('/v1/auth/verify', requireCloudflareOrigin, authVerifyLimiter, async (r
             console.error('[auth verify notify failed]', notifyErr.message);
         }
 
-        res.json({ ok: true });
+        // signed in from here. the panel that follows is a real signed-in state
+        // rather than a promise to email them when one exists.
+        if (out.session) setSessionCookie(res, out.session.token, out.session.maxAgeSeconds);
+        else console.error('[auth] the account was made but no session could be opened');
+
+        res.json({ ok: true, signedIn: Boolean(out.session), name: out.name });
     } catch (err) {
         console.error('[auth verify error]', err.message);
         res.status(500).json({ error: 'could not create the account right now. please try again shortly.' });
+    }
+});
+
+// Signing in with a password. The reply says nothing about which half was
+// wrong, and accounts.signIn takes the same time either way.
+app.post('/v1/auth/login', requireCloudflareOrigin, authLoginLimiter, async (req, res) => {
+    try {
+        const b = req.body || {};
+        const email = String(b.email || '').trim().toLowerCase().slice(0, 160);
+        const password = typeof b.password === 'string' ? b.password : '';
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !password) {
+            return res.status(400).json({ error: 'that email and password do not match an account.' });
+        }
+        if (!db.available()) {
+            return res.status(503).json({ error: 'accounts are not available right now. please try again shortly.' });
+        }
+
+        const out = await accounts.signIn(email, password);
+        if (out.reason === 'bad-credentials') {
+            console.log('[auth] login: refused');
+            return res.status(401).json({ error: 'that email and password do not match an account.' });
+        }
+        if (!out.ok) return res.status(503).json({ error: 'accounts are not available right now. please try again shortly.' });
+
+        console.log('[auth] login: signed in');
+        setSessionCookie(res, out.session.token, out.session.maxAgeSeconds);
+        res.json({ ok: true, name: out.name });
+    } catch (err) {
+        console.error('[auth login error]', err.message);
+        res.status(500).json({ error: 'could not sign you in right now. please try again shortly.' });
+    }
+});
+
+// Signing out. The row goes, so the token is dead everywhere and not merely
+// forgotten by this browser.
+app.post('/v1/auth/logout', requireCloudflareOrigin, async (req, res) => {
+    try {
+        await accounts.endSession(readCookie(req, SESSION_COOKIE));
+    } catch (err) {
+        console.error('[auth logout error]', err.message);
+    }
+    clearSessionCookie(res);
+    res.json({ ok: true });
+});
+
+// Who is signed in. The navigation asks this on every page so it can show the
+// right thing, so it answers 200 with `signedIn: false` rather than 401: not
+// being signed in is an ordinary answer here, not a failure.
+app.get('/v1/auth/me', async (req, res) => {
+    res.set('Cache-Control', 'no-store, private');
+    try {
+        const me = await currentUser(req);
+        if (!me) return res.json({ signedIn: false });
+        res.json({ signedIn: true, name: me.name, email: me.email, since: me.since });
+    } catch (err) {
+        console.error('[auth me error]', err.message);
+        res.json({ signedIn: false });
     }
 });
 

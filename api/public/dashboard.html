@@ -6,7 +6,7 @@
     <!-- ios turns things like "1-10" and "51-200" into phone links, which made
          the company-size options open the call sheet instead of selecting -->
     <meta name="format-detection" content="telephone=no">
-    <title>sentinelpay | sign in</title>
+    <title>sentinelpay | dashboard</title>
     <script>/* tab title before first paint; for articles this is the h1 translation */(function(){var T={"hr":"sentinelpay | prijava","de":"sentinelpay | anmelden"},m=document.cookie.match(/(?:^|; )sp-lang=([^;]*)/),l=m?decodeURIComponent(m[1]):null;if(!l){try{l=localStorage.getItem("sp-lang")}catch(e){}}if(l!=="hr"&&l!=="de"&&l!=="en")l=document.documentElement.getAttribute("data-geo-lang");if(l!=="hr"&&l!=="de")return;document.documentElement.lang=l;if(!T)return;window.__SP_TITLE_SRC=document.title.replace(/\s+/g," ").trim();document.title=T[l];})();</script>
     <meta name="description" content="connect a key and sentinelpay screens what has already touched your wallets. no call to book and nobody to wait for.">
     <script>document.documentElement.classList.add('theme-light');</script>
@@ -220,7 +220,7 @@
 <body class="lp-body">
     <div id="sp-loader"><svg class="spl-logo-svg" viewBox="0 0 120 120" fill="none"><defs><linearGradient id="spl-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00ffff"/><stop offset="100%" stop-color="#a020f0"/></linearGradient><filter id="spl-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3.5" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#spl-glow)" fill="none" stroke="url(#spl-grad)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/><g class="spl-eye-blink"><path d="M38 60 Q 60 40 82 60 Q 60 80 38 60 Z"/><circle cx="60" cy="60" r="6"/><circle cx="60" cy="60" r="2" fill="url(#spl-grad)" stroke="none"/></g><path d="M60 15 V 30" stroke-width="2" opacity="0.6"/><path d="M60 90 V 105" stroke-width="2" opacity="0.6"/></g></svg><noscript><!--SP_NOSCRIPT--></noscript></div>
 
-    <main class="sp-auth-shell">
+    <main class="sp-auth-shell sp-dash-shell">
         <span class="sp-auth-glow sp-auth-glow-a" aria-hidden="true"></span>
         <span class="sp-auth-glow sp-auth-glow-b" aria-hidden="true"></span>
 
@@ -229,68 +229,40 @@
             back to sentinelpay
         </a>
 
-        <div class="sp-auth-stage">
-
-            <h1 class="sp-auth-h" id="auth-h-in">welcome back</h1>
-            <h1 class="sp-auth-h" id="auth-h-up" hidden>create your account</h1>
-            <p class="sp-auth-p" id="auth-s-in">sign in to check a wallet and pick up where you left off.</p>
-            <p class="sp-auth-p" id="auth-s-up" hidden>one account for your whole team, with every wallet you check kept in one place.</p>
-
-            <div class="lp-demo-card bad-form-card sp-auth-panel">
-                    <span class="lp-demo-dots" aria-hidden="true"></span>
-                    <span class="lp-demo-edge" aria-hidden="true"></span>
-                <div class="sp-auth-tabs" role="tablist">
-                    <button type="button" class="sp-auth-tab is-active" id="auth-tab-in" role="tab" aria-selected="true" aria-controls="auth-panel-in">log in</button>
-                    <button type="button" class="sp-auth-tab" id="auth-tab-up" role="tab" aria-selected="false" aria-controls="auth-panel-up">create account</button>
+        <div class="sp-dash-stage">
+            <div class="sp-dash-head">
+                <div>
+                    <p class="sp-dash-eyebrow" id="dash-greet">signed in</p>
+                    <h1 class="sp-dash-h">your account</h1>
                 </div>
+                <button type="button" class="sp-dash-out" id="dash-logout">sign out</button>
+            </div>
 
-                <form class="sp-auth-form" id="auth-panel-in" role="tabpanel" aria-labelledby="auth-tab-in" data-auth="login" novalidate>
-                    <div class="lp-demo-field lp-demo-field-full">
-                        <label for="auth-in-email">work email</label>
-                        <input id="auth-in-email" name="email" type="email" autocomplete="email" placeholder="you@yourcompany.com">
-                    </div>
-                    <div class="lp-demo-field lp-demo-field-full">
-                        <label for="auth-in-pass">password</label>
-                        <input id="auth-in-pass" name="password" type="password" autocomplete="current-password" placeholder="••••••••••••">
-                    </div>
-                    <div class="sp-auth-row">
-                        <label class="sp-auth-remember"><input type="checkbox" name="remember"><span>keep me signed in</span></label>
-                        <a class="sp-auth-link" href="/start-free-trial">forgot your password?</a>
-                    </div>
-                    <button type="submit" class="lp-demo-submit sp-auth-submit">log in</button>
-                </form>
+            <div class="lp-demo-card sp-auth-panel sp-dash-card">
+                <div class="sp-dash-rows">
+                    <div class="sp-dash-row"><span>name</span><b id="dash-name">&mdash;</b></div>
+                    <div class="sp-dash-row"><span>work email</span><b id="dash-email">&mdash;</b></div>
+                    <div class="sp-dash-row"><span>member since</span><b id="dash-since">&mdash;</b></div>
+                    <div class="sp-dash-row"><span>email verified</span><b class="sp-dash-yes">yes</b></div>
+                </div>
+            </div>
 
-                <form class="sp-auth-form" id="auth-panel-up" role="tabpanel" aria-labelledby="auth-tab-up" data-auth="register" novalidate hidden>
-                    <div class="lp-demo-grid">
-                        <div class="lp-demo-field">
-                            <label for="auth-up-first">first name</label>
-                            <input id="auth-up-first" name="firstName" type="text" autocomplete="given-name">
-                        </div>
-                        <div class="lp-demo-field">
-                            <label for="auth-up-last">last name</label>
-                            <input id="auth-up-last" name="lastName" type="text" autocomplete="family-name">
-                        </div>
-                    </div>
-                    <div class="lp-demo-field lp-demo-field-full">
-                        <label for="auth-up-email">work email</label>
-                        <input id="auth-up-email" name="email" type="email" autocomplete="email" placeholder="you@yourcompany.com">
-                    </div>
-                    <div class="lp-demo-field lp-demo-field-full">
-                        <label for="auth-up-pass">password</label>
-                        <input id="auth-up-pass" name="password" type="password" autocomplete="new-password" placeholder="at least 12 characters">
-                    </div>
-                    <label class="lp-demo-consent"><input type="checkbox" name="consent"><span>i agree to <a href="/terms-of-service">the terms of service</a> and to be contacted about this account.</span></label>
-                    <button type="submit" class="lp-demo-submit sp-auth-submit">create account</button>
-                </form>
+            <div class="lp-demo-card sp-auth-panel sp-dash-card sp-dash-next">
+                <h2 class="sp-dash-h2">what happens next</h2>
+                <p class="sp-dash-p">the checks themselves are not open yet. we are building them, and this account is what you will use to reach them. you do not need to do anything: we will write to this address the day it opens.</p>
+                <div class="sp-dash-links">
+                    <a class="sp-dash-link" href="/faq">questions and answers</a>
+                    <a class="sp-dash-link" href="/book-a-demo">talk to us</a>
+                </div>
             </div>
         </div>
 
         <div class="sp-auth-foot">
             <a href="/terms-of-service">terms of service</a>
-            <span aria-hidden="true">·</span>
+            <span aria-hidden="true">&middot;</span>
             <a href="/privacy-policy">privacy policy</a>
-            <span aria-hidden="true">·</span>
-            <a href="/book-a-demo">book a demo</a>
+            <span aria-hidden="true">&middot;</span>
+            <a href="/faq">faq</a>
         </div>
     </main>
 
@@ -321,65 +293,10 @@
             });
         })();
     </script>
-    <script>/* the two panels are one control: switching is a state of the card, so it is
-       done here rather than by loading a second page. nothing is submitted yet, so the
-       buttons say what they say and the forms do not pretend otherwise. */
-    (function(){var tin=document.getElementById('auth-tab-in'),tup=document.getElementById('auth-tab-up'),
-    pin=document.getElementById('auth-panel-in'),pup=document.getElementById('auth-panel-up');
-    if(!tin||!tup||!pin||!pup)return;
-    var pair=function(id){return document.getElementById(id);};
-    var panelEl=document.querySelector('.sp-auth-panel'),swapTimer=null;
-    function apply(login){tin.classList.toggle('is-active',login);tup.classList.toggle('is-active',!login);
-    tin.setAttribute('aria-selected',login?'true':'false');tup.setAttribute('aria-selected',login?'false':'true');
-    /* a sign-up in progress owns the card: the code panel is up, and putting the
-       empty form back would throw away both what was typed and the code sent */
-    if(panelEl&&panelEl.dataset.authStep&&panelEl.dataset.authStep!=='register')return;
-    pin.hidden=!login;pup.hidden=login;
-    /* the copy beside the card belongs to the panel: leaving "welcome back" up
-       while somebody is creating an account reads like the page did not notice */
-    ['auth-h-','auth-s-'].forEach(function(k){
-      var a=pair(k+'in'),b=pair(k+'up');if(a)a.hidden=!login;if(b)b.hidden=login;});
-    /* the first field takes the focus, but only where a keyboard is already
-       there. on a phone this used to throw the on-screen keyboard up the moment
-       somebody tapped a tab, covering half the form they had come to read. */
-    var coarse=window.matchMedia&&window.matchMedia('(pointer: coarse)').matches;
-    var f=(login?pin:pup).querySelector('input');if(f&&!coarse&&document.activeElement!==document.body)f.focus({preventScroll:true});}
-    /* removing the class is not enough to restart an animation: the element has
-       to be laid out again in between or the browser sees no change */
-    function replay(el,cls){if(!el)return;el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls);}
-    function show(login,animate){
-      var already=!pin.hidden===login;
-      var reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if(!animate||already||reduced||!panelEl){apply(login);return;}
-      /* the two panels are different heights: measure, switch, measure again,
-         and glide between them so the card does not jump */
-      var from=panelEl.getBoundingClientRect().height;
-      panelEl.style.height='';apply(login);
-      var to=panelEl.getBoundingClientRect().height;
-      clearTimeout(swapTimer);
-      panelEl.classList.remove('sp-auth-swapping');
-      panelEl.style.height=from+'px';void panelEl.offsetHeight;
-      panelEl.classList.add('sp-auth-swapping');panelEl.style.height=to+'px';
-      var incoming=login?pin:pup;
-      incoming.style.setProperty('--sp-auth-dir',login?'-12px':'12px');
-      replay(incoming,'sp-auth-enter');
-      [pair(login?'auth-h-in':'auth-h-up'),pair(login?'auth-s-in':'auth-s-up')].forEach(function(el){
-        if(!el)return;el.style.setProperty('--sp-auth-dir',login?'-12px':'12px');replay(el,'sp-auth-enter-head');});
-      swapTimer=setTimeout(function(){panelEl.classList.remove('sp-auth-swapping');panelEl.style.height='';},320);}
-    tin.addEventListener('click',function(){show(true,true);});
-    tup.addEventListener('click',function(){show(false,true);});
-    /* /auth#create opens straight on the second panel, so a "get started" link can
-       point at the right half of the card without a second page */
-    if(location.hash==='#create')show(false);
-    /* both forms are handled by auth-flow.js: it owns the sign-up, the code
-       panel and the sign-in, so the three cannot drift apart. */
-    })();
-    </script>
-    <!-- the house toast: without it the form falls back to the browser alert -->
     <script src="/toast.js?v=2" defer></script>
-    <script src="/auth-flow.js?v=10" defer></script>
-    <script src="/auth-nav.js?v=2" defer></script>
+    <script src="/dashboard.js?v=1" defer></script>
     <script>window.addEventListener('load',function(){window.scrollTo(0,0);var l=document.getElementById('sp-loader');if(!l)return;var finish=function(){l.classList.add('spl-done');setTimeout(function(){l.remove();},620);};/* the load event does not wait for lazy images, and nearly every image on the site is lazy, so the loader used to clear while the first screen was still filling in. wait for the ones that will actually be visible: an image further down has not started loading yet and never would, so waiting for all of them would hold the loader open for ever. */var pending=[],im,r,i;for(i=0;i<document.images.length;i++){im=document.images[i];r=im.getBoundingClientRect();if(r.bottom<0||r.top>window.innerHeight*1.2)continue;if(im.complete&&im.naturalWidth>0)continue;pending.push(im);}if(!pending.length){finish();return;}var left=pending.length,fired=false;var one=function(){if(--left<=0&&!fired){fired=true;finish();}};pending.forEach(function(x){x.addEventListener('load',one,{once:true});x.addEventListener('error',one,{once:true});});/* a slow or broken image must never trap anybody behind the loader */setTimeout(function(){if(!fired){fired=true;finish();}},2500);});</script>
+    <script src="/auth-nav.js?v=2" defer></script>
     <script src="/i18n.js?v=68" defer></script>
 </body>
 </html>

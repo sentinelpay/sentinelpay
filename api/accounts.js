@@ -39,6 +39,15 @@ const PENDING_MAX_AGE_H = 24;      // an abandoned sign-up is swept after this
 // with somebody's name in it. Storage limitation applies to us as much as to the
 // leads: the data goes when the reason for holding it does.
 const ACCOUNT_MAX_IDLE_MONTHS = Math.max(Number(process.env.ACCOUNT_RETENTION_MONTHS || 24), 1);
+// How long a sign-in lasts. Thirty days is the ordinary answer for a product
+// somebody uses weekly; the idle limit is what actually ends most of them, and
+// it is shorter, because a session left open on a shared machine is the risk,
+// not one that is used every day.
+const SESSION_MAX_DAYS = Math.min(Math.max(Number(process.env.SESSION_DAYS || 30), 1), 90);
+const SESSION_IDLE_DAYS = Math.min(Math.max(Number(process.env.SESSION_IDLE_DAYS || 7), 1), SESSION_MAX_DAYS);
+// One person, one browser, a handful of tabs. A number this high is not a limit
+// on anybody real; it is a ceiling on a script that signs in in a loop.
+const SESSIONS_PER_USER = 20;
 
 // ---------------------------------------------------------------------------
 // schema
@@ -77,6 +86,16 @@ CREATE TABLE IF NOT EXISTS signup_codes (
     flags         text        NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS signup_codes_expiry_idx ON signup_codes (expires_at);
+
+CREATE TABLE IF NOT EXISTS sessions (
+    token_hash    text        PRIMARY KEY,
+    user_id       bigint      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at    timestamptz NOT NULL DEFAULT now(),
+    last_seen_at  timestamptz NOT NULL DEFAULT now(),
+    expires_at    timestamptz NOT NULL
+);
+CREATE INDEX IF NOT EXISTS sessions_user_idx ON sessions (user_id);
+CREATE INDEX IF NOT EXISTS sessions_expiry_idx ON sessions (expires_at);
 `;
 
 let ready = null;
@@ -309,17 +328,26 @@ async function verifySignup(email, code) {
     }
 
     const client = await db.connect();
+    let userId = null;
     try {
         await client.query('BEGIN');
         // consumed first: the same code must not create two accounts if two
         // requests arrive together
         const gone = await client.query('DELETE FROM signup_codes WHERE email_hash = $1 RETURNING 1', [emailHash]);
         if (!gone.rowCount) { await client.query('ROLLBACK'); return { ok: false, reason: 'bad-code' }; }
-        await client.query(
+        const made = await client.query(
             `INSERT INTO users (email_hash, email_enc, name_enc, password_hash, lang, flags)
-             VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (email_hash) DO NOTHING`,
+             VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (email_hash) DO NOTHING RETURNING id`,
             [emailHash, row.email_enc, row.name_enc, row.password_hash, row.lang, row.flags]
         );
+        // `do nothing` returns no row when the account was already there, which
+        // is the race this guards against. the id is still wanted: whoever just
+        // proved they can read the mail gets signed in either way.
+        userId = made.rowCount ? made.rows[0].id : null;
+        if (userId === null) {
+            const found = await client.query('SELECT id FROM users WHERE email_hash = $1', [emailHash]);
+            userId = found.rowCount ? found.rows[0].id : null;
+        }
         await client.query('COMMIT');
     } catch (err) {
         try { await client.query('ROLLBACK'); } catch (rbErr) { /* connection already gone */ }
@@ -329,8 +357,163 @@ async function verifySignup(email, code) {
         client.release();
     }
 
-    return { ok: true, name: db.open('signup-name:' + emailHash, row.name_enc), lang: row.lang || 'en' };
+    // signed in on the spot. they have just proved the address is theirs, which
+    // is a stronger check than the password they are about to be asked for, so
+    // asking for it again here would be ceremony rather than security.
+    const session = userId === null ? null : await startSession(userId);
+    if (userId !== null) {
+        db.query('UPDATE users SET last_login_at = now() WHERE id = $1', [userId])
+            .catch((err) => console.error('[accounts] could not record the sign-in: ' + err.message));
+    }
+
+    return {
+        ok: true,
+        name: db.open('signup-name:' + emailHash, row.name_enc),
+        lang: row.lang || 'en',
+        session,
+    };
 }
+
+// ---------------------------------------------------------------------------
+// sessions
+// ---------------------------------------------------------------------------
+//
+// A session is a random 32 byte token in an httpOnly cookie, and a row here
+// holding only a hash of it. Three things follow from that shape:
+//
+//   - the cookie cannot be read by script, so a cross site scripting bug on any
+//     page cannot walk off with somebody's sign-in
+//   - a copy of this table is not a set of keys. the hash is one way, so a
+//     stolen dump cannot be replayed as a session
+//   - every session can be ended from our side, immediately: signing out, a
+//     password change, or an account we delete. a signed token in a cookie with
+//     no row behind it cannot be taken back before it expires, which is why it
+//     is not what we use
+//
+// A session also dies of old age two ways. `expires_at` is the hard stop, and
+// idleness ends it sooner: both are checked on the way in.
+
+function hashToken(token) {
+    // keyed with the same secret the blind index uses. an attacker who somehow
+    // reads this table still cannot turn a guessed token into the stored value
+    // without the key, which is in the environment and not in the database.
+    return crypto.createHmac('sha256', db.indexKey() || Buffer.alloc(32))
+        .update('session:' + token, 'utf8')
+        .digest('hex');
+}
+
+async function startSession(userId) {
+    if (!(await init())) return null;
+    const token = crypto.randomBytes(32).toString('base64url');
+    try {
+        await db.query(
+            `INSERT INTO sessions (token_hash, user_id, expires_at)
+             VALUES ($1, $2, now() + ($3 || ' days')::interval)`,
+            [hashToken(token), userId, String(SESSION_MAX_DAYS)]
+        );
+        // oldest first, so the tab somebody is using now is never the one that
+        // gets thrown out
+        await db.query(
+            `DELETE FROM sessions WHERE user_id = $1 AND token_hash NOT IN (
+                 SELECT token_hash FROM sessions WHERE user_id = $1
+                 ORDER BY last_seen_at DESC LIMIT $2)`,
+            [userId, SESSIONS_PER_USER]
+        );
+    } catch (err) {
+        console.error('[accounts] could not open a session: ' + err.message);
+        return null;
+    }
+    return { token, maxAgeSeconds: SESSION_MAX_DAYS * 24 * 60 * 60 };
+}
+
+// Who is holding this token, if anybody. Returns null for every kind of no, so
+// a caller cannot accidentally tell an expired session from a forged one.
+async function readSession(token) {
+    if (!token || typeof token !== 'string' || token.length > 200) return null;
+    if (!(await init())) return null;
+    try {
+        const res = await db.query(
+            `SELECT s.token_hash, s.user_id, u.email_hash, u.email_enc, u.name_enc, u.lang, u.created_at
+               FROM sessions s JOIN users u ON u.id = s.user_id
+              WHERE s.token_hash = $1
+                AND s.expires_at > now()
+                AND s.last_seen_at > now() - ($2 || ' days')::interval`,
+            [hashToken(token), String(SESSION_IDLE_DAYS)]
+        );
+        if (!res.rowCount) return null;
+        const row = res.rows[0];
+        // touched at most once a minute: every page view does not need a write,
+        // and the idle window is measured in days
+        db.query(
+            "UPDATE sessions SET last_seen_at = now() WHERE token_hash = $1 AND last_seen_at < now() - interval '1 minute'",
+            [row.token_hash]
+        ).catch(() => { /* a missed touch costs nothing until the idle window */ });
+        return {
+            userId: row.user_id,
+            // the label is part of what the value was sealed with, so it has to
+            // be the one used at the time. these ciphertexts are copied
+            // verbatim out of signup_codes when the account is written, so they
+            // keep the signup labels for ever. changing them here would not
+            // rename anything, it would simply fail to open.
+            email: db.open('signup-email:' + row.email_hash, row.email_enc),
+            name: db.open('signup-name:' + row.email_hash, row.name_enc),
+            lang: row.lang || 'en',
+            since: row.created_at,
+        };
+    } catch (err) {
+        console.error('[accounts] session lookup failed: ' + err.message);
+        return null;
+    }
+}
+
+async function endSession(token) {
+    if (!token || !(await init())) return;
+    try {
+        await db.query('DELETE FROM sessions WHERE token_hash = $1', [hashToken(token)]);
+    } catch (err) {
+        console.error('[accounts] could not end a session: ' + err.message);
+    }
+}
+
+// Signing in. The answer is the same for an address we do not have and a
+// password that is wrong, and it takes about as long either way, because the
+// difference between the two is exactly what somebody testing a leaked password
+// list is looking for.
+async function signIn(email, password) {
+    if (!(await init())) return { ok: false, reason: 'unavailable' };
+    const emailHash = db.blindIndex(email);
+    if (!emailHash) return { ok: false, reason: 'unavailable' };
+
+    let row = null;
+    try {
+        const res = await db.query('SELECT id, email_hash, name_enc, password_hash FROM users WHERE email_hash = $1', [emailHash]);
+        row = res.rowCount ? res.rows[0] : null;
+    } catch (err) {
+        console.error('[accounts] sign-in lookup failed: ' + err.message);
+        return { ok: false, reason: 'unavailable' };
+    }
+
+    // no such address: the password is still hashed, against a fixed dummy, so
+    // the reply does not come back noticeably sooner than a wrong password does
+    if (!row) {
+        await verifyPassword(String(password || ''), DUMMY_HASH);
+        return { ok: false, reason: 'bad-credentials' };
+    }
+    if (!(await verifyPassword(String(password || ''), row.password_hash))) {
+        return { ok: false, reason: 'bad-credentials' };
+    }
+
+    const session = await startSession(row.id);
+    if (!session) return { ok: false, reason: 'unavailable' };
+    db.query('UPDATE users SET last_login_at = now() WHERE id = $1', [row.id])
+        .catch((err) => console.error('[accounts] could not record the sign-in: ' + err.message));
+    return { ok: true, session, name: db.open('signup-name:' + row.email_hash, row.name_enc) };
+}
+
+// A real scrypt hash of a password nobody has, so the no-such-account path costs
+// the same as the wrong-password one.
+const DUMMY_HASH = 'scrypt$32768$8$1$' +
+    Buffer.alloc(16, 7).toString('base64') + '$' + Buffer.alloc(64, 11).toString('base64');
 
 // Expired codes and abandoned sign-ups. Runs with the submissions sweep.
 async function purge() {
@@ -364,6 +547,19 @@ async function purge() {
     } catch (err) {
         console.error('[accounts] account retention failed: ' + err.message);
     }
+    // Sessions past their hard stop or their idle window. They would be refused
+    // anyway; this stops the table growing without limit.
+    try {
+        const res = await db.query(
+            "DELETE FROM sessions WHERE expires_at < now() OR last_seen_at < now() - ($1 || ' days')::interval",
+            [String(SESSION_IDLE_DAYS)]
+        );
+        if (res.rowCount) console.log('[accounts] swept ' + res.rowCount + ' finished session(s)');
+        swept += res.rowCount;
+    } catch (err) {
+        console.error('[accounts] session sweep failed: ' + err.message);
+    }
+
     return swept;
 }
 
@@ -424,11 +620,14 @@ function status() {
         maxSends: CODE_MAX_SENDS,
         resendWaitSeconds: CODE_RESEND_WAIT_S,
         idleRetentionMonths: ACCOUNT_MAX_IDLE_MONTHS,
+        sessionDays: SESSION_MAX_DAYS,
+        sessionIdleDays: SESSION_IDLE_DAYS,
     };
 }
 
 module.exports = {
     startSignup, resendSignup, verifySignup, exists, inspect, purge, forget, status,
     hashPassword, verifyPassword,
+    signIn, startSession, readSession, endSession,
     CODE_TTL_MIN, CODE_MAX_SENDS, CODE_RESEND_WAIT_S,
 };

@@ -223,13 +223,8 @@
         else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     });
 
-    // creating an account is handled by auth-flow.js. signing in is not built yet,
-    // so that form says so rather than pretending to try.
-    panelIn.addEventListener('submit', function (e) {
-        e.preventDefault();
-        var msg = 'signing in is not open yet. create an account and we will email you the moment it is.';
-        if (window.SentinelToast) window.SentinelToast.show(t(msg), 'info');
-    });
+    // both forms are handled by auth-flow.js: the sign-up, the code panel and the
+    // sign-in are one flow and live in one file.
 
     // this script may run before or after the flow: whichever is second picks the
     // other up, so the dialog is never left as a form that does nothing
