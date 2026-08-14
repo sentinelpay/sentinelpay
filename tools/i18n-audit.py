@@ -60,6 +60,12 @@ for f in sorted(x for x in os.listdir(PUB) if x.endswith('.js')):
     src = open(os.path.join(PUB, f), encoding='utf-8').read()
     if f in ('i18n.js', 'i18n-title.js'):
         continue                                   # the dictionary itself
+    if f in ('inbox.js',):
+        # the staff inbox. english on purpose and not translated: it is an
+        # internal tool for three people who all read english, and the three
+        # dictionaries are for the site visitors see. it is skipped here rather
+        # than half translated, so a real miss on a real page still stands out.
+        continue
     lits = []
     lits += re.findall(r"return\s+'((?:[^'\\]|\\.)*)'", src)
     lits += re.findall(r"textContent\s*=\s*'((?:[^'\\]|\\.)*)'", src)

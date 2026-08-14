@@ -117,6 +117,12 @@ function record(kind, req, fields, outcome) {
             writeFile(entry, when);
         });
 
+    // whoever has the inbox open hears about it. only the reference and the
+    // shape travel: the listener turns around and asks for the row properly,
+    // through the same gate as everything else, so the stream itself never
+    // carries anybody's details.
+    bus.emit('submission', { ref: ref, kind: kind, outcome: outcome, country: entry.country || null });
+
     // handed back so the internal notification can carry the reference instead
     // of the person: one short string that ties the mail, the log line and the
     // row together, and means nothing to anybody who does not hold all three.
@@ -210,17 +216,39 @@ function startRetention() {
 // Newest first. Reads the database when there is one, and only falls back to
 // the files when there is not, so the two never interleave into a half-list
 // that looks complete.
-async function recent(limit, kind, flaggedOnly) {
+async function recent(limit, kind, flaggedOnly, offset) {
     if (db.available()) {
         try {
-            const rows = await db.recent(limit, kind, flaggedOnly);
-            if (rows) return { source: 'postgres', rows: rows };
+            const rows = await db.recent(limit, kind, flaggedOnly, offset);
+            if (rows) {
+                // the total is what lets a pager say "of 34". only the database
+                // can answer it cheaply, so the file fallback below reports what
+                // it actually read and nothing more.
+                const total = await db.count(kind, flaggedOnly).catch(() => rows.length);
+                return { source: 'postgres', rows: rows, total: total };
+            }
         } catch (err) {
             console.error('[submissions] read failed: ' + err.message);
         }
     }
-    return { source: 'file:' + LOG_DIR, rows: fromFiles(limit, kind, flaggedOnly) };
+    const all = fromFiles(500, kind, flaggedOnly);
+    const skip = Math.max(Number(offset) || 0, 0);
+    const max = Math.min(Math.max(Number(limit) || 50, 1), 500);
+    return { source: 'file:' + LOG_DIR, rows: all.slice(skip, skip + max), total: all.length };
 }
+
+// ---------------------------------------------------------------------------
+// telling the open inbox that something arrived
+// ---------------------------------------------------------------------------
+//
+// One emitter, in this process. That is the honest scope of it: with two
+// servers running, a submission handled by one would not wake a page connected
+// to the other. There is one server, and when there are two this becomes a row
+// in the database that the stream polls, or redis. Written down so the limit is
+// known rather than discovered.
+const bus = new (require('events').EventEmitter)();
+// a page per open tab, and the default of ten warns on the eleventh
+bus.setMaxListeners(50);
 
 function fromFiles(limit, kind, flaggedOnly) {
     const max = Math.min(Math.max(Number(limit) || 50, 1), 500);
@@ -252,4 +280,4 @@ function fromFiles(limit, kind, flaggedOnly) {
     return out;
 }
 
-module.exports = { record, recent, purgeFiles, forgetInFiles, startRetention, LOG_DIR, RETENTION_DAYS };
+module.exports = { record, recent, bus, purgeFiles, forgetInFiles, startRetention, LOG_DIR, RETENTION_DAYS };

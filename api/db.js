@@ -259,12 +259,13 @@ async function insert(kind, outcome, fields) {
 // reading
 // ---------------------------------------------------------------------------
 
-async function recent(limit, kind, flaggedOnly) {
+async function recent(limit, kind, flaggedOnly, offset) {
     if (!pool) return null;
     if (!(await init())) return null;
 
     const max = Math.min(Math.max(Number(limit) || 50, 1), 500);
-    const params = [max];
+    const skip = Math.max(Number(offset) || 0, 0);
+    const params = [max, skip];
     const where = [];
     if (kind) {
         params.push(String(kind).slice(0, 32));
@@ -274,7 +275,7 @@ async function recent(limit, kind, flaggedOnly) {
     const clause = where.length ? 'WHERE ' + where.join(' AND ') : '';
     const res = await pool.query(
         `SELECT id, received_at, kind, outcome, country, lang, flags, payload, encrypted
-         FROM submissions ${clause} ORDER BY received_at DESC, id DESC LIMIT $1`,
+         FROM submissions ${clause} ORDER BY received_at DESC, id DESC LIMIT $1 OFFSET $2`,
         params
     );
 
@@ -330,6 +331,31 @@ function startRetention() {
 }
 
 // Erasure requests: find and remove by address without ever storing it.
+// How many rows the same filter matches. Asked separately from the page itself
+// because a page of ten cannot know there are thirty four.
+async function count(kind, flaggedOnly) {
+    if (!pool) return 0;
+    if (!(await init())) return 0;
+    const params = [];
+    const where = [];
+    if (kind) { params.push(String(kind).slice(0, 32)); where.push('kind = $' + params.length); }
+    if (flaggedOnly) where.push("flags IS NOT NULL AND flags <> ''");
+    const clause = where.length ? 'WHERE ' + where.join(' AND ') : '';
+    const res = await pool.query(`SELECT count(*)::int AS n FROM submissions ${clause}`, params);
+    return res.rows[0] ? res.rows[0].n : 0;
+}
+
+// One row, gone. Deliberately by id rather than by anything a person typed: an
+// id is what the list is already holding, and it cannot half match two rows.
+async function remove(id) {
+    if (!pool) return 0;
+    if (!(await init())) return 0;
+    const n = Number(id);
+    if (!Number.isInteger(n) || n <= 0) return 0;
+    const res = await pool.query('DELETE FROM submissions WHERE id = $1', [n]);
+    return res.rowCount;
+}
+
 async function forget(email) {
     if (!pool) return 0;
     if (!(await init())) return 0;
@@ -380,7 +406,7 @@ function open(aad, blob) {
 }
 
 module.exports = {
-    insert, recent, purge, forget, startRetention, status,
+    insert, recent, count, remove, purge, forget, startRetention, status,
     available: () => Boolean(pool),
     query, connect, seal, open, blindIndex,
     indexKey: () => INDEX_KEY,
