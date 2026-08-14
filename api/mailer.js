@@ -382,7 +382,13 @@ async function send(msg) {
         html: html,
         text: text,
     };
-    if (replyTo) payload.reply_to = replyTo;
+    // where a reply should land. an internal notice sets this to the person who
+    // wrote in; everything else falls back to the support mailbox rather than to
+    // noreply@. two reasons: the footer already tells people to write there, and
+    // a sender that accepts replies is one of the things spam filters count in
+    // your favour. an address that can only shout is treated as one that only
+    // shouts.
+    payload.reply_to = replyTo || MAIL_TO;
     const result = await resend.emails.send(payload);
 
     // the sdk reports api errors in the payload rather than by rejecting
