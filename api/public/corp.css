@@ -3457,6 +3457,24 @@ html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }
 
 /* the bot challenge, on every form that can send mail */
 .sp-auth-turnstile { display: flex; justify-content: center; min-height: 65px; }
+/* display:flex beats the user agent's [hidden] rule, so say it again */
+.sp-auth-turnstile[hidden] { display: none; }
+
+/* the terms tick, when it has not been ticked: the box turns and says why,
+   in the form, instead of a message in the corner of the screen */
+.sp-auth-consent-note {
+    margin: 0.45rem 0 0;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    color: #d13a5c;
+}
+.sp-auth-consent-note.is-shown { animation: lpDemoStepIn 0.25s ease; }
+.sp-auth-form .lp-demo-consent.lp-demo-consent-err {
+    color: #a8324f !important;
+    border-color: rgba(209, 58, 92, 0.5) !important;
+    background: rgba(209, 58, 92, 0.05) !important;
+}
+.sp-auth-form .lp-demo-consent.lp-demo-consent-err a { color: #a8324f; border-bottom-color: rgba(168, 50, 79, 0.4); }
 
 /* the end of it: no form left, because there is nothing more to fill in */
 .sp-auth-done { text-align: center; padding: 0.6rem 0 0.2rem; }

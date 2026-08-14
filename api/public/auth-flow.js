@@ -80,6 +80,34 @@
         var submitBtn = form.querySelector('button[type="submit"]');
         var emailInput = form.querySelector('input[type="email"]');
 
+        // ---- the terms tick ---------------------------------------------------
+        // an unticked box is not an error worth a popup in the corner: the thing
+        // that needs attention is right there in the form, so the box says so
+        // itself and the message sits under it.
+        var consentWrap = form.querySelector('.lp-demo-consent');
+        var consentNote = null;
+        if (consentWrap) {
+            consentNote = el('p', 'sp-auth-consent-note');
+            consentNote.hidden = true;
+            consentWrap.parentNode.insertBefore(consentNote, consentWrap.nextSibling);
+            var consentBox = consentWrap.querySelector('input[type="checkbox"]');
+            if (consentBox) {
+                consentBox.addEventListener('change', function () {
+                    if (consentBox.checked) markConsent(true);
+                });
+            }
+        }
+
+        function markConsent(ok) {
+            if (!consentWrap) return;
+            consentWrap.classList.toggle('lp-demo-consent-err', !ok);
+            if (!consentNote) return;
+            if (ok) { consentNote.hidden = true; return; }
+            consentNote.textContent = t('please accept the terms of service to continue.');
+            consentNote.hidden = false;
+            replay(consentNote, 'is-shown');
+        }
+
         // ---- the bot challenge ------------------------------------------------
         // the register form can make us send mail to an address a stranger chose,
         // which is exactly what turnstile is for. it is skipped when no site key
@@ -87,9 +115,13 @@
         //
         // two things this has to get right, and the first version got neither:
         //
-        //   the widget is not rendered until the panel is actually on screen. the
-        //   dialog is display:none until somebody opens it, and a challenge that
-        //   runs inside a hidden box is a challenge nobody can see or finish.
+        //   the widget is not rendered until the form is actually submitted. it
+        //   is a check on the send, not a field to fill in, so it has no business
+        //   sitting in the form while somebody types their name: it only appears
+        //   once "create account" is pressed, and in the ordinary case it passes
+        //   on its own and is gone again before it is read. rendering it earlier
+        //   also risked running it inside a display:none dialog, where nobody can
+        //   see or finish a challenge that asks for a click.
         //
         //   the token is not reused. cloudflare gives it a few minutes and then
         //   refuses it, so a page left open while somebody reads the pricing
@@ -145,22 +177,10 @@
 
         if (turnstileOn) {
             holder = el('div', 'sp-auth-turnstile');
+            // it keeps no room in the layout until it has something to show, so
+            // the form does not carry a 65px hole through the whole visit
+            holder.hidden = true;
             form.insertBefore(holder, submitBtn);
-            // rendered the moment the panel is on screen for the first time, and
-            // not a moment before
-            if (window.IntersectionObserver) {
-                var io = new IntersectionObserver(function (entries) {
-                    for (var n = 0; n < entries.length; n++) {
-                        if (!entries[n].isIntersecting) continue;
-                        io.disconnect();
-                        loadTurnstile();
-                        return;
-                    }
-                }, { threshold: 0.01 });
-                io.observe(form);
-            } else {
-                loadTurnstile();
-            }
         }
 
         // hands back a token the server will still accept, replacing a stale one
@@ -172,6 +192,7 @@
             if (turnstileToken && Date.now() - turnstileAt < TOKEN_GOOD_FOR) {
                 return Promise.resolve(turnstileToken);
             }
+            if (holder) holder.hidden = false;
             loadTurnstile();
             return new Promise(function (resolve) {
                 waitingFor = resolve;
@@ -451,9 +472,11 @@
                 return;
             }
             if (!data.consent) {
-                toast(t('please accept the terms of service to continue.'), 'warning');
+                markConsent(false);
+                if (consentWrap) consentWrap.scrollIntoView({ block: 'nearest' });
                 return;
             }
+            markConsent(true);
             busy = true;
             submitBtn.disabled = true;
             var label = submitBtn.textContent;
@@ -501,6 +524,8 @@
                 if (turnstileOn && turnstileId !== null) {
                     try { window.turnstile.reset(turnstileId); } catch (resetErr) { /* widget already gone */ }
                 }
+                // back out of the way until the next press asks for it again
+                if (holder) holder.hidden = true;
             });
         });
 
