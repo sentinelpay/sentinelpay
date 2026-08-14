@@ -759,6 +759,48 @@
         err.setAttribute('role', 'alert');
         form.insertBefore(err, submitBtn);
 
+        // ---- the form starts empty --------------------------------------------
+        // the browser's password manager fills these in the moment the page
+        // loads, whether or not anybody has asked it to, and the panel is then
+        // sitting there with somebody's address and password already in it. on a
+        // shared machine that is a sign-in waiting to be pressed by whoever sits
+        // down next, and it does it even while the panel is hidden behind the
+        // other tab, so nobody sees it happen.
+        //
+        // this empties them again, and it is not a fight with the manager: the
+        // fields keep their autocomplete hints, so clicking one still offers
+        // whatever is saved. the difference is that it is offered rather than
+        // already typed.
+        var loginFields = [form.querySelector('input[type="email"]'), form.querySelector('input[type="password"]')]
+            .filter(Boolean);
+
+        function clearPrefill() {
+            loginFields.forEach(function (field) { field.value = ''; });
+        }
+
+        // once when the card is built, and again a moment later: chrome fills
+        // some forms after its own first pass, so a single clear on load misses
+        // it on exactly the machines where it matters
+        clearPrefill();
+        setTimeout(clearPrefill, 120);
+        setTimeout(clearPrefill, 600);
+
+        // and every time the panel comes back into view, which is what happens
+        // when somebody switches to this tab or reopens the dialog
+        if (window.MutationObserver) {
+            // two things can bring the panel back: the tab above it, and the
+            // dialog it sits in. reopening the dialog on the panel that was
+            // already showing does not touch the form's own hidden attribute,
+            // so watching only the form missed exactly that case.
+            [form, form.closest('.sp-authm-backdrop')].filter(Boolean).forEach(function (node) {
+                var wasHidden = node.hidden;
+                new MutationObserver(function () {
+                    if (wasHidden && !node.hidden) clearPrefill();
+                    wasHidden = node.hidden;
+                }).observe(node, { attributes: true, attributeFilter: ['hidden'] });
+            });
+        }
+
         function say(msg) {
             err.textContent = msg || '';
             err.hidden = !msg;
