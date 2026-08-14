@@ -760,13 +760,69 @@ function adminOk(req) {
     return crypto.timingSafeEqual(sha256(provided), sha256(adminToken));
 }
 
+// ---------------------------------------------------------------------------
+// staff
+// ---------------------------------------------------------------------------
+//
+// Two ways into the admin pages, and they are not equal.
+//
+// The first is a signed-in account whose address is on the staff list. That is
+// the ordinary way: you sign in as yourself, the pages know who you are, and
+// every request writes a line saying so. No token in a url, nothing to paste
+// into a chat window, nothing to leak in a screenshot, and access ends the
+// moment the session does.
+//
+// The second is the admin token, kept as the way in when everything else is
+// broken: no database, no sessions, nobody able to sign in. It has no name
+// attached, so it can only ever say that somebody with the token was here.
+//
+// The list lives in the environment rather than in a column, so taking somebody
+// off it takes effect on their next request rather than after a migration. It
+// is checked against the address on the session, which the account proved by
+// email before it existed.
+function staffList() {
+    return String(process.env.STAFF_EMAILS || '')
+        .split(',')
+        .map((x) => x.trim().toLowerCase())
+        .filter(Boolean);
+}
+
+async function staffOf(req) {
+    const list = staffList();
+    if (!list.length) return null;
+    const me = await currentUser(req);
+    if (!me || !me.email) return null;
+    return list.includes(String(me.email).toLowerCase()) ? me : null;
+}
+
+// Answers with who it was, so the caller can both allow the request and say in
+// the log whose it was. `null` means no.
+async function whoIsAsking(req) {
+    const me = await staffOf(req);
+    if (me) return { kind: 'staff', who: me.email, name: me.name };
+    if (adminOk(req)) return { kind: 'token', who: 'admin token' };
+    return null;
+}
+
+// The gate every admin page goes through. A refusal is a 404 rather than a 403:
+// a page that answers "forbidden" has told a stranger it exists.
+function requireStaff(action) {
+    return async (req, res, next) => {
+        const asking = await whoIsAsking(req);
+        if (!asking) return sendPage(res, req, '404.html', 404);
+        req.staff = asking;
+        // the point of the whole exercise: looking at somebody's details is an
+        // event, and events have a name on them
+        console.log('[staff] ' + asking.kind + ' ' + asking.who + ' -> ' + action +
+            (req.query.ref ? ' ref=' + String(req.query.ref).slice(0, 32) : ''));
+        return next();
+    };
+}
+
 // Reads the submission log back. Same token gate as /v1/mail-status, same 404 when
 // it is wrong. Every row here is personal data, so the answer is never cached and
 // never stored by anything between us and the browser asking for it.
-app.get('/v1/submissions', async (req, res) => {
-    if (!adminOk(req)) {
-        return sendPage(res, req, '404.html', 404);
-    }
+app.get('/v1/submissions', requireStaff('submissions json'), async (req, res) => {
     const kind = String(req.query.kind || '').slice(0, 32);
     // ?flagged=1 is the working question: what came in that a person should look at
     const flagged = String(req.query.flagged || '') === '1';
@@ -784,10 +840,7 @@ app.get('/v1/submissions', async (req, res) => {
 // index, so honouring the request does not require the address to have been
 // stored in the first place. POST only: a link that deletes data is a link
 // somebody will follow by accident.
-app.post('/v1/forget', async (req, res) => {
-    if (!adminOk(req)) {
-        return sendPage(res, req, '404.html', 404);
-    }
+app.post('/v1/forget', requireStaff('erase'), async (req, res) => {
     const email = String((req.body && req.body.email) || req.query.email || '').trim();
     if (!email || email.length > 254) return res.status(400).json({ error: 'email required' });
     try {
@@ -828,10 +881,7 @@ function escapeHtml(v) {
 // inline styles on style attributes, and an email is nothing but inline styles,
 // so without this the preview would render as unstyled text and lie about how
 // the message looks. The document it serves is our own html and loads nothing.
-app.get('/v1/mail-preview', (req, res) => {
-    if (!adminOk(req)) {
-        return sendPage(res, req, '404.html', 404);
-    }
+app.get('/v1/mail-preview', requireStaff('mail preview'), (req, res) => {
     const name = String(req.query.t || '');
     const lang = String(req.query.lang || 'en');
     const token = String(req.get('x-admin-token') || req.query.token || '');
@@ -904,10 +954,7 @@ app.get('/v1/mail-preview', (req, res) => {
 // What it is not: a real admin. There is one token rather than accounts, so it
 // cannot say who looked, only that somebody with the token did. That is the
 // next thing to build, and it is written here so it is not mistaken for done.
-app.get('/v1/inbox', async (req, res) => {
-    if (!adminOk(req)) {
-        return sendPage(res, req, '404.html', 404);
-    }
+app.get('/v1/inbox', requireStaff('inbox'), async (req, res) => {
     const token = String(req.get('x-admin-token') || req.query.token || '');
     const kind = String(req.query.kind || '').slice(0, 32);
     const ref = String(req.query.ref || '').slice(0, 32);
@@ -990,7 +1037,9 @@ app.get('/v1/inbox', async (req, res) => {
         '<div style="max-width:720px;margin:0 auto;">' +
         '<h1 style="font-size:20px;font-weight:800;margin:0 0 4px;color:#0e2358;">inbox</h1>' +
         '<p style="margin:0 0 20px;color:rgba(14,35,88,0.6);font-size:13px;">' +
-        'everything the forms have sent us. this is the only place the details are kept.</p>' +
+        'everything the forms have sent us. this is the only place the details are kept. ' +
+        // said out loud on the page, because it changes how somebody uses it
+        'signed in as <b>' + escapeHtml(req.staff.who) + '</b>, and this visit is in the log.</p>' +
         head +
         (rows.length ? rows.map(card).join('') :
             '<p style="color:rgba(14,35,88,0.5);font-size:14px;">nothing here.</p>') +
@@ -1002,10 +1051,7 @@ app.get('/v1/inbox', async (req, res) => {
 // arrived without telling every stranger who has an account here, so the answer
 // lives behind the admin token instead.
 //     curl -H "x-admin-token: ..." "https://sentinelpay.org/v1/account-status?email=someone@example.com"
-app.get('/v1/account-status', async (req, res) => {
-    if (!adminOk(req)) {
-        return sendPage(res, req, '404.html', 404);
-    }
+app.get('/v1/account-status', requireStaff('account status'), async (req, res) => {
     const email = String(req.query.email || '').trim().toLowerCase();
     if (!email || email.length > 254) return res.status(400).json({ error: 'email required' });
     try {
@@ -1017,10 +1063,7 @@ app.get('/v1/account-status', async (req, res) => {
     }
 });
 
-app.all('/v1/mail-status', async (req, res) => {
-    if (!adminOk(req)) {
-        return sendPage(res, req, '404.html', 404);
-    }
+app.all('/v1/mail-status', requireStaff('mail status'), async (req, res) => {
 
     const state = {
         nodeEnv: process.env.NODE_ENV || '(unset)',
@@ -1444,7 +1487,10 @@ app.get('/v1/auth/me', async (req, res) => {
     try {
         const me = await currentUser(req);
         if (!me) return res.json({ signedIn: false });
-        res.json({ signedIn: true, name: me.name, email: me.email, since: me.since });
+        // the dashboard shows the staff panel from this, and nothing more than
+        // the panel depends on it: every page behind it checks for itself.
+        const staff = staffList().includes(String(me.email || '').toLowerCase());
+        res.json({ signedIn: true, name: me.name, email: me.email, since: me.since, staff });
     } catch (err) {
         console.error('[auth me error]', err.message);
         res.json({ signedIn: false });

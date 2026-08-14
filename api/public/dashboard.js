@@ -43,6 +43,11 @@
             set('dash-since', niceDate(me.since));
             var first = String(me.name || '').trim().split(/\s+/)[0];
             if (first) set('dash-greet', t('welcome back') + ', ' + first);
+            // the panel appears for staff. it is a set of links and nothing
+            // else: every page behind it checks the session for itself, so
+            // unhiding this by hand in a browser opens nothing.
+            var staff = document.getElementById('dash-staff');
+            if (staff && me.staff) staff.hidden = false;
         })
         .catch(function () {
             // the page is already on screen and says nothing untrue: the rows

@@ -4354,3 +4354,7 @@ html {
 @media (pointer: coarse) {
     .auth-nav-mark { width: 40px; height: 40px; }
 }
+
+/* the staff panel on the dashboard: the same card as the rest, marked by its
+   heading rather than by a colour, because it is not a warning */
+.sp-dash-staff[hidden] { display: none; }
