@@ -3140,7 +3140,12 @@ html[data-mail-down] a[data-mail-subject] {
 .sp-auth-form[hidden] { display: none; }
 /* the demo grid brings a 1.5rem row gap of its own, which doubles up with the
    form's when the rows are stacked one per line */
-.sp-auth-form .lp-demo-grid { gap: 0 1.1rem; }
+/* the row gap matters the moment the two names stop sharing a row. on a narrow
+   screen the grid collapses to one column, and a row gap of zero left first and
+   last name touching while every other pair in the form had 1rem between them.
+   it is the same 1rem the form itself uses, so the column is even all the way
+   down whether the names are side by side or stacked. */
+.sp-auth-form .lp-demo-grid { gap: 1rem 1.1rem; }
 
 .sp-auth-row { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; flex-wrap: wrap; }
 .sp-auth-remember { display: flex; align-items: center; gap: 0.5rem; font-size: 0.84rem; color: rgba(255, 255, 255, 0.6); cursor: pointer; }
@@ -3240,11 +3245,54 @@ html.sp-authm-open .lp-nav,
 html.sp-authm-open .sp-status,
 html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }
 
+/* on a phone this stops being a dialog and becomes the screen.
+   a card floating in a dimmed page is a desktop idea: there it sits in the
+   middle of a window with the page visible around it, which is what tells you
+   it is temporary. on a 360px screen the same card fills almost everything
+   anyway, so the rounded corners and the strip of blurred page around the edge
+   buy nothing and cost the width they take up. worse, the card was taller than
+   the screen, so the form scrolled inside a box that was itself inside a page:
+   two scrolls, and the wrong one moves when your thumb is in the wrong place.
+
+   so it takes the whole screen, scrolls once, and the cross in the corner is
+   the way out. `dvh` rather than `vh` on purpose: `vh` is the height of the
+   window with the browser's own bars retracted, so a card sized in `vh` runs
+   its last row underneath safari's address bar until you scroll. */
 @media (max-width: 560px) {
-    .sp-authm-backdrop { padding: 0.9rem; align-items: flex-start; padding-top: 3.5rem; }
-    .sp-authm { max-height: calc(100dvh - 5rem); }
-    .sp-authm-panel { padding: 1.6rem 1.4rem 1.4rem !important; }
+    .sp-authm-backdrop {
+        padding: 0;
+        align-items: stretch;
+        justify-content: stretch;
+        /* nothing shows through, so there is nothing to blur */
+        background: transparent;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+    .sp-authm {
+        width: 100%;
+        max-width: none;
+        min-height: 100dvh;
+        max-height: none;
+        /* it arrives by sliding up from the bottom, the way a sheet does */
+        transform: translateY(2%);
+    }
+    .sp-authm-panel {
+        min-height: 100dvh;
+        border-radius: 0 !important;
+        border-left: 0; border-right: 0; border-top: 0;
+        /* the gradient edge stays at the bottom, where it reads as the site's
+           own rather than as a stray line across a full screen */
+        padding: 2.9rem 1.25rem 1.6rem !important;
+        align-content: start;
+    }
+    /* the two names go back to sharing a row. stacked they cost a whole field's
+       height, which was the difference between the panel fitting on a 640px
+       screen and the button sitting below the fold. at 360px that is 155px each,
+       which is more than a first name needs. */
+    .sp-authm .sp-auth-form .lp-demo-grid { grid-template-columns: 1fr 1fr; }
     .sp-authm-h { font-size: 1.35rem; }
+    /* the way out sits where a phone puts it, clear of the notch */
+    .sp-authm-x { top: 0.65rem; right: 0.65rem; }
 }
 
 /* ============ forms, light ============
@@ -3781,7 +3829,26 @@ html.theme-light .lp-demo-select-menu { scrollbar-color: rgba(14, 35, 88, 0.2) #
        underneath keeps the full width: it sits below the button and squeezing
        it in as well only bought an extra line of wrapping. */
     .sp-authm-h { padding: 0 2.2rem; }
-    .sp-auth-remember { min-height: 44px; }
+    /* the two framed ticks. the card centres its text, which is right for a
+       heading and wrong inside a box with a tick down the left: the second line
+       pulled away from the first and the whole thing sat off its own checkbox.
+       here the text is a block beside the tick and starts where the tick does.
+       the terms box also takes the full row rather than shrinking to its words,
+       so the two read as the same component in both panels. */
+    .sp-auth-form .lp-demo-consent,
+    .sp-auth-form .sp-auth-remember {
+        min-height: 44px;
+        width: 100%;
+        text-align: left;
+        align-items: center;
+        padding: 0.7rem 0.85rem;
+        gap: 0.7rem;
+    }
+    .sp-auth-form .lp-demo-consent input,
+    .sp-auth-form .sp-auth-remember input { width: 18px; height: 18px; margin-top: 0; }
+    /* with the tick box full width, the link underneath it is its own row */
+    .sp-auth-row { flex-direction: column; align-items: stretch; gap: 0.15rem; }
+    .sp-auth-form .sp-auth-link { align-self: center; }
     /* padding rather than a bigger font: the link keeps its place in the row and
        becomes something a thumb can hit */
     .sp-auth-form .sp-auth-link { padding: 0.9rem 0.2rem; }
