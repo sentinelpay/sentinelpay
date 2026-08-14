@@ -840,19 +840,28 @@ app.all('/v1/mail-status', async (req, res) => {
         accounts: accounts.status(),
     };
 
+    // The one thing this could not previously answer. A key can be set, the
+    // send can be accepted, and nothing arrives, because the sending domain is
+    // not verified at the provider: no dkim signature, no spf pass, and every
+    // inbox that matters drops the message without a bounce. That is a dns
+    // fact, not a code fact, so it is read back from the provider rather than
+    // guessed at from here.
+    state.domains = await mailer.domainStatus();
+
     // sending is a side effect, so it needs POST: a token that leaks into a url
     // must not be firable by an <img src> or a link preview bot.
     if (req.method !== 'POST' || String(req.query.send || '') !== '1') {
-        return res.json({ state, hint: 'POST with &send=1 to send a test message' });
+        return res.json({ state, hint: 'POST with &send=1 to send a test message, &to= to choose the inbox' });
     }
 
     try {
         const result = await mailer.send({
+            to: String(req.query.to || '').trim() || undefined,
             subject: 'sentinelpay mail test',
             eyebrow: 'diagnostics',
             title: 'mail is working',
             intro: 'this message was sent by /v1/mail-status, so delivery from the server is fine.',
-            pairs: [['sent at', new Date().toISOString()], ['from', mailer.MAIL_FROM], ['to', mailer.MAIL_TO]],
+            pairs: [['sent at', new Date().toISOString()], ['from', mailer.MAIL_FROM], ['to', String(req.query.to || '').trim() || mailer.MAIL_TO]],
         });
         if (result && result.preview) return res.json({ state, sent: false, mode: 'preview only, no api key', file: result.preview });
         return res.json({ state, sent: true, result });

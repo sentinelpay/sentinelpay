@@ -306,6 +306,38 @@ function compose(msg) {
     };
 }
 
+// What the provider thinks of the domain we send as. "verified" means the dkim
+// and spf records are in dns and it has checked them; anything else means the
+// mail is either refused outright or delivered into a spam folder, and neither
+// of those looks any different from here to a person waiting for a code.
+async function domainStatus() {
+    if (!isConfigured()) return 'no api key, so nothing to ask';
+    const sender = (MAIL_FROM.match(/<([^>]+)>/) || [null, MAIL_FROM])[1];
+    const domain = sender.split('@').pop().trim().toLowerCase();
+    try {
+        const { Resend } = require('resend');
+        const list = await new Resend(process.env.RESEND_API_KEY).domains.list();
+        if (list && list.error) return 'could not ask the provider: ' + (list.error.message || 'unknown error');
+        // the sdk has moved this between data and data.data across versions
+        const rows = (list && list.data && (list.data.data || list.data)) || [];
+        if (!Array.isArray(rows)) return 'unexpected answer from the provider';
+        const mine = rows.find((d) => String(d.name || '').toLowerCase() === domain);
+        if (!mine) {
+            return domain + ' is NOT added at the provider, so nothing sent from it can be delivered. '
+                + 'known domains: ' + (rows.map((d) => d.name).join(', ') || 'none');
+        }
+        return {
+            sendingAs: sender,
+            domain: mine.name,
+            status: mine.status,
+            region: mine.region || null,
+            ok: mine.status === 'verified',
+        };
+    } catch (err) {
+        return 'could not ask the provider: ' + err.message;
+    }
+}
+
 async function send(msg) {
     const { to, subject, replyTo } = msg;
     const { html, text } = compose(msg);
@@ -564,5 +596,5 @@ function render(name, lang) {
 
 module.exports = {
     send, compose, sendTrialWelcome, sendSignupCode, sendSignupExists,
-    render, previewNames, isConfigured, MAIL_FROM, MAIL_TO,
+    render, previewNames, isConfigured, domainStatus, MAIL_FROM, MAIL_TO,
 };

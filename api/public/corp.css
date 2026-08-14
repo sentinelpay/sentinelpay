@@ -3460,6 +3460,34 @@ html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }
 /* display:flex beats the user agent's [hidden] rule, so say it again */
 .sp-auth-turnstile[hidden] { display: none; }
 
+/* the eye that shows a password. it sits inside the field rather than beside
+   it, so the row keeps its width and the button lands where every other form
+   on the internet puts it. */
+.lp-demo-field.sp-has-eye { position: relative; }
+.lp-demo-field.sp-has-eye input { padding-right: 2.9rem; }
+.sp-eye {
+    position: absolute;
+    right: 0.55rem;
+    bottom: 0.5rem;
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: rgba(14, 35, 88, 0.42);
+    cursor: pointer;
+    transition: color 0.16s ease, background 0.16s ease;
+}
+.sp-eye:hover { color: #0091c8; background: rgba(0, 145, 200, 0.08); }
+.sp-eye:focus-visible { outline: 2px solid #0091c8; outline-offset: 1px; color: #0091c8; }
+.sp-eye svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+/* the stroke through it is the "hidden again" state, drawn over the lid */
+.sp-eye svg .sp-eye-cut { stroke-width: 1.9; }
+
 /* the terms tick, when it has not been ticked: the box turns and says why,
    in the form, instead of a message in the corner of the screen */
 .sp-auth-consent-note {

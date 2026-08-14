@@ -565,8 +565,91 @@
         });
     }
 
+    // ---- showing the password ------------------------------------------------
+    // a password nobody can read is a password typed twice, and on a phone
+    // keyboard it is typed twice wrong. the eye is off by default and goes back
+    // to hidden the moment the field is left, so a screen shared or a shoulder
+    // looked over does not keep it on show.
+    var EYE = 'M1.6 12S5.3 5.5 12 5.5 22.4 12 22.4 12 18.7 18.5 12 18.5 1.6 12 1.6 12Z';
+
+    function svg(paths, cut) {
+        var s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        s.setAttribute('viewBox', '0 0 24 24');
+        s.setAttribute('aria-hidden', 'true');
+        s.setAttribute('focusable', 'false');
+        paths.forEach(function (d) {
+            var p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            p.setAttribute('d', d);
+            s.appendChild(p);
+        });
+        if (cut) {
+            var line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            line.setAttribute('d', 'M4 20 20 4');
+            line.setAttribute('class', 'sp-eye-cut');
+            s.appendChild(line);
+        }
+        return s;
+    }
+
+    function addEye(input) {
+        if (input.__spEye) return;
+        var field = input.closest('.lp-demo-field');
+        if (!field) return;
+        input.__spEye = true;
+        field.classList.add('sp-has-eye');
+
+        // a revealed password is a plain text field, and the browser will offer
+        // to spellcheck and autocapitalise it: a red squiggle under somebody's
+        // passphrase, and a capital letter they did not type
+        input.setAttribute('spellcheck', 'false');
+        input.setAttribute('autocorrect', 'off');
+        input.setAttribute('autocapitalize', 'off');
+
+        var btn = el('button', 'sp-eye');
+        btn.type = 'button';
+        var shown = false;
+
+        function paint() {
+            btn.textContent = '';
+            btn.appendChild(svg([EYE, 'M12 9.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6Z'], shown));
+            var label = t(shown ? 'hide password' : 'show password');
+            btn.setAttribute('aria-label', label);
+            btn.setAttribute('title', label);
+            btn.setAttribute('aria-pressed', shown ? 'true' : 'false');
+        }
+
+        function set(next) {
+            shown = next;
+            input.type = shown ? 'text' : 'password';
+            paint();
+        }
+
+        btn.addEventListener('click', function () {
+            // the caret is put back where it was: switching the type moves it to
+            // the end, which is not where somebody mid-word left it
+            var at = input.selectionStart;
+            var to = input.selectionEnd;
+            set(!shown);
+            input.focus();
+            try { input.setSelectionRange(at, to); } catch (err) { /* not a text input yet */ }
+        });
+        input.addEventListener('blur', function () {
+            // pressing the eye blurs the field before the click is handled, and
+            // the handler puts the focus straight back, so the check waits and
+            // then asks where the focus actually ended up
+            setTimeout(function () {
+                var here = document.activeElement;
+                if (shown && here !== btn && here !== input) set(false);
+            }, 120);
+        });
+
+        paint();
+        field.appendChild(btn);
+    }
+
     function scan() {
         document.querySelectorAll('form[data-auth="register"]').forEach(attach);
+        document.querySelectorAll('.sp-auth-form input[type="password"]').forEach(addEye);
     }
 
     // the dialog builds its markup when its own script runs, which may be after
