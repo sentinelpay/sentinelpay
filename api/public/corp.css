@@ -3464,19 +3464,28 @@ html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }
 }
 
 /* the link inside the sentence moves with the sentence. the row is quiet until
-   it is ticked and lights up when it is, and the link was staying at full
-   strength through both: bright cyan in the middle of a line of grey, which
-   read as a piece of a different, brighter component dropped into this one.
-   now it fades and lifts along with the words around it, and hover takes it to
-   full whichever state the row is in. */
+   it is pointed at or ticked, and the link was standing still through both:
+   bright cyan in the middle of a line of grey, which read as a piece of a
+   different, brighter component dropped into this one.
+   now it travels the same way the words do, and it travels in the same
+   direction: hovering the row darkens the text, so it darkens the link too. a
+   link that brightened while its sentence darkened was the thing that still
+   looked wrong after the first attempt at this. */
 .lp-demo-consent a {
     color: rgba(0, 145, 200, 0.72);
     border-bottom-color: rgba(0, 145, 200, 0.25);
     transition: color 0.16s ease, border-bottom-color 0.16s ease;
 }
-.lp-demo-consent:hover a,
+/* ticked but not pointed at: lit, the same as the text beside it */
 .lp-demo-consent:has(input:checked) a { color: #0091c8; border-bottom-color: rgba(0, 145, 200, 0.4); }
-.lp-demo-consent a:hover { color: #0091c8; border-bottom-color: #0091c8; }
+/* pointed at, ticked or not: darker, because that is what the sentence does.
+   the ticked selector has to be repeated with :hover on it. `:has(input:checked)`
+   carries the weight of what is inside it, so the lit rule above outranks a
+   plain :hover and the link sat still on exactly the boxes somebody had already
+   ticked. */
+.lp-demo-consent:hover a,
+.lp-demo-consent:has(input:checked):hover a,
+.lp-demo-consent a:hover { color: #00739f; border-bottom-color: rgba(0, 115, 159, 0.55); }
 
 /* inside the auth card the links sit in the middle of running text, and a rule
    under one of them is a line drawn through the sentence: the row it lands in
@@ -3511,6 +3520,7 @@ html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }
 }
 .sp-auth-form .lp-demo-consent a:hover,
 .sp-auth-form .sp-auth-link:hover {
+    color: #00739f;
     text-decoration: underline;
     text-underline-offset: 2px;
 }
@@ -3546,8 +3556,11 @@ html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }
 .sp-auth-tab:hover { color: #0e2358; }
 .sp-auth-tab.is-active { color: #0e2358; background: #ffffff; box-shadow: 0 1px 3px rgba(14, 35, 88, 0.12); }
 .sp-auth-remember { color: rgba(14, 35, 88, 0.6); }
-.sp-auth-link { color: #0091c8; border-bottom-color: rgba(0, 145, 200, 0.3); }
-.sp-auth-link:hover { border-bottom-color: #0091c8; }
+.sp-auth-link { color: #0091c8; border-bottom-color: rgba(0, 145, 200, 0.3); transition: color 0.16s ease, border-bottom-color 0.16s ease; }
+/* the same darkening the rest of the card does under the pointer. it used to
+   change only the rule under the word, which on a link with no rule under it
+   meant it did not change at all. */
+.sp-auth-link:hover { color: #00739f; border-bottom-color: #00739f; }
 
 /* ============ switching between log in and create account ============
    the two panels are different heights, so without this the card jumps and the
