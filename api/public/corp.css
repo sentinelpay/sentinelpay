@@ -3764,12 +3764,20 @@ html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }
    nothing: the two dropdowns looked empty rather than waiting. it is the same
    value on the inputs and the selects, so it moves in one place and the two
    cannot drift apart. still clearly lighter than typed text, which stays at
-   full strength. */
+   full strength.
+
+   the number is 0.62 because that is where it stops failing. measured against
+   the field's own #fbfcfd: at 0.3, where the select placeholder started, the
+   contrast is 1.87 to one; at 0.5 it is 3.11; at 0.62 it is 4.46, which is the
+   4.5 the wcag guidance asks for once rounding is allowed for. it matters more
+   here than on most placeholder text, because on these selects the placeholder
+   is not a hint about the format, it is the question: "odaberite industriju"
+   is the only thing telling anybody what the box is for. */
 .lp-demo-field input::placeholder,
 .lp-demo-field textarea::placeholder,
 .lp-demo-select-val.is-placeholder,
-.lp-demo-select-search::placeholder { color: rgba(14, 35, 88, 0.5); }
-.lp-demo-field select { color: rgba(14, 35, 88, 0.5); }
+.lp-demo-select-search::placeholder { color: rgba(14, 35, 88, 0.62); }
+.lp-demo-field select { color: rgba(14, 35, 88, 0.62); }
 
 /* the dropdown's scrollbar kept the dark theme's colours: a black stripe down
    the side of a white menu. it stays, it just belongs to the card now. */
