@@ -19,11 +19,47 @@
         return (window.SentinelI18n && typeof window.SentinelI18n.lang === 'function'
             ? window.SentinelI18n.lang() : 'en') || 'en';
     }
-    function toast(msg, kind) {
-        if (window.SentinelToast) window.SentinelToast.show(msg, kind || 'error');
+    var RESEND_WAIT = 60; // matches the server; it is the server's answer that counts
+
+    // ---- the sign-up that is already under way -------------------------------
+    // a code lives for a quarter of an hour, and in that time somebody will close
+    // the dialog, read the terms, go and find the mail, come back. coming back
+    // must land on the box for the code, not on the empty form: the account is
+    // half made, and starting again would send a second code for no reason.
+    //
+    // what is kept is the address and the minute the code dies. no code, no
+    // password, nothing that would matter if the machine were shared, and it is
+    // dropped the moment it expires or the sign-up finishes.
+    var STORE = 'sp.signup';
+
+    function pending() {
+        try {
+            var raw = window.localStorage.getItem(STORE);
+            if (!raw) return null;
+            var state = JSON.parse(raw);
+            if (!state || !state.email || !state.expires) return null;
+            if (Date.now() >= state.expires) { forgetPending(); return null; }
+            return state;
+        } catch (err) {
+            // private mode, or a storage that is full or turned off. the flow
+            // still works, it just cannot remember across a reload.
+            return null;
+        }
     }
 
-    var RESEND_WAIT = 60; // matches the server; it is the server's answer that counts
+    function remember(email, minutes, resendUntil) {
+        try {
+            window.localStorage.setItem(STORE, JSON.stringify({
+                email: email,
+                expires: Date.now() + (Number(minutes) || 15) * 60 * 1000,
+                resendUntil: resendUntil || (Date.now() + RESEND_WAIT * 1000)
+            }));
+        } catch (err) { /* nothing to do: it is a convenience, not a rule */ }
+    }
+
+    function forgetPending() {
+        try { window.localStorage.removeItem(STORE); } catch (err) { /* as above */ }
+    }
 
     function post(url, body) {
         return fetch(url, {
@@ -36,6 +72,7 @@
                 var err = new Error('http_' + r.status);
                 err.reason = data && data.error;
                 err.retryIn = data && data.retryIn;
+                err.expiresInMin = data && data.expiresInMin;
                 err.status = r.status;
                 throw err;
             });
@@ -205,6 +242,26 @@
                     if (waitingFor === resolve) { waitingFor = null; resolve(turnstileToken); }
                 }, 9000);
             });
+        }
+
+        // ---- what goes wrong, said where it went wrong -----------------------
+        // a message about this form belongs on this form. a toast in the corner
+        // of the screen is for something that happened elsewhere, or after the
+        // thing you were looking at has gone; here the form is right in front of
+        // the person reading, and a message that appears in it cannot be missed,
+        // cannot time out, and does not cover anything up.
+        var fErr = el('p', 'sp-auth-verr');
+        fErr.classList.add('sp-auth-ferr');
+        fErr.hidden = true;
+        fErr.setAttribute('role', 'alert');
+        form.insertBefore(fErr, submitBtn);
+
+        var formErrTimer = null;
+        function formError(msg) {
+            clearTimeout(formErrTimer);
+            fErr.textContent = msg || '';
+            fErr.hidden = !msg;
+            if (msg) replay(fErr, 'sp-auth-enter');
         }
 
         // ---- the panels this file owns ---------------------------------------
@@ -422,27 +479,56 @@
         resendBtn.addEventListener('click', function () {
             if (resendBtn.disabled) return;
             holdResend(RESEND_WAIT);
-            post('/v1/auth/resend', { email: pendingEmail }).then(function () {
-                showError('');
-                toast(t('a new code is on its way.'), 'info');
+            post('/v1/auth/resend', { email: pendingEmail }).then(function (data) {
+                showError(t('a new code is on its way.'), 'good');
+                remember(pendingEmail, data && data.expiresInMin, Date.now() + RESEND_WAIT * 1000);
+                watchExpiry();
             }).catch(function (err) {
-                // the server's own wait wins over ours
+                // the server's own wait wins over ours, and it is shown as a
+                // countdown on the button rather than as a sentence nobody can act on
                 if (err.retryIn) holdResend(err.retryIn);
-                toast(reason(err), 'error');
+                showError(reason(err));
             });
         });
 
         backBtn.addEventListener('click', function () {
             clearInterval(tick);
+            clearTimeout(expiryTimer);
+            forgetPending();
             clearCode(false);
             showError('');
             step('register');
             if (emailInput) emailInput.focus();
         });
 
-        function showError(msg) {
+        function showError(msg, kind) {
             vErr.textContent = msg || '';
             vErr.hidden = !msg;
+            // the same line carries good news and bad. it is the same place to
+            // look either way, and the colour is what tells them apart.
+            vErr.classList.toggle('is-good', kind === 'good');
+            if (msg) replay(vErr, 'sp-auth-enter');
+        }
+
+        // ---- the life of the code --------------------------------------------
+        // fifteen minutes after it was sent the code is worth nothing, and a panel
+        // that still asks for it is asking for something that cannot work. when
+        // the time is up the form comes back, with a line saying why, rather than
+        // six boxes that will refuse whatever is typed into them.
+        var expiryTimer = null;
+        function watchExpiry() {
+            clearTimeout(expiryTimer);
+            var state = pending();
+            if (!state) return;
+            expiryTimer = setTimeout(function () {
+                forgetPending();
+                if (card.dataset.authStep !== 'verify') return;
+                clearInterval(tick);
+                clearCode(false);
+                showError('');
+                step('register');
+                formError(t('that code has expired. sign up again and we will send a new one.'));
+            }, Math.max(0, state.expires - Date.now()));
         }
 
         // ---- the two submits --------------------------------------------------
@@ -464,11 +550,11 @@
             data.lang = lang();
 
             if (!data.firstName || !data.lastName || !data.email) {
-                toast(t('please fill in every field.'), 'warning');
+                formError(t('please fill in every field.'));
                 return;
             }
             if (!data.password || data.password.length < 12) {
-                toast(t('password must be at least 12 characters'), 'warning');
+                formError(t('password must be at least 12 characters'));
                 return;
             }
             if (!data.consent) {
@@ -477,6 +563,7 @@
                 return;
             }
             markConsent(true);
+            formError('');
             busy = true;
             submitBtn.disabled = true;
             var label = submitBtn.textContent;
@@ -492,17 +579,19 @@
                 }
                 if (tok) data['cf-turnstile-response'] = tok;
                 return post('/v1/auth/register', data);
-            }).then(function () {
+            }).then(function (out) {
                 pendingEmail = data.email;
                 vmail.textContent = data.email;
                 clearCode(false);
                 showError('');
+                remember(data.email, out && out.expiresInMin);
+                watchExpiry();
                 step('verify');
                 holdResend(RESEND_WAIT);
                 setTimeout(function () { boxes[0].focus(); }, 340);
             }).catch(function (err) {
                 if (err.noToken) {
-                    toast(t('the check below did not finish. please try again in a moment.'), 'warning');
+                    formError(t('the check below did not finish. please try again in a moment.'));
                     return;
                 }
                 if (err.retryIn) {
@@ -510,10 +599,14 @@
                     // rather than making them fill the form in again
                     pendingEmail = data.email;
                     vmail.textContent = data.email;
+                    remember(data.email, err.expiresInMin);
+                    watchExpiry();
                     step('verify');
                     holdResend(err.retryIn);
+                    showError(reason(err));
+                    return;
                 }
-                toast(reason(err), 'error');
+                formError(reason(err));
             }).then(function () {
                 busy = false;
                 submitBtn.disabled = false;
@@ -541,6 +634,8 @@
 
             post('/v1/auth/verify', { email: pendingEmail, code: code }).then(function () {
                 clearInterval(tick);
+                clearTimeout(expiryTimer);
+                forgetPending();
                 step('done');
             }).catch(function (err) {
                 codeWrap.classList.remove('is-wrong');
@@ -554,6 +649,23 @@
                 vBtn.textContent = label;
             });
         }
+
+        // ---- coming back to a sign-up already under way ----------------------
+        // this runs once, when the card is built. if a code is still alive, the
+        // card opens on the box for it however the visitor got here: the dialog
+        // from any page, /auth directly, or a reload of either.
+        (function resume() {
+            var state = pending();
+            if (!state) return;
+            pendingEmail = state.email;
+            vmail.textContent = state.email;
+            step('verify');
+            watchExpiry();
+            // the wait between codes belongs to the address, not to this tab, so
+            // it survives the reload with the rest of it
+            var left = Math.ceil((state.resendUntil - Date.now()) / 1000);
+            if (left > 0) holdResend(Math.min(left, RESEND_WAIT));
+        })();
 
         verify.addEventListener('submit', function (e) {
             e.preventDefault();

@@ -3440,6 +3440,11 @@ html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }
 }
 
 .sp-auth-verr { margin: 0; text-align: center; font-size: 0.85rem; line-height: 1.5; color: #c0304a; }
+/* the same line, carrying good news: a new code on its way is not a fault, and
+   painting it red would be the panel shouting at somebody who did as asked */
+.sp-auth-verr.is-good { color: #0a7b52; }
+/* the register form's own line, where a toast used to be */
+.sp-auth-ferr { margin: 0.1rem 0 0; }
 .sp-auth-verr[hidden] { display: none; }
 
 .sp-auth-vfoot {

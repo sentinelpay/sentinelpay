@@ -624,7 +624,19 @@ const trialRequestLimiter = rateLimit({
 // (five codes an hour, a minute between them, five wrong guesses) live in
 // accounts.js, because an attacker with a thousand ips still only gets five
 // emails sent to any one victim.
+// When one of these fires, the answer carries how long the wait is. Without it
+// the panel can only say "too many attempts" and leave somebody pressing a
+// button that will not work for another forty minutes; with it, the same panel
+// shows a countdown, which is a rule rather than a fault.
+function limitHandler(req, res, next, options) {
+    const until = req.rateLimit && req.rateLimit.resetTime;
+    const retryIn = until ? Math.max(1, Math.ceil((until.getTime() - Date.now()) / 1000)) : undefined;
+    if (retryIn) res.set('Retry-After', String(retryIn));
+    res.status(options.statusCode).json(Object.assign({}, options.message, { retryIn }));
+}
+
 const authRegisterLimiter = rateLimit({
+    handler: limitHandler,
     windowMs: 60 * 60 * 1000,
     max: 5,
     standardHeaders: true,
@@ -635,6 +647,7 @@ const authRegisterLimiter = rateLimit({
 // Guessing is the attack here, and a six digit code has a million answers. Twenty
 // tries an hour per ip on top of five per sign-up leaves nothing worth trying.
 const authVerifyLimiter = rateLimit({
+    handler: limitHandler,
     windowMs: 60 * 60 * 1000,
     max: 20,
     standardHeaders: true,
@@ -644,6 +657,7 @@ const authVerifyLimiter = rateLimit({
 });
 // A resend button is a button that sends mail to somebody else's inbox on demand.
 const authResendLimiter = rateLimit({
+    handler: limitHandler,
     windowMs: 60 * 60 * 1000,
     max: 5,
     standardHeaders: true,
@@ -1029,7 +1043,10 @@ app.post('/v1/auth/register', requireCloudflareOrigin, authRegisterLimiter, asyn
             console.log('[auth] register: address already has an account, sent the notice instead');
             try { await mailer.sendSignupExists({ to: email, lang }); }
             catch (err) { console.error('[auth] the notice failed to send: ' + err.message); }
-            return res.json({ ok: true, next: 'verify' });
+            // the same shape and the same numbers as the success answer below.
+            // a reply that differs by one field is a reply that answers "does
+            // this address have an account here" to anyone who looks.
+            return res.json({ ok: true, next: 'verify', expiresInMin: accounts.status().codeTtlMinutes });
         }
         if (started.reason === 'slow-down') {
             console.log('[auth] register: a code went out less than a minute ago, asked them to wait');
@@ -1056,7 +1073,7 @@ app.post('/v1/auth/register', requireCloudflareOrigin, authRegisterLimiter, asyn
         // mailer on the line above this one, which is the thread to pull on when
         // somebody says the code never arrived.
         console.log('[auth] register: code sent, flags: ' + (flags.join(',') || 'none'));
-        res.json({ ok: true, next: 'verify' });
+        res.json({ ok: true, next: 'verify', expiresInMin: started.expiresInMin });
     } catch (err) {
         console.error('[auth register error]', err.message);
         res.status(500).json({ error: 'could not create the account right now. please try again shortly.' });
@@ -1078,7 +1095,7 @@ app.post('/v1/auth/resend', requireCloudflareOrigin, authResendLimiter, async (r
         }
         // no pending sign-up and an expired one are both answered as if a code went
         // out: otherwise this endpoint tells anyone which addresses are mid sign-up
-        if (!again.ok) return res.json({ ok: true });
+        if (!again.ok) return res.json({ ok: true, expiresInMin: accounts.status().codeTtlMinutes });
 
         try {
             await mailer.sendSignupCode({ to: email, code: again.code, lang: again.lang, minutes: again.expiresInMin });
@@ -1086,7 +1103,7 @@ app.post('/v1/auth/resend', requireCloudflareOrigin, authResendLimiter, async (r
             console.error('[auth resend mail failed]', mailErr.code || '', mailErr.message);
             return res.status(500).json({ error: 'could not send the code. please try again shortly.' });
         }
-        res.json({ ok: true, sendsLeft: again.sendsLeft });
+        res.json({ ok: true, sendsLeft: again.sendsLeft, expiresInMin: again.expiresInMin });
     } catch (err) {
         console.error('[auth resend error]', err.message);
         res.status(500).json({ error: 'could not send the code. please try again shortly.' });

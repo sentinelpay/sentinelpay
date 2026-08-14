@@ -128,10 +128,20 @@ function verifyPassword(password, stored) {
             salt = Buffer.from(parts[4], 'base64');
             expected = Buffer.from(parts[5], 'base64');
         } catch (err) { return resolve(false); }
-        crypto.scrypt(password, salt, expected.length, { N, r, p, maxmem: 256 * 1024 * 1024 }, (err, key) => {
-            if (err) return resolve(false);
-            resolve(key.length === expected.length && crypto.timingSafeEqual(key, expected));
-        });
+        // a stored hash that is the right shape but carries nonsense numbers
+        // makes scrypt throw where it stands, rather than call back with an
+        // error. thrown from inside here that becomes a rejected promise and a
+        // 500 for one bad row, so it is caught and answered the same way every
+        // other unusable hash is: no.
+        try {
+            crypto.scrypt(password, salt, expected.length, { N, r, p, maxmem: 256 * 1024 * 1024 }, (err, key) => {
+                if (err) return resolve(false);
+                resolve(key.length === expected.length && crypto.timingSafeEqual(key, expected));
+            });
+        } catch (err) {
+            console.error('[accounts] unusable password hash: ' + err.message);
+            resolve(false);
+        }
     });
 }
 
