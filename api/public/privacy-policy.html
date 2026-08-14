@@ -656,7 +656,7 @@
     <script>/* in-page link scrolls instead of jumping, and leaves the address bar alone */(function(){document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[data-scroll][href^="#"]');if(!a)return;var t=document.getElementById(a.getAttribute('href').slice(1));if(!t)return;e.preventDefault();t.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(function(){try{t.focus({preventScroll:true})}catch(err){}},600);});})();</script>
     <!-- the sign-in dialog. loaded before i18n so its copy is translated too -->
     <script src="/auth-modal.js?v=8" defer></script>
-    <script src="/auth-flow.js?v=6" defer></script>
+    <script src="/auth-flow.js?v=7" defer></script>
     <script src="/i18n.js?v=65" defer></script>
 </body>
 </html>

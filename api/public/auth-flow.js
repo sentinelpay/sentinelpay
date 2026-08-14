@@ -27,39 +27,28 @@
     // must land on the box for the code, not on the empty form: the account is
     // half made, and starting again would send a second code for no reason.
     //
-    // what is kept is the address and the minute the code dies. no code, no
-    // password, nothing that would matter if the machine were shared, and it is
-    // dropped the moment it expires or the sign-up finishes.
-    var STORE = 'sp.signup';
+    // it is remembered for as long as the page is open and no longer. a reload
+    // is a fresh start, and after one there is no trace of it anywhere: nothing
+    // in storage, nothing in a cookie, nothing left on a shared machine for the
+    // next person. the code itself keeps working, so anyone who does reload can
+    // sign up again and the same mail is waiting for them.
+    var live = null;
 
     function pending() {
-        try {
-            var raw = window.localStorage.getItem(STORE);
-            if (!raw) return null;
-            var state = JSON.parse(raw);
-            if (!state || !state.email || !state.expires) return null;
-            if (Date.now() >= state.expires) { forgetPending(); return null; }
-            return state;
-        } catch (err) {
-            // private mode, or a storage that is full or turned off. the flow
-            // still works, it just cannot remember across a reload.
-            return null;
-        }
+        if (!live) return null;
+        if (Date.now() >= live.expires) { live = null; return null; }
+        return live;
     }
 
     function remember(email, minutes, resendUntil) {
-        try {
-            window.localStorage.setItem(STORE, JSON.stringify({
-                email: email,
-                expires: Date.now() + (Number(minutes) || 15) * 60 * 1000,
-                resendUntil: resendUntil || (Date.now() + RESEND_WAIT * 1000)
-            }));
-        } catch (err) { /* nothing to do: it is a convenience, not a rule */ }
+        live = {
+            email: email,
+            expires: Date.now() + (Number(minutes) || 15) * 60 * 1000,
+            resendUntil: resendUntil || (Date.now() + RESEND_WAIT * 1000)
+        };
     }
 
-    function forgetPending() {
-        try { window.localStorage.removeItem(STORE); } catch (err) { /* as above */ }
-    }
+    function forgetPending() { live = null; }
 
     function post(url, body) {
         return fetch(url, {
@@ -649,23 +638,6 @@
                 vBtn.textContent = label;
             });
         }
-
-        // ---- coming back to a sign-up already under way ----------------------
-        // this runs once, when the card is built. if a code is still alive, the
-        // card opens on the box for it however the visitor got here: the dialog
-        // from any page, /auth directly, or a reload of either.
-        (function resume() {
-            var state = pending();
-            if (!state) return;
-            pendingEmail = state.email;
-            vmail.textContent = state.email;
-            step('verify');
-            watchExpiry();
-            // the wait between codes belongs to the address, not to this tab, so
-            // it survives the reload with the rest of it
-            var left = Math.ceil((state.resendUntil - Date.now()) / 1000);
-            if (left > 0) holdResend(Math.min(left, RESEND_WAIT));
-        })();
 
         verify.addEventListener('submit', function (e) {
             e.preventDefault();
