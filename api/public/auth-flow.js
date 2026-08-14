@@ -61,7 +61,6 @@
                 var err = new Error('http_' + r.status);
                 err.reason = data && data.error;
                 err.retryIn = data && data.retryIn;
-                err.expiresInMin = data && data.expiresInMin;
                 err.status = r.status;
                 throw err;
             });
@@ -583,18 +582,11 @@
                     formError(t('the check below did not finish. please try again in a moment.'));
                     return;
                 }
-                if (err.retryIn) {
-                    // a code is already out there: send them to the box for it
-                    // rather than making them fill the form in again
-                    pendingEmail = data.email;
-                    vmail.textContent = data.email;
-                    remember(data.email, err.expiresInMin);
-                    watchExpiry();
-                    step('verify');
-                    holdResend(err.retryIn);
-                    showError(reason(err));
-                    return;
-                }
+                // "a code was just sent" is an answer to the button that was
+                // pressed, so it belongs on the panel that button is on. this
+                // used to move them to the code panel and put the message
+                // there, which read as though the press had worked and then
+                // complained about itself once they had arrived.
                 formError(reason(err));
             }).then(function () {
                 busy = false;
