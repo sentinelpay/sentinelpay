@@ -4442,3 +4442,65 @@ html.theme-light .lp-fx-o4 { display: none; }
 @media (prefers-reduced-motion: reduce) {
     .lp-net-track { animation: none !important; }
 }
+
+/* ============ the hero folding away ============
+   the panel steps back as the page scrolls: a few percent smaller with a corner
+   radius, so the white page underneath shows as a margin around it. scroll.js
+   sets the two numbers, this owns what is done with them.
+
+   the origin is the top centre, so the panel shrinks toward the nav rather than
+   toward the middle of itself and the headline stays where the eye left it.
+
+   a fallback of 1 and 0 is written into the property values, so a page whose
+   javascript did not run gets the full-bleed hero and no animation. */
+html.theme-light .lp-hero {
+    transform-origin: 50% 0;
+    transform: scale(var(--sp-fold-scale, 1));
+    border-radius: var(--sp-fold-radius, 0px);
+    /* the scene and the veil have to be clipped by the new corners */
+    overflow: hidden;
+    /* the shadow only appears once it has stepped back, which is what makes it
+       read as a card set down on the page rather than a section that shrank */
+    box-shadow: 0 30px 80px -40px rgba(6, 10, 30, calc(var(--sp-fold, 0) * 0.55));
+    transition: box-shadow 0.3s linear;
+}
+
+/* the logo band underneath loses its top gap: with the panel lifted there is
+   already a margin there, and two margins read as a mistake */
+html.theme-light .lp-logo-bar { position: relative; z-index: 2; }
+
+@media (prefers-reduced-motion: reduce) {
+    html.theme-light .lp-hero {
+        transform: none;
+        border-radius: 0;
+        box-shadow: none;
+    }
+}
+
+/* the navigation follows the panel.
+   once the hero has stepped back, a dark bar running the full width of a white
+   page reads as a mistake: it is the only thing left touching both edges. so it
+   comes in by the same amount the panel does and takes the same corner, and ends
+   up as a bar floating over the page rather than stuck to the top of it.
+
+   it uses the same `--sp-fold` the panel does, which is set on the root by
+   scroll.js. on every other page the property does not exist, the fallbacks are
+   zero, and the nav is exactly what it was. */
+html.theme-light .lp-nav {
+    left: calc(var(--sp-fold, 0) * 24px);
+    right: calc(var(--sp-fold, 0) * 24px);
+    top: calc(var(--sp-fold, 0) * 12px);
+    border-radius: var(--sp-fold-radius, 0px);
+    /* the hairline under it is what makes it look attached, so it fades out as
+       the bar lifts away */
+    border-bottom-color: rgba(255, 255, 255, calc(0.08 * (1 - var(--sp-fold, 0))));
+    box-shadow: 0 18px 44px -26px rgba(6, 10, 30, calc(var(--sp-fold, 0) * 0.5));
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html.theme-light .lp-nav {
+        left: 0; right: 0; top: 0;
+        border-radius: 0;
+        box-shadow: none;
+    }
+}
