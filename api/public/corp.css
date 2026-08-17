@@ -4366,3 +4366,71 @@ html {
 /* the staff panel on the dashboard: the same card as the rest, marked by its
    heading rather than by a colour, because it is not a warning */
 .sp-dash-staff[hidden] { display: none; }
+
+/* ============ the hero, full height ============
+   corp.css is loaded after landing.css and is where this site's current look is
+   actually decided, so the hero's frame has to be settled here or the older
+   `html.theme-light .lp-hero` rule further up wins: it sets `min-height: 0` and
+   paints its own drifting orbs, which is the background the field replaces.
+
+   the ground is flat and dark. everything visible behind the words is drawn on
+   the canvas, and two backgrounds through one veil is mud. */
+html.theme-light .lp-hero {
+    min-height: 100svh;
+    padding: 7.5rem 1.5rem 6rem;
+    background: #06070f;
+}
+html.theme-light .lp-hero .sp-hero-h1 { color: #ffffff; }
+/* the gradient on the second line has to survive the older rule that forces
+   white with !important on anything inside the hero */
+html.theme-light .lp-hero .sp-hero-l2 {
+    color: transparent !important;
+    -webkit-text-fill-color: transparent !important;
+}
+@media (max-width: 900px) {
+    html.theme-light .lp-hero { padding: 6.5rem 1.25rem 5.5rem; }
+}
+
+/* the two soft lights behind the field.
+   the mesh on its own is fine and it is also flat: a hundred thin lines with
+   nothing behind them reads as a diagram. the reference gets its depth from a
+   video full of large slow forms, and this is the cheap honest version of that,
+   two enormous blurred discs drifting on the compositor.
+
+   the markup already had four orbs from the old hero. two of them are reused
+   and the other two are dropped: four was busy even then. */
+html.theme-light .lp-hero-fx { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+html.theme-light .lp-fx-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(110px);
+    opacity: 1;
+    animation: none;
+}
+html.theme-light .lp-fx-o1 {
+    top: -22%; left: -12%;
+    width: 62rem; height: 44rem;
+    background: radial-gradient(circle, rgba(0, 190, 220, 0.18), transparent 68%);
+    animation: spDriftA 34s ease-in-out infinite alternate;
+}
+html.theme-light .lp-fx-o2 {
+    bottom: -28%; right: -14%;
+    width: 58rem; height: 46rem;
+    background: radial-gradient(circle, rgba(140, 70, 240, 0.2), transparent 68%);
+    animation: spDriftB 41s ease-in-out infinite alternate;
+}
+html.theme-light .lp-fx-o3,
+html.theme-light .lp-fx-o4 { display: none; }
+
+/* transform only, so neither one ever asks the page to lay out again */
+@keyframes spDriftA {
+    from { transform: translate3d(0, 0, 0) scale(1); }
+    to   { transform: translate3d(6vw, 4vh, 0) scale(1.12); }
+}
+@keyframes spDriftB {
+    from { transform: translate3d(0, 0, 0) scale(1.08); }
+    to   { transform: translate3d(-5vw, -5vh, 0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+    html.theme-light .lp-fx-orb { animation: none !important; }
+}

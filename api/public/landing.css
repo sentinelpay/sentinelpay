@@ -3024,300 +3024,262 @@ html.theme-light .lp-role-tab.active {
     background: linear-gradient(120deg, #0090aa, #6a1fb0);
 }
 
+
 /* ============================================================================
-   the hero, rebuilt
+   the hero
    ============================================================================
-   what it was: a centred stack of gradient headline, paragraph, two buttons, on
-   a dark ground with blurred orbs behind it. that is not a bad layout, it is
-   the layout, the one every b2b page has shipped since about 2021, and a
-   compliance product that looks like every other page is asking to be read as
-   one of forty identical tools.
+   what it was: a centred stack on a flat dark ground with four blurred orbs
+   behind it, the headline in clipped white-to-grey, two equal buttons, and the
+   logo strip starting eighty pixels later. every part of that is the default,
+   and the sum of the defaults is a page that looks like forty other pages.
 
-   four deliberate departures:
+   what it is now, and each of these is a specific decision rather than a taste:
 
-   the headline is not a gradient. white-into-grey clipped text is the single
-   clearest tell of the template, and it also makes the most important sentence
-   on the site the lowest contrast thing on it. it is white now, and much
-   bigger, and the accent lives on one word instead of the whole line.
+   the whole viewport, and nothing else in it. one screen, one sentence, one
+   thing to do. the logo strip has to be scrolled to, which is the point: it is
+   proof, and proof is worth something only after a claim.
 
-   it is not centred. centred text is calm and it is also anonymous, because a
-   centred column has no left edge for the eye to come back to. the copy sits
-   left, on a real column, and the right half is the product.
+   a moving field behind everything rather than static blur. it is a canvas, not
+   a video, so it costs no download. see hero.js.
 
-   there is one call to action, not two side by side. two equal buttons make the
-   visitor choose before they know anything; the second one is a quiet link now.
+   the type is the design. bigger than feels comfortable, line-height at exactly
+   1, tracking pulled in hard, and `text-wrap: balance` so the lines break
+   evenly instead of leaving one word alone. the accent is a gradient on the
+   second line, which is the mechanism, while the first stays plain white.
 
-   and the right half is the thing itself, working. see hero.js. */
+   one primary button and one quiet one, not two of equal weight. */
 
-.lp-hero.sp-hero {
-    min-height: auto;
-    padding: 9rem 2rem 5.5rem;
+.lp-hero {
+    position: relative;
+    /* svh rather than vh: on a phone `vh` is the height with the browser bars
+       retracted, so a full-height hero sized in vh is always a little taller
+       than the screen and the scroll cue sits under the address bar */
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
     align-items: center;
+    justify-content: center;
+    padding: 7.5rem 1.5rem 6rem;
+    overflow: hidden;
+    z-index: 10;
 }
 
-.sp-hero-grid {
+.sp-hero-field {
+    position: absolute;
+    z-index: 1;
+    inset: 0;
     width: 100%;
-    max-width: 1180px;
-    display: grid;
-    /* the copy gets the wider half: it is what has to be read first */
-    grid-template-columns: 1.15fr 0.85fr;
-    gap: 4rem;
-    align-items: center;
+    height: 100%;
+    display: block;
+    pointer-events: none;
+}
+/* the field is behind the words, so the middle of it is darkened and the edges
+   are left alone. without this the lines cross the headline and the text has to
+   fight them, and text that fights its background is text nobody reads. */
+.sp-hero-veil {
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse 58% 50% at 50% 48%, rgba(4, 6, 14, 0.88) 0%, rgba(4, 6, 14, 0.45) 48%, transparent 80%),
+        linear-gradient(180deg, rgba(4, 6, 14, 0.55) 0%, transparent 22%, transparent 74%, rgba(4, 6, 14, 0.85) 100%);
 }
 
-.sp-hero-say { display: flex; flex-direction: column; align-items: flex-start; gap: 1.5rem; }
-
-.sp-hero-eyebrow {
-    margin: 0;
-    display: inline-flex;
+.sp-hero-mid {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 54rem;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 0.55rem;
-    font-family: 'Inter', sans-serif;
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.42);
-}
-/* a short rule instead of a pill. a pill is a badge and a badge asks to be
-   read; this is a label and wants to be skipped past. */
-.sp-hero-eyebrow::before {
-    content: "";
-    width: 26px;
-    height: 1px;
-    background: linear-gradient(90deg, #00f0ff, rgba(160, 32, 240, 0.6));
+    text-align: center;
+    gap: 2rem;
 }
 
 .sp-hero-h1 {
     margin: 0;
     font-family: 'Inter', sans-serif;
-    /* bigger than the template dares, and tighter. type this size is a design
-       decision on its own and costs nothing to load. */
-    font-size: clamp(2.6rem, 5vw, 4.15rem);
-    line-height: 1.0;
-    letter-spacing: -0.045em;
+    /* 4.4rem at the top end. the old one stopped at 3.75 and read as a heading;
+       this reads as a statement. */
+    font-size: clamp(2.5rem, 5.4vw, 4.4rem);
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.04em;
     text-transform: lowercase;
+    text-wrap: balance;
     color: #ffffff;
     display: flex;
     flex-direction: column;
+    gap: 0.12em;
 }
-.sp-hero-l1 { font-weight: 800; }
-/* the second line is the mechanism rather than the promise, so it is lighter.
-   weight carries the hierarchy, which is what colour used to be doing badly. */
-.sp-hero-l2 { font-weight: 300; color: rgba(255, 255, 255, 0.72); }
-/* the whole accent, on two full stops. it reads as a decision having been made,
-   it is the one flash of brand in the type, and it is the same cyan as the gate
-   the addresses cross on the right. */
-.sp-hero-dot { color: #00f0ff; font-weight: 800; }
+/* the accent, on the line that says how rather than what. clipped gradient text
+   is a cliche when it is on the whole headline and it is right when it is on one
+   half, because then it is doing a job: separating the promise from the
+   mechanism without a second colour of ink. */
+.sp-hero-l2 {
+    background: linear-gradient(92deg, #00f0ff 0%, #a675ff 62%, #c9a7ff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    /* clipped text loses its descenders to the box, so the box is given the
+       room back and the space is taken off again underneath */
+    padding-block-end: 0.12em;
+    margin-block-end: -0.12em;
+}
 
 .sp-hero-sub {
     margin: 0;
-    max-width: 30rem;
+    /* measured in characters rather than pixels: a line of prose is comfortable
+       between about 45 and 75 characters whatever the screen is doing */
+    max-width: 52ch;
     font-family: 'Inter', sans-serif;
-    font-size: 1.02rem;
+    font-size: clamp(0.98rem, 1.15vw, 1.12rem);
     font-weight: 300;
-    line-height: 1.7;
+    line-height: 1.62;
     text-transform: lowercase;
-    color: rgba(255, 255, 255, 0.62);
+    color: rgba(255, 255, 255, 0.66);
 }
 
-.sp-hero-ctas { display: flex; align-items: center; gap: 1.4rem; flex-wrap: wrap; }
+.sp-hero-ctas {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+}
+
 .sp-hero-cta {
     display: inline-flex;
     align-items: center;
-    padding: 0.92rem 2rem;
+    justify-content: center;
+    height: 3rem;
+    padding: 0 1.9rem;
     border-radius: 10px;
-    background: #ffffff;
+    /* the brand's gradient on the one thing we want pressed. it is the only
+       filled element in the hero, so it needs no other emphasis. */
+    background: linear-gradient(96deg, #00f0ff, #a675ff);
     color: #06070f;
     font-family: 'Inter', sans-serif;
-    font-size: 0.9rem;
+    font-size: 0.92rem;
     font-weight: 700;
     text-transform: lowercase;
     text-decoration: none;
-    transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.18s ease;
+    transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s ease, filter 0.2s ease;
 }
-.sp-hero-cta:hover { transform: translateY(-2px); box-shadow: 0 14px 34px -12px rgba(0, 240, 255, 0.5); }
-.sp-hero-quiet {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.9rem;
-    font-weight: 500;
-    text-transform: lowercase;
-    color: rgba(255, 255, 255, 0.5);
-    text-decoration: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.18);
-    transition: color 0.16s ease, border-bottom-color 0.16s ease;
-}
-.sp-hero-quiet:hover { color: #ffffff; border-bottom-color: rgba(255, 255, 255, 0.6); }
-
-/* ---- the lane ------------------------------------------------------------ */
-
-.sp-lane {
-    position: relative;
-    border-radius: 18px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    /* darker than the page, not lighter: this is a window into the system, and
-       a window is a hole, not a card sitting on top */
-    background: rgba(4, 6, 14, 0.72);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    overflow: hidden;
-    transition: border-color 0.35s ease, box-shadow 0.35s ease;
-}
-/* the moment something is held, the whole frame says so */
-.sp-lane.is-stopped {
-    border-color: rgba(255, 90, 122, 0.5);
-    box-shadow: 0 0 0 1px rgba(255, 90, 122, 0.2), 0 24px 60px -30px rgba(255, 90, 122, 0.55);
+.sp-hero-cta:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.06);
+    box-shadow: 0 16px 40px -14px rgba(0, 240, 255, 0.6);
 }
 
-.sp-lane-top {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0.95rem 1.15rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-}
-.sp-lane-title {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.75);
-}
-/* said out loud, in the frame, and not in small print at the bottom of the
-   page. it is the honest thing and it costs nothing. */
-.sp-lane-note {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.7rem;
-    font-weight: 400;
-    text-transform: lowercase;
-    color: rgba(255, 255, 255, 0.34);
-}
-
-/* exactly six rows and the padding: measured, so the lane has no dead space
-   under the last row and no scrollbar over it */
-.sp-lane-body { position: relative; height: 14.6rem; padding: 0.55rem 0; overflow: hidden; }
-
-/* the gate the rows cross. it is the only place the brand gradient appears in
-   the whole hero, which is what makes it mean something. */
-.sp-lane-gate {
-    position: absolute;
-    z-index: 2;
-    left: 0;
-    right: 0;
-    /* directly under the newest row, which is where the verdict lands. measured
-       against the row height rather than guessed: 0.55rem of padding plus one
-       34.8px row. */
-    top: 2.72rem;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.9) 20%, rgba(160, 32, 240, 0.9) 80%, transparent);
-    box-shadow: 0 0 12px rgba(0, 240, 255, 0.35);
-    opacity: 0.8;
-    transition: box-shadow 0.35s ease, opacity 0.35s ease;
-}
-.sp-lane.is-stopped .sp-lane-gate {
-    background: linear-gradient(90deg, transparent, rgba(255, 90, 122, 0.95) 15%, rgba(255, 90, 122, 0.95) 85%, transparent);
-    box-shadow: 0 0 18px rgba(255, 90, 122, 0.6);
-    opacity: 1;
-}
-
-.sp-lane-rows { display: flex; flex-direction: column; }
-
-.sp-row {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: center;
-    gap: 0.8rem;
-    padding: 0.62rem 1.15rem;
-    /* the addresses are data, so they are set in mono. a system font stack, so
-       there is nothing to download. */
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
-    font-size: 0.83rem;
-    color: rgba(255, 255, 255, 0.55);
-    animation: spRowIn 0.42s cubic-bezier(0.22, 1, 0.36, 1);
-    transition: color 0.3s ease, opacity 0.5s ease;
-}
-/* they fade as they travel up and out, so the eye stays at the gate where the
-   decision happens */
-.sp-row:nth-child(4) { opacity: 0.62; }
-.sp-row:nth-child(5) { opacity: 0.38; }
-.sp-row:nth-child(6) { opacity: 0.16; }
-
-@keyframes spRowIn {
-    from { transform: translateY(10px); opacity: 0; }
-    to   { transform: translateY(0); opacity: 1; }
-}
-
-.sp-row-addr { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-.sp-row-state {
+.sp-hero-second {
     display: inline-flex;
     align-items: center;
-    gap: 0.45rem;
-    min-width: 5.6rem;
-    justify-content: flex-end;
+    gap: 0.7rem;
+    height: 3rem;
+    padding: 0 1.4rem 0 0.45rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.02);
+    color: rgba(255, 255, 255, 0.86);
     font-family: 'Inter', sans-serif;
-    font-size: 0.74rem;
+    font-size: 0.92rem;
     font-weight: 600;
     text-transform: lowercase;
+    text-decoration: none;
+    transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
 }
-/* three dots that pulse while the verdict is out. it is the only honest way to
-   show that something is being computed rather than looked up. */
-.sp-row-dots {
-    width: 22px;
-    height: 4px;
-    background: radial-gradient(circle 2px at 3px 2px, rgba(255,255,255,0.6) 99%, transparent),
-                radial-gradient(circle 2px at 11px 2px, rgba(255,255,255,0.6) 99%, transparent),
-                radial-gradient(circle 2px at 19px 2px, rgba(255,255,255,0.6) 99%, transparent);
-    animation: spDots 1s ease-in-out infinite;
+.sp-hero-second:hover { border-color: rgba(0, 240, 255, 0.5); background: rgba(255, 255, 255, 0.05); color: #ffffff; }
+.sp-hero-second-ico {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.1rem;
+    height: 2.1rem;
+    flex: 0 0 auto;
+    border-radius: 8px;
+    background: rgba(0, 240, 255, 0.12);
+    color: #7bdcff;
 }
-@keyframes spDots { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.9; } }
+.sp-hero-second-ico svg { width: 15px; height: 15px; }
+.sp-hero-second:hover .sp-hero-second-ico { background: rgba(0, 240, 255, 0.2); color: #00f0ff; }
 
-.sp-row.is-clear .sp-row-tick { color: #00e0a4; font-size: 0.8rem; }
-.sp-row.is-clear .sp-row-word { color: rgba(255, 255, 255, 0.42); }
-
-.sp-row.is-held {
-    color: #ffd7de;
-    background: linear-gradient(90deg, rgba(255, 90, 122, 0.14), transparent 85%);
-    grid-template-columns: 1fr auto;
-}
-.sp-row.is-held .sp-row-word { color: #ff7a95; }
-.sp-row-why {
-    grid-column: 1 / -1;
-    margin-top: 0.2rem;
+/* the cue at the bottom. it exists because a hero that fills the screen gives
+   no hint that there is anything under it, and a page whose second screen is
+   never reached may as well not have one. */
+.sp-hero-scroll {
+    position: absolute;
+    z-index: 2;
+    left: 50%;
+    bottom: 2rem;
+    transform: translateX(-50%);
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
     font-family: 'Inter', sans-serif;
-    font-size: 0.76rem;
-    font-weight: 400;
-    text-transform: lowercase;
-    color: rgba(255, 176, 192, 0.85);
-    animation: spRowIn 0.3s ease;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.34);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+.sp-hero-scroll:hover { color: rgba(255, 255, 255, 0.7); }
+.sp-hero-scroll-line {
+    position: relative;
+    width: 1px;
+    height: 2.6rem;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.12);
+}
+/* a short bright run travelling down the line, rather than a bouncing arrow.
+   the arrow is the default and it draws more attention than the thing it points
+   at. */
+.sp-hero-scroll-line::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: -60%;
+    width: 1px;
+    height: 60%;
+    background: linear-gradient(180deg, transparent, #00f0ff);
+    animation: spScrollRun 2.4s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+@keyframes spScrollRun {
+    0%   { transform: translateY(0); opacity: 0; }
+    25%  { opacity: 1; }
+    100% { transform: translateY(280%); opacity: 0; }
 }
 
-.sp-lane-foot {
-    display: flex;
-    gap: 1.4rem;
-    padding: 0.8rem 1.15rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.07);
-    font-family: 'Inter', sans-serif;
-    font-size: 0.75rem;
-    text-transform: lowercase;
-    color: rgba(255, 255, 255, 0.38);
-}
-.sp-lane-stat b { color: rgba(255, 255, 255, 0.85); font-weight: 700; font-variant-numeric: tabular-nums; }
-.sp-lane-stat-held b { color: #ff7a95; }
 
-@media (max-width: 1024px) {
-    .sp-hero-grid { grid-template-columns: 1fr; gap: 3rem; }
-    .lp-hero.sp-hero { padding: 7.5rem 1.5rem 4rem; }
-    .sp-hero-sub { max-width: 34rem; }
-    .sp-lane-body { height: 14.6rem; }
+@media (prefers-reduced-motion: reduce) {
+    .sp-hero-scroll-line::after { animation: none; opacity: 0.7; transform: translateY(120%); }
+}
+
+@media (max-width: 900px) {
+    .lp-hero { padding: 6.5rem 1.25rem 5.5rem; }
+    .sp-hero-mid { gap: 1.6rem; }
+    .sp-hero-h1 { font-size: clamp(2.3rem, 8.5vw, 3.2rem); letter-spacing: -0.035em; }
 }
 @media (max-width: 560px) {
-    .sp-hero-h1 { font-size: clamp(2.1rem, 11vw, 2.9rem); letter-spacing: -0.035em; }
-    .sp-hero-ctas { gap: 1rem; }
-    .sp-hero-cta { width: 100%; justify-content: center; }
-    .sp-row { font-size: 0.74rem; padding: 0.55rem 0.9rem; }
-    .sp-lane-body { height: 13.2rem; }
-    .sp-row-state { min-width: 4.8rem; }
+    .sp-hero-h1 { font-size: clamp(2.05rem, 10vw, 2.7rem); }
+    .sp-hero-sub { font-size: 0.98rem; }
+    .sp-hero-ctas { flex-direction: column; align-items: stretch; width: 100%; gap: 0.7rem; }
+    .sp-hero-cta, .sp-hero-second { width: 100%; justify-content: center; }
+    /* full width the asymmetric padding stops being a nice detail and becomes a
+       group that sits off centre, so it goes */
+    .sp-hero-second { padding: 0; gap: 0.6rem; }
+    .sp-hero-scroll { display: none; }
+    /* the veil is tighter on a narrow screen, because the field has less room
+       to be out of the way in */
+    .sp-hero-veil { background:
+        radial-gradient(ellipse 90% 48% at 50% 46%, rgba(4, 6, 14, 0.94) 0%, rgba(4, 6, 14, 0.6) 52%, transparent 84%),
+        linear-gradient(180deg, rgba(4, 6, 14, 0.6) 0%, transparent 24%, transparent 70%, rgba(4, 6, 14, 0.9) 100%); }
 }
