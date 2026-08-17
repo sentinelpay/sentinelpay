@@ -3215,7 +3215,7 @@ html.theme-light .lp-role-tab.active {
     position: relative;
     z-index: 2;
     width: 100%;
-    max-width: 54rem;
+    max-width: 60rem;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
@@ -3224,12 +3224,37 @@ html.theme-light .lp-role-tab.active {
     gap: 2rem;
 }
 
+/* the category, above the sentence.
+
+   the reason this line exists at all: someone who already knows the industry
+   should be able to place us in one glance without reading a word of the rest,
+   and the phrase they are scanning for is the one their own job is called. the
+   headline underneath is for everybody else. */
+.sp-hero-kicker {
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(180, 214, 255, 0.72);
+    padding: 0.4rem 0.9rem;
+    border: 1px solid rgba(120, 200, 255, 0.22);
+    border-radius: 999px;
+    background: rgba(10, 20, 45, 0.35);
+    backdrop-filter: blur(4px);
+}
+@media (max-width: 560px) {
+    .sp-hero-kicker { font-size: 0.66rem; letter-spacing: 0.14em; padding: 0.35rem 0.75rem; }
+}
+
 .sp-hero-h1 {
     margin: 0;
     font-family: 'Inter', sans-serif;
-    /* 4.4rem at the top end. the old one stopped at 3.75 and read as a heading;
-       this reads as a statement. */
-    font-size: clamp(2.5rem, 5.4vw, 4.4rem);
+    /* 3.7rem at the top end. it was 4.4 when the headline was two short poetic
+       lines; the sentence that replaced them says what we actually do, which
+       takes more words, and words that wrap four deep stop being a statement. */
+    font-size: clamp(2.05rem, 4.4vw, 3.7rem);
     font-weight: 600;
     line-height: 1;
     letter-spacing: -0.04em;
@@ -3259,8 +3284,10 @@ html.theme-light .lp-role-tab.active {
 .sp-hero-sub {
     margin: 0;
     /* measured in characters rather than pixels: a line of prose is comfortable
-       between about 45 and 75 characters whatever the screen is doing */
-    max-width: 52ch;
+       between about 45 and 75 characters whatever the screen is doing. 68 rather
+       than the 52 it was: the paragraph now has to carry what we do, for whom,
+       and in what time, and at 52 that was six lines of a narrow column. */
+    max-width: 68ch;
     font-family: 'Inter', sans-serif;
     font-size: clamp(0.98rem, 1.15vw, 1.12rem);
     font-weight: 300;
