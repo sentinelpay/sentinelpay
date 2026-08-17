@@ -21,6 +21,9 @@ SKIP_EXACT = {
     'ceem', 'mind', 'chibby', 'mind, chibby', 'ceem, mind, chibby',
 }
 SKIP_RE = re.compile(r'^[\W\d\s]*$')          # punctuation / numbers only
+# an invented wallet address in the hero illustration. it is data, not copy, and
+# translating it would be meaningless in any language.
+SKIP_RE_LIST = [re.compile(r'^0x[0-9a-f]{4}_[0-9a-f]{3}$')]
 LOGOS = {'elektromaterijal', 'racunala.hr', 'traveler', 'majice.hr', 'futura'}
 
 
@@ -30,6 +33,8 @@ def report(kind, path, strings):
     for s in strings:
         s = re.sub(r'\s+', ' ', s).strip()
         if not s or s in seen or s in KEYS or s in SKIP_EXACT or s in LOGOS:
+            continue
+        if any(r.match(s) for r in SKIP_RE_LIST):
             continue
         if SKIP_RE.match(s) or not re.search(r'[a-zA-Z]{2}', s):
             continue

@@ -1876,8 +1876,8 @@ html.auth-session-present #lp-mm-dashboard { display: block !important; }
 
 .lp-reveal {
     opacity: 0;
-    transform: translateY(28px);
-    transition: opacity 0.65s ease, transform 0.65s ease;
+    transform: translateY(18px);
+    transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .lp-reveal.lp-visible {
     opacity: 1;
@@ -3064,14 +3064,85 @@ html.theme-light .lp-role-tab.active {
     z-index: 10;
 }
 
-.sp-hero-field {
+/* ---- the scene ----------------------------------------------------------- */
+.sp-hero-scene {
     position: absolute;
     z-index: 1;
+    /* wider than the box and anchored to the bottom, so the floor of the scene
+       is the floor of the hero on every shape of screen. `meet` rather than
+       `slice`: sliced, a portrait phone crops to the middle quarter of the
+       viewBox, and the middle is deliberately empty so the copy can sit there.
+       fitted, the whole graph becomes a band under the buttons instead. */
     inset: 0;
     width: 100%;
     height: 100%;
     display: block;
     pointer-events: none;
+}
+
+/* the blooms breathe, on transform only */
+.sp-scene-bloom { transform-box: fill-box; transform-origin: center; }
+.sp-scene-bloom-a { animation: spBloomA 26s ease-in-out infinite alternate; }
+.sp-scene-bloom-b { animation: spBloomB 33s ease-in-out infinite alternate; }
+@keyframes spBloomA { from { transform: translate(0, 0) scale(1); } to { transform: translate(5%, -4%) scale(1.14); } }
+@keyframes spBloomB { from { transform: translate(0, 0) scale(1.1); } to { transform: translate(-4%, 5%) scale(1); } }
+
+/* the traces are drawn twice: once as the dim wire, once as a short bright run
+   that travels along it. the run is a dash pattern with a moving offset, which
+   is the cheapest way to move light along a path in a browser. */
+.sp-scene-trace {
+    fill: none;
+    stroke: url(#spTrace);
+    stroke-opacity: 0.28;
+    stroke-width: 1.2;
+}
+.sp-scene-pulse {
+    fill: none;
+    stroke: #7bf3ff;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    /* a 60px lit run in a 900px gap, so one pulse is in flight per trace */
+    stroke-dasharray: 60 900;
+    stroke-dashoffset: 960;
+    filter: drop-shadow(0 0 5px rgba(0, 240, 255, 0.9));
+    animation: spPulse 5.2s linear infinite;
+}
+/* staggered, so they do not march in step */
+.sp-scene-pulse-t2 { animation-duration: 6.1s; animation-delay: -1.4s; }
+.sp-scene-pulse-t3 { animation-duration: 5.7s; animation-delay: -2.8s; stroke: #c9a7ff; }
+.sp-scene-pulse-t4 { animation-duration: 6.6s; animation-delay: -0.7s; stroke: #c9a7ff; }
+.sp-scene-pulse-t5 { animation-duration: 4.8s; animation-delay: -3.6s; }
+@keyframes spPulse { to { stroke-dashoffset: 0; } }
+
+/* the wallets, flattened by the angle of the plane, each with its own glow */
+.sp-scene-node {
+    fill: #00f0ff;
+    filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.75));
+    animation: spNode 3.4s ease-in-out infinite alternate;
+}
+.sp-scene-node-b { fill: #a675ff; filter: drop-shadow(0 0 8px rgba(166, 117, 255, 0.75)); animation-delay: -1.1s; }
+.sp-scene-node-c { fill: #ff5a7a; filter: drop-shadow(0 0 9px rgba(255, 90, 122, 0.8)); animation-delay: -2.2s; }
+@keyframes spNode { from { opacity: 0.55; } to { opacity: 1; } }
+
+.sp-scene-dia { fill: none; stroke: rgba(255, 255, 255, 0.32); stroke-width: 1.2; }
+.sp-scene-label {
+    fill: rgba(255, 255, 255, 0.3);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 15px;
+    letter-spacing: 0.06em;
+}
+
+/* the amount, on a chip, the way the reference puts one number on the graph */
+.sp-scene-chip-box { fill: rgba(14, 18, 34, 0.86); stroke: rgba(255, 255, 255, 0.1); stroke-width: 1; }
+.sp-scene-chip-badge { fill: #f7931a; }
+.sp-scene-chip-glyph { fill: #1a1200; font-family: 'Inter', sans-serif; font-size: 17px; font-weight: 700; text-anchor: middle; }
+.sp-scene-chip-num { fill: rgba(255, 255, 255, 0.86); font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+    .sp-scene-bloom, .sp-scene-node { animation: none; }
+    /* the pulses are parked mid-trace rather than removed, so the traces still
+       read as carrying something */
+    .sp-scene-pulse { animation: none; stroke-dashoffset: 520; }
 }
 /* the field is behind the words, so the middle of it is darkened and the edges
    are left alone. without this the lines cross the headline and the text has to
@@ -3279,7 +3350,9 @@ html.theme-light .lp-role-tab.active {
     .sp-hero-scroll { display: none; }
     /* the veil is tighter on a narrow screen, because the field has less room
        to be out of the way in */
+    /* the scene sits as a band across the bottom on a phone, so the veil stops
+       darkening down there: it was covering the only part of it that shows */
     .sp-hero-veil { background:
-        radial-gradient(ellipse 90% 48% at 50% 46%, rgba(4, 6, 14, 0.94) 0%, rgba(4, 6, 14, 0.6) 52%, transparent 84%),
-        linear-gradient(180deg, rgba(4, 6, 14, 0.6) 0%, transparent 24%, transparent 70%, rgba(4, 6, 14, 0.9) 100%); }
+        radial-gradient(ellipse 92% 40% at 50% 40%, rgba(4, 6, 14, 0.94) 0%, rgba(4, 6, 14, 0.6) 55%, transparent 86%),
+        linear-gradient(180deg, rgba(4, 6, 14, 0.6) 0%, transparent 22%, transparent 88%, rgba(4, 6, 14, 0.45) 100%); }
 }

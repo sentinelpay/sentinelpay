@@ -9,12 +9,12 @@ html.theme-light body.lp-body {
 html.theme-light .cyber-grid,
 html.theme-light .glow-orb { display: none !important; }
 
-/* no scroll-reveal animations — everything visible immediately */
-.lp-reveal {
-    opacity: 1 !important;
-    transform: none !important;
-    transition: none !important;
-}
+/* the reveals are back, and they are added by reveal.js rather than written into
+   the markup. that matters for the failure mode: the class that hides an element
+   only ever arrives from script, so a page whose javascript did not run shows
+   everything at once. the worst case is no animation, never invisible content. */
+.lp-reveal { will-change: opacity, transform; }
+.lp-reveal.lp-visible { will-change: auto; }
 
 html.theme-light .lp-h1,
 html.theme-light .lp-h2,
@@ -4433,4 +4433,12 @@ html.theme-light .lp-fx-o4 { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
     html.theme-light .lp-fx-orb { animation: none !important; }
+}
+
+/* the logo marquee was the one thing on the page that kept moving for somebody
+   who has asked the system for less movement. it predates the reveals and it was
+   easy to miss because it is a background detail, which is exactly the kind of
+   motion that makes people ill. it holds still now. */
+@media (prefers-reduced-motion: reduce) {
+    .lp-net-track { animation: none !important; }
 }
