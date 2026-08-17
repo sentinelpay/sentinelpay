@@ -41,7 +41,7 @@
     <link rel="icon" type="image/svg+xml" href="/logo.svg">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/style.css?v=24">
-    <link rel="stylesheet" href="/landing.css?v=5.9">
+    <link rel="stylesheet" href="/landing.css?v=7.2">
     <script>
         try{Object.keys(localStorage).forEach(function(k){if(k.indexOf('intercom')!==-1)localStorage.removeItem(k);});}catch(e){}
         window.intercomSettings={api_base:'https://api-iam.intercom.io',app_id:'obn3omwl',hide_default_launcher:true,language_override:'en'};
@@ -674,7 +674,7 @@
              traces are `stroke-dashoffset` in css, which the compositor animates
              without waking the main thread. a video would be megabytes and a
              canvas would be a script. -->
-        <svg class="sp-hero-scene" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+        <svg class="sp-hero-scene" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax meet" aria-hidden="true" focusable="false">
             <defs>
                 <linearGradient id="spShield" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stop-color="#00f0ff" stop-opacity="0.9"/>
@@ -698,46 +698,37 @@
             <ellipse class="sp-scene-bloom sp-scene-bloom-a" cx="440" cy="660" rx="540" ry="350" fill="url(#spCore)"/>
             <ellipse class="sp-scene-bloom sp-scene-bloom-b" cx="1200" cy="250" rx="540" ry="350" fill="url(#spCoreB)"/>
 
-            <!-- the range this thing watches. plain circles rather than more
-                 shields: a second shield outline crossed the headline at an angle
-                 and read as a stray diagonal, and rings say the same thing
-                 without putting a line through a word. -->
             <g class="sp-rings">
                 <circle class="sp-ring sp-ring-a" cx="800" cy="470" r="430"/>
                 <circle class="sp-ring sp-ring-b" cx="800" cy="470" r="620"/>
                 <circle class="sp-ring sp-ring-c" cx="800" cy="470" r="830"/>
             </g>
 
-            <!-- our own mark, at the size of the screen, cropped on purpose: what
-                 is left is two long edges sweeping down either side of the words.
-                 the copy is inside the shield, which is the argument of the whole
-                 product said in one shape and in no words at all. -->
-            <path class="sp-shield sp-shield-a" d="M800 -260 L208 -7 V416 C208 838 631 1176 800 1260 C969 1176 1392 838 1392 416 V-7 Z"/>
+            <!-- our own mark, at the size of the screen and cropped on purpose:
+                 what is left is two long edges down either side of the copy, and
+                 the words sit inside the shield. -->
+            <path class="sp-shield" d="M800 -260 L208 -7 V416 C208 838 631 1176 800 1260 C969 1176 1392 838 1392 416 V-7 Z"/>
 
-            <!-- one line turning about the centre of the mark, once every twenty
-                 two seconds, because something that watches does not hurry -->
             <g class="sp-sweep">
                 <line x1="800" y1="470" x2="800" y2="-420" stroke="url(#spSweep)" stroke-width="2"/>
             </g>
 
-            <!-- payments arriving from outside, most of them let through -->
-            <g class="sp-marks">
-                <rect class="sp-mark" x="-140" y="176" width="46" height="2" rx="1" style="--sp-d: 520px; animation-delay: 0.0s"/>
-                <rect class="sp-mark" x="1740" y="250" width="40" height="2" rx="1" style="--sp-d: -500px; animation-delay: 1.7s"/>
-                <rect class="sp-mark" x="-140" y="596" width="52" height="2" rx="1" style="--sp-d: 560px; animation-delay: 3.2s"/>
-                <rect class="sp-mark" x="1740" y="684" width="44" height="2" rx="1" style="--sp-d: -540px; animation-delay: 0.8s"/>
-                <rect class="sp-mark" x="-140" y="796" width="38" height="2" rx="1" style="--sp-d: 600px; animation-delay: 4.5s"/>
-                <rect class="sp-mark" x="1740" y="128" width="34" height="2" rx="1" style="--sp-d: -470px; animation-delay: 2.5s"/>
-                <rect class="sp-mark" x="-140" y="402" width="44" height="2" rx="1" style="--sp-d: 430px; animation-delay: 5.8s"/>
-                <rect class="sp-mark" x="1740" y="470" width="36" height="2" rx="1" style="--sp-d: -410px; animation-delay: 6.4s"/>
+            <!-- value arriving on the chains we actually screen, each on its own
+                 line, most of it let through. the logos are the real ones, already
+                 on our own origin for the coverage strip further down the page. -->
+            <g class="sp-chips">
+                <g class="sp-chip" transform="translate(-250 132)"><g class="sp-chip-move" style="--sp-d: 540px; animation-delay: 0s"><rect class="sp-chip-box" width="176" height="46" rx="13"/><circle class="sp-chip-ring" cx="27" cy="23" r="15" style="--sp-tint: #f7931a"/><image class="sp-chip-logo" href="/chain-logos/btc.png" x="15" y="11" width="24" height="24" preserveAspectRatio="xMidYMid meet"/><text class="sp-chip-num" x="52" y="29">12.4 BTC</text></g></g>
+                <g class="sp-chip" transform="translate(-250 792)"><g class="sp-chip-move" style="--sp-d: 560px; animation-delay: 3.7s"><rect class="sp-chip-box" width="176" height="46" rx="13"/><circle class="sp-chip-ring" cx="27" cy="23" r="15" style="--sp-tint: #14f195"/><image class="sp-chip-logo" href="/chain-logos/sol.png" x="15" y="11" width="24" height="24" preserveAspectRatio="xMidYMid meet"/><text class="sp-chip-num" x="52" y="29">840 SOL</text></g></g>
+                <g class="sp-chip" transform="translate(-250 486)"><g class="sp-chip-move" style="--sp-d: 470px; animation-delay: 7.4s"><rect class="sp-chip-box" width="176" height="46" rx="13"/><circle class="sp-chip-ring" cx="27" cy="23" r="15" style="--sp-tint: #8247e5"/><image class="sp-chip-logo" href="/chain-logos/matic.png" x="15" y="11" width="24" height="24" preserveAspectRatio="xMidYMid meet"/><text class="sp-chip-num" x="52" y="29">96k POL</text></g></g>
+                <g class="sp-chip" transform="translate(1690 196)"><g class="sp-chip-move" style="--sp-d: -520px; animation-delay: 1.9s"><rect class="sp-chip-box" width="176" height="46" rx="13"/><circle class="sp-chip-ring" cx="27" cy="23" r="15" style="--sp-tint: #8a92b2"/><image class="sp-chip-logo" href="/chain-logos/eth.png" x="15" y="11" width="24" height="24" preserveAspectRatio="xMidYMid meet"/><text class="sp-chip-num" x="52" y="29">318 ETH</text></g></g>
+                <g class="sp-chip" transform="translate(1690 716)"><g class="sp-chip-move" style="--sp-d: -540px; animation-delay: 5.6s"><rect class="sp-chip-box" width="176" height="46" rx="13"/><circle class="sp-chip-ring" cx="27" cy="23" r="15" style="--sp-tint: #eb0029"/><image class="sp-chip-logo" href="/chain-logos/tron.png" x="15" y="11" width="24" height="24" preserveAspectRatio="xMidYMid meet"/><text class="sp-chip-num" x="52" y="29">1.2m TRX</text></g></g>
+                <g class="sp-chip" transform="translate(1690 392)"><g class="sp-chip-move" style="--sp-d: -430px; animation-delay: 9.2s"><rect class="sp-chip-box" width="176" height="46" rx="13"/><circle class="sp-chip-ring" cx="27" cy="23" r="15" style="--sp-tint: #f0b90b"/><image class="sp-chip-logo" href="/chain-logos/bnb.png" x="15" y="11" width="24" height="24" preserveAspectRatio="xMidYMid meet"/><text class="sp-chip-num" x="52" y="29">2.1k BNB</text></g></g>
             </g>
 
-            <!-- and one that is not. it stops at the edge and stays there. -->
-            <g class="sp-held">
-                <rect class="sp-held-bar" x="1430" y="516" width="46" height="2" rx="1"/>
-                <circle class="sp-held-dot" cx="1482" cy="517" r="5"/>
-                <circle class="sp-held-ring" cx="1482" cy="517" r="5"/>
-            </g>
+            <!-- and one that is not let through. it stops outside the edge of
+                 the mark and stays there, ringed, with no word on it: this is an
+                 illustration of what the product does, not a screening result. -->
+            <g class="sp-chip sp-chip-held" transform="translate(1304 448)"><g class="sp-chip-move sp-chip-still"><rect class="sp-chip-box" width="176" height="46" rx="13"/><circle class="sp-chip-ring" cx="27" cy="23" r="15" style="--sp-tint: #e84142"/><image class="sp-chip-logo" href="/chain-logos/avax.png" x="15" y="11" width="24" height="24" preserveAspectRatio="xMidYMid meet"/><text class="sp-chip-num" x="52" y="29">58k AVAX</text></g></g>
         </svg>
         <div class="sp-hero-veil" aria-hidden="true"></div>
 

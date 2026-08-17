@@ -3134,42 +3134,82 @@ html.theme-light .lp-role-tab.active {
 }
 @keyframes spSweep { to { transform: rotate(360deg); } }
 
-/* payments coming in from outside. each carries its own distance in a custom
-   property, so one set of keyframes serves all of them. */
-.sp-mark {
-    fill: #7bdcff;
+/* ---- value arriving on the chains we screen ------------------------------- */
+/* a chip per chain: the real logo, a round amount in mono, on dark glass. they
+   travel inward along their own line toward the mark, and each carries its own
+   distance in a custom property so one set of keyframes serves all six.
+
+   the logos are the same files the coverage strip further down the page uses, so
+   there is nothing extra to download and nothing to keep in sync.
+
+   why chips rather than bare dashes: a dash is decoration, and a chip with the
+   bitcoin mark and an amount on it says what the product looks at without a word
+   of copy. it is the one place on this page where the subject is named. */
+.sp-chip-move {
     opacity: 0;
-    animation: spMark 7.5s cubic-bezier(0.3, 0, 0.5, 1) infinite;
+    animation: spChip 11s cubic-bezier(0.33, 0, 0.5, 1) infinite;
 }
-@keyframes spMark {
+@keyframes spChip {
     0%   { transform: translateX(0); opacity: 0; }
-    12%  { opacity: 0.85; }
-    72%  { opacity: 0.7; }
+    4%   { opacity: 0; }
+    10%  { opacity: 1; }
+    /* it fades before it reaches the words, never over them */
+    72%  { opacity: 1; }
+    88%  { opacity: 0; }
     100% { transform: translateX(var(--sp-d, 400px)); opacity: 0; }
 }
 
-/* and the one that is stopped at the edge. it does not travel, it sits, and the
-   ring going out from it is the only thing on the page that says no. */
-.sp-held-bar { fill: #ff5a7a; opacity: 0.75; }
-.sp-held-dot { fill: #ff5a7a; }
-.sp-held-ring {
-    fill: none;
-    stroke: #ff5a7a;
-    stroke-width: 1.5;
+.sp-chip-box {
+    fill: rgba(8, 11, 24, 0.82);
+    stroke: rgba(255, 255, 255, 0.1);
+    stroke-width: 1;
+}
+/* the ring is tinted per chain, which is the only colour each chip carries
+   beyond its own logo */
+.sp-chip-ring {
+    fill: color-mix(in srgb, var(--sp-tint, #7bdcff) 16%, transparent);
+    stroke: color-mix(in srgb, var(--sp-tint, #7bdcff) 45%, transparent);
+    stroke-width: 1;
+}
+.sp-chip-logo { opacity: 0.95; }
+.sp-chip-num {
+    fill: rgba(255, 255, 255, 0.82);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+}
+
+/* the one that is stopped. it does not travel: it sits at the edge of the mark
+   with a red frame and a ring going out from it, and it is the only thing in the
+   whole composition that says no. */
+.sp-chip-still { opacity: 1; animation: none; }
+.sp-chip-held .sp-chip-box {
+    fill: rgba(26, 8, 16, 0.9);
+    stroke: rgba(255, 90, 122, 0.55);
+    stroke-width: 1.4;
+}
+.sp-chip-held .sp-chip-num { fill: #ffd7de; }
+.sp-chip-held .sp-chip-ring {
+    fill: rgba(255, 90, 122, 0.16);
+    stroke: rgba(255, 90, 122, 0.6);
     transform-box: fill-box;
     transform-origin: center;
-    animation: spHeld 2.8s ease-out infinite;
+    animation: spHeldRing 2.8s ease-out infinite;
 }
-@keyframes spHeld {
-    0%   { transform: scale(1); opacity: 0.9; }
-    100% { transform: scale(4.5); opacity: 0; }
+@keyframes spHeldRing {
+    0%   { transform: scale(1); opacity: 1; }
+    70%  { transform: scale(2.6); opacity: 0; }
+    100% { transform: scale(2.6); opacity: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .sp-scene-bloom, .sp-sweep, .sp-mark, .sp-held-ring, .sp-ring { animation: none; }
-    /* the mark is shown finished rather than mid-draw */
+    .sp-scene-bloom, .sp-sweep, .sp-ring, .sp-chip-held .sp-chip-ring { animation: none; }
+    /* the mark is shown finished rather than mid-draw, and the chips are parked
+       where they would have got to rather than removed: the composition is the
+       same picture, held still */
     .sp-shield { animation: none; stroke-dashoffset: 0; }
-    .sp-mark { opacity: 0.5; }
+    .sp-chip-move { animation: none; opacity: 1; transform: translateX(calc(var(--sp-d, 400px) * 0.62)); }
 }
 
 .sp-hero-mid {

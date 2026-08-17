@@ -23,7 +23,12 @@ SKIP_EXACT = {
 SKIP_RE = re.compile(r'^[\W\d\s]*$')          # punctuation / numbers only
 # an invented wallet address in the hero illustration. it is data, not copy, and
 # translating it would be meaningless in any language.
-SKIP_RE_LIST = [re.compile(r'^0x[0-9a-f]{4}_[0-9a-f]{3}$')]
+SKIP_RE_LIST = [
+    re.compile(r'^0x[0-9a-f]{4}_[0-9a-f]{3}$'),
+    # amounts on the chips in the hero illustration: a number and a ticker. the
+    # ticker is the same in every language, and the number is not copy.
+    re.compile(r'^[\d.,]+[km]? [A-Z]{3,5}$'),
+]
 LOGOS = {'elektromaterijal', 'racunala.hr', 'traveler', 'majice.hr', 'futura'}
 
 
