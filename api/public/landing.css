@@ -3068,11 +3068,11 @@ html.theme-light .lp-role-tab.active {
 .sp-hero-scene {
     position: absolute;
     z-index: 1;
-    /* wider than the box and anchored to the bottom, so the floor of the scene
-       is the floor of the hero on every shape of screen. `meet` rather than
-       `slice`: sliced, a portrait phone crops to the middle quarter of the
-       viewBox, and the middle is deliberately empty so the copy can sit there.
-       fitted, the whole graph becomes a band under the buttons instead. */
+    /* fitted rather than sliced, so on a wide screen the whole mark is in shot
+       and its two long edges frame the copy. on a phone that leaves the scene as
+       a band under the buttons, which the media query further down fixes by
+       oversizing the element instead of by changing preserveAspectRatio, since
+       that is an attribute and not something css can reach. */
     inset: 0;
     width: 100%;
     height: 100%;
@@ -3094,7 +3094,7 @@ html.theme-light .lp-role-tab.active {
    the copy. the words sit inside the shield.
 
    it draws itself once: the stroke is dashed to its own length and the offset
-   animates to nothing, so the mark traces on over nine seconds rather than being
+   animates to nothing, so the mark traces on over five seconds rather than being
    there from the first frame. it does not loop, because a mark that keeps
    redrawing itself is a mark that never settles.
 
@@ -3106,7 +3106,7 @@ html.theme-light .lp-role-tab.active {
     stroke-width: 2;
     stroke-dasharray: 4400;
     stroke-dashoffset: 4400;
-    animation: spDraw 9s cubic-bezier(0.35, 0, 0.2, 1) 0.3s forwards;
+    animation: spDraw 5s cubic-bezier(0.35, 0, 0.2, 1) 0.2s forwards;
 }
 @keyframes spDraw { to { stroke-dashoffset: 0; } }
 
@@ -3134,82 +3134,81 @@ html.theme-light .lp-role-tab.active {
 }
 @keyframes spSweep { to { transform: rotate(360deg); } }
 
-/* ---- value arriving on the chains we screen ------------------------------- */
-/* a chip per chain: the real logo, a round amount in mono, on dark glass. they
-   travel inward along their own line toward the mark, and each carries its own
-   distance in a custom property so one set of keyframes serves all six.
+/* ---- the weave and the flow ---------------------------------------------- */
+/* two things only, and neither of them names a subject: a lattice of dots that
+   drifts, and four curves with a pulse travelling each one.
 
-   the logos are the same files the coverage strip further down the page uses, so
-   there is nothing extra to download and nothing to keep in sync.
+   the drift is exactly one tile of the pattern, 34 units, so the end of the loop
+   is pixel identical to its start and there is no seam to see. the second layer
+   is turned 1.4 degrees and drifts the other way: two grids at a small angle
+   interfere, and that slow moire is the whole effect. it is why this does not
+   read as a background image.
 
-   why chips rather than bare dashes: a dash is decoration, and a chip with the
-   bitcoin mark and an amount on it says what the product looks at without a word
-   of copy. it is the one place on this page where the subject is named. */
-.sp-chip-move {
-    opacity: 0;
-    animation: spChip 11s cubic-bezier(0.33, 0, 0.5, 1) infinite;
+   both layers move on transform only, and the pulses are `stroke-dashoffset`, so
+   nothing here touches layout and nothing wakes the main thread. */
+.sp-weave-a {
+    animation: spWeaveA 44s linear infinite;
 }
-@keyframes spChip {
-    0%   { transform: translateX(0); opacity: 0; }
-    4%   { opacity: 0; }
-    10%  { opacity: 1; }
-    /* it fades before it reaches the words, never over them */
-    72%  { opacity: 1; }
-    88%  { opacity: 0; }
-    100% { transform: translateX(var(--sp-d, 400px)); opacity: 0; }
-}
-
-.sp-chip-box {
-    fill: rgba(8, 11, 24, 0.82);
-    stroke: rgba(255, 255, 255, 0.1);
-    stroke-width: 1;
-}
-/* the ring is tinted per chain, which is the only colour each chip carries
-   beyond its own logo */
-.sp-chip-ring {
-    fill: color-mix(in srgb, var(--sp-tint, #7bdcff) 16%, transparent);
-    stroke: color-mix(in srgb, var(--sp-tint, #7bdcff) 45%, transparent);
-    stroke-width: 1;
-}
-.sp-chip-logo { opacity: 0.95; }
-.sp-chip-num {
-    fill: rgba(255, 255, 255, 0.82);
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 15px;
-    font-weight: 500;
-    letter-spacing: 0.01em;
-}
-
-/* the one that is stopped. it does not travel: it sits at the edge of the mark
-   with a red frame and a ring going out from it, and it is the only thing in the
-   whole composition that says no. */
-.sp-chip-still { opacity: 1; animation: none; }
-.sp-chip-held .sp-chip-box {
-    fill: rgba(26, 8, 16, 0.9);
-    stroke: rgba(255, 90, 122, 0.55);
-    stroke-width: 1.4;
-}
-.sp-chip-held .sp-chip-num { fill: #ffd7de; }
-.sp-chip-held .sp-chip-ring {
-    fill: rgba(255, 90, 122, 0.16);
-    stroke: rgba(255, 90, 122, 0.6);
+.sp-weave-b {
+    opacity: 0.5;
     transform-box: fill-box;
     transform-origin: center;
-    animation: spHeldRing 2.8s ease-out infinite;
+    animation: spWeaveB 62s linear infinite;
 }
-@keyframes spHeldRing {
-    0%   { transform: scale(1); opacity: 1; }
-    70%  { transform: scale(2.6); opacity: 0; }
-    100% { transform: scale(2.6); opacity: 0; }
+@keyframes spWeaveA {
+    from { transform: translate(0, 0); }
+    to   { transform: translate(34px, 34px); }
+}
+@keyframes spWeaveB {
+    from { transform: rotate(1.4deg) translate(0, 0); }
+    to   { transform: rotate(1.4deg) translate(-34px, 34px); }
+}
+
+.sp-flow {
+    fill: none;
+    /* a flat tint rather than a gradient: a gradient on a path is laid out across
+       the path's bounding box, not along the dash, so the pulse was only lit
+       while it happened to be over the opaque middle of the gradient and
+       invisible for most of every loop */
+    stroke: var(--sp-tint, #5ad9ff);
+    stroke-opacity: 0.55;
+    stroke-width: 2;
+    stroke-linecap: round;
+    /* one lit run and a gap longer than any path here, so exactly one pulse is on
+       a curve at a time. the numbers are literal rather than a custom property:
+       chromium will not interpolate a keyframe whose value is a calc() over a
+       var(), and the animation silently sits at its first frame. */
+    stroke-dasharray: 300 2600;
+    animation-name: spFlowRun;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.5, 1);
+    animation-iteration-count: infinite;
+}
+.sp-flow-faint { opacity: 0.5; stroke-width: 1.2; }
+
+/* on a portrait screen the 16:9 scene fitted into a tall box is a strip along the
+   bottom. blowing it up to two and a half times the width and centring it gives
+   the same result `slice` would, and unlike `slice` it is a media query rather
+   than an attribute, so there is no script and no second copy of the markup. */
+@media (max-width: 760px) {
+    .sp-hero-scene {
+        width: 250%;
+        left: -75%;
+        right: auto;
+        height: 100%;
+    }
+}
+@keyframes spFlowRun {
+    from { stroke-dashoffset: 2600; }
+    to   { stroke-dashoffset: -2600; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .sp-scene-bloom, .sp-sweep, .sp-ring, .sp-chip-held .sp-chip-ring { animation: none; }
-    /* the mark is shown finished rather than mid-draw, and the chips are parked
-       where they would have got to rather than removed: the composition is the
+    .sp-scene-bloom, .sp-sweep, .sp-ring, .sp-weave-a, .sp-weave-b { animation: none; }
+    /* the mark is shown finished rather than mid-draw, and the pulses are parked
+       part way along their curves rather than removed: the composition is the
        same picture, held still */
     .sp-shield { animation: none; stroke-dashoffset: 0; }
-    .sp-chip-move { animation: none; opacity: 1; transform: translateX(calc(var(--sp-d, 400px) * 0.62)); }
+    .sp-flow { animation: none; stroke-dashoffset: 900; }
 }
 
 .sp-hero-mid {

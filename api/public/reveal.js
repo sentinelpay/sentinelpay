@@ -30,6 +30,9 @@
     var GROUPS = [
         '.lp-section > .lp-section-inner > .lp-section-head',
         '.lp-roles-grid > *',
+        // the band's own heading is not inside a `.lp-section-head`, so it needs
+        // naming here or it is the one block on the page that does not arrive
+        '.lp-statsx-heading',
         '.lp-statsx-grid > *',
         '.lp-intel-featured, .lp-intel-guides > *',
         '.lp-sol-grid > *',

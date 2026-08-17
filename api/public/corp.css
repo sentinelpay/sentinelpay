@@ -4504,3 +4504,31 @@ html.theme-light .lp-nav {
         box-shadow: none;
     }
 }
+
+/* ---- the dark bands opening out as they arrive ---------------------------- */
+/* driven by `--sp-in` from scroll.js: 0 the moment the band's top edge reaches
+   the bottom of the window, 1 once it is a third of the way up. the fallback is 1
+   in every direction, so with javascript off, on a browser that has never heard
+   of this property, and under reduced motion, the band is simply full width the
+   way it always was. nothing here can hide content.
+
+   only what is painted changes: `clip-path` does not move the text inside by a
+   pixel, which is the point (a width animation would reflow the numbers on every
+   frame of the scroll). */
+.lp-statsx, .lp-cta-band {
+    clip-path: inset(
+        0
+        calc((1 - var(--sp-in, 1)) * 4.5%)
+        0
+        calc((1 - var(--sp-in, 1)) * 4.5%)
+        round calc((1 - var(--sp-in, 1)) * 30px)
+    );
+    /* it also comes up a touch dimmer, so the opening reads as the panel coming
+       to rest rather than as a mask sliding off it */
+    opacity: calc(0.55 + var(--sp-in, 1) * 0.45);
+    transition: opacity 0.2s linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lp-statsx, .lp-cta-band { clip-path: none; opacity: 1; }
+}

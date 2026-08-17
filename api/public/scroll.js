@@ -24,6 +24,50 @@
      `will-change` is set while it is moving and dropped at both ends. left on
      for ever it holds a compositor layer for a section nobody is looking at. */
 (function () {
+    var reducedAll = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    /* the dark bands arriving.
+
+       the second half of the reference's scroll behaviour, and the part that is
+       easy to miss until you look for it: a full width dark band does not simply
+       appear, it comes up slightly narrower with rounded corners and opens out to
+       the edges of the window as it enters. the band reads as a panel being laid
+       into the page rather than as a colour change.
+
+       `clip-path: inset()` rather than a width or a transform, and that is the
+       whole reason this is worth doing rather than avoiding: a width change is
+       layout and reflows the text inside on every frame, and a scaleX squashes
+       the words. clipping leaves the content exactly where it was laid out and
+       only changes what is painted, so the numbers inside never move a pixel. */
+    var bands = document.querySelectorAll('.lp-statsx, .lp-cta-band');
+    var bandList = Array.prototype.slice.call(bands);
+
+    function bandStep() {
+        for (var i = 0; i < bandList.length; i++) {
+            var el = bandList[i];
+            var r = el.getBoundingClientRect();
+            var vh = window.innerHeight || 1;
+            // fully open by the time its top edge has reached a third of the way
+            // up the window, so it is settled well before it is being read
+            var p = (vh - r.top) / (vh * 0.66);
+            p = Math.min(Math.max(p, 0), 1);
+            var e = 1 - Math.pow(1 - p, 3);
+            el.style.setProperty('--sp-in', e.toFixed(4));
+        }
+    }
+
+    if (bandList.length && !reducedAll) {
+        var bandTick = false;
+        var onBandScroll = function () {
+            if (bandTick) return;
+            bandTick = true;
+            window.requestAnimationFrame(function () { bandTick = false; bandStep(); });
+        };
+        window.addEventListener('scroll', onBandScroll, { passive: true });
+        window.addEventListener('resize', onBandScroll, { passive: true });
+        bandStep();
+    }
+
     var hero = document.querySelector('.lp-hero');
     if (!hero) return;
     // the numbers go on the root rather than on the hero, because the navigation
