@@ -3023,3 +3023,301 @@ html.theme-light .lp-role-tab.active {
     color: #fff;
     background: linear-gradient(120deg, #0090aa, #6a1fb0);
 }
+
+/* ============================================================================
+   the hero, rebuilt
+   ============================================================================
+   what it was: a centred stack of gradient headline, paragraph, two buttons, on
+   a dark ground with blurred orbs behind it. that is not a bad layout, it is
+   the layout, the one every b2b page has shipped since about 2021, and a
+   compliance product that looks like every other page is asking to be read as
+   one of forty identical tools.
+
+   four deliberate departures:
+
+   the headline is not a gradient. white-into-grey clipped text is the single
+   clearest tell of the template, and it also makes the most important sentence
+   on the site the lowest contrast thing on it. it is white now, and much
+   bigger, and the accent lives on one word instead of the whole line.
+
+   it is not centred. centred text is calm and it is also anonymous, because a
+   centred column has no left edge for the eye to come back to. the copy sits
+   left, on a real column, and the right half is the product.
+
+   there is one call to action, not two side by side. two equal buttons make the
+   visitor choose before they know anything; the second one is a quiet link now.
+
+   and the right half is the thing itself, working. see hero.js. */
+
+.lp-hero.sp-hero {
+    min-height: auto;
+    padding: 9rem 2rem 5.5rem;
+    align-items: center;
+}
+
+.sp-hero-grid {
+    width: 100%;
+    max-width: 1180px;
+    display: grid;
+    /* the copy gets the wider half: it is what has to be read first */
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 4rem;
+    align-items: center;
+}
+
+.sp-hero-say { display: flex; flex-direction: column; align-items: flex-start; gap: 1.5rem; }
+
+.sp-hero-eyebrow {
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.42);
+}
+/* a short rule instead of a pill. a pill is a badge and a badge asks to be
+   read; this is a label and wants to be skipped past. */
+.sp-hero-eyebrow::before {
+    content: "";
+    width: 26px;
+    height: 1px;
+    background: linear-gradient(90deg, #00f0ff, rgba(160, 32, 240, 0.6));
+}
+
+.sp-hero-h1 {
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+    /* bigger than the template dares, and tighter. type this size is a design
+       decision on its own and costs nothing to load. */
+    font-size: clamp(2.6rem, 5vw, 4.15rem);
+    line-height: 1.0;
+    letter-spacing: -0.045em;
+    text-transform: lowercase;
+    color: #ffffff;
+    display: flex;
+    flex-direction: column;
+}
+.sp-hero-l1 { font-weight: 800; }
+/* the second line is the mechanism rather than the promise, so it is lighter.
+   weight carries the hierarchy, which is what colour used to be doing badly. */
+.sp-hero-l2 { font-weight: 300; color: rgba(255, 255, 255, 0.72); }
+/* the whole accent, on two full stops. it reads as a decision having been made,
+   it is the one flash of brand in the type, and it is the same cyan as the gate
+   the addresses cross on the right. */
+.sp-hero-dot { color: #00f0ff; font-weight: 800; }
+
+.sp-hero-sub {
+    margin: 0;
+    max-width: 30rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 1.02rem;
+    font-weight: 300;
+    line-height: 1.7;
+    text-transform: lowercase;
+    color: rgba(255, 255, 255, 0.62);
+}
+
+.sp-hero-ctas { display: flex; align-items: center; gap: 1.4rem; flex-wrap: wrap; }
+.sp-hero-cta {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.92rem 2rem;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #06070f;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-transform: lowercase;
+    text-decoration: none;
+    transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.18s ease;
+}
+.sp-hero-cta:hover { transform: translateY(-2px); box-shadow: 0 14px 34px -12px rgba(0, 240, 255, 0.5); }
+.sp-hero-quiet {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-transform: lowercase;
+    color: rgba(255, 255, 255, 0.5);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+    transition: color 0.16s ease, border-bottom-color 0.16s ease;
+}
+.sp-hero-quiet:hover { color: #ffffff; border-bottom-color: rgba(255, 255, 255, 0.6); }
+
+/* ---- the lane ------------------------------------------------------------ */
+
+.sp-lane {
+    position: relative;
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    /* darker than the page, not lighter: this is a window into the system, and
+       a window is a hole, not a card sitting on top */
+    background: rgba(4, 6, 14, 0.72);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    overflow: hidden;
+    transition: border-color 0.35s ease, box-shadow 0.35s ease;
+}
+/* the moment something is held, the whole frame says so */
+.sp-lane.is-stopped {
+    border-color: rgba(255, 90, 122, 0.5);
+    box-shadow: 0 0 0 1px rgba(255, 90, 122, 0.2), 0 24px 60px -30px rgba(255, 90, 122, 0.55);
+}
+
+.sp-lane-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.95rem 1.15rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+.sp-lane-title {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.75);
+}
+/* said out loud, in the frame, and not in small print at the bottom of the
+   page. it is the honest thing and it costs nothing. */
+.sp-lane-note {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 400;
+    text-transform: lowercase;
+    color: rgba(255, 255, 255, 0.34);
+}
+
+/* exactly six rows and the padding: measured, so the lane has no dead space
+   under the last row and no scrollbar over it */
+.sp-lane-body { position: relative; height: 14.6rem; padding: 0.55rem 0; overflow: hidden; }
+
+/* the gate the rows cross. it is the only place the brand gradient appears in
+   the whole hero, which is what makes it mean something. */
+.sp-lane-gate {
+    position: absolute;
+    z-index: 2;
+    left: 0;
+    right: 0;
+    /* directly under the newest row, which is where the verdict lands. measured
+       against the row height rather than guessed: 0.55rem of padding plus one
+       34.8px row. */
+    top: 2.72rem;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.9) 20%, rgba(160, 32, 240, 0.9) 80%, transparent);
+    box-shadow: 0 0 12px rgba(0, 240, 255, 0.35);
+    opacity: 0.8;
+    transition: box-shadow 0.35s ease, opacity 0.35s ease;
+}
+.sp-lane.is-stopped .sp-lane-gate {
+    background: linear-gradient(90deg, transparent, rgba(255, 90, 122, 0.95) 15%, rgba(255, 90, 122, 0.95) 85%, transparent);
+    box-shadow: 0 0 18px rgba(255, 90, 122, 0.6);
+    opacity: 1;
+}
+
+.sp-lane-rows { display: flex; flex-direction: column; }
+
+.sp-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.62rem 1.15rem;
+    /* the addresses are data, so they are set in mono. a system font stack, so
+       there is nothing to download. */
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+    font-size: 0.83rem;
+    color: rgba(255, 255, 255, 0.55);
+    animation: spRowIn 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: color 0.3s ease, opacity 0.5s ease;
+}
+/* they fade as they travel up and out, so the eye stays at the gate where the
+   decision happens */
+.sp-row:nth-child(4) { opacity: 0.62; }
+.sp-row:nth-child(5) { opacity: 0.38; }
+.sp-row:nth-child(6) { opacity: 0.16; }
+
+@keyframes spRowIn {
+    from { transform: translateY(10px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+}
+
+.sp-row-addr { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.sp-row-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 5.6rem;
+    justify-content: flex-end;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.74rem;
+    font-weight: 600;
+    text-transform: lowercase;
+}
+/* three dots that pulse while the verdict is out. it is the only honest way to
+   show that something is being computed rather than looked up. */
+.sp-row-dots {
+    width: 22px;
+    height: 4px;
+    background: radial-gradient(circle 2px at 3px 2px, rgba(255,255,255,0.6) 99%, transparent),
+                radial-gradient(circle 2px at 11px 2px, rgba(255,255,255,0.6) 99%, transparent),
+                radial-gradient(circle 2px at 19px 2px, rgba(255,255,255,0.6) 99%, transparent);
+    animation: spDots 1s ease-in-out infinite;
+}
+@keyframes spDots { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.9; } }
+
+.sp-row.is-clear .sp-row-tick { color: #00e0a4; font-size: 0.8rem; }
+.sp-row.is-clear .sp-row-word { color: rgba(255, 255, 255, 0.42); }
+
+.sp-row.is-held {
+    color: #ffd7de;
+    background: linear-gradient(90deg, rgba(255, 90, 122, 0.14), transparent 85%);
+    grid-template-columns: 1fr auto;
+}
+.sp-row.is-held .sp-row-word { color: #ff7a95; }
+.sp-row-why {
+    grid-column: 1 / -1;
+    margin-top: 0.2rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.76rem;
+    font-weight: 400;
+    text-transform: lowercase;
+    color: rgba(255, 176, 192, 0.85);
+    animation: spRowIn 0.3s ease;
+}
+
+.sp-lane-foot {
+    display: flex;
+    gap: 1.4rem;
+    padding: 0.8rem 1.15rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.75rem;
+    text-transform: lowercase;
+    color: rgba(255, 255, 255, 0.38);
+}
+.sp-lane-stat b { color: rgba(255, 255, 255, 0.85); font-weight: 700; font-variant-numeric: tabular-nums; }
+.sp-lane-stat-held b { color: #ff7a95; }
+
+@media (max-width: 1024px) {
+    .sp-hero-grid { grid-template-columns: 1fr; gap: 3rem; }
+    .lp-hero.sp-hero { padding: 7.5rem 1.5rem 4rem; }
+    .sp-hero-sub { max-width: 34rem; }
+    .sp-lane-body { height: 14.6rem; }
+}
+@media (max-width: 560px) {
+    .sp-hero-h1 { font-size: clamp(2.1rem, 11vw, 2.9rem); letter-spacing: -0.035em; }
+    .sp-hero-ctas { gap: 1rem; }
+    .sp-hero-cta { width: 100%; justify-content: center; }
+    .sp-row { font-size: 0.74rem; padding: 0.55rem 0.9rem; }
+    .sp-lane-body { height: 13.2rem; }
+    .sp-row-state { min-width: 4.8rem; }
+}

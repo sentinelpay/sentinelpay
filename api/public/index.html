@@ -41,7 +41,7 @@
     <link rel="icon" type="image/svg+xml" href="/logo.svg">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/style.css?v=24">
-    <link rel="stylesheet" href="/landing.css?v=4.4">
+    <link rel="stylesheet" href="/landing.css?v=4.7">
     <script>
         try{Object.keys(localStorage).forEach(function(k){if(k.indexOf('intercom')!==-1)localStorage.removeItem(k);});}catch(e){}
         window.intercomSettings={api_base:'https://api-iam.intercom.io',app_id:'obn3omwl',hide_default_launcher:true,language_override:'en'};
@@ -662,13 +662,40 @@
             <span class="lp-fx-orb lp-fx-o3"></span>
             <span class="lp-fx-orb lp-fx-o4"></span>
         </div>
-        <div class="lp-hero-inner">
-            <h1 class="lp-h1"><span class="lp-h1-grad">see risk coming.</span><br>stop it before it settles.</h1>
-            <p class="lp-hero-sub">sentinelpay screens every transaction on 10+ blockchains in real time. dirty money gets flagged, your team gets alerted, and bad funds never touch your business.</p>
+        <div class="sp-hero-grid">
+            <div class="sp-hero-say">
+                <p class="sp-hero-eyebrow">wallet and transaction screening</p>
+                <!-- each line is one whole sentence in one text node. splitting a sentence to
+                     emphasise a word inside it means translating fragments, and croatian and
+                     german do not keep our word order: the accent would land on the wrong word
+                     or on nothing. the accent is the full stop instead, which belongs to no
+                     language and can be styled on its own. -->
+                <h1 class="sp-hero-h1"><span class="sp-hero-l1">see risk coming<b class="sp-hero-dot">.</b></span><span class="sp-hero-l2">stop it before it settles<b class="sp-hero-dot">.</b></span></h1>
+                <p class="sp-hero-sub">sentinelpay screens every transaction on 10+ blockchains in real time. dirty money gets flagged, your team gets alerted, and bad funds never touch your business.</p>
+                <div class="sp-hero-ctas">
+                    <a href="/book-a-demo" class="sp-hero-cta">book a demo</a>
+                    <a href="/start-free-trial" class="sp-hero-quiet">or start a free trial</a>
+                </div>
+            </div>
 
-            <div class="lp-hero-ctas">
-                <a href="/book-a-demo" class="lp-cta-primary">book a demo</a>
-                <a href="/start-free-trial" class="lp-cta-ghost">start free trial</a>
+            <!-- the product doing its job, rather than a picture of a dashboard.
+                 addresses arrive, cross the gate, and are let through or held. the
+                 held one stops the line, which is the whole promise made literal.
+                 labelled as an illustration on purpose: a compliance company must
+                 not show invented numbers that could be mistaken for real ones. -->
+            <div class="sp-lane" id="sp-lane">
+                <div class="sp-lane-top">
+                    <span class="sp-lane-title">example screening</span>
+                    <span class="sp-lane-note">illustration, not live data</span>
+                </div>
+                <div class="sp-lane-body">
+                    <div class="sp-lane-gate" aria-hidden="true"></div>
+                    <div class="sp-lane-rows" id="sp-lane-rows"></div>
+                </div>
+                <div class="sp-lane-foot">
+                    <span class="sp-lane-stat"><b id="sp-lane-seen">0</b> checked</span>
+                    <span class="sp-lane-stat sp-lane-stat-held"><b id="sp-lane-held">0</b> held</span>
+                </div>
             </div>
         </div>
     </section>
@@ -1858,6 +1885,7 @@
     <script src="/auth-modal.js?v=10" defer></script>
     <script src="/auth-flow.js?v=12" defer></script>
     <script src="/auth-nav.js?v=2" defer></script>
-    <script src="/i18n.js?v=69" defer></script>
+    <script src="/hero.js?v=2" defer></script>
+    <script src="/i18n.js?v=70" defer></script>
 </body>
 </html>
