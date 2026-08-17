@@ -41,7 +41,7 @@
     <link rel="icon" type="image/svg+xml" href="/logo.svg">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/style.css?v=24">
-    <link rel="stylesheet" href="/landing.css?v=5.6">
+    <link rel="stylesheet" href="/landing.css?v=5.9">
     <script>
         try{Object.keys(localStorage).forEach(function(k){if(k.indexOf('intercom')!==-1)localStorage.removeItem(k);});}catch(e){}
         window.intercomSettings={api_base:'https://api-iam.intercom.io',app_id:'obn3omwl',hide_default_launcher:true,language_override:'en'};
@@ -674,96 +674,69 @@
              traces are `stroke-dashoffset` in css, which the compositor animates
              without waking the main thread. a video would be megabytes and a
              canvas would be a script. -->
-        <svg class="sp-hero-scene" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax meet" aria-hidden="true" focusable="false">
+        <svg class="sp-hero-scene" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
             <defs>
-                <radialGradient id="spBloomA" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stop-color="#00f0ff" stop-opacity="0.3"/>
+                <linearGradient id="spShield" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#00f0ff" stop-opacity="0.9"/>
+                    <stop offset="45%" stop-color="#7b6cff" stop-opacity="0.55"/>
+                    <stop offset="100%" stop-color="#a020f0" stop-opacity="0.08"/>
+                </linearGradient>
+                <linearGradient id="spSweep" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stop-color="#00f0ff" stop-opacity="0"/>
+                    <stop offset="100%" stop-color="#00f0ff" stop-opacity="0.45"/>
+                </linearGradient>
+                <radialGradient id="spCore" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#00f0ff" stop-opacity="0.2"/>
                     <stop offset="100%" stop-color="#00f0ff" stop-opacity="0"/>
                 </radialGradient>
-                <radialGradient id="spBloomB" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stop-color="#a020f0" stop-opacity="0.3"/>
+                <radialGradient id="spCoreB" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#a020f0" stop-opacity="0.22"/>
                     <stop offset="100%" stop-color="#a020f0" stop-opacity="0"/>
                 </radialGradient>
-                <linearGradient id="spTrace" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stop-color="#00f0ff"/>
-                    <stop offset="100%" stop-color="#a675ff"/>
-                </linearGradient>
             </defs>
 
-            <ellipse class="sp-scene-bloom sp-scene-bloom-a" cx="300" cy="720" rx="520" ry="330" fill="url(#spBloomA)"/>
-            <ellipse class="sp-scene-bloom sp-scene-bloom-b" cx="1320" cy="240" rx="520" ry="330" fill="url(#spBloomB)"/>
+            <ellipse class="sp-scene-bloom sp-scene-bloom-a" cx="440" cy="660" rx="540" ry="350" fill="url(#spCore)"/>
+            <ellipse class="sp-scene-bloom sp-scene-bloom-b" cx="1200" cy="250" rx="540" ry="350" fill="url(#spCoreB)"/>
 
-            <g class="sp-scene-grid">
-            <line x1="-200" y1="436" x2="1800" y2="436" stroke="#5ad9ff" stroke-opacity="0.031" stroke-width="1"/>
-            <line x1="-200" y1="441.9" x2="1800" y2="441.9" stroke="#5ad9ff" stroke-opacity="0.033" stroke-width="1"/>
-            <line x1="-200" y1="449.8" x2="1800" y2="449.8" stroke="#5ad9ff" stroke-opacity="0.034" stroke-width="1"/>
-            <line x1="-200" y1="460.1" x2="1800" y2="460.1" stroke="#5ad9ff" stroke-opacity="0.036" stroke-width="1"/>
-            <line x1="-200" y1="473.8" x2="1800" y2="473.8" stroke="#5ad9ff" stroke-opacity="0.039" stroke-width="1"/>
-            <line x1="-200" y1="491.8" x2="1800" y2="491.8" stroke="#5ad9ff" stroke-opacity="0.043" stroke-width="1"/>
-            <line x1="-200" y1="515.6" x2="1800" y2="515.6" stroke="#5ad9ff" stroke-opacity="0.048" stroke-width="1"/>
-            <line x1="-200" y1="547.1" x2="1800" y2="547.1" stroke="#5ad9ff" stroke-opacity="0.055" stroke-width="1"/>
-            <line x1="-200" y1="588.5" x2="1800" y2="588.5" stroke="#5ad9ff" stroke-opacity="0.064" stroke-width="1"/>
-            <line x1="-200" y1="643.3" x2="1800" y2="643.3" stroke="#5ad9ff" stroke-opacity="0.075" stroke-width="1"/>
-            <line x1="-200" y1="715.5" x2="1800" y2="715.5" stroke="#5ad9ff" stroke-opacity="0.091" stroke-width="1"/>
-            <line x1="-200" y1="810.9" x2="1800" y2="810.9" stroke="#5ad9ff" stroke-opacity="0.111" stroke-width="1"/>
-            <line x1="-200" y1="936.9" x2="1800" y2="936.9" stroke="#5ad9ff" stroke-opacity="0.138" stroke-width="1"/>
-            <line x1="674" y1="436" x2="-1090" y2="940" stroke="#5ad9ff" stroke-opacity="0.06" stroke-width="1"/>
-            <line x1="688" y1="436" x2="-880" y2="940" stroke="#5ad9ff" stroke-opacity="0.06" stroke-width="1"/>
-            <line x1="702" y1="436" x2="-670" y2="940" stroke="#5ad9ff" stroke-opacity="0.06" stroke-width="1"/>
-            <line x1="716" y1="436" x2="-460" y2="940" stroke="#5ad9ff" stroke-opacity="0.06" stroke-width="1"/>
-            <line x1="730" y1="436" x2="-250" y2="940" stroke="#5ad9ff" stroke-opacity="0.06" stroke-width="1"/>
-            <line x1="744" y1="436" x2="-40" y2="940" stroke="#5ad9ff" stroke-opacity="0.06" stroke-width="1"/>
-            <line x1="758" y1="436" x2="170" y2="940" stroke="#5ad9ff" stroke-opacity="0.06" stroke-width="1"/>
-            <line x1="772" y1="436" x2="380" y2="940" stroke="#5ad9ff" stroke-opacity="0.06" stroke-width="1"/>
-            <line x1="786" y1="436" x2="590" y2="940" stroke="#5ad9ff" stroke-opacity="0.06" stroke-width="1"/>
-            <line x1="800" y1="436" x2="800" y2="940" stroke="#5ad9ff" stroke-opacity="0.06" stroke-width="1"/>
-            <line x1="814" y1="436" x2="1010" y2="940" stroke="#5ad9ff" stroke-opacity="0.06" stroke-width="1"/>
-            <line x1="828" y1="436" x2="1220" y2="940" stroke="#5ad9ff" stroke-opacity="0.06" stroke-width="1"/>
-            <line x1="842" y1="436" x2="1430" y2="940" stroke="#5ad9ff" stroke-opacity="0.06" stroke-width="1"/>
-            <line x1="856" y1="436" x2="1640" y2="940" stroke="#5ad9ff" stroke-opacity="0.06" stroke-width="1"/>
-            <line x1="870" y1="436" x2="1850" y2="940" stroke="#5ad9ff" stroke-opacity="0.06" stroke-width="1"/>
-            <line x1="884" y1="436" x2="2060" y2="940" stroke="#5ad9ff" stroke-opacity="0.06" stroke-width="1"/>
-            <line x1="898" y1="436" x2="2270" y2="940" stroke="#5ad9ff" stroke-opacity="0.06" stroke-width="1"/>
-            <line x1="912" y1="436" x2="2480" y2="940" stroke="#5ad9ff" stroke-opacity="0.06" stroke-width="1"/>
-            <line x1="926" y1="436" x2="2690" y2="940" stroke="#5ad9ff" stroke-opacity="0.06" stroke-width="1"/>
+            <!-- the range this thing watches. plain circles rather than more
+                 shields: a second shield outline crossed the headline at an angle
+                 and read as a stray diagonal, and rings say the same thing
+                 without putting a line through a word. -->
+            <g class="sp-rings">
+                <circle class="sp-ring sp-ring-a" cx="800" cy="470" r="430"/>
+                <circle class="sp-ring sp-ring-b" cx="800" cy="470" r="620"/>
+                <circle class="sp-ring sp-ring-c" cx="800" cy="470" r="830"/>
             </g>
 
-            <g class="sp-scene-wires">
-                <path class="sp-scene-trace" d="M -40 740 L 210 740 L 210 620 L 372 620"/>
-                <path class="sp-scene-trace" d="M 372 620 L 372 500 L 250 500 L 250 300"/>
-                <path class="sp-scene-trace" d="M 1660 700 L 1400 700 L 1400 580 L 1246 580"/>
-                <path class="sp-scene-trace" d="M 1246 580 L 1246 430 L 1380 430 L 1380 250"/>
-                <path class="sp-scene-trace" d="M 300 838 L 1300 838"/>
-                <path class="sp-scene-pulse sp-scene-pulse-t1" d="M -40 740 L 210 740 L 210 620 L 372 620"/>
-                <path class="sp-scene-pulse sp-scene-pulse-t2" d="M 372 620 L 372 500 L 250 500 L 250 300"/>
-                <path class="sp-scene-pulse sp-scene-pulse-t3" d="M 1660 700 L 1400 700 L 1400 580 L 1246 580"/>
-                <path class="sp-scene-pulse sp-scene-pulse-t4" d="M 1246 580 L 1246 430 L 1380 430 L 1380 250"/>
-                <path class="sp-scene-pulse sp-scene-pulse-t5" d="M 300 838 L 1300 838"/>
+            <!-- our own mark, at the size of the screen, cropped on purpose: what
+                 is left is two long edges sweeping down either side of the words.
+                 the copy is inside the shield, which is the argument of the whole
+                 product said in one shape and in no words at all. -->
+            <path class="sp-shield sp-shield-a" d="M800 -260 L208 -7 V416 C208 838 631 1176 800 1260 C969 1176 1392 838 1392 416 V-7 Z"/>
+
+            <!-- one line turning about the centre of the mark, once every twenty
+                 two seconds, because something that watches does not hurry -->
+            <g class="sp-sweep">
+                <line x1="800" y1="470" x2="800" y2="-420" stroke="url(#spSweep)" stroke-width="2"/>
             </g>
 
-            <g class="sp-scene-nodes">
-                <ellipse class="sp-scene-node sp-scene-node-a" cx="210" cy="740" rx="11" ry="4.6"/>
-                <ellipse class="sp-scene-node sp-scene-node-b" cx="372" cy="620" rx="11" ry="4.6"/>
-                <ellipse class="sp-scene-node sp-scene-node-a" cx="250" cy="300" rx="11" ry="4.6"/>
-                <ellipse class="sp-scene-node sp-scene-node-a" cx="1400" cy="700" rx="11" ry="4.6"/>
-                <ellipse class="sp-scene-node sp-scene-node-b" cx="1246" cy="580" rx="11" ry="4.6"/>
-                <ellipse class="sp-scene-node sp-scene-node-b" cx="1380" cy="250" rx="11" ry="4.6"/>
-                <ellipse class="sp-scene-node sp-scene-node-c" cx="300" cy="838" rx="11" ry="4.6"/>
-                <ellipse class="sp-scene-node sp-scene-node-a" cx="1300" cy="838" rx="11" ry="4.6"/>
+            <!-- payments arriving from outside, most of them let through -->
+            <g class="sp-marks">
+                <rect class="sp-mark" x="-140" y="176" width="46" height="2" rx="1" style="--sp-d: 520px; animation-delay: 0.0s"/>
+                <rect class="sp-mark" x="1740" y="250" width="40" height="2" rx="1" style="--sp-d: -500px; animation-delay: 1.7s"/>
+                <rect class="sp-mark" x="-140" y="596" width="52" height="2" rx="1" style="--sp-d: 560px; animation-delay: 3.2s"/>
+                <rect class="sp-mark" x="1740" y="684" width="44" height="2" rx="1" style="--sp-d: -540px; animation-delay: 0.8s"/>
+                <rect class="sp-mark" x="-140" y="796" width="38" height="2" rx="1" style="--sp-d: 600px; animation-delay: 4.5s"/>
+                <rect class="sp-mark" x="1740" y="128" width="34" height="2" rx="1" style="--sp-d: -470px; animation-delay: 2.5s"/>
+                <rect class="sp-mark" x="-140" y="402" width="44" height="2" rx="1" style="--sp-d: 430px; animation-delay: 5.8s"/>
+                <rect class="sp-mark" x="1740" y="470" width="36" height="2" rx="1" style="--sp-d: -410px; animation-delay: 6.4s"/>
             </g>
 
-            <g class="sp-scene-marks">
-                <rect class="sp-scene-dia" x="363" y="611" width="18" height="18" transform="rotate(45 372 620)"/>
-                <text class="sp-scene-label" x="350" y="625" text-anchor="end">0x7f21_a08</text>
-                <rect class="sp-scene-dia" x="1237" y="571" width="18" height="18" transform="rotate(45 1246 580)"/>
-                <text class="sp-scene-label" x="1268" y="585">0xc4e8_d37</text>
-            </g>
-
-            <g class="sp-scene-chip" transform="translate(96 766)">
-                <rect class="sp-scene-chip-box" x="0" y="0" width="212" height="52" rx="12"/>
-                <circle class="sp-scene-chip-badge" cx="30" cy="26" r="15"/>
-                <text class="sp-scene-chip-glyph" x="30" y="33">&#8383;</text>
-                <text class="sp-scene-chip-num" x="58" y="32">$5,884,443,121</text>
+            <!-- and one that is not. it stops at the edge and stays there. -->
+            <g class="sp-held">
+                <rect class="sp-held-bar" x="1430" y="516" width="46" height="2" rx="1"/>
+                <circle class="sp-held-dot" cx="1482" cy="517" r="5"/>
+                <circle class="sp-held-ring" cx="1482" cy="517" r="5"/>
             </g>
         </svg>
         <div class="sp-hero-veil" aria-hidden="true"></div>

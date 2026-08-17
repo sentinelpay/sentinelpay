@@ -3087,74 +3087,89 @@ html.theme-light .lp-role-tab.active {
 @keyframes spBloomA { from { transform: translate(0, 0) scale(1); } to { transform: translate(5%, -4%) scale(1.14); } }
 @keyframes spBloomB { from { transform: translate(0, 0) scale(1.1); } to { transform: translate(-4%, 5%) scale(1); } }
 
-/* the traces are drawn twice: once as the dim wire, once as a short bright run
-   that travels along it. the run is a dash pattern with a moving offset, which
-   is the cheapest way to move light along a path in a browser. */
-.sp-scene-trace {
+/* ---- our own mark, at the size of the screen ----------------------------- */
+/* the shield from the logo, drawn as line rather than filled, at a size where the
+   viewport crops it: the shoulders are above the top edge and the point is below
+   the bottom one, so what is left is two long edges sweeping down either side of
+   the copy. the words sit inside the shield.
+
+   it draws itself once: the stroke is dashed to its own length and the offset
+   animates to nothing, so the mark traces on over nine seconds rather than being
+   there from the first frame. it does not loop, because a mark that keeps
+   redrawing itself is a mark that never settles.
+
+   this is the part of the page nobody else can copy without copying our logo. */
+.sp-shield {
     fill: none;
-    stroke: url(#spTrace);
-    stroke-opacity: 0.28;
-    stroke-width: 1.2;
+    stroke: url(#spShield);
+    stroke-linejoin: round;
+    stroke-width: 2;
+    stroke-dasharray: 4400;
+    stroke-dashoffset: 4400;
+    animation: spDraw 9s cubic-bezier(0.35, 0, 0.2, 1) 0.3s forwards;
 }
-.sp-scene-pulse {
+@keyframes spDraw { to { stroke-dashoffset: 0; } }
+
+/* the range it watches. three rings about the same centre, breathing slowly and
+   out of step with each other. */
+.sp-ring {
     fill: none;
-    stroke: #7bf3ff;
-    stroke-width: 1.8;
-    stroke-linecap: round;
-    /* a 60px lit run in a 900px gap, so one pulse is in flight per trace */
-    stroke-dasharray: 60 900;
-    stroke-dashoffset: 960;
-    filter: drop-shadow(0 0 5px rgba(0, 240, 255, 0.9));
-    animation: spPulse 5.2s linear infinite;
+    stroke: #5ad9ff;
+    stroke-opacity: 0.07;
+    stroke-width: 1;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: spRing 12s ease-in-out infinite alternate;
 }
-/* staggered, so they do not march in step */
-.sp-scene-pulse-t2 { animation-duration: 6.1s; animation-delay: -1.4s; }
-.sp-scene-pulse-t3 { animation-duration: 5.7s; animation-delay: -2.8s; stroke: #c9a7ff; }
-.sp-scene-pulse-t4 { animation-duration: 6.6s; animation-delay: -0.7s; stroke: #c9a7ff; }
-.sp-scene-pulse-t5 { animation-duration: 4.8s; animation-delay: -3.6s; }
-@keyframes spPulse { to { stroke-dashoffset: 0; } }
+.sp-ring-b { stroke-opacity: 0.055; animation-duration: 15s; animation-delay: -3s; }
+.sp-ring-c { stroke-opacity: 0.04; animation-duration: 18s; animation-delay: -7s; }
+@keyframes spRing { from { transform: scale(1); } to { transform: scale(1.035); } }
 
-/* the wallets, flattened by the angle of the plane, each with its own glow */
-.sp-scene-node {
-    fill: #00f0ff;
-    filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.75));
-    animation: spNode 3.4s ease-in-out infinite alternate;
+/* the sweep. one line about the centre of the mark, once every twenty two
+   seconds, because something that watches does not need to hurry. */
+.sp-sweep {
+    transform-origin: 800px 470px;
+    animation: spSweep 22s linear infinite;
+    opacity: 0.5;
 }
-.sp-scene-node-b { fill: #a675ff; filter: drop-shadow(0 0 8px rgba(166, 117, 255, 0.75)); animation-delay: -1.1s; }
-.sp-scene-node-c { fill: #ff5a7a; filter: drop-shadow(0 0 9px rgba(255, 90, 122, 0.8)); animation-delay: -2.2s; }
-@keyframes spNode { from { opacity: 0.55; } to { opacity: 1; } }
+@keyframes spSweep { to { transform: rotate(360deg); } }
 
-.sp-scene-dia { fill: none; stroke: rgba(255, 255, 255, 0.32); stroke-width: 1.2; }
-.sp-scene-label {
-    fill: rgba(255, 255, 255, 0.3);
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 15px;
-    letter-spacing: 0.06em;
+/* payments coming in from outside. each carries its own distance in a custom
+   property, so one set of keyframes serves all of them. */
+.sp-mark {
+    fill: #7bdcff;
+    opacity: 0;
+    animation: spMark 7.5s cubic-bezier(0.3, 0, 0.5, 1) infinite;
+}
+@keyframes spMark {
+    0%   { transform: translateX(0); opacity: 0; }
+    12%  { opacity: 0.85; }
+    72%  { opacity: 0.7; }
+    100% { transform: translateX(var(--sp-d, 400px)); opacity: 0; }
 }
 
-/* the amount, on a chip, the way the reference puts one number on the graph */
-.sp-scene-chip-box { fill: rgba(14, 18, 34, 0.86); stroke: rgba(255, 255, 255, 0.1); stroke-width: 1; }
-.sp-scene-chip-badge { fill: #f7931a; }
-.sp-scene-chip-glyph { fill: #1a1200; font-family: 'Inter', sans-serif; font-size: 17px; font-weight: 700; text-anchor: middle; }
-.sp-scene-chip-num { fill: rgba(255, 255, 255, 0.86); font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+/* and the one that is stopped at the edge. it does not travel, it sits, and the
+   ring going out from it is the only thing on the page that says no. */
+.sp-held-bar { fill: #ff5a7a; opacity: 0.75; }
+.sp-held-dot { fill: #ff5a7a; }
+.sp-held-ring {
+    fill: none;
+    stroke: #ff5a7a;
+    stroke-width: 1.5;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: spHeld 2.8s ease-out infinite;
+}
+@keyframes spHeld {
+    0%   { transform: scale(1); opacity: 0.9; }
+    100% { transform: scale(4.5); opacity: 0; }
+}
 
 @media (prefers-reduced-motion: reduce) {
-    .sp-scene-bloom, .sp-scene-node { animation: none; }
-    /* the pulses are parked mid-trace rather than removed, so the traces still
-       read as carrying something */
-    .sp-scene-pulse { animation: none; stroke-dashoffset: 520; }
-}
-/* the field is behind the words, so the middle of it is darkened and the edges
-   are left alone. without this the lines cross the headline and the text has to
-   fight them, and text that fights its background is text nobody reads. */
-.sp-hero-veil {
-    position: absolute;
-    z-index: 1;
-    inset: 0;
-    pointer-events: none;
-    background:
-        radial-gradient(ellipse 58% 50% at 50% 48%, rgba(4, 6, 14, 0.88) 0%, rgba(4, 6, 14, 0.45) 48%, transparent 80%),
-        linear-gradient(180deg, rgba(4, 6, 14, 0.55) 0%, transparent 22%, transparent 74%, rgba(4, 6, 14, 0.85) 100%);
+    .sp-scene-bloom, .sp-sweep, .sp-mark, .sp-held-ring, .sp-ring { animation: none; }
+    /* the mark is shown finished rather than mid-draw */
+    .sp-shield { animation: none; stroke-dashoffset: 0; }
+    .sp-mark { opacity: 0.5; }
 }
 
 .sp-hero-mid {
