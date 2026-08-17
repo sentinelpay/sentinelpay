@@ -3410,3 +3410,40 @@ html.theme-light .lp-role-tab.active {
         radial-gradient(ellipse 92% 40% at 50% 40%, rgba(4, 6, 14, 0.94) 0%, rgba(4, 6, 14, 0.6) 55%, transparent 86%),
         linear-gradient(180deg, rgba(4, 6, 14, 0.6) 0%, transparent 22%, transparent 88%, rgba(4, 6, 14, 0.45) 100%); }
 }
+
+/* ---- the raymarched hero ------------------------------------------------- */
+/* the canvas hero3d.js draws into. it is not in the markup: the file adds it and
+   removes itself on anything that cannot run it, so this rule only ever applies
+   to a page where the animation is actually working, and the svg scene under it
+   is what shows otherwise.
+
+   `screen` is the whole compositing story: black in the shader adds nothing, so
+   the hero's own gradient stays the background and this is light laid over it.
+   painting it opaque would mean matching that gradient in glsl and rematching it
+   every time the palette moves. */
+.sp-hero-gl {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    display: block;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    /* it renders below css resolution and is stretched back up. left to itself a
+       browser may pick nearest neighbour on an upscaled canvas, which would put
+       stair steps on every tube. */
+    image-rendering: auto;
+}
+
+/* the svg scene stays where it is and keeps doing its job: it is the fallback,
+   and behind the lattice it is still our own mark framing the copy. it only
+   steps back a little so the two are not competing. */
+.sp-hero-gl ~ .sp-hero-scene {
+    opacity: 0.4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sp-hero-gl { display: none; }
+    .sp-hero-gl ~ .sp-hero-scene { opacity: 1; }
+}

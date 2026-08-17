@@ -70,6 +70,11 @@ for f in sorted(x for x in os.listdir(PUB) if x.endswith('.js')):
     src = open(os.path.join(PUB, f), encoding='utf-8').read()
     if f in ('i18n.js', 'i18n-title.js'):
         continue                                   # the dictionary itself
+    if f in ('hero3d.js',):
+        # the raymarched hero background. every string in it is glsl source for
+        # the gpu, not a word anybody reads, so there is nothing here to
+        # translate and every literal would be a false positive.
+        continue
     if f in ('inbox.js',):
         # the staff inbox. english on purpose and not translated: it is an
         # internal tool for three people who all read english, and the three
