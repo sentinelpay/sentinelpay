@@ -104,7 +104,7 @@
         '    float ty = length(q.xz) - 0.045;',
         '    float tz = length(q.xy) - 0.045;',
         '    float lat = min(min(tx, ty), tz);',
-        '    float node = length(q) - 0.15;',
+        '    float node = length(q) - 0.095;',
         '    return min(lat, node);',
         '}',
 
@@ -124,8 +124,12 @@
         '        float d = map(p);',
         // near cyan, far violet: our own two ends, and depth reads as colour
         '        vec3 c = mix(vec3(0.10, 0.80, 1.00), vec3(0.50, 0.32, 1.00), clamp(t / 26.0, 0.0, 1.0));',
-        '        float g = exp(-d * 40.0);',
-        '        col += c * (g + g * g * 2.2) * exp(-t * 0.105) * 0.072;',
+        '        float g = exp(-d * 48.0);',
+        // nothing within the first few units contributes: a tube passing close
+        // to the camera would otherwise flare across the whole screen, which is
+        // the searchlight-in-the-face effect and it happens at random
+        '        float near = smoothstep(0.6, 5.5, t);',
+        '        col += c * (g + g * g * 1.1) * near * exp(-t * 0.098) * 0.095;',
         // never step further than the field says is safe, never smaller than a
         // step that would take all day
         '        t += max(d * 0.8, 0.035);',

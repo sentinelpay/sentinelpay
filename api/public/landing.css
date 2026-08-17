@@ -3442,6 +3442,12 @@ html.theme-light .lp-role-tab.active {
 .sp-hero-gl ~ .sp-hero-scene {
     opacity: 0.4;
 }
+/* its dot lattice is not one of the two, though: a flat grid of dots sitting on
+   top of a lattice with real depth reads as dirt on the screen. the mark, the
+   rings and the pulses stay; the weave is for the page that has no canvas. */
+.sp-hero-gl ~ .sp-hero-scene .sp-weave {
+    display: none;
+}
 
 @media (prefers-reduced-motion: reduce) {
     .sp-hero-gl { display: none; }
