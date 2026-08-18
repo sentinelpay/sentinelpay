@@ -8,23 +8,44 @@
 
    what each one gets, and why that one:
 
+     every heading   wiped up from behind a mask rather than faded in. it is the
+                     one move that repeats, because it is the page's punctuation:
+                     you know a new section has started before you have read a
+                     word of it. done with a clip rather than by splitting the
+                     text into lines, because splitting a heading into lines
+                     means splitting a sentence, and croatian and german do not
+                     break where english does.
+
      built for you   the role card leans toward the pointer, with the light on
                      it moving as it leans. it is the only card on the page you
                      choose the contents of, so it is the one that should feel
                      like an object in your hands.
 
-     nine tools      the cards do not tilt, they light along the edge nearest
-                     the cursor. nine tilting cards would be a fairground; one
-                     line of light says which one you are on and nothing else.
+     nine tools      the cards are dealt: each one arrives tipped back in three
+                     dimensions and settles flat, one after another. they light
+                     along the edge nearest the cursor rather than tilting,
+                     because nine tilting cards would be a fairground.
 
      stats           one pass of light across the band as it arrives, once. the
                      numbers are already counting up, and a second entrance for
                      the same block would fight the first.
 
-     guides          the guide card lags the scroll slightly. it is the only
+     guides          the guide card lags the scroll vertically. it is the only
                      place on the page with a foreground object over a
                      background, and a small difference in speed is what makes
                      two planes read as two planes.
+
+     insights        the featured article drifts sideways instead, so the two
+                     parallax sections are not the same parallax.
+
+     questions       a rail down the left of the list fills as you read past it.
+                     the section is a long list with no landmarks, and the rail
+                     is the only place on the page that tells you where you are
+                     inside a section rather than on the page.
+
+     book a demo     a light travels once around the border of the form when it
+                     arrives. it is the last thing on the page and the only
+                     thing anyone is asked to fill in.
 
    three rules the whole file obeys:
 
@@ -107,31 +128,153 @@
         }
     }
 
-    /* ---- the guide card lagging the scroll ----------------------------- */
-    var floaters = document.querySelectorAll('.lp-intel-guide');
-    var floatList = Array.prototype.slice.call(floaters);
-    if (floatList.length) {
-        var fraf = 0;
+    /* ---- the things that follow the scroll ------------------------------ */
+    /* three effects, one loop, one custom property each. they are together
+       because they all need the same number, how far through the window an
+       element is, and running three scroll listeners to compute the same thing
+       three times is three times the work for no reason. */
+    var lagList = Array.prototype.slice.call(document.querySelectorAll('.lp-intel-guide'));
+    var driftList = Array.prototype.slice.call(document.querySelectorAll('.lp-ins-featured'));
+    var railList = Array.prototype.slice.call(document.querySelectorAll('.lp-faq-list'));
 
-        function floatStep() {
-            fraf = 0;
+    if (lagList.length || driftList.length || railList.length) {
+        var sraf = 0;
+
+        // -1 when the element's middle is at the bottom of the window, +1 at the
+        // top, 0 when it is dead centre
+        function through(el, vh) {
+            var r = el.getBoundingClientRect();
+            if (r.bottom < -240 || r.top > vh + 240) return null;
+            return 1 - (r.top + r.height * 0.5) / (vh * 0.5);
+        }
+
+        function scrollStep() {
+            sraf = 0;
             var vh = window.innerHeight || 1;
-            for (var i = 0; i < floatList.length; i++) {
-                var el = floatList[i];
-                var r = el.getBoundingClientRect();
-                // nothing to do for something that is nowhere near the window
-                if (r.bottom < -200 || r.top > vh + 200) continue;
-                // -1 at the bottom of the window, +1 at the top, 0 dead centre
-                var p = 1 - (r.top + r.height * 0.5) / (vh * 0.5);
-                el.style.setProperty('--sp-lag', (p * 26).toFixed(2) + 'px');
+            var i, p, el, r;
+
+            for (i = 0; i < lagList.length; i++) {
+                p = through(lagList[i], vh);
+                if (p !== null) lagList[i].style.setProperty('--sp-lag', (p * 26).toFixed(2) + 'px');
+            }
+            for (i = 0; i < driftList.length; i++) {
+                p = through(driftList[i], vh);
+                // sideways, and less of it: horizontal movement is far more
+                // noticeable than vertical because nothing else on the page does it
+                if (p !== null) driftList[i].style.setProperty('--sp-drift', (p * 14).toFixed(2) + 'px');
+            }
+            for (i = 0; i < railList.length; i++) {
+                el = railList[i];
+                r = el.getBoundingClientRect();
+                if (r.bottom < -240 || r.top > vh + 240) continue;
+                // 0 when the top of the list reaches the middle of the window,
+                // 1 when the bottom does: the rail tracks reading, not scrolling
+                var run = r.height + vh * 0.5;
+                var done = (vh * 0.5 - r.top) / (run || 1);
+                el.style.setProperty('--sp-prog', Math.min(1, Math.max(0, done)).toFixed(4));
             }
         }
-        function floatQueue() {
-            if (fraf) return;
-            fraf = window.requestAnimationFrame(floatStep);
+        function scrollQueue() {
+            if (sraf) return;
+            sraf = window.requestAnimationFrame(scrollStep);
         }
-        window.addEventListener('scroll', floatQueue, { passive: true });
-        window.addEventListener('resize', floatQueue, { passive: true });
-        floatStep();
+        window.addEventListener('scroll', scrollQueue, { passive: true });
+        window.addEventListener('resize', scrollQueue, { passive: true });
+        scrollStep();
+    }
+
+    /* ---- the things that happen once, on arrival ------------------------ */
+    /* headings, the dealt cards and the border trace are all the same shape of
+       problem: add a class the first time the element is seen and never take it
+       off again. one observer serves all of them, because the only thing that
+       differs is which class goes on, and that is written on the element.
+
+       and then a sweep behind the observer, which is the part that matters.
+
+       an IntersectionObserver samples; it does not see every frame. in principle
+       a jump down the page with a scrollbar drag or a page-down key can carry an
+       element through the window between two samples without it ever being
+       reported. the observer is right, it just never fires, and that would leave
+       the element at opacity zero for the rest of the visit. since these rules
+       hide headings and whole card grids, the result would be a blank section.
+
+       i went looking for that and could not produce it here, so treat the sweep
+       as insurance rather than as a fix for a measured bug. it stays because of
+       what is at stake either way: never let a visual nicety be the only thing
+       standing between the reader and the content.
+
+       the sweep says anything whose top has passed the bottom of the window is
+       shown, whatever the observer did. it works off a list that shrinks as
+       elements are revealed and stops costing anything once that list is
+       empty. */
+    var pending = [];
+
+    if (window.IntersectionObserver) {
+        var onceGroups = [
+            ['.lp-h2, .lp-statsx-heading, .lp-eyebrow', 'sp-in'],
+            ['.lp-sol-card', 'sp-dealt'],
+            ['.lp-demo-card', 'sp-traced']
+        ];
+
+        function reveal(el) {
+            var want = el.getAttribute('data-sp-once');
+            if (!want || el.classList.contains(want)) return;
+            el.classList.add(want);
+        }
+
+        var onceIo = new IntersectionObserver(function (entries) {
+            entries.forEach(function (e) {
+                if (!e.isIntersecting) return;
+                reveal(e.target);
+                onceIo.unobserve(e.target);
+            });
+        }, { rootMargin: '0px 0px -8% 0px', threshold: 0 });
+
+        onceGroups.forEach(function (pair) {
+            var found;
+            try { found = document.querySelectorAll(pair[0]); } catch (err) { return; }
+            Array.prototype.forEach.call(found, function (el, i) {
+                // the hero is on screen before anything can be scrolled, and a
+                // heading that animates in behind the loader is a heading nobody
+                // sees arrive
+                if (el.closest('.lp-hero')) return;
+                el.setAttribute('data-sp-once', pair[1]);
+                // capped, so the ninth card in the grid is not a second late
+                el.style.setProperty('--sp-order', Math.min(i, 8));
+                onceIo.observe(el);
+                pending.push(el);
+            });
+        });
+
+        function sweep() {
+            if (!pending.length) return;
+            var vh = window.innerHeight || 1;
+            var left = [];
+            for (var i = 0; i < pending.length; i++) {
+                var el = pending[i];
+                var want = el.getAttribute('data-sp-once');
+                if (el.classList.contains(want)) continue;
+                // anything whose top edge is inside the window, or above it
+                // because we have already scrolled past, gets shown
+                if (el.getBoundingClientRect().top < vh * 0.94) {
+                    reveal(el);
+                    onceIo.unobserve(el);
+                    continue;
+                }
+                left.push(el);
+            }
+            pending = left;
+        }
+
+        var sweepRaf = 0;
+        function sweepQueue() {
+            if (sweepRaf || !pending.length) return;
+            sweepRaf = window.requestAnimationFrame(function () { sweepRaf = 0; sweep(); });
+        }
+        window.addEventListener('scroll', sweepQueue, { passive: true });
+        window.addEventListener('resize', sweepQueue, { passive: true });
+        // a reload halfway down the page must not leave everything above the
+        // fold hidden either
+        sweep();
     }
 })();

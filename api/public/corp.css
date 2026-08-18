@@ -4663,3 +4663,154 @@ html.theme-light .lp-nav {
    banner's does. the card is the host, so the canvas is its first child and
    everything else needs a stacking context of its own. */
 .lp-role-feature > *:not(.sp-band-gl) { position: relative; z-index: 1; }
+
+/* ---- the page's punctuation: every heading wiped up from behind a mask ----- */
+/* the one move that repeats, deliberately. it is how you know a new section has
+   started before you have read a word of it.
+
+   a clip rather than a per-line reveal. the fashionable version splits a heading
+   into lines and staggers them, which means splitting a sentence at whatever
+   point english happens to wrap, and croatian and german do not wrap there. this
+   gets the same feel out of one element and survives translation.
+
+   the class is added by script, so a page whose javascript never runs shows
+   every heading: worst case no animation, never invisible copy. */
+.lp-h2[data-sp-once],
+.lp-statsx-heading[data-sp-once],
+.lp-eyebrow[data-sp-once] {
+    clip-path: inset(0 0 105% 0);
+    transform: translateY(0.35em);
+    opacity: 0;
+    transition: clip-path 0.85s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.85s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.5s ease;
+}
+.lp-h2.sp-in,
+.lp-statsx-heading.sp-in,
+.lp-eyebrow.sp-in {
+    clip-path: inset(0 0 -20% 0);
+    transform: translateY(0);
+    opacity: 1;
+}
+/* the eyebrow leads the heading it belongs to by a beat, which is the order you
+   read them in anyway */
+.lp-eyebrow[data-sp-once] { transition-duration: 0.55s; }
+
+/* ---- nine tools: the cards are dealt ------------------------------------- */
+/* each card arrives tipped back in three dimensions and settles flat, one after
+   another. the perspective is on the card rather than on the grid, so a card
+   that is still tipped does not drag its neighbours' geometry with it. */
+.lp-sol-card[data-sp-once] {
+    opacity: 0;
+    transform: perspective(1200px) rotateX(9deg) translateY(26px);
+    transform-origin: 50% 0%;
+    transition: opacity 0.5s ease, transform 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: calc(var(--sp-order, 0) * 65ms);
+}
+.lp-sol-card.sp-dealt {
+    opacity: 1;
+    transform: perspective(1200px) rotateX(0deg) translateY(0);
+}
+
+/* ---- insights: the featured article drifts sideways ----------------------- */
+/* horizontal, where the guide card above is vertical, so the two parallax
+   sections on the page are not the same parallax. it is a smaller number
+   because sideways movement is far more noticeable: nothing else on a page
+   moves that way. */
+.lp-ins-featured {
+    transform: translateX(var(--sp-drift, 0px));
+    transition: box-shadow 0.3s ease;
+}
+
+/* ---- questions: a rail that fills as you read past it --------------------- */
+/* the only place on the page that says where you are inside a section rather
+   than on the page. the list is long and has no landmarks, which is exactly when
+   a reader wants to know how much is left. */
+.lp-faq-list {
+    position: relative;
+    padding-left: 1.35rem;
+}
+.lp-faq-list::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.4rem;
+    bottom: 0.4rem;
+    width: 2px;
+    border-radius: 2px;
+    background: rgba(16, 39, 91, 0.10);
+}
+.lp-faq-list::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.4rem;
+    width: 2px;
+    border-radius: 2px;
+    /* scaled rather than sized: a height in percent is a layout change on every
+       frame of the scroll, a scale is not */
+    height: calc(100% - 0.8rem);
+    transform-origin: top;
+    transform: scaleY(var(--sp-prog, 0));
+    background: linear-gradient(180deg, #00c8e6, #7b6cff);
+}
+@media (max-width: 640px) {
+    .lp-faq-list { padding-left: 1rem; }
+}
+
+/* ---- book a demo: one pass of light around the border --------------------- */
+/* the last thing on the page and the only thing anyone is asked to fill in, so
+   it gets the one effect that draws the eye to an outline. a conic gradient
+   rotated once, masked to the border, then it stops: a border that keeps
+   spinning is a page that will not sit still while you type in it. */
+.lp-demo-card { position: relative; }
+.lp-demo-card::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1.5px;
+    pointer-events: none;
+    opacity: 0;
+    background: conic-gradient(
+        from var(--sp-turn, 0deg),
+        transparent 0deg,
+        transparent 250deg,
+        rgba(0, 240, 255, 0.85) 320deg,
+        rgba(160, 32, 240, 0.85) 350deg,
+        transparent 360deg
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+}
+.lp-demo-card.sp-traced::after {
+    animation: spTrace 1.6s cubic-bezier(0.4, 0, 0.2, 1) 0.2s 1 forwards;
+}
+@keyframes spTrace {
+    0%   { opacity: 0;   --sp-turn: 0deg; }
+    12%  { opacity: 1; }
+    88%  { opacity: 1; }
+    100% { opacity: 0;   --sp-turn: 360deg; }
+}
+/* a custom property is not animatable unless it is registered, and without this
+   the border would jump from 0 to 360 at the end instead of travelling */
+@property --sp-turn {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lp-h2[data-sp-once], .lp-statsx-heading[data-sp-once], .lp-eyebrow[data-sp-once],
+    .lp-sol-card[data-sp-once] {
+        clip-path: none;
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+    .lp-ins-featured { transform: none; }
+    .lp-faq-list::after { display: none; }
+    .lp-demo-card::after { display: none; }
+}

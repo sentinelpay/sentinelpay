@@ -95,4 +95,50 @@
             }
         });
     });
+
+    /* and a sweep behind the observer.
+
+       an IntersectionObserver samples rather than watching every frame. in the
+       cases that worry me, a scrollbar dragged the length of the page or a jump
+       to an anchor near the bottom, a block can in principle enter and leave the
+       window between two samples without ever being reported. the observer is
+       not wrong, it simply never fires, and because the class it would have
+       added is the one that makes the block visible, what would be left behind
+       is a section that stays blank until you happen to scroll past it slowly.
+
+       i could not get that to happen on this page: jumping to the bottom and
+       back, and walking down it in fast steps, both leave nothing hidden even
+       without this. so this is insurance rather than a fix for something i
+       measured, and it is here because of what it protects against: hiding
+       content is the one failure this file can cause, and the cost of being
+       certain is a list that shrinks as blocks are shown and stops costing
+       anything once it is empty. */
+    var pending = seen.slice();
+
+    function sweep() {
+        if (!pending.length) return;
+        var vh = window.innerHeight || 1;
+        var left = [];
+        for (var i = 0; i < pending.length; i++) {
+            var el = pending[i];
+            if (el.classList.contains('lp-visible')) continue;
+            // its top edge is inside the window, or above it because we have
+            // already scrolled past: either way it must not be invisible
+            if (el.getBoundingClientRect().top < vh * 0.98) {
+                el.classList.add('lp-visible');
+                io.unobserve(el);
+                continue;
+            }
+            left.push(el);
+        }
+        pending = left;
+    }
+
+    var raf = 0;
+    function queue() {
+        if (raf || !pending.length) return;
+        raf = window.requestAnimationFrame(function () { raf = 0; sweep(); });
+    }
+    window.addEventListener('scroll', queue, { passive: true });
+    window.addEventListener('resize', queue, { passive: true });
 })();
