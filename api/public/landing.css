@@ -3224,30 +3224,6 @@ html.theme-light .lp-role-tab.active {
     gap: 2rem;
 }
 
-/* the category, above the sentence.
-
-   the reason this line exists at all: someone who already knows the industry
-   should be able to place us in one glance without reading a word of the rest,
-   and the phrase they are scanning for is the one their own job is called. the
-   headline underneath is for everybody else. */
-.sp-hero-kicker {
-    margin: 0;
-    font-family: 'Inter', sans-serif;
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: rgba(180, 214, 255, 0.72);
-    padding: 0.4rem 0.9rem;
-    border: 1px solid rgba(120, 200, 255, 0.22);
-    border-radius: 999px;
-    background: rgba(10, 20, 45, 0.35);
-    backdrop-filter: blur(4px);
-}
-@media (max-width: 560px) {
-    .sp-hero-kicker { font-size: 0.66rem; letter-spacing: 0.14em; padding: 0.35rem 0.75rem; }
-}
-
 .sp-hero-h1 {
     margin: 0;
     font-family: 'Inter', sans-serif;
@@ -3327,6 +3303,49 @@ html.theme-light .lp-role-tab.active {
     transform: translateY(-2px);
     filter: brightness(1.06);
     box-shadow: 0 16px 40px -14px rgba(0, 240, 255, 0.6);
+}
+
+/* the same light sweep the nav buttons have.
+
+   it is worth having in both places for one reason: the two buttons in the hero
+   and the two in the bar are the only four things on the page you are meant to
+   press, and a control that behaves like the others is a control you already
+   know how to use. the sweep is parked off the left edge with no transition, so
+   it only ever animates on the way in and never slides back out when the cursor
+   leaves.
+
+   `overflow: hidden` on the button is what clips it, and it is also why the
+   ghost button needs its radius restated: the sweep is a rectangle and would
+   otherwise square off the corners it passes. */
+.sp-hero-cta,
+.sp-hero-second {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+}
+.sp-hero-cta::after,
+.sp-hero-second::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -80%;
+    width: 55%;
+    height: 100%;
+    background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.35) 50%, transparent);
+    transform: skewX(-18deg);
+    transition: none;
+    pointer-events: none;
+    z-index: 1;
+}
+/* on the filled button the white sweep would just wash it out, so it carries the
+   violet end of the gradient instead, exactly as the solid nav button does */
+.sp-hero-cta::after {
+    background: linear-gradient(105deg, transparent, rgba(123, 108, 255, 0.30) 50%, transparent);
+}
+.sp-hero-cta:hover::after,
+.sp-hero-second:hover::after {
+    left: 130%;
+    transition: left 0.55s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .sp-hero-second {

@@ -211,10 +211,12 @@
         // the horizon line is where both planes converge and would otherwise be a
         // hard bright seam across the middle of the band
         '    col *= smoothstep(0.0, 0.18, abs(uv.y));',
-        // and it fades toward the left, where every one of these bands puts its
-        // heading. the grid is a floor for the copy to stand on, not a pattern
-        // the copy has to compete with.
-        '    col *= smoothstep(-0.9, 0.35, uv.x);',
+        // it is quieter on the left, where every one of these bands puts its
+        // heading, but it never goes out: a fade that reaches zero deletes the
+        // left third of the band and reads as a rendering fault rather than as
+        // depth. it bottoms out at a third of full strength, so the grid runs
+        // edge to edge and the copy still sits on the calm end of it.
+        '    col *= mix(0.34, 1.0, smoothstep(-1.5, 0.15, uv.x));',
         '    col = vec3(1.0) - exp(-col * 1.6);',
         '    gl_FragColor = vec4(col * uFade, 1.0);',
         '}'
@@ -328,17 +330,43 @@
         if (awake) { t0 = 0; start(); } else stop();
     });
 
+    var io = null;
     if (window.IntersectionObserver) {
-        new IntersectionObserver(function (entries) {
+        io = new IntersectionObserver(function (entries) {
             running = entries[0].isIntersecting;
             if (running) { t0 = 0; start(); } else stop();
-        }, { threshold: 0 }).observe(host);
+        }, { threshold: 0 });
+        io.observe(host);
     }
 
     window.addEventListener('resize', function () { resize(); }, { passive: true });
 
     resize();
     start();
+
+    /* moving one scene between hosts.
+
+       the role cards are eight panels of which exactly one is shown, and giving
+       each its own canvas would be eight webgl contexts for one visible card:
+       browsers keep about sixteen alive per page and start silently dropping the
+       oldest past that. so the same context follows the visible panel instead.
+       reparenting a canvas keeps its context and its program, and the only
+       things that have to be redone are which element the observer is watching
+       and the size of the drawing buffer. */
+    return function moveTo(next) {
+        if (!next || next === host) return;
+        if (io) { io.unobserve(host); }
+        host = next;
+        host.insertBefore(canvas, host.firstChild);
+        if (io) { io.observe(host); }
+        running = true;
+        t0 = 0;
+        // the new host is almost certainly a different size, and resize() bails
+        // early when the pixel dimensions match what is already there
+        canvas.width = 0;
+        resize();
+        start();
+    };
     }
 
     /* what gets one.
@@ -360,4 +388,41 @@
             expo: 0.6
         });
     });
+
+    /* the role card, which is a band that moves.
+
+       it is the same dark panel as the two above and it was the one dark block
+       on the page still sitting on a flat gradient. it is quieter again than a
+       band, because a card this small is mostly copy and the grid is behind the
+       reading rather than beside it. */
+    var panels = document.querySelectorAll('.lp-role-panel');
+    if (panels.length) {
+        function activeCard() {
+            var on = document.querySelector('.lp-role-panel.active .lp-role-feature');
+            return on || document.querySelector('.lp-role-feature');
+        }
+        var card = activeCard();
+        if (card) {
+            var moveCard = mount(card, {
+                kind: 'planes',
+                cls: 'sp-band-gl sp-card-gl',
+                scale: coarse ? 0.45 : 0.6,
+                speed: 1.3,
+                expo: 0.42
+            });
+
+            // the switcher toggles a class rather than firing an event, so this
+            // watches the attribute it toggles. one observer on the parent, not
+            // eight on the panels.
+            if (moveCard && window.MutationObserver && panels[0].parentNode) {
+                new MutationObserver(function () {
+                    moveCard(activeCard());
+                }).observe(panels[0].parentNode, {
+                    attributes: true,
+                    attributeFilter: ['class'],
+                    subtree: true
+                });
+            }
+        }
+    }
 })();

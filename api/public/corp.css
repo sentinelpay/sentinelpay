@@ -4658,3 +4658,8 @@ html.theme-light .lp-nav {
     .lp-statsx::after, .lp-intel-banner::after { display: none; }
     .lp-intel-guide, .lp-intel-guide:hover { transform: none; }
 }
+
+/* the role card's copy has to sit above its canvas, the same way the intel
+   banner's does. the card is the host, so the canvas is its first child and
+   everything else needs a stacking context of its own. */
+.lp-role-feature > *:not(.sp-band-gl) { position: relative; z-index: 1; }
