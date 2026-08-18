@@ -222,13 +222,122 @@
         '}'
     ];
 
+    /* the ribbons: streams of value moving past, in perspective.
+
+       for the stats band, whose whole claim is that money never stops moving and
+       neither do we. seven ribbons at seven depths, each one a sine curve with
+       its own phase. everything else follows from the depth: a ribbon further
+       away is thinner, dimmer, drifts more slowly and sits closer to the
+       vanishing line, which is the perspective divide done by hand.
+
+       that last part is what makes it read as three dimensional rather than as
+       seven wavy lines. parallax between layers is the strongest depth cue there
+       is, stronger than shading, and here it costs one division. */
+    var RIBBONS = [
+        'void main() {',
+        '    vec2 uv = (gl_FragCoord.xy - 0.5 * uRes) / uRes.y;',
+        '    vec3 col = vec3(0.0);',
+
+        '    for (int i = 0; i < 7; i++) {',
+        '        float fi = float(i);',
+        // depth from just in front of the camera to well back
+        '        float z = 1.0 + fi * 0.85;',
+        '        float persp = 1.0 / z;',
+        // its own lane. spread in screen space rather than world space, then
+        // squeezed toward the middle by depth: a true perspective divide on a
+        // world offset puts the near ribbons several screens off the top and
+        // bottom edges, and all you see is the two or three furthest away.
+        '        float lane = ((fi - 3.0) / 3.0) * 0.44 * (0.35 + 0.65 * persp);',
+        // nearer ribbons run faster past the eye, which is the whole illusion
+        '        float t = uT * ' + (o.speed || 1.0).toFixed(2) + ' * persp * 1.6 + fi * 2.3;',
+        '        float wave = sin(uv.x * 1.5 + t) * 0.30 + sin(uv.x * 0.83 - t * 0.7 + fi) * 0.17;',
+        '        float y = lane + wave * persp * 0.55;',
+        '        float d = abs(uv.y - y);',
+        // thickness in screen space falls off with depth as well
+        '        float w = 0.020 * persp + 0.0035;',
+        '        float core = smoothstep(w, 0.0, d);',
+        '        float halo = exp(-d * (7.0 / (w + 0.02))) * 0.35;',
+        // near cyan, far violet, the same two ends as everything else on the page
+        '        vec3 tint = mix(vec3(0.15, 0.85, 1.00), vec3(0.55, 0.30, 1.00), fi / 6.0);',
+        // brightness falls with the square of depth, as light does
+        // brightness falls with depth, but linearly rather than with the square:
+        // the inverse square is physically right and visually leaves five of the
+        // seven ribbons invisible
+        '        col += tint * (core + halo) * (0.35 + 0.65 * persp) * 1.5;',
+        '    }',
+
+        '    col *= ' + (o.expo || 0.5).toFixed(3) + ';',
+        // quieter under the heading, never off: a fade that reaches zero deletes
+        // a third of the band and reads as a fault rather than as depth
+        '    col *= mix(0.34, 1.0, smoothstep(-1.5, 0.15, uv.x));',
+        '    col = vec3(1.0) - exp(-col * 1.6);',
+        '    gl_FragColor = vec4(col * uFade, 1.0);',
+        '}'
+    ];
+
+    /* the sheets: a corridor of pages coming toward you.
+
+       for the guides band, and the shape is the subject: fourteen rounded
+       rectangles at fourteen depths, flowing forward, each one turned a little
+       further than the last. it is a stack of documents you are falling through.
+
+       every sheet is one ray-plane intersection and one rounded-rectangle
+       distance, both closed form. no march, no loop over samples, fourteen
+       iterations of about fifteen instructions. the modulo is what makes it
+       endless: a sheet that passes the camera reappears at the back rather than
+       being created, so there is nothing to allocate and nothing to reset. */
+    var SHEETS = [
+        // the standard rounded box distance, in two dimensions
+        'float rbox(vec2 p, vec2 b, float r) {',
+        '    vec2 q = abs(p) - b + r;',
+        '    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;',
+        '}',
+        'mat2 rot(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }',
+
+        'void main() {',
+        '    vec2 uv = (gl_FragCoord.xy - 0.5 * uRes) / uRes.y;',
+        '    vec3 rd = normalize(vec3(uv, 1.35));',
+        '    vec3 col = vec3(0.0);',
+        '    float span = 21.0;',
+
+        '    for (int i = 0; i < 14; i++) {',
+        '        float fi = float(i);',
+        // flowing toward the camera and wrapping round the back
+        '        float z = mod(fi * 1.5 - uT * ' + (o.speed || 1.0).toFixed(2) + ', span) + 1.2;',
+        '        float t = z / rd.z;',
+        '        vec2 p = (rd * t).xy;',
+        // each sheet turned and nudged a little further than the one behind it,
+        // so the stack reads as loose paper rather than as a machined tunnel
+        '        p *= rot(fi * 0.11 + uT * 0.03);',
+        '        p += vec2(sin(fi * 2.1) * 0.10, cos(fi * 1.7) * 0.07);',
+        '        float sd = rbox(p, vec2(0.62, 0.40), 0.09);',
+        // the outline only. a filled sheet would hide everything behind it and
+        // the whole point is that you can see the depth of the stack
+        '        float edge = smoothstep(0.016, 0.0, abs(sd));',
+        '        vec3 tint = mix(vec3(0.20, 0.85, 1.00), vec3(0.58, 0.32, 1.00), fract(fi / 5.0));',
+        // fades in at the far end and out as it passes, so nothing pops
+        '        float fade = smoothstep(span, span * 0.55, z) * smoothstep(1.2, 3.0, z);',
+        '        col += tint * edge * fade * 0.9;',
+        '    }',
+
+        '    col *= ' + (o.expo || 0.5).toFixed(3) + ';',
+        '    col *= mix(0.34, 1.0, smoothstep(-1.5, 0.15, uv.x));',
+        '    col = vec3(1.0) - exp(-col * 1.7);',
+        '    gl_FragColor = vec4(col * uFade, 1.0);',
+        '}'
+    ];
+
     var FRAG = [
         'precision highp float;',
         '#define STEPS ' + STEPS,
         'uniform vec2 uRes;',
         'uniform float uT;',
         'uniform float uFade;'
-    ].concat(o.kind === 'planes' ? PLANES : LATTICE).join('\n');
+    ].concat(
+        o.kind === 'planes' ? PLANES :
+        o.kind === 'ribbons' ? RIBBONS :
+        o.kind === 'sheets' ? SHEETS : LATTICE
+    ).join('\n');
 
     function compile(type, src) {
         var sh = gl.createShader(type);
@@ -378,15 +487,34 @@
     var hero = document.querySelector('.lp-hero');
     if (hero) mount(hero, {});
 
-    var bands = document.querySelectorAll('.lp-statsx, .lp-intel-banner');
-    Array.prototype.forEach.call(bands, function (el) {
-        mount(el, {
-            kind: 'planes',
-            cls: 'sp-band-gl',
-            scale: coarse ? 0.45 : 0.6,
-            speed: 1.6,
-            expo: 0.6
-        });
+    /* every dark block gets depth, and no two get the same depth.
+
+       one shader everywhere was the safe version and it made the page look like
+       a template with the same wallpaper repeated. these are three different
+       pieces of geometry, chosen so each one is about the section it sits in:
+
+         stats     ribbons of value streaming past, because the claim there is
+                   that money never stops moving
+         guides    a corridor of pages flying at you, because the section is a
+                   library
+         roles     the floor and ceiling grid, which is the plainest of the
+                   three and belongs under a card that is mostly copy */
+    var stats = document.querySelector('.lp-statsx');
+    if (stats) mount(stats, {
+        kind: 'ribbons',
+        cls: 'sp-band-gl',
+        scale: coarse ? 0.45 : 0.6,
+        speed: 1.0,
+        expo: 0.55
+    });
+
+    var intel = document.querySelector('.lp-intel-banner');
+    if (intel) mount(intel, {
+        kind: 'sheets',
+        cls: 'sp-band-gl',
+        scale: coarse ? 0.45 : 0.6,
+        speed: 1.5,
+        expo: 0.85
     });
 
     /* the role card, which is a band that moves.
