@@ -4532,3 +4532,129 @@ html.theme-light .lp-nav {
 @media (prefers-reduced-motion: reduce) {
     .lp-statsx, .lp-cta-band { clip-path: none; opacity: 1; }
 }
+
+/* ---- one trick per section ------------------------------------------------ */
+/* the numbers come from flair.js as --sp-mx and --sp-my, the cursor's position
+   inside the element from 0 to 1 on each axis. the design lives here.
+
+   the fallbacks are 0.5, the middle, so every one of these rules is a no-op
+   until a pointer actually moves over the element: the page with the script
+   blocked is the page as it was. */
+
+/* built for you: the role card leans toward the cursor.
+
+   the perspective is on the card itself rather than on a wrapper, and the tilt
+   is under three degrees. anything more and the text on the far edge visibly
+   blurs, which is the difference between an object with weight and a gimmick. */
+.lp-role-feature {
+    transform: perspective(1100px)
+               rotateX(calc((0.5 - var(--sp-my, 0.5)) * 3.4deg))
+               rotateY(calc((var(--sp-mx, 0.5) - 0.5) * 4.2deg));
+    transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.5s ease;
+    transform-style: preserve-3d;
+    will-change: auto;
+}
+/* while the cursor is on it the transition is short, so it follows rather than
+   trails; the long one above is what lets it settle back when the cursor leaves */
+.lp-role-feature.sp-lean-on {
+    transition: transform 0.12s linear, box-shadow 0.5s ease;
+    box-shadow: 0 40px 80px -40px rgba(0, 0, 0, 0.75);
+}
+/* the light on it moves with the lean, which is what sells the tilt as a
+   surface catching a light rather than as a rectangle being rotated */
+.lp-role-feature::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.35s ease;
+    background: radial-gradient(
+        420px circle at calc(var(--sp-mx, 0.5) * 100%) calc(var(--sp-my, 0.5) * 100%),
+        rgba(120, 210, 255, 0.10),
+        transparent 62%
+    );
+}
+.lp-role-feature.sp-lean-on::after { opacity: 1; }
+
+/* nine tools: the card lights along the edge nearest the cursor.
+
+   a border cannot take a gradient and keep a radius, so this is a layer inset by
+   the border width and masked to the frame. the alternative, a second element
+   behind a padded background, needs markup on nine cards. */
+.lp-sol-card { position: relative; }
+.lp-sol-card::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    background: radial-gradient(
+        200px circle at calc(var(--sp-mx, 0.5) * 100%) calc(var(--sp-my, 0.5) * 100%),
+        rgba(0, 240, 255, 0.75),
+        rgba(160, 32, 240, 0.35) 45%,
+        transparent 70%
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+}
+.lp-sol-card.sp-lit-on::before { opacity: 1; }
+
+/* stats and guides: one pass of light as the band arrives.
+
+   `forwards` and one iteration, and the class is never taken off again, so it
+   happens once in a visit rather than every time the band scrolls back past. */
+.lp-statsx::after,
+.lp-intel-banner::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    opacity: 0;
+    background: linear-gradient(
+        104deg,
+        transparent 38%,
+        rgba(140, 220, 255, 0.10) 47%,
+        rgba(255, 255, 255, 0.14) 50%,
+        rgba(180, 140, 255, 0.10) 53%,
+        transparent 62%
+    );
+    transform: translateX(-100%);
+}
+.lp-statsx.sp-swept::after,
+.lp-intel-banner.sp-swept::after {
+    animation: spSweepBand 1.35s cubic-bezier(0.3, 0, 0.2, 1) 0.15s 1 forwards;
+}
+@keyframes spSweepBand {
+    from { transform: translateX(-100%); opacity: 1; }
+    to   { transform: translateX(100%); opacity: 0; }
+}
+
+/* guides: the card lags the scroll.
+
+   --sp-lag is a pixel offset from flair.js, roughly plus or minus 26 at the top
+   and bottom of the window. it is the only foreground object over a background
+   on this page, and a small difference in speed is the whole reason two planes
+   read as two planes. */
+.lp-intel-guide {
+    transform: translateY(var(--sp-lag, 0px));
+}
+/* the existing hover lift has to keep working, so it is restated with the lag
+   folded in rather than being overwritten by the rule above */
+.lp-intel-guide:hover {
+    transform: translateY(calc(var(--sp-lag, 0px) - 6px)) scale(1.02);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lp-role-feature { transform: none; }
+    .lp-role-feature::after, .lp-sol-card::before { display: none; }
+    .lp-statsx::after, .lp-intel-banner::after { display: none; }
+    .lp-intel-guide, .lp-intel-guide:hover { transform: none; }
+}
