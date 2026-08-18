@@ -80,7 +80,7 @@
                         if (!v) return t('this field is required');
                         var host = v.replace(/^https?:\/\//i, '').replace(/\/.*$/, '').replace(/^www\./i, '').trim().toLowerCase();
                         if (!domainRe.test(host)) return t('enter a valid domain, e.g. company.com');
-                        var emailInp = form.querySelector('input[name="email"]');
+                        var emailInp = form.querySelector('input[name="Email"]');
                         var emailDomain = emailInp && emailInp.value.indexOf('@') !== -1 ? emailInp.value.trim().split('@').pop().toLowerCase() : '';
                         if (emailDomain && host !== emailDomain && host.slice(-(emailDomain.length + 1)) !== '.' + emailDomain && emailDomain.slice(-(host.length + 1)) !== '.' + host) {
                             return t('must match your work email domain') + ' (@' + emailDomain + ')';
@@ -126,7 +126,7 @@
                     setError(inp, msg);
                     if (msg) ok = false;
                 });
-                var checks = stepEl.querySelectorAll('input[name="solutions"]');
+                var checks = stepEl.querySelectorAll('input[name="Solutions"]');
                 if (checks.length) {
                     var anyChecked = Array.prototype.some.call(checks, function(c) { return c.checked; });
                     var checkField = checks[0].closest('.lp-demo-field');
@@ -273,9 +273,9 @@
                 // visible band without firing a window resize on ios
                 if (window.visualViewport) {
                     window.visualViewport.addEventListener('resize', function() { if (!menu.hidden) place(); });
-                    window.visualViewport.addEventListener('scroll', function() { if (!menu.hidden) place(); });
+                    window.visualViewport.addEventListener('Scroll', function() { if (!menu.hidden) place(); });
                 }
-                window.addEventListener('scroll', function(e) {
+                window.addEventListener('Scroll', function(e) {
                     // page scrolls: keep the fixed-position menu glued to its button
                     if (!menu.hidden && !(e.target instanceof Node && menu.contains(e.target))) place();
                 }, true);
@@ -299,11 +299,11 @@
             form.querySelectorAll('input[name="solutions"]').forEach(function(cb) {
                 cb.addEventListener('change', function() {
                     if (cb.checked) {
-                        var isNotSure = cb.value === 'not sure yet';
+                        var isNotSure = cb.value === 'Not sure yet';
                         form.querySelectorAll('input[name="solutions"]').forEach(function(other) {
                             if (other === cb) return;
-                            var otherIsNotSure = other.value === 'not sure yet';
-                            // checking "not sure yet" clears all others; checking any other clears "not sure yet"
+                            var otherIsNotSure = other.value === 'Not sure yet';
+                            // checking "Not sure yet" clears all others; checking any other clears "Not sure yet"
                             if ((isNotSure && !otherIsNotSure) || (!isNotSure && otherIsNotSure)) other.checked = false;
                         });
                     }
@@ -330,7 +330,7 @@
                 autoGrow();
             }
 
-            var validatedNames = ['firstName','lastName','jobTitle','company','website','email','message'];
+            var validatedNames = ['firstName','lastName','jobTitle','Company','website','Email','message'];
             form.querySelectorAll('input[name], select[name], textarea[name]').forEach(function(inp) {
                 if (validatedNames.indexOf(inp.name) === -1) return;
                 inp.addEventListener('blur', function() { setError(inp, fieldError(inp)); });
@@ -379,7 +379,7 @@
             // A single-input form submits on enter, and this form has one <form> across
             // four steps, so enter on step 1 fired the real submit: it validated only the
             // step you were on and posted a half-empty request, once per press. Enter now
-            // means "next" until the last step, where it means submit.
+            // means "Next" until the last step, where it means submit.
             form.addEventListener('keydown', function(e) {
                 if (e.key !== 'Enter' || e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) return;
                 var el = e.target;
@@ -440,7 +440,7 @@
                 if (!form.closest('.bad-form-card')) {
                     var warn = document.createElement('p');
                     warn.className = 'lp-demo-mail-down';
-                    warn.textContent = t('we cannot receive form submissions right now. we are working on it, please try again shortly.');
+                    warn.textContent = t('We cannot receive form submissions right now. We are working on it, please try again shortly.');
                     var actions = form.querySelector('.lp-demo-actions');
                     if (actions && actions.parentNode) actions.parentNode.insertBefore(warn, actions);
                 }
@@ -451,18 +451,18 @@
                 if (mailDown) return;
                 if (!validateStep(cur)) return;
                 if (turnstileEnabled && !turnstileToken) {
-                    if (window.SentinelToast) window.SentinelToast.show(t('please complete the verification below.'), 'warning');
+                    if (window.SentinelToast) window.SentinelToast.show(t('Please complete the verification below.'), 'warning');
                     return;
                 }
                 var data = {};
-                new FormData(form).forEach(function(v, k) { if (k !== 'solutions') data[k] = typeof v === 'string' ? v.trim() : v; });
+                new FormData(form).forEach(function(v, k) { if (k !== 'Solutions') data[k] = typeof v === 'string' ? v.trim() : v; });
                 data.solutions = Array.prototype.map.call(form.querySelectorAll('input[name="solutions"]:checked'), function(c) { return c.value; });
                 form.querySelectorAll('.lp-demo-consent input[type="checkbox"]').forEach(function(cb) { data[cb.name] = !!cb.checked; });
                 if (turnstileToken) data['cf-turnstile-response'] = turnstileToken;
                 // the confirmation email is written in whatever language the visitor is reading
                 data.lang = (window.SentinelI18n && typeof window.SentinelI18n.lang === 'function' ? window.SentinelI18n.lang() : 'en') || 'en';
                 submitBtn.disabled = true;
-                submitBtn.textContent = t('sending…');
+                submitBtn.textContent = t('Sending…');
                 fetch(cfg.endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -511,7 +511,7 @@
                     // everything else is something the visitor can act on.
                     var msg = (err && err.reason && err.status && err.status < 500)
                         ? t(err.reason)
-                        : t('could not send right now. please email support@sentinelpay.org');
+                        : t('Could not send right now. Please email support@sentinelpay.org');
                     if (window.SentinelToast) window.SentinelToast.show(msg, 'error');
                     else alert(msg);
                 });

@@ -15,10 +15,17 @@ PUB = 'api/public'
 KEYS = set(json.load(open(sys.argv[1], encoding='utf-8')))
 
 SKIP_EXACT = {
-    'sentinelpay', 'support@sentinelpay.org', 'privacy@sentinelpay.org',
+    # the company, its domain and its addresses. the brand is written SentinelPay
+    # in prose now that the site is no longer all lowercase, and lowercase inside
+    # a domain, so both spellings are here.
+    'sentinelpay', 'SentinelPay', 'support@sentinelpay.org', 'privacy@sentinelpay.org',
     'yourcompany.com', 'sentinelpay.org',
     # author bylines, alone or together: names, not copy
     'ceem', 'mind', 'chibby', 'mind, chibby', 'ceem, mind, chibby',
+    'Ceem', 'Mind', 'Chibby', 'Mind, chibby', 'Ceem, mind, chibby',
+    # the companies in the logo strip. real names, the same in every language.
+    'elektromaterijal', 'Elektromaterijal', 'racunala', 'Racunala',
+    'traveler', 'Traveler', 'futura', 'Futura', 'majice', 'Majice',
 }
 SKIP_RE = re.compile(r'^[\W\d\s]*$')          # punctuation / numbers only
 # an invented wallet address in the hero illustration. it is data, not copy, and

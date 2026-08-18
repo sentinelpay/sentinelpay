@@ -103,7 +103,7 @@
         // it steps out of the way while the code is being entered
         var heads = root.querySelectorAll('.sp-authm-head, .sp-auth-h, .sp-auth-p');
         var submitBtn = form.querySelector('button[type="submit"]');
-        var emailInput = form.querySelector('input[type="email"]');
+        var emailInput = form.querySelector('input[type="Email"]');
 
         // ---- the terms tick ---------------------------------------------------
         // an unticked box is not an error worth a popup in the corner: the thing
@@ -518,7 +518,7 @@
                 clearCode(false);
                 showError('');
                 step('register');
-                formError(t('that code has expired. sign up again and we will send a new one.'));
+                formError(t('That code has expired. Sign up again and we will send a new one.'));
             }, Math.max(0, state.expires - Date.now()));
         }
 
@@ -541,11 +541,11 @@
             data.lang = lang();
 
             if (!data.firstName || !data.lastName || !data.email) {
-                formError(t('please fill in every field.'));
+                formError(t('Please fill in every field.'));
                 return;
             }
             if (!data.password || data.password.length < 12) {
-                formError(t('password must be at least 12 characters'));
+                formError(t('Password must be at least 12 characters'));
                 return;
             }
             if (!data.consent) {
@@ -558,7 +558,7 @@
             busy = true;
             submitBtn.disabled = true;
             var label = submitBtn.textContent;
-            submitBtn.textContent = t('creating your account…');
+            submitBtn.textContent = t('Creating your account…');
 
             // the check comes first, and it may have to run again: a page that has
             // been open a while is holding a token the server will refuse
@@ -582,7 +582,7 @@
                 setTimeout(function () { boxes[0].focus(); }, 340);
             }).catch(function (err) {
                 if (err.noToken) {
-                    formError(t('the check below did not finish. please try again in a moment.'));
+                    formError(t('The check below did not finish. Please try again in a moment.'));
                     return;
                 }
                 // "a code was just sent" is an answer to the button that was
@@ -613,7 +613,7 @@
             busy = true;
             vBtn.disabled = true;
             var label = vBtn.textContent;
-            vBtn.textContent = t('checking…');
+            vBtn.textContent = t('Checking…');
             showError('');
 
             post('/v1/auth/verify', { email: pendingEmail, code: code }).then(function (out) {
@@ -644,7 +644,7 @@
         verify.addEventListener('submit', function (e) {
             e.preventDefault();
             if (codeValue().length !== 6) {
-                showError(t('enter all six digits.'));
+                showError(t('Enter all six digits.'));
                 return;
             }
             submitCode();
@@ -771,7 +771,7 @@
         // fields keep their autocomplete hints, so clicking one still offers
         // whatever is saved. the difference is that it is offered rather than
         // already typed.
-        var loginFields = [form.querySelector('input[type="email"]'), form.querySelector('input[type="password"]')]
+        var loginFields = [form.querySelector('input[type="Email"]'), form.querySelector('input[type="Password"]')]
             .filter(Boolean);
 
         function clearPrefill() {
@@ -818,7 +818,7 @@
             // never trimmed: a space is a character somebody chose
             var password = passInput ? passInput.value : '';
             if (!email || !password) {
-                say(t('please fill in every field.'));
+                say(t('Please fill in every field.'));
                 return;
             }
 
@@ -826,7 +826,7 @@
             busy = true;
             submitBtn.disabled = true;
             var label = submitBtn.textContent;
-            submitBtn.textContent = t('signing you in…');
+            submitBtn.textContent = t('Signing you in…');
 
             post('/v1/auth/login', { email: email, password: password }).then(function () {
                 // replace rather than assign: the back button should not come

@@ -6,7 +6,7 @@
     <!-- ios turns things like "1-10" and "51-200" into phone links, which made
          the company-size options open the call sheet instead of selecting -->
     <meta name="format-detection" content="telephone=no">
-    <title>sentinelpay | sign in</title>
+    <title>SentinelPay | sign in</title>
     <script>/* tab title before first paint; for articles this is the h1 translation */(function(){var T={"hr":"sentinelpay | prijava","de":"sentinelpay | anmelden"},m=document.cookie.match(/(?:^|; )sp-lang=([^;]*)/),l=m?decodeURIComponent(m[1]):null;if(!l){try{l=localStorage.getItem("sp-lang")}catch(e){}}if(l!=="hr"&&l!=="de"&&l!=="en")l=document.documentElement.getAttribute("data-geo-lang");if(l!=="hr"&&l!=="de")return;document.documentElement.lang=l;if(!T)return;window.__SP_TITLE_SRC=document.title.replace(/\s+/g," ").trim();document.title=T[l];})();</script>
     <meta name="description" content="connect a key and sentinelpay screens what has already touched your wallets. no call to book and nobody to wait for.">
     <script>document.documentElement.classList.add('theme-light');</script>
@@ -18,7 +18,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/style.css?v=24">
     <link rel="stylesheet" href="/landing.css?v=13.4">
-    <link rel="stylesheet" href="/corp.css?v=228">
+    <link rel="stylesheet" href="/corp.css?v=230">
     <style>
         /* page loader */
         #sp-loader{position:fixed;inset:0;z-index:99999;background:#050505;display:flex;align-items:center;justify-content:center;transition:opacity 0.55s ease;}
@@ -222,75 +222,75 @@
 
         <a class="sp-auth-back" href="https://sentinelpay.org">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
-            back to sentinelpay
+            Back to SentinelPay
         </a>
 
         <div class="sp-auth-stage">
 
-            <h1 class="sp-auth-h" id="auth-h-in">welcome back</h1>
-            <h1 class="sp-auth-h" id="auth-h-up" hidden>create your account</h1>
-            <p class="sp-auth-p" id="auth-s-in">sign in to check a wallet and pick up where you left off.</p>
-            <p class="sp-auth-p" id="auth-s-up" hidden>one account for your whole team, with every wallet you check kept in one place.</p>
+            <h1 class="sp-auth-h" id="auth-h-in">Welcome back</h1>
+            <h1 class="sp-auth-h" id="auth-h-up" hidden>Create your account</h1>
+            <p class="sp-auth-p" id="auth-s-in">Sign in to check a wallet and pick up where you left off.</p>
+            <p class="sp-auth-p" id="auth-s-up" hidden>One account for your whole team, with every wallet you check kept in one place.</p>
 
             <div class="lp-demo-card bad-form-card sp-auth-panel">
                     <span class="lp-demo-dots" aria-hidden="true"></span>
                     <span class="lp-demo-edge" aria-hidden="true"></span>
                 <div class="sp-auth-tabs" role="tablist">
-                    <button type="button" class="sp-auth-tab is-active" id="auth-tab-in" role="tab" aria-selected="true" aria-controls="auth-panel-in">log in</button>
-                    <button type="button" class="sp-auth-tab" id="auth-tab-up" role="tab" aria-selected="false" aria-controls="auth-panel-up">create account</button>
+                    <button type="button" class="sp-auth-tab is-active" id="auth-tab-in" role="tab" aria-selected="true" aria-controls="auth-panel-in">Log in</button>
+                    <button type="button" class="sp-auth-tab" id="auth-tab-up" role="tab" aria-selected="false" aria-controls="auth-panel-up">Create account</button>
                 </div>
 
                 <form class="sp-auth-form" id="auth-panel-in" role="tabpanel" aria-labelledby="auth-tab-in" data-auth="login" novalidate>
                     <div class="lp-demo-field lp-demo-field-full">
-                        <label for="auth-in-email">work email</label>
+                        <label for="auth-in-email">Work email</label>
                         <input id="auth-in-email" name="email" type="email" autocomplete="email" placeholder="you@yourcompany.com">
                     </div>
                     <div class="lp-demo-field lp-demo-field-full">
-                        <label for="auth-in-pass">password</label>
+                        <label for="auth-in-pass">Password</label>
                         <input id="auth-in-pass" name="password" type="password" autocomplete="current-password" placeholder="••••••••••••">
                     </div>
                     <div class="sp-auth-row">
-                        <label class="sp-auth-remember"><input type="checkbox" name="remember"><span>keep me signed in</span></label>
-                        <a class="sp-auth-link" href="/start-free-trial">forgot your password?</a>
+                        <label class="sp-auth-remember"><input type="checkbox" name="remember"><span>Keep me signed in</span></label>
+                        <a class="sp-auth-link" href="/start-free-trial">Forgot your password?</a>
                     </div>
-                    <button type="submit" class="lp-demo-submit sp-auth-submit">log in</button>
+                    <button type="submit" class="lp-demo-submit sp-auth-submit">Log in</button>
                 </form>
 
                 <form class="sp-auth-form" id="auth-panel-up" role="tabpanel" aria-labelledby="auth-tab-up" data-auth="register" novalidate hidden>
                     <div class="lp-demo-grid">
                         <div class="lp-demo-field">
-                            <label for="auth-up-first">first name</label>
+                            <label for="auth-up-first">First name</label>
                             <input id="auth-up-first" name="firstName" type="text" autocomplete="given-name">
                         </div>
                         <div class="lp-demo-field">
-                            <label for="auth-up-last">last name</label>
+                            <label for="auth-up-last">Last name</label>
                             <input id="auth-up-last" name="lastName" type="text" autocomplete="family-name">
                         </div>
                     </div>
                     <div class="lp-demo-field lp-demo-field-full">
-                        <label for="auth-up-email">work email</label>
+                        <label for="auth-up-email">Work email</label>
                         <input id="auth-up-email" name="email" type="email" autocomplete="email" placeholder="you@yourcompany.com">
                     </div>
                     <div class="lp-demo-field lp-demo-field-full">
-                        <label for="auth-up-pass">password</label>
-                        <input id="auth-up-pass" name="password" type="password" autocomplete="new-password" placeholder="at least 12 characters">
+                        <label for="auth-up-pass">Password</label>
+                        <input id="auth-up-pass" name="password" type="password" autocomplete="new-password" placeholder="At least 12 characters">
                     </div>
-                    <label class="lp-demo-consent"><input type="checkbox" name="consent"><span>i agree to <a href="/terms-of-service">the terms of service</a> and to be contacted about this account.</span></label>
-                    <button type="submit" class="lp-demo-submit sp-auth-submit">create account</button>
+                    <label class="lp-demo-consent"><input type="checkbox" name="consent"><span>I agree to <a href="/terms-of-service">the terms of service</a> and to be contacted about this account.</span></label>
+                    <button type="submit" class="lp-demo-submit sp-auth-submit">Create account</button>
                 </form>
             </div>
         </div>
 
         <div class="sp-auth-foot">
-            <a href="/terms-of-service">terms of service</a>
+            <a href="/terms-of-service">Terms of service</a>
             <span aria-hidden="true">·</span>
-            <a href="/privacy-policy">privacy policy</a>
+            <a href="/privacy-policy">Privacy policy</a>
             <span aria-hidden="true">·</span>
-            <a href="/book-a-demo">book a demo</a>
+            <a href="/book-a-demo">Book a demo</a>
         </div>
     </main>
 
-    <button id="sp-chat-btn" aria-label="open live chat">
+    <button id="sp-chat-btn" aria-label="Open live chat">
         <svg class="sp-chat-ico sp-chat-ico-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         <svg class="sp-chat-ico sp-chat-ico-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
         <span id="sp-chat-badge"></span>

@@ -2,7 +2,7 @@
 
    the pair of buttons in the corner is an invitation, and an invitation to
    somebody who has already accepted it reads as the site not knowing who they
-   are. so "log in" and "get started" become one button that goes to the
+   are. so "Log in" and "Get started" become one button that goes to the
    dashboard, and a round mark with their initials next to it.
 
    why one button and not a menu: there is exactly one place to go. a menu that
@@ -41,7 +41,7 @@
     }
 
     function signedIn(me) {
-        var label = t('dashboard');
+        var label = t('Dashboard');
 
         if (login && register) {
             var mark = document.createElement('a');

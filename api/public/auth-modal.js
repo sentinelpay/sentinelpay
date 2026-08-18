@@ -40,11 +40,11 @@
                 '<form class="sp-auth-form" id="sp-authm-panel-in" role="tabpanel" data-auth="login" novalidate>' +
                     '<div class="lp-demo-field lp-demo-field-full">' +
                         '<label for="sp-authm-email">work email</label>' +
-                        '<input id="sp-authm-email" name="email" type="email" autocomplete="email" placeholder="you@yourcompany.com">' +
+                        '<input id="sp-authm-email" name="Email" type="Email" autocomplete="Email" placeholder="you@yourcompany.com">' +
                     '</div>' +
                     '<div class="lp-demo-field lp-demo-field-full">' +
                         '<label for="sp-authm-pass">password</label>' +
-                        '<input id="sp-authm-pass" name="password" type="password" autocomplete="current-password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;">' +
+                        '<input id="sp-authm-pass" name="Password" type="Password" autocomplete="current-password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;">' +
                     '</div>' +
                     '<div class="sp-auth-row">' +
                         '<label class="sp-auth-remember"><input type="checkbox" name="remember"><span>keep me signed in</span></label>' +
@@ -66,11 +66,11 @@
                     '</div>' +
                     '<div class="lp-demo-field lp-demo-field-full">' +
                         '<label for="sp-authm-email2">work email</label>' +
-                        '<input id="sp-authm-email2" name="email" type="email" autocomplete="email" placeholder="you@yourcompany.com">' +
+                        '<input id="sp-authm-email2" name="Email" type="Email" autocomplete="Email" placeholder="you@yourcompany.com">' +
                     '</div>' +
                     '<div class="lp-demo-field lp-demo-field-full">' +
                         '<label for="sp-authm-pass2">password</label>' +
-                        '<input id="sp-authm-pass2" name="password" type="password" autocomplete="new-password" placeholder="at least 12 characters">' +
+                        '<input id="sp-authm-pass2" name="Password" type="Password" autocomplete="new-password" placeholder="At least 12 characters">' +
                     '</div>' +
                     '<label class="lp-demo-consent"><input type="checkbox" name="consent"><span>i agree to <a href="/terms-of-service">the terms of service</a> and to be contacted about this account.</span></label>' +
                     '<button type="submit" class="lp-demo-submit sp-auth-submit">create account</button>' +

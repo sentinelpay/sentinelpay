@@ -6,7 +6,7 @@
     <!-- ios turns things like "1-10" and "51-200" into phone links, which made
          the company-size options open the call sheet instead of selecting -->
     <meta name="format-detection" content="telephone=no">
-    <title>sentinelpay | dashboard</title>
+    <title>SentinelPay | dashboard</title>
     <script>/* tab title before first paint; for articles this is the h1 translation */(function(){var T={"hr":"sentinelpay | prijava","de":"sentinelpay | anmelden"},m=document.cookie.match(/(?:^|; )sp-lang=([^;]*)/),l=m?decodeURIComponent(m[1]):null;if(!l){try{l=localStorage.getItem("sp-lang")}catch(e){}}if(l!=="hr"&&l!=="de"&&l!=="en")l=document.documentElement.getAttribute("data-geo-lang");if(l!=="hr"&&l!=="de")return;document.documentElement.lang=l;if(!T)return;window.__SP_TITLE_SRC=document.title.replace(/\s+/g," ").trim();document.title=T[l];})();</script>
     <meta name="description" content="connect a key and sentinelpay screens what has already touched your wallets. no call to book and nobody to wait for.">
     <script>document.documentElement.classList.add('theme-light');</script>
@@ -18,7 +18,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/style.css?v=24">
     <link rel="stylesheet" href="/landing.css?v=13.4">
-    <link rel="stylesheet" href="/corp.css?v=228">
+    <link rel="stylesheet" href="/corp.css?v=230">
     <style>
         /* page loader */
         #sp-loader{position:fixed;inset:0;z-index:99999;background:#050505;display:flex;align-items:center;justify-content:center;transition:opacity 0.55s ease;}
@@ -222,58 +222,58 @@
 
         <a class="sp-auth-back" href="https://sentinelpay.org">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
-            back to sentinelpay
+            Back to SentinelPay
         </a>
 
         <div class="sp-dash-stage">
             <div class="sp-dash-head">
                 <div>
-                    <p class="sp-dash-eyebrow" id="dash-greet">signed in</p>
-                    <h1 class="sp-dash-h">your account</h1>
+                    <p class="sp-dash-eyebrow" id="dash-greet">Signed in</p>
+                    <h1 class="sp-dash-h">Your account</h1>
                 </div>
-                <button type="button" class="sp-dash-out" id="dash-logout">sign out</button>
+                <button type="button" class="sp-dash-out" id="dash-logout">Sign out</button>
             </div>
 
             <div class="lp-demo-card sp-auth-panel sp-dash-card">
                 <div class="sp-dash-rows">
-                    <div class="sp-dash-row"><span>name</span><b id="dash-name">&mdash;</b></div>
-                    <div class="sp-dash-row"><span>work email</span><b id="dash-email">&mdash;</b></div>
-                    <div class="sp-dash-row"><span>member since</span><b id="dash-since">&mdash;</b></div>
-                    <div class="sp-dash-row"><span>email verified</span><b class="sp-dash-yes">yes</b></div>
+                    <div class="sp-dash-row"><span>Name</span><b id="dash-name">&mdash;</b></div>
+                    <div class="sp-dash-row"><span>Work email</span><b id="dash-email">&mdash;</b></div>
+                    <div class="sp-dash-row"><span>Member since</span><b id="dash-since">&mdash;</b></div>
+                    <div class="sp-dash-row"><span>Email verified</span><b class="sp-dash-yes">Yes</b></div>
                 </div>
             </div>
 
             <div class="lp-demo-card sp-auth-panel sp-dash-card sp-dash-staff" id="dash-staff" hidden>
-                <h2 class="sp-dash-h2">staff</h2>
-                <p class="sp-dash-p">you are signed in as staff, so these open without a token. every visit is written to the log with your address on it.</p>
+                <h2 class="sp-dash-h2">Staff</h2>
+                <p class="sp-dash-p">You are signed in as staff, so these open without a token. Every visit is written to the log with your address on it.</p>
                 <div class="sp-dash-links">
-                    <a class="sp-dash-link" href="/v1/inbox">inbox</a>
-                    <a class="sp-dash-link" href="/v1/inbox?flagged=1">worth a look</a>
-                    <a class="sp-dash-link" href="/v1/mail-preview">mail previews</a>
-                    <a class="sp-dash-link" href="/v1/mail-status">mail status</a>
+                    <a class="sp-dash-link" href="/v1/inbox">Inbox</a>
+                    <a class="sp-dash-link" href="/v1/inbox?flagged=1">Worth a look</a>
+                    <a class="sp-dash-link" href="/v1/mail-preview">Mail previews</a>
+                    <a class="sp-dash-link" href="/v1/mail-status">Mail status</a>
                 </div>
             </div>
 
             <div class="lp-demo-card sp-auth-panel sp-dash-card sp-dash-next">
-                <h2 class="sp-dash-h2">what happens next</h2>
-                <p class="sp-dash-p">the checks themselves are not open yet. we are building them, and this account is what you will use to reach them. you do not need to do anything: we will write to this address the day it opens.</p>
+                <h2 class="sp-dash-h2">What happens next</h2>
+                <p class="sp-dash-p">The checks themselves are not open yet. We are building them, and this account is what you will use to reach them. You do not need to do anything: We will write to this address the day it opens.</p>
                 <div class="sp-dash-links">
-                    <a class="sp-dash-link" href="/faq">questions and answers</a>
-                    <a class="sp-dash-link" href="/book-a-demo">talk to us</a>
+                    <a class="sp-dash-link" href="/faq">Questions and answers</a>
+                    <a class="sp-dash-link" href="/book-a-demo">Talk to us</a>
                 </div>
             </div>
         </div>
 
         <div class="sp-auth-foot">
-            <a href="/terms-of-service">terms of service</a>
+            <a href="/terms-of-service">Terms of service</a>
             <span aria-hidden="true">&middot;</span>
-            <a href="/privacy-policy">privacy policy</a>
+            <a href="/privacy-policy">Privacy policy</a>
             <span aria-hidden="true">&middot;</span>
-            <a href="/faq">faq</a>
+            <a href="/faq">FAQ</a>
         </div>
     </main>
 
-    <button id="sp-chat-btn" aria-label="open live chat">
+    <button id="sp-chat-btn" aria-label="Open live chat">
         <svg class="sp-chat-ico sp-chat-ico-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         <svg class="sp-chat-ico sp-chat-ico-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
         <span id="sp-chat-badge"></span>

@@ -139,6 +139,6 @@
         if (raf || !pending.length) return;
         raf = window.requestAnimationFrame(function () { raf = 0; sweep(); });
     }
-    window.addEventListener('scroll', queue, { passive: true });
+    window.addEventListener('Scroll', queue, { passive: true });
     window.addEventListener('resize', queue, { passive: true });
 })();
