@@ -777,8 +777,10 @@ html.theme-light .lp-nav .auth-nav-btn:hover::after {
     object-fit: contain;
     flex-shrink: 0;
 }
-/* solana ships as a filled square; round it to a coin so it matches the others */
-.lp-net-mark img[alt="solana"] { border-radius: 50%; }
+/* solana ships as a filled square; round it to a coin so it matches the others.
+   keyed on the file rather than on the alt text, for the same reason as the
+   heights below: alt text is copy and copy moves. */
+.lp-net-mark img[data-logo="sol"] { border-radius: 50%; }
 .lp-net-mark:hover {
     filter: grayscale(0);
     opacity: 1;
@@ -2556,11 +2558,17 @@ html.theme-light .lp-demo-select-list { scrollbar-width: thin; scrollbar-color: 
    single shared size renders the wide ones short and unreadable. tune each. */
 .lp-net-mark { gap: 0; height: 48px; margin-right: 3.6rem; }
 .lp-net-mark img { width: auto; height: auto; max-width: none; object-fit: contain; }
-.lp-net-mark img[alt="traveler"] { height: 46px; }
-.lp-net-mark img[alt="majice.hr"] { height: 44px; }
-.lp-net-mark img[alt="futura"] { height: 40px; }
-.lp-net-mark img[alt="racunala.hr"] { height: 38px; }
-.lp-net-mark img[alt="elektromaterijal"] { height: 32px; }
+/* one height per logo, because they are five different shapes and a single
+   rule leaves the tall ones towering over the wide ones. keyed on data-logo:
+   these were on img[alt="..."], and alt text is copy. it is read aloud, it
+   gets translated, and recasing it to "Traveler" detached the selector and
+   dropped that logo back to its natural 289x263, which the band then showed
+   a horizontal slice through. */
+.lp-net-mark img[data-logo="traveler"] { height: 46px; }
+.lp-net-mark img[data-logo="majicehr"] { height: 44px; }
+.lp-net-mark img[data-logo="futura"] { height: 40px; }
+.lp-net-mark img[data-logo="racunalahr"] { height: 38px; }
+.lp-net-mark img[data-logo="elektromaterijal"] { height: 32px; }
 @media (max-width: 560px) {
     .lp-net-mark { height: 36px; margin-right: 2.2rem; }
     .lp-net-mark img { width: auto; height: auto; transform: scale(0.78); }
@@ -2648,11 +2656,11 @@ html.theme-light .lp-demo-select-list { scrollbar-width: thin; scrollbar-color: 
    wide ones render short and unreadable, so each gets its own optical height. */
 .bad-net-mark { display: inline-flex; align-items: center; justify-content: center; height: 48px; margin-right: 3.6rem; filter: grayscale(1); opacity: 0.55; transition: filter 0.3s ease, opacity 0.3s ease; }
 .bad-net-mark img { width: auto; object-fit: contain; display: block; }
-.bad-net-mark img[alt="traveler"] { height: 46px; }
-.bad-net-mark img[alt="majice.hr"] { height: 44px; }
-.bad-net-mark img[alt="futura"] { height: 40px; }
-.bad-net-mark img[alt="racunala.hr"] { height: 38px; }
-.bad-net-mark img[alt="elektromaterijal"] { height: 32px; }
+.bad-net-mark img[data-logo="traveler"] { height: 46px; }
+.bad-net-mark img[data-logo="majicehr"] { height: 44px; }
+.bad-net-mark img[data-logo="futura"] { height: 40px; }
+.bad-net-mark img[data-logo="racunalahr"] { height: 38px; }
+.bad-net-mark img[data-logo="elektromaterijal"] { height: 32px; }
 .bad-net-mark:hover { filter: grayscale(0); opacity: 1; }
 .bad-divider { height: 1px; margin: 3.6rem 0 3rem; background: linear-gradient(90deg, transparent, rgba(0,240,255,0.32) 22%, rgba(123,108,255,0.4) 50%, rgba(160,32,240,0.32) 78%, transparent); }
 /* the fold had dead space between the form and the logo strip. it now carries

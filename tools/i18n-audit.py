@@ -15,10 +15,10 @@ PUB = 'api/public'
 KEYS = set(json.load(open(sys.argv[1], encoding='utf-8')))
 
 SKIP_EXACT = {
-    # the company, its domain and its addresses. the brand is written SentinelPay
+    # the company, its domain and its addresses. the brand is written Sentinelpay
     # in prose now that the site is no longer all lowercase, and lowercase inside
     # a domain, so both spellings are here.
-    'sentinelpay', 'SentinelPay', 'support@sentinelpay.org', 'privacy@sentinelpay.org',
+    'sentinelpay', 'Sentinelpay', 'support@sentinelpay.org', 'privacy@sentinelpay.org',
     'yourcompany.com', 'sentinelpay.org',
     # author bylines, alone or together: names, not copy
     'ceem', 'mind', 'chibby', 'mind, chibby', 'ceem, mind, chibby',
