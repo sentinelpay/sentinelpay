@@ -1,4 +1,4 @@
-/* the hero background, raymarched.
+/* the raymarched background, behind the hero and behind the dark bands.
 
    what this draws: an infinite three dimensional lattice, tubes along all three
    axes with a node where they meet, twisting slowly around the axis the camera
@@ -32,20 +32,29 @@
      soft, so the difference is invisible and the pixel count is halved.
 
      reduced motion, no webgl, an old phone that fails to compile the shader:
-     in every one of those cases this file removes its own canvas and the svg
-     scene that is already in the markup is what you see. the hero is never
-     blank, and it never depends on this having worked. */
-(function () {
-    var hero = document.querySelector('.lp-hero');
-    if (!hero) return;
+     in every one of those cases this file adds no canvas at all, and what was
+     already in the markup is what you see. no section ever depends on this
+     having worked.
 
+   the same scene runs behind the dark bands further down the page, quieter and
+   cheaper: fewer steps, slower flight, a fraction of the exposure. it is the
+   one thing that ties the page together, because a band that shares the hero's
+   background reads as the same room rather than as another website. */
+(function () {
     var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduced) return;
 
     var coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
 
+    /* one scene, mounted into one element.
+
+       every knob a caller might want is here rather than in the shader source,
+       because the difference between the hero and a band is not a different
+       effect, it is the same effect turned down: the band is a texture behind
+       three lines of copy, the hero is the picture. */
+    function mount(host, o) {
     var canvas = document.createElement('canvas');
-    canvas.className = 'sp-hero-gl';
+    canvas.className = o.cls || 'sp-hero-gl';
     canvas.setAttribute('aria-hidden', 'true');
 
     var gl = null;
@@ -84,14 +93,20 @@
        three extra samples per pixel for the normal. adding `exp(-d)` at every
        step instead gives volumetric neon for nothing, and it is the look we
        want: light in the dark, not plastic under a lamp. */
-    var STEPS = coarse ? 44 : 72;
-    var FRAG = [
-        'precision highp float;',
-        '#define STEPS ' + STEPS,
-        'uniform vec2 uRes;',
-        'uniform float uT;',
-        'uniform float uFade;',
+    var STEPS = o.steps || (coarse ? 44 : 72);
 
+    /* the lattice: an infinite three dimensional grid of tubes, marched.
+
+       `map` is the distance field: for any point in space it returns how far the
+       nearest piece of lattice is. `mod` folds all of space into one four unit
+       cell, which is what makes the structure infinite for the price of one cell.
+
+       the march is a glow accumulation rather than a surface hit. a normal
+       raymarch stops at the first surface and then has to light it, which needs
+       three extra samples per pixel for the normal. adding `exp(-d)` at every
+       step instead gives volumetric neon for nothing, and it is the look we
+       want: light in the dark, not plastic under a lamp. */
+    var LATTICE = [
         'mat2 rot(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }',
 
         'float map(vec3 p) {',
@@ -111,7 +126,7 @@
         'void main() {',
         '    vec2 uv = (gl_FragCoord.xy - 0.5 * uRes) / uRes.y;',
 
-        '    vec3 ro = vec3(0.0, 0.0, uT * 1.15);',
+        '    vec3 ro = vec3(0.0, 0.0, uT * ' + (o.speed || 1.15).toFixed(2) + ');',
         '    vec3 rd = normalize(vec3(uv, 1.25));',
         // a slow drift of the camera itself, so the flight is never quite straight
         '    rd.xz *= rot(sin(uT * 0.07) * 0.10);',
@@ -129,7 +144,7 @@
         // to the camera would otherwise flare across the whole screen, which is
         // the searchlight-in-the-face effect and it happens at random
         '        float near = smoothstep(0.6, 5.5, t);',
-        '        col += c * (g + g * g * 1.1) * near * exp(-t * 0.098) * 0.095;',
+        '        col += c * (g + g * g * 1.1) * near * exp(-t * 0.098) * ' + (o.expo || 0.095).toFixed(3) + ';',
         // never step further than the field says is safe, never smaller than a
         // step that would take all day
         '        t += max(d * 0.8, 0.035);',
@@ -147,7 +162,71 @@
         '    col = vec3(1.0) - exp(-col * 1.5);',
         '    gl_FragColor = vec4(col * uFade, 1.0);',
         '}'
-    ].join('\n');
+    ];
+
+    /* the plane: a grid floor and a grid ceiling in perspective, drifting.
+
+       why a band does not get the lattice. a band is a few hundred pixels tall
+       and the full width of the window. march that shape and every ray away from
+       the centre leaves the structure within a step or two, so what comes out is
+       a small burst of light in the middle of a black rectangle: correct, and
+       useless. this is the same depth done the way a wide short frame wants it.
+
+       and it is not a march at all. two ray-plane intersections, closed form, no
+       loop: a couple of dozen instructions per pixel against a couple of
+       thousand. a band that scrolls past in a second should not cost more than
+       the hero it is quoting. */
+    var PLANES = [
+        'float grid(vec2 p) {',
+        // distance to the nearest line of a unit grid, in grid units
+        '    vec2 g = abs(fract(p) - 0.5);',
+        '    return min(g.x, g.y);',
+        '}',
+
+        'vec3 plane(vec3 ro, vec3 rd, float y, vec3 tint) {',
+        '    float d = (y - ro.y) / rd.y;',
+        // behind the camera, or parallel to the plane: nothing to draw
+        '    if (d <= 0.0 || d > 90.0) return vec3(0.0);',
+        '    vec2 p = (ro + rd * d).xz * 0.55;',
+        // the line itself, thinner the further away it is, so the grid does not
+        // turn into a solid sheet at the horizon
+        '    float w = 0.035 + d * 0.0016;',
+        '    float line = smoothstep(w, 0.0, grid(p));',
+        // a node where two lines cross, which is what stops it reading as
+        // wallpaper and starts it reading as a structure
+        '    vec2 g = abs(fract(p) - 0.5);',
+        '    float dot_ = smoothstep(w * 2.2, 0.0, max(g.x, g.y));',
+        '    return tint * (line + dot_ * 1.6) * exp(-d * 0.075);',
+        '}',
+
+        'void main() {',
+        '    vec2 uv = (gl_FragCoord.xy - 0.5 * uRes) / uRes.y;',
+        '    vec3 ro = vec3(uT * 0.35, 0.0, uT * ' + (o.speed || 1.1).toFixed(2) + ');',
+        '    vec3 rd = normalize(vec3(uv, 1.1));',
+        '    vec3 col = vec3(0.0);',
+        // one below and one above, in our two ends of the palette
+        '    col += plane(ro, rd, -1.15, vec3(0.10, 0.72, 1.00));',
+        '    col += plane(ro, rd,  1.15, vec3(0.48, 0.32, 1.00));',
+        '    col *= ' + (o.expo || 0.5).toFixed(3) + ';',
+        // the horizon line is where both planes converge and would otherwise be a
+        // hard bright seam across the middle of the band
+        '    col *= smoothstep(0.0, 0.18, abs(uv.y));',
+        // and it fades toward the left, where every one of these bands puts its
+        // heading. the grid is a floor for the copy to stand on, not a pattern
+        // the copy has to compete with.
+        '    col *= smoothstep(-0.9, 0.35, uv.x);',
+        '    col = vec3(1.0) - exp(-col * 1.6);',
+        '    gl_FragColor = vec4(col * uFade, 1.0);',
+        '}'
+    ];
+
+    var FRAG = [
+        'precision highp float;',
+        '#define STEPS ' + STEPS,
+        'uniform vec2 uRes;',
+        'uniform float uT;',
+        'uniform float uFade;'
+    ].concat(o.kind === 'planes' ? PLANES : LATTICE).join('\n');
 
     function compile(type, src) {
         var sh = gl.createShader(type);
@@ -185,16 +264,16 @@
     var uT = gl.getUniformLocation(prog, 'uT');
     var uFade = gl.getUniformLocation(prog, 'uFade');
 
-    hero.insertBefore(canvas, hero.firstChild);
+    host.insertBefore(canvas, host.firstChild);
 
     // below css resolution on purpose, and harder on a phone. a glow has no
     // edges, so there is nothing for the upscale to soften.
-    var SCALE = coarse ? 0.5 : 0.68;
+    var SCALE = o.scale || (coarse ? 0.5 : 0.68);
     var MAXW = 1500;
 
     function resize() {
-        var w = hero.clientWidth || window.innerWidth;
-        var h = hero.clientHeight || window.innerHeight;
+        var w = host.clientWidth || window.innerWidth;
+        var h = host.clientHeight || window.innerHeight;
         var s = Math.min(SCALE, MAXW / Math.max(w, 1));
         var pw = Math.max(1, Math.round(w * s));
         var ph = Math.max(1, Math.round(h * s));
@@ -205,7 +284,7 @@
         gl.uniform2f(uRes, pw, ph);
     }
 
-    var running = true;      // hero is on screen
+    var running = true;      // the host is on screen
     var awake = true;        // tab is in front
     var raf = 0;
     var t0 = 0;
@@ -253,11 +332,32 @@
         new IntersectionObserver(function (entries) {
             running = entries[0].isIntersecting;
             if (running) { t0 = 0; start(); } else stop();
-        }, { threshold: 0 }).observe(hero);
+        }, { threshold: 0 }).observe(host);
     }
 
     window.addEventListener('resize', function () { resize(); }, { passive: true });
 
     resize();
     start();
+    }
+
+    /* what gets one.
+
+       the hero is the full picture. the bands get the same lattice at a third of
+       the exposure and half the steps, with no dark hole punched in the middle,
+       because there the copy sits on the left rather than dead centre and the
+       band's own gradient is already doing the work of holding it. */
+    var hero = document.querySelector('.lp-hero');
+    if (hero) mount(hero, {});
+
+    var bands = document.querySelectorAll('.lp-statsx, .lp-intel-banner');
+    Array.prototype.forEach.call(bands, function (el) {
+        mount(el, {
+            kind: 'planes',
+            cls: 'sp-band-gl',
+            scale: coarse ? 0.45 : 0.6,
+            speed: 1.6,
+            expo: 0.6
+        });
+    });
 })();

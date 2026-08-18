@@ -3480,3 +3480,36 @@ html.theme-light .lp-role-tab.active {
     .sp-hero-gl { display: none; }
     .sp-hero-gl ~ .sp-hero-scene { opacity: 1; }
 }
+
+/* ---- the same lattice behind the dark bands ------------------------------ */
+/* the band canvases. the hero's rule cannot simply be reused: a band is not
+   full height, it is clipped as it opens, and it must not paint over the copy
+   that sits on top of it. everything else is the same trick, `screen` over the
+   band's own gradient. */
+.sp-band-gl {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    /* quieter than the hero by design: this is a texture behind three lines of
+       copy, not the picture itself */
+    opacity: 0.85;
+}
+
+/* the band's own dot grid goes when the lattice is there, for the same reason
+   it goes in the hero: flat dots on top of real depth read as dirt */
+.sp-band-gl ~ .lp-statsx-bg,
+.sp-band-gl ~ .lp-intel-dots {
+    display: none;
+}
+
+/* and the copy has to sit above it */
+.lp-intel-banner > *:not(.sp-band-gl) { position: relative; z-index: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+    .sp-band-gl { display: none; }
+}
