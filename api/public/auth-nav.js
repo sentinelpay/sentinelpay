@@ -41,7 +41,7 @@
     }
 
     function signedIn(me) {
-        var label = t('Dashboard');
+        var label = t('dashboard');
 
         if (login && register) {
             var mark = document.createElement('a');
@@ -52,7 +52,7 @@
             // the full name is on the mark rather than beside it: the corner of a
             // navigation bar is not where somebody's address belongs, and a
             // screen reader still reads it
-            mark.setAttribute('aria-label', me.name || t('your account'));
+            mark.setAttribute('aria-label', me.name || t('Your account'));
             mark.title = me.name || '';
 
             var go = document.createElement('a');
@@ -77,7 +77,7 @@
         }
     }
 
-    // hidden while we ask, so the first paint is not "log in" flipping to a name
+    // hidden while we ask, so the first paint is not "Log in" flipping to a name
     box.classList.add('auth-nav-asking');
     function done() { box.classList.remove('auth-nav-asking'); }
 

@@ -14,8 +14,8 @@
     <link rel="icon" type="image/svg+xml" href="/logo.svg">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/style.css?v=24">
-    <link rel="stylesheet" href="/landing.css?v=13.4">
-    <link rel="stylesheet" href="/corp.css?v=230">
+    <link rel="stylesheet" href="/landing.css?v=14.4">
+    <link rel="stylesheet" href="/corp.css?v=232">
     <style>
         /* page loader: hold the page until everything is loaded (matches homepage) */
         #sp-loader{position:fixed;inset:0;z-index:99999;background:#050505;display:flex;align-items:center;justify-content:center;transition:opacity 0.55s ease;}
@@ -68,7 +68,7 @@
         .article-back svg { width: 14px; height: 14px; transition: transform 0.2s ease; }
         .article-back:hover { color: #0e2358; border-color: rgba(14,35,88,0.32); background: #fbfcfd; box-shadow: 0 6px 18px -10px rgba(14,35,88,0.35); }
         .article-back:hover svg { transform: translateX(-3px); }
-        .article-title { margin: 0 0 1.4rem; font-size: 2.7rem; font-weight: 800; line-height: 1.14; letter-spacing: -0.02em; color: #0e2358; text-transform: lowercase; }
+        .article-title { margin: 0 0 1.4rem; font-size: 2.7rem; font-weight: 800; line-height: 1.14; letter-spacing: -0.02em; color: #0e2358; text-transform: none; }
         /* show-original pill: only rendered on a translated article.
            cut from the same pattern as .article-back so the two read as a set. */
         .article-original { margin-top: 1.5rem; }
@@ -114,7 +114,7 @@
         .article-body { margin-top: 2.6rem; padding-bottom: 1rem; }
         .article-body > p { margin: 1.35rem 0; font-size: 1.13rem; line-height: 1.8; color: #2a3550; }
         .article-body > p.lead { font-size: 1.35rem; line-height: 1.6; font-weight: 500; color: #0e2358; }
-        .article-body h2 { margin: 3rem 0 1rem; font-size: 1.7rem; font-weight: 800; line-height: 1.25; letter-spacing: -0.01em; color: #0e2358; text-transform: lowercase; }
+        .article-body h2 { margin: 3rem 0 1rem; font-size: 1.7rem; font-weight: 800; line-height: 1.25; letter-spacing: -0.01em; color: #0e2358; text-transform: none; }
         .article-body strong { font-weight: 700; color: #0e2358; }
         .article-body a { color: #0091c8; text-decoration: none; border-bottom: 1px solid rgba(0,145,200,0.35); }
         .article-body a:hover { border-bottom-color: #0091c8; }
@@ -131,7 +131,7 @@
         }
         /* case blocks: plain flow, sub-heading + text, no card */
         .article-example { margin: 1.6rem 0; padding: 0; background: none; border: none; box-shadow: none; }
-        .article-example h3 { margin: 0 0 0.5rem; font-size: 1.2rem; font-weight: 700; color: #0e2358; text-transform: lowercase; }
+        .article-example h3 { margin: 0 0 0.5rem; font-size: 1.2rem; font-weight: 700; color: #0e2358; text-transform: none; }
         .article-example p { margin: 0.7rem 0 0; font-size: 1.08rem; line-height: 1.75; color: #2a3550; }
         .article-example p:first-of-type { margin-top: 0; }
 
@@ -155,7 +155,7 @@
         #sp-loader { background: #fbfcfd !important; flex-direction: column; gap: 1.6rem; padding: 0 1.5rem; }
         #sp-loader .spl-logo-svg { animation: none; filter: none; opacity: 0.75; width: 96px; height: 96px; }
         .sp-ns { max-width: 30rem; text-align: center; font-family: 'Inter', sans-serif; }
-        .sp-ns-title { margin: 0 0 0.5rem; font-size: 1.12rem; font-weight: 700; letter-spacing: -0.01em; color: #0e2358; text-transform: lowercase; }
+        .sp-ns-title { margin: 0 0 0.5rem; font-size: 1.12rem; font-weight: 700; letter-spacing: -0.01em; color: #0e2358; text-transform: none; }
         .sp-ns-text { margin: 0 0 1.3rem; font-size: 0.95rem; line-height: 1.6; color: rgba(14,35,88,0.62); }
         .sp-ns-link { display: inline-block; padding: 0.62rem 1.15rem; border-radius: 10px; border: 1px solid rgba(14,35,88,0.16); background: rgba(255,255,255,0.75); font-size: 0.88rem; font-weight: 600; color: #0e2358; text-decoration: none; }
         .sp-ns-link:hover { border-color: rgba(0,145,200,0.5); background: #fff; }
@@ -199,13 +199,13 @@
 
         <div class="article-shell article-body" data-original-scope>
             <p class="lead">I want to be straight about why we are building SentinelPay, because the reason is also the thing that is broken. Right now, if you run a small crypto business, the market hands you two ways to stay compliant, and both of them are bad.</p>
-            <p><strong>Option one: Do nothing serious.</strong> No screening, no records, no real process. You tell yourself you are too small to matter. This works right up until the morning a bank closes your account, or tether freezes funds already sitting in your wallet. Then you find out you were never too small. You were just unprepared.</p>
-            <p><strong>Option two: Build compliance the way a bank builds it.</strong> Hire people. Buy enterprise tools priced for institutions. Stand up a department. This actually works, and it is completely out of reach for a business doing real volume with a small team. Everyone selling it knows that.</p>
+            <p><strong>Option one: do nothing serious.</strong> No screening, no records, no real process. You tell yourself you are too small to matter. This works right up until the morning a bank closes your account, or Tether freezes funds already sitting in your wallet. Then you find out you were never too small. You were just unprepared.</p>
+            <p><strong>Option two: build compliance the way a bank builds it.</strong> Hire people. Buy enterprise tools priced for institutions. Stand up a department. This actually works, and it is completely out of reach for a business doing real volume with a small team. Everyone selling it knows that.</p>
             <div class="article-callout">Ignore the problem until it bites, or spend like an institution to avoid it. Most small crypto businesses are stuck between those two, and stuck is exactly where the risk grows.</div>
 
             <h2>The gap nobody built for</h2>
             <p>Here is what got to me. The tools to actually assess crypto risk already exist. Sanctions data, chain analysis, wallet scoring, all of it is real and it works. But it was built, priced, and packaged for banks and exchanges that have compliance teams to operate it.</p>
-            <p>Nobody built the version for the business that has none of that. The payment processor. The OTC desk. The small exchange. The shop taking usdt. You carry the same exposure a bank does, because a wallet is just as dirty whether it pays you or a tier-one exchange, but you were never handed a tool you could actually turn on and use.</p>
+            <p>Nobody built the version for the business that has none of that. The payment processor. The OTC desk. The small exchange. The shop taking USDT. You carry the same exposure a bank does, because a wallet is just as dirty whether it pays you or a tier-one exchange, but you were never handed a tool you could actually turn on and use.</p>
             <p>That is the gap. It was never a lack of technology. It was a lack of anyone pointing it at you.</p>
 
             <h2>What we actually believe</h2>
@@ -215,11 +215,11 @@
             <p>And it is why we keep a record of every scan. Not because paperwork is the goal, but because the day someone asks what you did, "we checked, and here is exactly what we saw and when" is a very different conversation than a shrug.</p>
 
             <h2>This isn't us being generous</h2>
-            <p>I am not going to pretend this is charity. We think there are a lot of these businesses, and we think they were ignored by an industry that only knew how to sell to institutions. Building the tool they actually need is a real business, and that is the point: Our incentives and yours end up pointing the same way. We only win if turning this on genuinely protects you.</p>
-            <p>What i will promise is that we are not going to sell you fear, or a compliance department wearing a trench coat. The product is meant to be simple, honest, and something you can afford before you have a problem instead of after.</p>
+            <p>I am not going to pretend this is charity. We think there are a lot of these businesses, and we think they were ignored by an industry that only knew how to sell to institutions. Building the tool they actually need is a real business, and that is the point: our incentives and yours end up pointing the same way. We only win if turning this on genuinely protects you.</p>
+            <p>What I will promise is that we are not going to sell you fear, or a compliance department wearing a trench coat. The product is meant to be simple, honest, and something you can afford before you have a problem instead of after.</p>
 
             <h2>Where we are</h2>
-            <p>SentinelPay is being built right now. It is not fully live yet, and i would rather tell you that plainly than dress it up. What is coming is the thing i wish had existed the first time i watched a small business get frozen over a wallet nobody warned them about: Connect your key, get a risk score on every wallet that touches you, decide with your eyes open.</p>
+            <p>SentinelPay is being built right now. It is not fully live yet, and I would rather tell you that plainly than dress it up. What is coming is the thing I wish had existed the first time I watched a small business get frozen over a wallet nobody warned them about: connect your key, get a risk score on every wallet that touches you, decide with your eyes open.</p>
             <p>If that is the option you have been missing, follow along and get early access when we launch at <a href="https://sentinelpay.org">sentinelpay.org</a>. We are building it for you specifically, and we would rather build it with you watching.</p>
 
             <h2>Bottom line</h2>
@@ -230,8 +230,8 @@
                 <li><a href="https://eur-lex.europa.eu/eli/reg/2023/1114/2024-01-09/eng" rel="noopener noreferrer" target="_blank">MiCA, regulation (EU) 2023/1114, consolidated text</a></li>
                 <li><a href="https://eur-lex.europa.eu/eli/reg/2023/1113/oj/eng" rel="noopener noreferrer" target="_blank">Tfr, regulation (EU) 2023/1113, official text</a></li>
                 <li><a href="https://www.fatf-gafi.org/en/publications/Fatfrecommendations/Guidance-rba-virtual-assets-2021.html" rel="noopener noreferrer" target="_blank">FATF, updated guidance for a risk-based approach to virtual assets and vasps (2021)</a></li>
-                <li><a href="https://www.jmlsg.org.uk/guidance/current-guidance/" rel="noopener noreferrer" target="_blank">Jmlsg, part ii sector 22, cryptoasset exchange and custodian wallet providers</a></li>
-                <li><a href="https://tether.io/news/tether-supports-freeze-of-more-than-344-million-in-usdt-in-coordination-with-ofac-and-u-s-law-enforcement/" rel="noopener noreferrer" target="_blank">Tether, freezing usdt with ofac and law enforcement</a></li>
+                <li><a href="https://www.jmlsg.org.uk/guidance/current-guidance/" rel="noopener noreferrer" target="_blank">JMLSG, part ii sector 22, cryptoasset exchange and custodian wallet providers</a></li>
+                <li><a href="https://tether.io/news/tether-supports-freeze-of-more-than-344-million-in-usdt-in-coordination-with-ofac-and-u-s-law-enforcement/" rel="noopener noreferrer" target="_blank">Tether, freezing USDT with ofac and law enforcement</a></li>
             </ul>
         </div>
     </article>
@@ -343,6 +343,6 @@
     </script>
     <script>window.addEventListener('load',function(){window.scrollTo(0,0);var l=document.getElementById('sp-loader');if(!l)return;var finish=function(){l.classList.add('spl-done');setTimeout(function(){l.remove();},620);};/* the load event does not wait for lazy images, and nearly every image on the site is lazy, so the loader used to clear while the first screen was still filling in. wait for the ones that will actually be visible: an image further down has not started loading yet and never would, so waiting for all of them would hold the loader open for ever. */var pending=[],im,r,i;for(i=0;i<document.images.length;i++){im=document.images[i];r=im.getBoundingClientRect();if(r.bottom<0||r.top>window.innerHeight*1.2)continue;if(im.complete&&im.naturalWidth>0)continue;pending.push(im);}if(!pending.length){finish();return;}var left=pending.length,fired=false;var one=function(){if(--left<=0&&!fired){fired=true;finish();}};pending.forEach(function(x){x.addEventListener('load',one,{once:true});x.addEventListener('error',one,{once:true});});/* a slow or broken image must never trap anybody behind the loader */setTimeout(function(){if(!fired){fired=true;finish();}},2500);});</script>
     <script src="/img-fallback.js?v=2" defer></script>
-    <script src="/i18n.js?v=71" defer></script>
+    <script src="/i18n.js?v=72" defer></script>
 </body>
 </html>

@@ -27,53 +27,53 @@
                     '<path d="M6 6l12 12M18 6L6 18"></path></svg>' +
                 '</button>' +
                 '<div class="sp-authm-head">' +
-                    '<h2 class="sp-authm-h" id="sp-authm-h-in">welcome back</h2>' +
-                    '<h2 class="sp-authm-h" id="sp-authm-h-up" hidden>create your account</h2>' +
-                    '<p class="sp-authm-p" id="sp-authm-p-in">sign in to check a wallet and pick up where you left off.</p>' +
-                    '<p class="sp-authm-p" id="sp-authm-p-up" hidden>one account for your whole team, with every wallet you check kept in one place.</p>' +
+                    '<h2 class="sp-authm-h" id="sp-authm-h-in">Welcome back</h2>' +
+                    '<h2 class="sp-authm-h" id="sp-authm-h-up" hidden>Create your account</h2>' +
+                    '<p class="sp-authm-p" id="sp-authm-p-in">Sign in to check a wallet and pick up where you left off.</p>' +
+                    '<p class="sp-authm-p" id="sp-authm-p-up" hidden>One account for your whole team, with every wallet you check kept in one place.</p>' +
                 '</div>' +
                 '<div class="sp-auth-tabs" role="tablist">' +
-                    '<button type="button" class="sp-auth-tab is-active" id="sp-authm-tab-in" role="tab" aria-selected="true" aria-controls="sp-authm-panel-in">log in</button>' +
-                    '<button type="button" class="sp-auth-tab" id="sp-authm-tab-up" role="tab" aria-selected="false" aria-controls="sp-authm-panel-up">create account</button>' +
+                    '<button type="button" class="sp-auth-tab is-active" id="sp-authm-tab-in" role="tab" aria-selected="true" aria-controls="sp-authm-panel-in">Log in</button>' +
+                    '<button type="button" class="sp-auth-tab" id="sp-authm-tab-up" role="tab" aria-selected="false" aria-controls="sp-authm-panel-up">Create account</button>' +
                 '</div>' +
 
                 '<form class="sp-auth-form" id="sp-authm-panel-in" role="tabpanel" data-auth="login" novalidate>' +
                     '<div class="lp-demo-field lp-demo-field-full">' +
-                        '<label for="sp-authm-email">work email</label>' +
-                        '<input id="sp-authm-email" name="Email" type="Email" autocomplete="Email" placeholder="you@yourcompany.com">' +
+                        '<label for="sp-authm-email">Work email</label>' +
+                        '<input id="sp-authm-email" name="email" type="email" autocomplete="email" placeholder="you@yourcompany.com">' +
                     '</div>' +
                     '<div class="lp-demo-field lp-demo-field-full">' +
-                        '<label for="sp-authm-pass">password</label>' +
-                        '<input id="sp-authm-pass" name="Password" type="Password" autocomplete="current-password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;">' +
+                        '<label for="sp-authm-pass">Password</label>' +
+                        '<input id="sp-authm-pass" name="password" type="password" autocomplete="current-password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;">' +
                     '</div>' +
                     '<div class="sp-auth-row">' +
-                        '<label class="sp-auth-remember"><input type="checkbox" name="remember"><span>keep me signed in</span></label>' +
-                        '<a class="sp-auth-link" href="/start-free-trial">forgot your password?</a>' +
+                        '<label class="sp-auth-remember"><input type="checkbox" name="remember"><span>Keep me signed in</span></label>' +
+                        '<a class="sp-auth-link" href="/start-free-trial">Forgot your password?</a>' +
                     '</div>' +
-                    '<button type="submit" class="lp-demo-submit sp-auth-submit">log in</button>' +
+                    '<button type="submit" class="lp-demo-submit sp-auth-submit">Log in</button>' +
                 '</form>' +
 
                 '<form class="sp-auth-form" id="sp-authm-panel-up" role="tabpanel" data-auth="register" novalidate hidden>' +
                     '<div class="lp-demo-grid">' +
                         '<div class="lp-demo-field">' +
-                            '<label for="sp-authm-first">first name</label>' +
+                            '<label for="sp-authm-first">First name</label>' +
                             '<input id="sp-authm-first" name="firstName" type="text" autocomplete="given-name">' +
                         '</div>' +
                         '<div class="lp-demo-field">' +
-                            '<label for="sp-authm-last">last name</label>' +
+                            '<label for="sp-authm-last">Last name</label>' +
                             '<input id="sp-authm-last" name="lastName" type="text" autocomplete="family-name">' +
                         '</div>' +
                     '</div>' +
                     '<div class="lp-demo-field lp-demo-field-full">' +
-                        '<label for="sp-authm-email2">work email</label>' +
-                        '<input id="sp-authm-email2" name="Email" type="Email" autocomplete="Email" placeholder="you@yourcompany.com">' +
+                        '<label for="sp-authm-email2">Work email</label>' +
+                        '<input id="sp-authm-email2" name="email" type="email" autocomplete="email" placeholder="you@yourcompany.com">' +
                     '</div>' +
                     '<div class="lp-demo-field lp-demo-field-full">' +
-                        '<label for="sp-authm-pass2">password</label>' +
-                        '<input id="sp-authm-pass2" name="Password" type="Password" autocomplete="new-password" placeholder="At least 12 characters">' +
+                        '<label for="sp-authm-pass2">Password</label>' +
+                        '<input id="sp-authm-pass2" name="password" type="password" autocomplete="new-password" placeholder="At least 12 characters">' +
                     '</div>' +
-                    '<label class="lp-demo-consent"><input type="checkbox" name="consent"><span>i agree to <a href="/terms-of-service">the terms of service</a> and to be contacted about this account.</span></label>' +
-                    '<button type="submit" class="lp-demo-submit sp-auth-submit">create account</button>' +
+                    '<label class="lp-demo-consent"><input type="checkbox" name="consent"><span>I agree to <a href="/terms-of-service">the terms of service</a> and to be contacted about this account.</span></label>' +
+                    '<button type="submit" class="lp-demo-submit sp-auth-submit">Create account</button>' +
                 '</form>' +
             '</div>' +
         '</div>';

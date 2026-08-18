@@ -4759,12 +4759,18 @@ html.theme-light .lp-nav {
 }
 
 /* ---- book a demo: one pass of light around the border --------------------- */
-/* the last thing on the page and the only thing anyone is asked to fill in, so
-   it gets the one effect that draws the eye to an outline. a conic gradient
+/* the last thing on the homepage and the only thing anyone is asked to fill in,
+   so it gets the one effect that draws the eye to an outline. a conic gradient
    rotated once, masked to the border, then it stops: a border that keeps
-   spinning is a page that will not sit still while you type in it. */
-.lp-demo-card { position: relative; }
-.lp-demo-card::after {
+   spinning is a page that will not sit still while you type in it.
+
+   scoped by `data-sp-once` on purpose. `lp-demo-card` is not only the demo
+   form: the sign-in panel on /auth carries the same class for its shape, and
+   the trace was running around that too, which is a light chasing itself around
+   a password field. the attribute is only ever put on the card by flair.js, and
+   only in the section it belongs to. */
+.lp-demo-card[data-sp-once] { position: relative; }
+.lp-demo-card[data-sp-once]::after {
     content: "";
     position: absolute;
     inset: -1px;
@@ -4785,7 +4791,7 @@ html.theme-light .lp-nav {
     mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     mask-composite: exclude;
 }
-.lp-demo-card.sp-traced::after {
+.lp-demo-card[data-sp-once].sp-traced::after {
     animation: spTrace 1.6s cubic-bezier(0.4, 0, 0.2, 1) 0.2s 1 forwards;
 }
 @keyframes spTrace {
@@ -4812,7 +4818,7 @@ html.theme-light .lp-nav {
     }
     .lp-ins-featured { transform: none; }
     .lp-faq-list::after { display: none; }
-    .lp-demo-card::after { display: none; }
+    .lp-demo-card[data-sp-once]::after { display: none; }
 }
 
 /* ---- the mega menu has to follow the nav when the nav lifts --------------- */

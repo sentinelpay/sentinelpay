@@ -20,14 +20,14 @@
             var CONFIG = {
                 demo: {
                     endpoint: '/v1/demo-request',
-                    submitLabel: 'request a demo',
-                    heads: { 1: 'tell us about yourself', 2: 'help us understand your business', 3: 'your crypto exposure & needs', 4: 'one last thing' },
+                    submitLabel: 'Request a demo',
+                    heads: { 1: 'Tell us about yourself', 2: 'Help us understand your business', 3: 'Your crypto exposure & needs', 4: 'One last thing' },
                     required: { 1: ['firstName','lastName','jobTitle','email'], 2: ['company','website','industry','country'], 3: ['size','volume'], 4: [] }
                 },
                 trial: {
                     endpoint: '/v1/trial-request',
-                    submitLabel: 'start free trial',
-                    heads: { 1: 'who is signing up', 2: 'confirm and start' },
+                    submitLabel: 'Start free trial',
+                    heads: { 1: 'Who is signing up', 2: 'Confirm and start' },
                     required: { 1: ['firstName','lastName','email','website'], 2: [] }
                 }
             };
@@ -62,53 +62,53 @@
                 switch (inp.name) {
                     case 'firstName':
                     case 'lastName':
-                        if (!v) return t('this field is required');
-                        if (v.length < 2) return t('that looks too short');
-                        if (!nameRe.test(v)) return t('letters only, no numbers or symbols');
+                        if (!v) return t('This field is required');
+                        if (v.length < 2) return t('That looks too short');
+                        if (!nameRe.test(v)) return t('Letters only, no numbers or symbols');
                         return '';
                     case 'jobTitle':
-                        if (!v) return t('this field is required');
-                        if (v.length < 2) return t('that looks too short');
-                        if (!letterRe.test(v)) return t('enter a real job title');
+                        if (!v) return t('This field is required');
+                        if (v.length < 2) return t('That looks too short');
+                        if (!letterRe.test(v)) return t('Enter a real job title');
                         return '';
                     case 'company':
-                        if (!v) return t('this field is required');
-                        if (v.length < 2) return t('that looks too short');
-                        if (!alnumRe.test(v)) return t('enter a real company name');
+                        if (!v) return t('This field is required');
+                        if (v.length < 2) return t('That looks too short');
+                        if (!alnumRe.test(v)) return t('Enter a real company name');
                         return '';
                     case 'website':
-                        if (!v) return t('this field is required');
+                        if (!v) return t('This field is required');
                         var host = v.replace(/^https?:\/\//i, '').replace(/\/.*$/, '').replace(/^www\./i, '').trim().toLowerCase();
-                        if (!domainRe.test(host)) return t('enter a valid domain, e.g. company.com');
-                        var emailInp = form.querySelector('input[name="Email"]');
+                        if (!domainRe.test(host)) return t('Enter a valid domain, e.g. company.com');
+                        var emailInp = form.querySelector('input[name="email"]');
                         var emailDomain = emailInp && emailInp.value.indexOf('@') !== -1 ? emailInp.value.trim().split('@').pop().toLowerCase() : '';
                         if (emailDomain && host !== emailDomain && host.slice(-(emailDomain.length + 1)) !== '.' + emailDomain && emailDomain.slice(-(host.length + 1)) !== '.' + host) {
-                            return t('must match your work email domain') + ' (@' + emailDomain + ')';
+                            return t('Must match your work email domain') + ' (@' + emailDomain + ')';
                         }
                         return '';
                     case 'size':
-                        if (!v) return t('please select company size');
+                        if (!v) return t('Please select company size');
                         return '';
                     case 'industry':
-                        if (!v) return t('please pick an industry');
-                        if (gamblingRe.test(v)) return t('we do not work with gambling operators. this is a policy, not a limit we can lift.');
+                        if (!v) return t('Please pick an industry');
+                        if (gamblingRe.test(v)) return t('We do not work with gambling operators. This is a policy, not a limit we can lift.');
                         return '';
                     case 'country':
-                        if (!v) return t('please pick your country');
+                        if (!v) return t('Please pick your country');
                         return '';
                     case 'volume':
-                        if (!v) return t('please pick an expected volume');
+                        if (!v) return t('Please pick an expected volume');
                         return '';
                     case 'message':
                         // optional: skip it entirely, or write as little as you like
                         if (!v) return '';
-                        if (v.length > 250) return t('keep it under 250 characters');
+                        if (v.length > 250) return t('Keep it under 250 characters');
                         return '';
                     case 'email':
-                        if (!v) return t('this field is required');
-                        if (/\s/.test(v)) return t('email cannot contain spaces');
-                        if (!emailRe.test(v)) return t('enter a valid email address');
-                        if (/\.\./.test(v) || /@\./.test(v) || /\.$/.test(v)) return t('enter a valid email address');
+                        if (!v) return t('This field is required');
+                        if (/\s/.test(v)) return t('Email cannot contain spaces');
+                        if (!emailRe.test(v)) return t('Enter a valid email address');
+                        if (/\.\./.test(v) || /@\./.test(v) || /\.$/.test(v)) return t('Enter a valid email address');
                         return '';
                 }
                 return '';
@@ -126,7 +126,7 @@
                     setError(inp, msg);
                     if (msg) ok = false;
                 });
-                var checks = stepEl.querySelectorAll('input[name="Solutions"]');
+                var checks = stepEl.querySelectorAll('input[name="solutions"]');
                 if (checks.length) {
                     var anyChecked = Array.prototype.some.call(checks, function(c) { return c.checked; });
                     var checkField = checks[0].closest('.lp-demo-field');
@@ -135,7 +135,7 @@
                         var cerr = checkField.querySelector('.lp-demo-error');
                         if (!anyChecked) {
                             if (!cerr) { cerr = document.createElement('span'); cerr.className = 'lp-demo-error'; checkField.appendChild(cerr); }
-                            cerr.textContent = t('pick at least one');
+                            cerr.textContent = t('Pick at least one');
                             ok = false;
                         } else if (cerr) { cerr.remove(); }
                     }
@@ -273,9 +273,9 @@
                 // visible band without firing a window resize on ios
                 if (window.visualViewport) {
                     window.visualViewport.addEventListener('resize', function() { if (!menu.hidden) place(); });
-                    window.visualViewport.addEventListener('Scroll', function() { if (!menu.hidden) place(); });
+                    window.visualViewport.addEventListener('scroll', function() { if (!menu.hidden) place(); });
                 }
-                window.addEventListener('Scroll', function(e) {
+                window.addEventListener('scroll', function(e) {
                     // page scrolls: keep the fixed-position menu glued to its button
                     if (!menu.hidden && !(e.target instanceof Node && menu.contains(e.target))) place();
                 }, true);
@@ -330,7 +330,7 @@
                 autoGrow();
             }
 
-            var validatedNames = ['firstName','lastName','jobTitle','Company','website','Email','message'];
+            var validatedNames = ['firstName','lastName','jobTitle','company','website','email','message'];
             form.querySelectorAll('input[name], select[name], textarea[name]').forEach(function(inp) {
                 if (validatedNames.indexOf(inp.name) === -1) return;
                 inp.addEventListener('blur', function() { setError(inp, fieldError(inp)); });
@@ -379,7 +379,7 @@
             // A single-input form submits on enter, and this form has one <form> across
             // four steps, so enter on step 1 fired the real submit: it validated only the
             // step you were on and posted a half-empty request, once per press. Enter now
-            // means "Next" until the last step, where it means submit.
+            // means "next" until the last step, where it means submit.
             form.addEventListener('keydown', function(e) {
                 if (e.key !== 'Enter' || e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) return;
                 var el = e.target;
@@ -455,14 +455,14 @@
                     return;
                 }
                 var data = {};
-                new FormData(form).forEach(function(v, k) { if (k !== 'Solutions') data[k] = typeof v === 'string' ? v.trim() : v; });
+                new FormData(form).forEach(function(v, k) { if (k !== 'solutions') data[k] = typeof v === 'string' ? v.trim() : v; });
                 data.solutions = Array.prototype.map.call(form.querySelectorAll('input[name="solutions"]:checked'), function(c) { return c.value; });
                 form.querySelectorAll('.lp-demo-consent input[type="checkbox"]').forEach(function(cb) { data[cb.name] = !!cb.checked; });
                 if (turnstileToken) data['cf-turnstile-response'] = turnstileToken;
                 // the confirmation email is written in whatever language the visitor is reading
                 data.lang = (window.SentinelI18n && typeof window.SentinelI18n.lang === 'function' ? window.SentinelI18n.lang() : 'en') || 'en';
                 submitBtn.disabled = true;
-                submitBtn.textContent = t('Sending…');
+                submitBtn.textContent = t('sending…');
                 fetch(cfg.endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },

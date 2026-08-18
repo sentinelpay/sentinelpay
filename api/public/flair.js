@@ -178,7 +178,7 @@
             if (sraf) return;
             sraf = window.requestAnimationFrame(scrollStep);
         }
-        window.addEventListener('Scroll', scrollQueue, { passive: true });
+        window.addEventListener('scroll', scrollQueue, { passive: true });
         window.addEventListener('resize', scrollQueue, { passive: true });
         scrollStep();
     }
@@ -271,7 +271,7 @@
             if (sweepRaf || !pending.length) return;
             sweepRaf = window.requestAnimationFrame(function () { sweepRaf = 0; sweep(); });
         }
-        window.addEventListener('Scroll', sweepQueue, { passive: true });
+        window.addEventListener('scroll', sweepQueue, { passive: true });
         window.addEventListener('resize', sweepQueue, { passive: true });
         // a reload halfway down the page must not leave everything above the
         // fold hidden either

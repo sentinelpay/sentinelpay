@@ -14,8 +14,8 @@
     <link rel="icon" type="image/svg+xml" href="/logo.svg">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/style.css?v=24">
-    <link rel="stylesheet" href="/landing.css?v=13.4">
-    <link rel="stylesheet" href="/corp.css?v=230">
+    <link rel="stylesheet" href="/landing.css?v=14.4">
+    <link rel="stylesheet" href="/corp.css?v=232">
     <style>
         /* page loader: hold the page until everything is loaded (matches homepage) */
         #sp-loader{position:fixed;inset:0;z-index:99999;background:#050505;display:flex;align-items:center;justify-content:center;transition:opacity 0.55s ease;}
@@ -68,7 +68,7 @@
         .article-back svg { width: 14px; height: 14px; transition: transform 0.2s ease; }
         .article-back:hover { color: #0e2358; border-color: rgba(14,35,88,0.32); background: #fbfcfd; box-shadow: 0 6px 18px -10px rgba(14,35,88,0.35); }
         .article-back:hover svg { transform: translateX(-3px); }
-        .article-title { margin: 0 0 1.4rem; font-size: 2.7rem; font-weight: 800; line-height: 1.14; letter-spacing: -0.02em; color: #0e2358; text-transform: lowercase; }
+        .article-title { margin: 0 0 1.4rem; font-size: 2.7rem; font-weight: 800; line-height: 1.14; letter-spacing: -0.02em; color: #0e2358; text-transform: none; }
         /* show-original pill: only rendered on a translated article.
            cut from the same pattern as .article-back so the two read as a set. */
         .article-original { margin-top: 1.5rem; }
@@ -126,7 +126,7 @@
         .article-body { margin-top: 2.6rem; padding-bottom: 1rem; }
         .article-body > p { margin: 1.35rem 0; font-size: 1.13rem; line-height: 1.8; color: #2a3550; }
         .article-body > p.lead { font-size: 1.35rem; line-height: 1.6; font-weight: 500; color: #0e2358; }
-        .article-body h2 { margin: 3rem 0 1rem; font-size: 1.7rem; font-weight: 800; line-height: 1.25; letter-spacing: -0.01em; color: #0e2358; text-transform: lowercase; }
+        .article-body h2 { margin: 3rem 0 1rem; font-size: 1.7rem; font-weight: 800; line-height: 1.25; letter-spacing: -0.01em; color: #0e2358; text-transform: none; }
         .article-body strong { font-weight: 700; color: #0e2358; }
         .article-body a { color: #0091c8; text-decoration: none; border-bottom: 1px solid rgba(0,145,200,0.35); }
         .article-body a:hover { border-bottom-color: #0091c8; }
@@ -143,7 +143,7 @@
         }
         /* case blocks: plain flow, sub-heading + text, no card */
         .article-example { margin: 1.6rem 0; padding: 0; background: none; border: none; box-shadow: none; }
-        .article-example h3 { margin: 0 0 0.5rem; font-size: 1.2rem; font-weight: 700; color: #0e2358; text-transform: lowercase; }
+        .article-example h3 { margin: 0 0 0.5rem; font-size: 1.2rem; font-weight: 700; color: #0e2358; text-transform: none; }
         .article-example p { margin: 0.7rem 0 0; font-size: 1.08rem; line-height: 1.75; color: #2a3550; }
         .article-example p:first-of-type { margin-top: 0; }
 
@@ -167,7 +167,7 @@
         #sp-loader { background: #fbfcfd !important; flex-direction: column; gap: 1.6rem; padding: 0 1.5rem; }
         #sp-loader .spl-logo-svg { animation: none; filter: none; opacity: 0.75; width: 96px; height: 96px; }
         .sp-ns { max-width: 30rem; text-align: center; font-family: 'Inter', sans-serif; }
-        .sp-ns-title { margin: 0 0 0.5rem; font-size: 1.12rem; font-weight: 700; letter-spacing: -0.01em; color: #0e2358; text-transform: lowercase; }
+        .sp-ns-title { margin: 0 0 0.5rem; font-size: 1.12rem; font-weight: 700; letter-spacing: -0.01em; color: #0e2358; text-transform: none; }
         .sp-ns-text { margin: 0 0 1.3rem; font-size: 0.95rem; line-height: 1.6; color: rgba(14,35,88,0.62); }
         .sp-ns-link { display: inline-block; padding: 0.62rem 1.15rem; border-radius: 10px; border: 1px solid rgba(14,35,88,0.16); background: rgba(255,255,255,0.75); font-size: 0.88rem; font-weight: 600; color: #0e2358; text-decoration: none; }
         .sp-ns-link:hover { border-color: rgba(0,145,200,0.5); background: #fff; }
@@ -214,18 +214,18 @@
         </div>
 
         <div class="article-shell article-body" data-original-scope>
-            <p class="lead">I want to say this plainly, before anyone has to ask. SentinelPay is built for crypto businesses of almost every shape. Gambling is the one thing we will never touch, and i am not going to be diplomatic about why. We think it is one of the most destructive businesses on earth, and we refuse to be any part of it.</p>
-            <p>First, the part that is wide open. If you take crypto for a real product or a real service, we want to work with you. Payment processors. OTC desks. Small exchanges. Freelancers getting paid in usdt. The shop on the corner that started accepting crypto last month. You all carry the same core problem, a wallet can be dirty no matter who it pays, and we built SentinelPay so you can finally see it before it costs you. That door is open, and it stays open.</p>
+            <p class="lead">I want to say this plainly, before anyone has to ask. SentinelPay is built for crypto businesses of almost every shape. Gambling is the one thing we will never touch, and I am not going to be diplomatic about why. We think it is one of the most destructive businesses on earth, and we refuse to be any part of it.</p>
+            <p>First, the part that is wide open. If you take crypto for a real product or a real service, we want to work with you. Payment processors. OTC desks. Small exchanges. Freelancers getting paid in USDT. The shop on the corner that started accepting crypto last month. You all carry the same core problem, a wallet can be dirty no matter who it pays, and we built SentinelPay so you can finally see it before it costs you. That door is open, and it stays open.</p>
 
             <h2>And then there is gambling</h2>
-            <p>Online casinos, sportsbooks, betting platforms, the whole category. We will not onboard them, ever, and i would rather be blunt about the reason than hide behind a tidy policy line.</p>
-            <p>Gambling is not a normal business that happens to carry some risk. It is a machine engineered to take money from people who cannot afford to lose it, and to keep them coming back long after they already have. The loss is not a side effect, the loss is the product. The house is built to win, everyone running it knows the house is built to win, and every dollar of profit comes straight out of someone getting hurt. The crypto version just stripped away the few limits the old one was forced to keep: No closing time, no cooling-off, no borders, anonymous, instant, and sitting in your pocket at three in the morning.</p>
+            <p>Online casinos, sportsbooks, betting platforms, the whole category. We will not onboard them, ever, and I would rather be blunt about the reason than hide behind a tidy policy line.</p>
+            <p>Gambling is not a normal business that happens to carry some risk. It is a machine engineered to take money from people who cannot afford to lose it, and to keep them coming back long after they already have. The loss is not a side effect, the loss is the product. The house is built to win, everyone running it knows the house is built to win, and every dollar of profit comes straight out of someone getting hurt. The crypto version just stripped away the few limits the old one was forced to keep: no closing time, no cooling-off, no borders, anonymous, instant, and sitting in your pocket at three in the morning.</p>
             <p>And on top of all that, it is one of the places money laundering concentrates, because a casino is almost purpose-built to take dirty money in, mix it, and pay it back out looking clean. So it is both morally rotten and a compliance nightmare at the same time. For us that is not a hard call. It is the easiest no we will ever make.</p>
             <div class="article-callout">We are not going to build the layer that makes a machine like that look respectable. Helping it pass as legitimate is worse than doing nothing at all.</div>
 
             <h2>What we actually stand for</h2>
             <p>We started SentinelPay to protect the business that gets used, the honest operator who takes a bad payment and pays for it months later. Gambling sits on the exact opposite side of that. One side gets hurt without meaning to. The other side does the hurting on purpose, for money, at scale. We know which side we want to stand on, and it is not a close question.</p>
-            <p>And yes, i know exactly what this costs us. Gambling operators have enormous volume and they pay extremely well. We are turning every bit of it away, on purpose, permanently. I would rather run a smaller company i can be proud of than get rich helping the most predatory business in crypto look clean.</p>
+            <p>And yes, I know exactly what this costs us. Gambling operators have enormous volume and they pay extremely well. We are turning every bit of it away, on purpose, permanently. I would rather run a smaller company I can be proud of than get rich helping the most predatory business in crypto look clean.</p>
 
             <h2>Where the line actually is</h2>
             <p>So there is no confusion, here is the exact edge. We work with businesses that accept crypto for goods, services, trading, payments, and payroll. We do not work with online casinos, sportsbooks, betting or wagering platforms, or anything whose core product is gambling. If you are genuinely not sure which side you land on, just ask us, and we will tell you straight.</p>
@@ -239,7 +239,7 @@
                 <li><a href="https://www.fatf-gafi.org/en/publications/Methodsandtrends/Vulnerabilitiesofcasinosandgamingsector.html" rel="noopener noreferrer" target="_blank">FATF, vulnerabilities of casinos and gaming sector (2009)</a></li>
                 <li><a href="https://www.fatf-gafi.org/en/publications/Fatfrecommendations/Fatfguidanceontherisk-basedapproachforcasinos.html" rel="noopener noreferrer" target="_blank">FATF, guidance on the risk-based approach for casinos</a></li>
                 <li><a href="https://baselgovernance.org/sites/default/files/2022-09/QG28%20gambling.pdf" rel="noopener noreferrer" target="_blank">Basel institute on governance, money laundering through the gambling industry</a></li>
-                <li><a href="https://www.nice.org.uk/guidance/ng248" rel="noopener noreferrer" target="_blank">Nice, gambling-related harms: Identification, assessment and management</a></li>
+                <li><a href="https://www.nice.org.uk/guidance/ng248" rel="noopener noreferrer" target="_blank">Nice, gambling-related harms: identification, assessment and management</a></li>
                 <li><a href="https://www.gla.ac.uk/research/az/grg/ourprojects/lancetcommission" rel="noopener noreferrer" target="_blank">The lancet public health commission on gambling</a></li>
                 <li><a href="https://www.gamblingcommission.gov.uk/statistics-and-research/publication/gambling-survey-for-great-britain-annual-report-2025" rel="noopener noreferrer" target="_blank">Great britain gambling commission, gambling survey for great britain</a></li>
             </ul>
@@ -353,6 +353,6 @@
     </script>
     <script>window.addEventListener('load',function(){window.scrollTo(0,0);var l=document.getElementById('sp-loader');if(!l)return;var finish=function(){l.classList.add('spl-done');setTimeout(function(){l.remove();},620);};/* the load event does not wait for lazy images, and nearly every image on the site is lazy, so the loader used to clear while the first screen was still filling in. wait for the ones that will actually be visible: an image further down has not started loading yet and never would, so waiting for all of them would hold the loader open for ever. */var pending=[],im,r,i;for(i=0;i<document.images.length;i++){im=document.images[i];r=im.getBoundingClientRect();if(r.bottom<0||r.top>window.innerHeight*1.2)continue;if(im.complete&&im.naturalWidth>0)continue;pending.push(im);}if(!pending.length){finish();return;}var left=pending.length,fired=false;var one=function(){if(--left<=0&&!fired){fired=true;finish();}};pending.forEach(function(x){x.addEventListener('load',one,{once:true});x.addEventListener('error',one,{once:true});});/* a slow or broken image must never trap anybody behind the loader */setTimeout(function(){if(!fired){fired=true;finish();}},2500);});</script>
     <script src="/img-fallback.js?v=2" defer></script>
-    <script src="/i18n.js?v=71" defer></script>
+    <script src="/i18n.js?v=72" defer></script>
 </body>
 </html>

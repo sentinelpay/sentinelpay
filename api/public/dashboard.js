@@ -42,7 +42,7 @@
             set('dash-email', me.email);
             set('dash-since', niceDate(me.since));
             var first = String(me.name || '').trim().split(/\s+/)[0];
-            if (first) set('dash-greet', t('welcome back') + ', ' + first);
+            if (first) set('dash-greet', t('Welcome back') + ', ' + first);
             // the panel appears for staff. it is a set of links and nothing
             // else: every page behind it checks the session for itself, so
             // unhiding this by hand in a browser opens nothing.
@@ -59,7 +59,7 @@
     if (out) {
         out.addEventListener('click', function () {
             out.disabled = true;
-            out.textContent = t('signing out…');
+            out.textContent = t('Signing out…');
             fetch('/v1/auth/logout', { method: 'POST', credentials: 'same-origin' })
                 .catch(function () { /* the cookie is cleared by the server; try anyway */ })
                 .then(function () { location.replace('/'); });

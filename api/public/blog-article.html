@@ -14,8 +14,8 @@
     <link rel="icon" type="image/svg+xml" href="/logo.svg">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/style.css?v=24">
-    <link rel="stylesheet" href="/landing.css?v=13.4">
-    <link rel="stylesheet" href="/corp.css?v=230">
+    <link rel="stylesheet" href="/landing.css?v=14.4">
+    <link rel="stylesheet" href="/corp.css?v=232">
     <style>
         /* page loader: hold the page until everything is loaded (matches homepage) */
         #sp-loader{position:fixed;inset:0;z-index:99999;background:#050505;display:flex;align-items:center;justify-content:center;transition:opacity 0.55s ease;}
@@ -68,7 +68,7 @@
         .article-back svg { width: 14px; height: 14px; transition: transform 0.2s ease; }
         .article-back:hover { color: #0e2358; border-color: rgba(14,35,88,0.32); background: #fbfcfd; box-shadow: 0 6px 18px -10px rgba(14,35,88,0.35); }
         .article-back:hover svg { transform: translateX(-3px); }
-        .article-title { margin: 0 0 1.4rem; font-size: 2.7rem; font-weight: 800; line-height: 1.14; letter-spacing: -0.02em; color: #0e2358; text-transform: lowercase; }
+        .article-title { margin: 0 0 1.4rem; font-size: 2.7rem; font-weight: 800; line-height: 1.14; letter-spacing: -0.02em; color: #0e2358; text-transform: none; }
         /* show-original pill: only rendered on a translated article.
            cut from the same pattern as .article-back so the two read as a set. */
         .article-original { margin-top: 1.5rem; }
@@ -114,7 +114,7 @@
         .article-body { margin-top: 2.6rem; padding-bottom: 1rem; }
         .article-body > p { margin: 1.35rem 0; font-size: 1.13rem; line-height: 1.8; color: #2a3550; }
         .article-body > p.lead { font-size: 1.35rem; line-height: 1.6; font-weight: 500; color: #0e2358; }
-        .article-body h2 { margin: 3rem 0 1rem; font-size: 1.7rem; font-weight: 800; line-height: 1.25; letter-spacing: -0.01em; color: #0e2358; text-transform: lowercase; }
+        .article-body h2 { margin: 3rem 0 1rem; font-size: 1.7rem; font-weight: 800; line-height: 1.25; letter-spacing: -0.01em; color: #0e2358; text-transform: none; }
         .article-body strong { font-weight: 700; color: #0e2358; }
         .article-body ul { margin: 1.3rem 0; padding: 0; list-style: none; }
         .article-body ul li { position: relative; padding-left: 1.4rem; margin-bottom: 0.7rem; font-size: 1.08rem; line-height: 1.6; color: #2a3550; }
@@ -129,7 +129,7 @@
         }
         /* case blocks: plain flow, sub-heading + text, no card */
         .article-example { margin: 1.6rem 0; padding: 0; background: none; border: none; box-shadow: none; }
-        .article-example h3 { margin: 0 0 0.5rem; font-size: 1.2rem; font-weight: 700; color: #0e2358; text-transform: lowercase; }
+        .article-example h3 { margin: 0 0 0.5rem; font-size: 1.2rem; font-weight: 700; color: #0e2358; text-transform: none; }
         .article-example p { margin: 0.7rem 0 0; font-size: 1.08rem; line-height: 1.75; color: #2a3550; }
         .article-example p:first-of-type { margin-top: 0; }
 
@@ -153,7 +153,7 @@
         #sp-loader { background: #fbfcfd !important; flex-direction: column; gap: 1.6rem; padding: 0 1.5rem; }
         #sp-loader .spl-logo-svg { animation: none; filter: none; opacity: 0.75; width: 96px; height: 96px; }
         .sp-ns { max-width: 30rem; text-align: center; font-family: 'Inter', sans-serif; }
-        .sp-ns-title { margin: 0 0 0.5rem; font-size: 1.12rem; font-weight: 700; letter-spacing: -0.01em; color: #0e2358; text-transform: lowercase; }
+        .sp-ns-title { margin: 0 0 0.5rem; font-size: 1.12rem; font-weight: 700; letter-spacing: -0.01em; color: #0e2358; text-transform: none; }
         .sp-ns-text { margin: 0 0 1.3rem; font-size: 0.95rem; line-height: 1.6; color: rgba(14,35,88,0.62); }
         .sp-ns-link { display: inline-block; padding: 0.62rem 1.15rem; border-radius: 10px; border: 1px solid rgba(14,35,88,0.16); background: rgba(255,255,255,0.75); font-size: 0.88rem; font-weight: 600; color: #0e2358; text-decoration: none; }
         .sp-ns-link:hover { border-color: rgba(0,145,200,0.5); background: #fff; }
@@ -196,13 +196,13 @@
         </div>
 
         <div class="article-shell article-body" data-original-scope>
-            <p class="lead">"We're too small to be worth targeting." i believed that too, right up until i started reading the wallet histories of businesses exactly like yours. The dirty money doesn't skip the small guys. It looks for them.</p>
-            <p>Here is the part nobody tells you. A criminal moving illicit funds is not looking for the richest target. They are looking for the softest one. And softness has a very specific definition: Can this business see where my money came from, or not.</p>
+            <p class="lead">"we're too small to be worth targeting." I believed that too, right up until I started reading the wallet histories of businesses exactly like yours. The dirty money doesn't skip the small guys. It looks for them.</p>
+            <p>Here is the part nobody tells you. A criminal moving illicit funds is not looking for the richest target. They are looking for the softest one. And softness has a very specific definition: can this business see where my money came from, or not.</p>
             <p>A large exchange can. It has an AML team, live screening on every deposit, analysts whose entire job is to pull the thread on a suspicious wallet. Moving money through them is slow and risky, and it usually gets caught.</p>
             <p>You are a different story. No screening tool watching your incoming payments. No analyst. Just you, trying to close deals and keep customers happy. To someone laundering money, that is not a small business. That is an open door with the lights off.</p>
 
             <h2>You're not collateral damage, you're the plan</h2>
-            <p>This isn't a hunch. The firms that trace this for a living keep landing on the same conclusion. Trm labs has flagged that laundering techniques once reserved for banks are now being pointed at small operators, precisely because they are easier. Chainalysis says it flatly: Smaller businesses lack the infrastructure to detect laundering, and that gap is exactly what makes them useful for pushing illicit funds back into the real economy.</p>
+            <p>This isn't a hunch. The firms that trace this for a living keep landing on the same conclusion. TRM labs has flagged that laundering techniques once reserved for banks are now being pointed at small operators, precisely because they are easier. Chainalysis says it flatly: smaller businesses lack the infrastructure to detect laundering, and that gap is exactly what makes them useful for pushing illicit funds back into the real economy.</p>
             <div class="article-callout">Useful. Sit with that word. You are not accidentally caught up in someone else's scheme. In the scheme, you are the wash cycle.</div>
             <p>And it works because everything that makes you good at running a business makes you blind to this:</p>
             <ul>
@@ -218,8 +218,8 @@
             <p>These are not scare stories. They are the shapes that show up over and over in Chainalysis and Elliptic case work, rewritten as what they feel like from your side of the desk.</p>
             <div class="article-example">
                 <h3>The clean new client</h3>
-                <p>A new customer wants your service and pays 10,000 usdt upfront, no haggling. They have a real website, a real linkedin, they even take a video call. Everything about them checks out, so you deliver and move on.</p>
-                <p>Three months later tether freezes that 10,000 usdt on-chain. The address it came from traces back to a sanctioned entity. You had no way of knowing, and it changes nothing: The funds are gone, your wallet is flagged, and you are the one writing the explanation. The wallet always knew. You just couldn't see it.</p>
+                <p>A new customer wants your service and pays 10,000 USDT upfront, no haggling. They have a real website, a real linkedin, they even take a video call. Everything about them checks out, so you deliver and move on.</p>
+                <p>Three months later Tether freezes that 10,000 USDT on-chain. The address it came from traces back to a sanctioned entity. You had no way of knowing, and it changes nothing: the funds are gone, your wallet is flagged, and you are the one writing the explanation. The wallet always knew. You just couldn't see it.</p>
             </div>
             <div class="article-example">
                 <h3>The loyal client, new address every time</h3>
@@ -233,17 +233,17 @@
             </div>
 
             <h2>Having a policy is not the same as being protected</h2>
-            <p>Elliptic has a word for the thing that actually matters: Operationalizing risk. Strip the jargon and it means acting on every single transaction, not writing a policy and filing it in a drawer. Complyadvantage makes the same point from the other end: Almost nobody gets burned for lacking an AML policy. They get burned because the policy couldn't reach the payment that was sitting right in front of them.</p>
+            <p>Elliptic has a word for the thing that actually matters: operationalizing risk. Strip the jargon and it means acting on every single transaction, not writing a policy and filing it in a drawer. Complyadvantage makes the same point from the other end: almost nobody gets burned for lacking an AML policy. They get burned because the policy couldn't reach the payment that was sitting right in front of them.</p>
             <p>So forget the paperwork for a second. Two things actually change your odds.</p>
             <p><strong>Stop checking wallets by hand.</strong> Manual checks are slow, they are inconsistent, and they are the first thing to break the moment you get busy. You miss the one that mattered, your clean customers wait around for no reason, and none of it survives past a handful of payments a day.</p>
-            <p><strong>Check before the money settles, not after.</strong> This is the whole game. After a bad payment lands you are doing damage control, freezes and lawyers and explanations. Before it lands you still have the one thing that matters: A choice.</p>
+            <p><strong>Check before the money settles, not after.</strong> This is the whole game. After a bad payment lands you are doing damage control, freezes and lawyers and explanations. Before it lands you still have the one thing that matters: a choice.</p>
 
             <h2>Where SentinelPay comes in</h2>
             <p>This is the exact gap we built SentinelPay to close, and we kept it deliberately simple. You give us your public key. That is the whole setup.</p>
-            <p>From there we scan every wallet that touches your business, historical and incoming: Every transaction, every customer, every address, and crucially the addresses those addresses came from. One payment is a data point. The trail behind it is the truth.</p>
-            <p>Each wallet comes back with a risk score built from the signals that actually predict trouble: Sanctions lists, known darknet clusters, established scam and fraud patterns, usdt freeze history, mixer exposure, and the shape of the wallet's own history. Then the decision is yours to make with your eyes open.</p>
+            <p>From there we scan every wallet that touches your business, historical and incoming: every transaction, every customer, every address, and crucially the addresses those addresses came from. One payment is a data point. The trail behind it is the truth.</p>
+            <p>Each wallet comes back with a risk score built from the signals that actually predict trouble: sanctions lists, known darknet clusters, established scam and fraud patterns, USDT freeze history, mixer exposure, and the shape of the wallet's own history. Then the decision is yours to make with your eyes open.</p>
             <p><strong>Low score?</strong> Nothing happens to you. No friction, no extra step, your customer gets what they paid for and you never even feel the check run.</p>
-            <p><strong>High score?</strong> You pause on that one payment before you commit and ask for what you'd want anyway: Identity, source of funds, the wallet's history, a real KYC on that client. You investigate first, decide second, deliver third, instead of finding out three months later.</p>
+            <p><strong>High score?</strong> You pause on that one payment before you commit and ask for what you'd want anyway: identity, source of funds, the wallet's history, a real KYC on that client. You investigate first, decide second, deliver third, instead of finding out three months later.</p>
             <p>That is the whole safety net. You stop shipping blind, and you stop accepting money from wallets you were never able to look at.</p>
 
             <h2>Bottom line</h2>
@@ -252,10 +252,10 @@
             <p class="article-sources-title">Sources</p>
             <ul class="article-sources">
                 <li><a href="https://www.chainalysis.com/reports/crypto-crime-2026/" rel="noopener noreferrer" target="_blank">Chainalysis, the 2026 crypto crime report</a></li>
-                <li><a href="https://www.trmlabs.com/reports-and-whitepapers/2026-crypto-crime-report" rel="noopener noreferrer" target="_blank">Trm labs, 2026 crypto crime report</a></li>
+                <li><a href="https://www.trmlabs.com/reports-and-whitepapers/2026-crypto-crime-report" rel="noopener noreferrer" target="_blank">TRM labs, 2026 crypto crime report</a></li>
                 <li><a href="https://www.elliptic.co/insights/the-state-of-cross-chain-crime-2025/" rel="noopener noreferrer" target="_blank">Elliptic, the state of cross-chain crime 2025</a></li>
                 <li><a href="https://www.europol.europa.eu/publications-events/main-reports/iocta-report" rel="noopener noreferrer" target="_blank">Europol, internet organised crime threat assessment</a></li>
-                <li><a href="https://tether.io/news/tether-supports-freeze-of-more-than-344-million-in-usdt-in-coordination-with-ofac-and-u-s-law-enforcement/" rel="noopener noreferrer" target="_blank">Tether, freezing usdt with ofac and law enforcement</a></li>
+                <li><a href="https://tether.io/news/tether-supports-freeze-of-more-than-344-million-in-usdt-in-coordination-with-ofac-and-u-s-law-enforcement/" rel="noopener noreferrer" target="_blank">Tether, freezing USDT with ofac and law enforcement</a></li>
                 <li><a href="https://sanctionslist.ofac.treas.gov/Home/SdnList" rel="noopener noreferrer" target="_blank">Ofac, specially designated nationals (sdn) list</a></li>
             </ul>
         </div>
@@ -368,6 +368,6 @@
     </script>
     <script>window.addEventListener('load',function(){window.scrollTo(0,0);var l=document.getElementById('sp-loader');if(!l)return;var finish=function(){l.classList.add('spl-done');setTimeout(function(){l.remove();},620);};/* the load event does not wait for lazy images, and nearly every image on the site is lazy, so the loader used to clear while the first screen was still filling in. wait for the ones that will actually be visible: an image further down has not started loading yet and never would, so waiting for all of them would hold the loader open for ever. */var pending=[],im,r,i;for(i=0;i<document.images.length;i++){im=document.images[i];r=im.getBoundingClientRect();if(r.bottom<0||r.top>window.innerHeight*1.2)continue;if(im.complete&&im.naturalWidth>0)continue;pending.push(im);}if(!pending.length){finish();return;}var left=pending.length,fired=false;var one=function(){if(--left<=0&&!fired){fired=true;finish();}};pending.forEach(function(x){x.addEventListener('load',one,{once:true});x.addEventListener('error',one,{once:true});});/* a slow or broken image must never trap anybody behind the loader */setTimeout(function(){if(!fired){fired=true;finish();}},2500);});</script>
     <script src="/img-fallback.js?v=2" defer></script>
-    <script src="/i18n.js?v=71" defer></script>
+    <script src="/i18n.js?v=72" defer></script>
 </body>
 </html>
