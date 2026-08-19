@@ -1796,6 +1796,36 @@
 
     var norm = function (s) { return s.replace(/\s+/g, ' ').trim(); };
 
+    /* the translation starts the way the english it replaces starts.
+    
+       the page is always fresh: its html is served no-cache and revalidated.
+       the dictionary is a separate file with a year of cache on it, and a
+       proxy or a browser that hands back an older copy of it hands back older
+       spellings with it. that is how "Log in" came out as "prijava" on one host
+       and "Prijava" on another, from identical html: two different vintages of
+       one file, and nothing in the page able to tell.
+    
+       so the case is not taken from the dictionary any more. the dictionary
+       supplies the words; the source supplies whether the first one carries a
+       capital. an old dictionary now renders correctly, and the only thing a
+       stale copy can cost is a phrase that has since been rewritten, rather
+       than a navigation bar in the wrong case. */
+    var LETTER = /[A-Za-zÀ-ÖØ-öø-ÿČĆŽŠĐčćžšđ]/;
+    function matchCase(source, translated) {
+        var si = source.search(LETTER);
+        var ti = translated.search(LETTER);
+        if (si < 0 || ti < 0) return translated;
+        var want = source.charAt(si);
+        var has = translated.charAt(ti);
+        // german capitalises nouns wherever they fall, so a capital in the
+        // translation that the english does not have may be correct and is left
+        // alone. a missing capital never is.
+        if (want === want.toUpperCase() && want !== want.toLowerCase() && has === has.toLowerCase()) {
+            return translated.slice(0, ti) + has.toUpperCase() + translated.slice(ti + 1);
+        }
+        return translated;
+    }
+
     // an inline script in <head> sets the tab title before first paint, so it is
     // already translated here. it leaves the english original behind for us; if
     // it did not run, document.title is still english and works as the key.
@@ -1830,7 +1860,7 @@
             if (node.parentNode && node.parentNode.closest('[data-original-scope]')) {
                 originals.push({ node: node, text: node.nodeValue });
             }
-            node.nodeValue = node.nodeValue.replace(/\S[\s\S]*\S|\S/, hit);
+            node.nodeValue = node.nodeValue.replace(/\S[\s\S]*\S|\S/, matchCase(norm(node.nodeValue), hit));
         });
         // text the walker cannot reach: it lives in attributes, not in nodes.
         // alt and title surface when an image fails or on hover, aria-label is
@@ -1838,8 +1868,11 @@
         ['placeholder', 'alt', 'title', 'aria-label'].forEach(function (attr) {
             document.querySelectorAll('[' + attr + ']').forEach(function (el) {
                 if (el.closest('[data-i18n-skip]')) return;
-                var hit = dict[norm(el.getAttribute(attr))];
-                if (hit) el.setAttribute(attr, hit);
+                var raw = norm(el.getAttribute(attr));
+                var hit = dict[raw];
+                // the same rule as the text nodes: the words come from the
+                // dictionary, the case comes from the page
+                if (hit) el.setAttribute(attr, matchCase(raw, hit));
             });
         });
     }

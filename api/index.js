@@ -708,6 +708,26 @@ app.use((req, res, next) => {
 // Long-lived, immutable caching for media/fonts so Cloudflare's edge and the
 // browser both keep them (images update via a new filename or ?v= query).
 // html is never cached hard, so page edits always go live immediately.
+// Versioned asset filenames: /corp.238.css is served from public/corp.css.
+//
+// Cache busting with a query string, /corp.css?v=238, is the usual way and it
+// has one weakness that is not theoretical: a cache in front of us is free to
+// key on the path alone. Cloudflare has a setting for exactly that, some
+// corporate proxies do it unconditionally, and when one does, a new ?v= is a
+// new url to us and the same old bytes to it. What comes back then is not an
+// error anybody notices: it is last week's stylesheet, or last week's
+// dictionary, rendering a page that is otherwise current. That is a bad failure
+// because it looks like a bug in the page rather than a stale file.
+//
+// A version in the filename cannot be ignored by anything, because there is no
+// part of it to strip. This maps the versioned name back to the real file and
+// leaves everything else alone.
+app.use((req, res, next) => {
+    const m = req.path.match(/^\/([a-z0-9-]+)\.(\d+)\.(css|js)$/i);
+    if (m) req.url = '/' + m[1] + '.' + m[3];
+    next();
+});
+
 app.use(express.static(path.join(__dirname, 'public'), {
     extensions: ['html'],
     setHeaders: (res, filePath) => {
