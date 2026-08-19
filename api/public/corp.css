@@ -9,12 +9,12 @@ html.theme-light body.lp-body {
 html.theme-light .cyber-grid,
 html.theme-light .glow-orb { display: none !important; }
 
-/* no scroll-reveal animations — everything visible immediately */
-.lp-reveal {
-    opacity: 1 !important;
-    transform: none !important;
-    transition: none !important;
-}
+/* the reveals are back, and they are added by reveal.js rather than written into
+   the markup. that matters for the failure mode: the class that hides an element
+   only ever arrives from script, so a page whose javascript did not run shows
+   everything at once. the worst case is no animation, never invisible content. */
+.lp-reveal { will-change: opacity, transform; }
+.lp-reveal.lp-visible { will-change: auto; }
 
 html.theme-light .lp-h1,
 html.theme-light .lp-h2,
@@ -74,14 +74,14 @@ html.theme-light .lp-marquee-strip {
 }
 
 .lp-client-mark {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.05rem;
     font-weight: 700;
     letter-spacing: 0.01em;
     color: #93a1bd;
     white-space: nowrap;
     padding: 0.3rem 1.6rem;
-    text-transform: lowercase;
+    text-transform: none;
     transition: color 0.2s ease;
 }
 .lp-client-mark:hover { color: #10275b; }
@@ -230,10 +230,10 @@ html.theme-light .lp-role-feature .lp-role-desc {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.82rem;
     font-weight: 600;
-    text-transform: lowercase;
+    text-transform: none;
     text-decoration: none;
     color: #0e2358;
     background: #ffffff;
@@ -306,7 +306,7 @@ html.theme-light .lp-sol-title {
     font-weight: 700;
     color: #0e2358;
     margin: 0 0 0.6rem;
-    text-transform: lowercase;
+    text-transform: none;
 }
 html.theme-light .lp-sol-desc {
     font-size: 0.82rem;
@@ -323,7 +323,7 @@ html.theme-light .lp-sol-desc {
     font-size: 0.82rem;
     font-weight: 600;
     color: #2563eb;
-    text-transform: lowercase;
+    text-transform: none;
 }
 .lp-sol-cta-arrow { display: inline-block; transition: transform 0.25s ease; }
 .lp-sol-card:hover .lp-sol-cta-arrow { transform: translateX(4px); }
@@ -395,7 +395,7 @@ html.theme-light .lp-insight-date {
     font-size: 0.68rem;
     letter-spacing: 0.1em;
     color: #8494b3;
-    text-transform: lowercase;
+    text-transform: none;
 }
 html.theme-light .lp-insight-title {
     font-size: 0.95rem;
@@ -403,7 +403,7 @@ html.theme-light .lp-insight-title {
     color: #0e2358;
     margin: 0;
     line-height: 1.4;
-    text-transform: lowercase;
+    text-transform: none;
 }
 html.theme-light .lp-insight-preview {
     font-size: 0.78rem;
@@ -673,7 +673,7 @@ html.theme-light .lp-mobile-menu .lp-mobile-divider { background: rgba(255, 255,
 html.theme-light .lp-nav .lp-nav-links { gap: 0.9rem; }
 html.theme-light .lp-nav .lp-nav-link,
 html.theme-light .lp-nav .lp-nav-dd-btn {
-    text-transform: lowercase !important;
+    text-transform: none !important;
     font-size: 0.95rem !important;
     font-weight: 500 !important;
     letter-spacing: 0.005em;
@@ -759,13 +759,13 @@ html.theme-light .lp-nav .auth-nav-btn:hover::after {
     align-items: center;
     gap: 0.65rem;
     margin-right: 3.4rem;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1rem;
     font-weight: 600;
     letter-spacing: -0.01em;
     color: #47536e;
     white-space: nowrap;
-    text-transform: lowercase;
+    text-transform: none;
     filter: grayscale(1);
     opacity: 0.6;
     cursor: default;
@@ -777,8 +777,10 @@ html.theme-light .lp-nav .auth-nav-btn:hover::after {
     object-fit: contain;
     flex-shrink: 0;
 }
-/* solana ships as a filled square; round it to a coin so it matches the others */
-.lp-net-mark img[alt="solana"] { border-radius: 50%; }
+/* solana ships as a filled square; round it to a coin so it matches the others.
+   keyed on the file rather than on the alt text, for the same reason as the
+   heights below: alt text is copy and copy moves. */
+.lp-net-mark img[data-logo="sol"] { border-radius: 50%; }
 .lp-net-mark:hover {
     filter: grayscale(0);
     opacity: 1;
@@ -985,7 +987,7 @@ html.theme-light .lp-roles-selector-label { font-size: 0.95rem; color: #5b6b8c; 
     border: none;
     border-radius: 50px;
     padding: 0.6rem 1.2rem;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.95rem;
     font-weight: 600;
     cursor: pointer;
@@ -1020,7 +1022,7 @@ html.theme-light .lp-roles-selector-label { font-size: 0.95rem; color: #5b6b8c; 
     border: none;
     border-radius: 8px;
     padding: 0.6rem 0.9rem;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.9rem;
     font-weight: 500;
     color: #33456b;
@@ -1287,7 +1289,7 @@ html.theme-light .lp-statsx {
 }
 html.theme-light .lp-statsx .lp-section-inner { position: relative; z-index: 1; }
 html.theme-light .lp-statsx-heading {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.55rem;
     font-weight: 700;
     line-height: 1.4;
@@ -1325,7 +1327,7 @@ html.theme-light .lp-statsx-heading {
 .lp-statsx-icon { margin-bottom: 1.1rem; }
 .lp-statsx-icon svg { width: 34px; height: 34px; }
 .lp-statsx-num {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 2.9rem;
     font-weight: 800;
     letter-spacing: -0.02em;
@@ -1342,7 +1344,7 @@ html.theme-light .lp-statsx-label {
     font-size: 0.82rem;
     line-height: 1.45;
     color: rgba(200, 212, 240, 0.62) !important;
-    text-transform: lowercase;
+    text-transform: none;
 }
 
 @media (max-width: 860px) {
@@ -1399,7 +1401,7 @@ html.theme-light .lp-roles .lp-h2 { margin: 0 0 1.15rem; }
 }
 .lp-intel-copy { position: relative; z-index: 2; }
 .lp-intel-banner-title {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.7rem;
     font-weight: 700;
     line-height: 1.3;
@@ -1417,10 +1419,10 @@ html.theme-light .lp-roles .lp-h2 { margin: 0 0 1.15rem; }
     gap: 0.6rem;
     background: #ffffff;
     color: #0a0d1c;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.85rem;
     font-weight: 700;
-    text-transform: lowercase;
+    text-transform: none;
     text-decoration: none;
     padding: 0.85rem 1.6rem;
     border-radius: 11px;
@@ -1527,7 +1529,7 @@ html.theme-light .lp-roles .lp-h2 { margin: 0 0 1.15rem; }
     font-size: 0.72rem;
     font-weight: 700;
     color: rgba(255, 255, 255, 0.9);
-    text-transform: lowercase;
+    text-transform: none;
     letter-spacing: 0.01em;
     padding-left: 0.4rem;
 }
@@ -1545,12 +1547,12 @@ html.theme-light .lp-roles .lp-h2 { margin: 0 0 1.15rem; }
 .lp-intel-book-title {
     margin: 0.5rem 0 0;
     padding-left: 0.4rem;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.55rem;
     font-weight: 800;
     line-height: 1.12;
     letter-spacing: -0.015em;
-    text-transform: lowercase;
+    text-transform: none;
     color: #ffffff;
     -webkit-text-fill-color: #ffffff;
 }
@@ -1570,7 +1572,7 @@ html.theme-light .lp-roles .lp-h2 { margin: 0 0 1.15rem; }
     font-size: 0.68rem;
     font-weight: 600;
     color: rgba(255, 255, 255, 0.6);
-    text-transform: lowercase;
+    text-transform: none;
 }
 .lp-intel-book-arrow { color: #7bdcff; }
 
@@ -1641,7 +1643,7 @@ html.theme-light .lp-roles .lp-h2 { margin: 0 0 1.15rem; }
     margin-bottom: 0.55rem;
 }
 .lp-intel-guide-title {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.4rem;
     font-weight: 800;
     line-height: 1.15;
@@ -1649,7 +1651,7 @@ html.theme-light .lp-roles .lp-h2 { margin: 0 0 1.15rem; }
     color: #ffffff;
     -webkit-text-fill-color: #ffffff;
     margin: 0;
-    text-transform: lowercase;
+    text-transform: none;
     /* always exactly two lines so the card never changes size between guides */
     min-height: 2.3em;
     display: -webkit-box;
@@ -1672,7 +1674,7 @@ html.theme-light .lp-roles .lp-h2 { margin: 0 0 1.15rem; }
     font-size: 0.76rem;
     font-weight: 600;
     color: rgba(255, 255, 255, 0.5);
-    text-transform: lowercase;
+    text-transform: none;
 }
 .lp-intel-guide-read {
     color: #ffffff;
@@ -1747,7 +1749,7 @@ html.theme-light .lp-roles .lp-h2 { margin: 0 0 1.15rem; }
 }
 .lp-demo-left { position: relative; z-index: 1; }
 .lp-demo-title {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 2.6rem;
     font-weight: 800;
     line-height: 1.08;
@@ -1755,7 +1757,7 @@ html.theme-light .lp-roles .lp-h2 { margin: 0 0 1.15rem; }
     color: #ffffff;
     -webkit-text-fill-color: #ffffff;
     margin: 1rem 0 1.1rem;
-    text-transform: lowercase;
+    text-transform: none;
 }
 html.theme-light .lp-demo-card .lp-cta-label {
     display: inline-block;
@@ -1784,12 +1786,12 @@ html.theme-light .lp-demo-card .lp-cta-label {
     display: inline-flex;
     align-items: center;
     gap: 0.6rem;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.15rem;
     font-weight: 700;
     color: #ffffff;
     margin-bottom: 1.5rem;
-    text-transform: lowercase;
+    text-transform: none;
 }
 .lp-demo-formhead::before {
     content: '';
@@ -1813,7 +1815,7 @@ html.theme-light .lp-demo-card .lp-cta-label {
     font-weight: 600;
     letter-spacing: 0.01em;
     color: rgba(255, 255, 255, 0.62);
-    text-transform: lowercase;
+    text-transform: none;
     transition: color 0.18s ease;
 }
 .lp-demo-field:focus-within > label,
@@ -1824,7 +1826,7 @@ html.theme-light .lp-demo-card .lp-cta-label {
 .lp-demo-field textarea {
     width: 100%;
     box-sizing: border-box;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.9rem;
     color: #ffffff;
     background: rgba(255, 255, 255, 0.045);
@@ -1936,7 +1938,7 @@ html.theme-light .lp-demo-card .lp-cta-label {
     box-shadow: 0 0 0 3px rgba(0, 240, 255, 0.16);
     background: rgba(255, 255, 255, 0.06);
 }
-.lp-demo-select-val { color: #ffffff; text-transform: lowercase; }
+.lp-demo-select-val { color: #ffffff; text-transform: none; }
 .lp-demo-select-val.is-placeholder { color: rgba(255, 255, 255, 0.3); }
 .lp-demo-select-caret {
     color: rgba(255, 255, 255, 0.5);
@@ -1997,7 +1999,7 @@ html.theme-light .lp-demo-select-list::-webkit-scrollbar-thumb:hover {
 .lp-demo-select-list,
 html.theme-light .lp-demo-select-list { scrollbar-width: thin; scrollbar-color: rgba(0, 145, 200, 0.45) #0d1120; }
 .lp-demo-select-opt {
-    text-transform: lowercase;
+    text-transform: none;
     padding: 0.6rem 0.75rem;
     border-radius: 9px;
     font-size: 0.9rem;
@@ -2054,12 +2056,12 @@ html.theme-light .lp-demo-select-list { scrollbar-width: thin; scrollbar-color: 
     background: none;
     border: none;
     color: rgba(255, 255, 255, 0.6);
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.85rem;
     font-weight: 600;
     cursor: pointer;
     padding: 0.6rem 0.5rem;
-    text-transform: lowercase;
+    text-transform: none;
     transition: color 0.25s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .lp-demo-back::after {
@@ -2081,12 +2083,12 @@ html.theme-light .lp-demo-select-list { scrollbar-width: thin; scrollbar-color: 
     color: #06070f;
     border: none;
     border-radius: 10px;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.85rem;
     font-weight: 700;
     padding: 0.8rem 1.9rem;
     cursor: pointer;
-    text-transform: lowercase;
+    text-transform: none;
     transition: box-shadow 0.3s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .lp-demo-next, .lp-demo-submit, .lp-demo-back, .lp-demo-select-btn { transform: none !important; }
@@ -2162,7 +2164,7 @@ html.theme-light .lp-demo-select-list { scrollbar-width: thin; scrollbar-color: 
     color: #fff;
     margin: 0 0 0.7rem;
     letter-spacing: -0.02em;
-    text-transform: lowercase;
+    text-transform: none;
     opacity: 0;
     animation: lpDemoRise 0.5s ease 0.6s forwards;
 }
@@ -2196,7 +2198,7 @@ html.theme-light .lp-demo-select-list { scrollbar-width: thin; scrollbar-color: 
     font-size: 0.72rem;
     font-weight: 500;
     color: #ff7a95;
-    text-transform: lowercase;
+    text-transform: none;
     white-space: nowrap;
     animation: lpDemoStepIn 0.25s ease;
 }
@@ -2288,7 +2290,7 @@ html.theme-light .lp-demo-select-list { scrollbar-width: thin; scrollbar-color: 
     font-weight: 700;
     letter-spacing: 0.04em;
     color: #2563eb;
-    text-transform: lowercase;
+    text-transform: none;
 }
 .lp-ins-featured .lp-ins-date { margin-top: 0.2rem; }
 .lp-ins-title {
@@ -2298,7 +2300,7 @@ html.theme-light .lp-demo-select-list { scrollbar-width: thin; scrollbar-color: 
     letter-spacing: -0.01em;
     line-height: 1.35;
     color: #0e2358;
-    text-transform: lowercase;
+    text-transform: none;
 }
 .lp-ins-excerpt {
     margin: 0;
@@ -2312,7 +2314,7 @@ html.theme-light .lp-demo-select-list { scrollbar-width: thin; scrollbar-color: 
     font-weight: 600;
     line-height: 1.4;
     color: #0e2358;
-    text-transform: lowercase;
+    text-transform: none;
 }
 .lp-ins-grid {
     display: grid;
@@ -2556,11 +2558,17 @@ html.theme-light .lp-demo-select-list { scrollbar-width: thin; scrollbar-color: 
    single shared size renders the wide ones short and unreadable. tune each. */
 .lp-net-mark { gap: 0; height: 48px; margin-right: 3.6rem; }
 .lp-net-mark img { width: auto; height: auto; max-width: none; object-fit: contain; }
-.lp-net-mark img[alt="traveler"] { height: 46px; }
-.lp-net-mark img[alt="majice.hr"] { height: 44px; }
-.lp-net-mark img[alt="futura"] { height: 40px; }
-.lp-net-mark img[alt="racunala.hr"] { height: 38px; }
-.lp-net-mark img[alt="elektromaterijal"] { height: 32px; }
+/* one height per logo, because they are five different shapes and a single
+   rule leaves the tall ones towering over the wide ones. keyed on data-logo:
+   these were on img[alt="..."], and alt text is copy. it is read aloud, it
+   gets translated, and recasing it to "Traveler" detached the selector and
+   dropped that logo back to its natural 289x263, which the band then showed
+   a horizontal slice through. */
+.lp-net-mark img[data-logo="traveler"] { height: 46px; }
+.lp-net-mark img[data-logo="majicehr"] { height: 44px; }
+.lp-net-mark img[data-logo="futura"] { height: 40px; }
+.lp-net-mark img[data-logo="racunalahr"] { height: 38px; }
+.lp-net-mark img[data-logo="elektromaterijal"] { height: 32px; }
 @media (max-width: 560px) {
     .lp-net-mark { height: 36px; margin-right: 2.2rem; }
     .lp-net-mark img { width: auto; height: auto; transform: scale(0.78); }
@@ -2569,14 +2577,14 @@ html.theme-light .lp-demo-select-list { scrollbar-width: thin; scrollbar-color: 
 /* ============ language switcher (footer) ============ */
 .sp-lang { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1.6rem; align-items: flex-start; max-width: 220px; }
 .sp-lang-label {
-    font-family: 'Inter', sans-serif; font-size: 0.78rem; font-weight: 700;
-    color: #0e2358; text-transform: lowercase; letter-spacing: 0.01em;
+    font-family: var(--sp-text); font-size: 0.78rem; font-weight: 700;
+    color: #0e2358; text-transform: none; letter-spacing: 0.01em;
 }
 .sp-lang-dd { position: relative; width: 100%; }
 /* the trigger keeps the plain white field look */
 .sp-lang-btn {
     display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; width: 100%;
-    font-family: 'Inter', sans-serif; font-size: 0.9rem; font-weight: 500; line-height: 1.2; text-align: left;
+    font-family: var(--sp-text); font-size: 0.9rem; font-weight: 500; line-height: 1.2; text-align: left;
     color: #0e2358; background: #fff; cursor: pointer;
     padding: 0.62rem 0.85rem 0.62rem 0.95rem;
     border: 1px solid rgba(14, 35, 88, 0.16); border-radius: 10px;
@@ -2601,7 +2609,7 @@ html.theme-light .lp-demo-select-list { scrollbar-width: thin; scrollbar-color: 
 .sp-lang-dd.up .sp-lang-menu { top: auto; bottom: calc(100% + 6px); transform: translateY(6px); }
 .sp-lang-dd.up.open .sp-lang-menu { transform: translateY(0); }
 .sp-lang-opt {
-    font-family: 'Inter', sans-serif; font-size: 0.88rem; font-weight: 500; text-align: left;
+    font-family: var(--sp-text); font-size: 0.88rem; font-weight: 500; text-align: left;
     color: #33456b; background: none; border: none; border-radius: 8px;
     padding: 0.5rem 0.7rem; cursor: pointer;
     transition: background 0.15s ease, color 0.15s ease;
@@ -2622,7 +2630,7 @@ html.theme-light .lp-demo-select-list { scrollbar-width: thin; scrollbar-color: 
 .lp-section.bad-demo { padding-top: 8rem; }
 .bad-grid { display: grid; grid-template-columns: 1fr 1.05fr; gap: 4rem; align-items: stretch; }
 .bad-copy { padding-top: 0.5rem; }
-.bad-title { margin: 0 0 1.2rem; font-size: 2.9rem; font-weight: 800; line-height: 1.08; letter-spacing: -0.02em; color: #0e2358; text-transform: lowercase; }
+.bad-title { margin: 0 0 1.2rem; font-size: 2.9rem; font-weight: 800; line-height: 1.08; letter-spacing: -0.02em; color: #0e2358; text-transform: none; }
 .bad-sub { margin: 0; font-size: 1rem; line-height: 1.7; color: rgba(14,35,88,0.62); max-width: 44ch; }
 .bad-form-card { grid-template-columns: 1fr !important; padding: 2.4rem 2.6rem !important; }
 .bad-form-card .lp-demo-form { padding-top: 8px; }
@@ -2648,11 +2656,11 @@ html.theme-light .lp-demo-select-list { scrollbar-width: thin; scrollbar-color: 
    wide ones render short and unreadable, so each gets its own optical height. */
 .bad-net-mark { display: inline-flex; align-items: center; justify-content: center; height: 48px; margin-right: 3.6rem; filter: grayscale(1); opacity: 0.55; transition: filter 0.3s ease, opacity 0.3s ease; }
 .bad-net-mark img { width: auto; object-fit: contain; display: block; }
-.bad-net-mark img[alt="traveler"] { height: 46px; }
-.bad-net-mark img[alt="majice.hr"] { height: 44px; }
-.bad-net-mark img[alt="futura"] { height: 40px; }
-.bad-net-mark img[alt="racunala.hr"] { height: 38px; }
-.bad-net-mark img[alt="elektromaterijal"] { height: 32px; }
+.bad-net-mark img[data-logo="traveler"] { height: 46px; }
+.bad-net-mark img[data-logo="majicehr"] { height: 44px; }
+.bad-net-mark img[data-logo="futura"] { height: 40px; }
+.bad-net-mark img[data-logo="racunalahr"] { height: 38px; }
+.bad-net-mark img[data-logo="elektromaterijal"] { height: 32px; }
 .bad-net-mark:hover { filter: grayscale(0); opacity: 1; }
 .bad-divider { height: 1px; margin: 3.6rem 0 3rem; background: linear-gradient(90deg, transparent, rgba(0,240,255,0.32) 22%, rgba(123,108,255,0.4) 50%, rgba(160,32,240,0.32) 78%, transparent); }
 /* the fold had dead space between the form and the logo strip. it now carries
@@ -3195,7 +3203,7 @@ html[data-mail-down] a[data-mail-subject] {
 .sp-auth-panel, .sp-authm-panel { gap: 0; }
 .sp-authm-panel { padding: 2rem 2rem 1.8rem !important; border-radius: 22px; }
 .sp-authm-head { position: relative; z-index: 1; text-align: center; margin-bottom: 1.4rem; }
-.sp-authm-h { margin: 0 0 0.4rem; font-size: 1.55rem; font-weight: 800; line-height: 1.18; letter-spacing: -0.02em; color: #fff; text-transform: lowercase; }
+.sp-authm-h { margin: 0 0 0.4rem; font-size: 1.55rem; font-weight: 800; line-height: 1.18; letter-spacing: -0.02em; color: #fff; text-transform: none; }
 .sp-authm-h[hidden] { display: none; }
 .sp-authm-p { margin: 0; font-size: 0.9rem; line-height: 1.55; color: rgba(255, 255, 255, 0.55); }
 .sp-authm-p[hidden] { display: none; }
@@ -3594,7 +3602,7 @@ html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }
 .sp-auth-vhead h3 {
     margin: 0 0 0.4rem;
     font-size: 1.15rem; font-weight: 800; letter-spacing: -0.01em;
-    color: #0e2358; text-transform: lowercase;
+    color: #0e2358; text-transform: none;
 }
 .sp-auth-vhead p { margin: 0; font-size: 0.88rem; line-height: 1.55; color: rgba(14, 35, 88, 0.58); }
 .sp-auth-vhead b { color: #0e2358; font-weight: 600; overflow-wrap: anywhere; }
@@ -3714,7 +3722,7 @@ html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }
 .sp-auth-done h3 {
     margin: 0 0 0.5rem;
     font-size: 1.25rem; font-weight: 800; letter-spacing: -0.01em;
-    color: #0e2358; text-transform: lowercase;
+    color: #0e2358; text-transform: none;
 }
 .sp-auth-done p { margin: 0; font-size: 0.92rem; line-height: 1.6; color: rgba(14, 35, 88, 0.6); }
 
@@ -3882,7 +3890,7 @@ html.theme-light .lp-demo-select-menu { scrollbar-color: rgba(14, 35, 88, 0.2) #
     background: #fbfcfd;
     font: inherit; font-size: 0.8rem; font-weight: 600;
     color: rgba(14, 35, 88, 0.62);
-    text-transform: lowercase;
+    text-transform: none;
     cursor: pointer;
     transition: border-color 0.18s ease, color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
 }
@@ -4014,7 +4022,7 @@ html.theme-light .lp-demo-select-menu { scrollbar-color: rgba(14, 35, 88, 0.2) #
     font-family: inherit; font-size: 1.06rem; font-weight: 700; line-height: 1.4;
     letter-spacing: -0.01em;
     color: #0e2358;
-    text-align: left; text-transform: lowercase;
+    text-align: left; text-transform: none;
     cursor: pointer;
     transition: color 0.18s ease;
 }
@@ -4097,7 +4105,7 @@ h2.faq-group {
 .faq-ask h3 {
     margin: 0 0 0.4rem;
     font-size: 1.1rem; font-weight: 800; letter-spacing: -0.01em;
-    color: #0e2358; text-transform: lowercase;
+    color: #0e2358; text-transform: none;
 }
 .faq-ask p { margin: 0 !important; font-size: 0.98rem; line-height: 1.7; color: rgba(14, 35, 88, 0.62); }
 
@@ -4111,7 +4119,7 @@ h2.faq-group {
     border-radius: 12px;
     background: #ffffff;
     font-size: 0.95rem; font-weight: 700;
-    color: #0e2358; text-decoration: none; text-transform: lowercase;
+    color: #0e2358; text-decoration: none; text-transform: none;
     box-shadow: 0 2px 10px rgba(14, 35, 88, 0.04);
     transition: border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
 }
@@ -4257,7 +4265,7 @@ html {
     line-height: 1.14;
     letter-spacing: -0.02em;
     color: #0e2358;
-    text-transform: lowercase;
+    text-transform: none;
 }
 .sp-dash-out {
     flex: 0 0 auto;
@@ -4301,7 +4309,7 @@ html {
 }
 .sp-dash-yes { color: #0a7b52 !important; }
 
-.sp-dash-h2 { margin: 0 0 0.5rem; font-size: 1.05rem; font-weight: 700; color: #0e2358; text-transform: lowercase; }
+.sp-dash-h2 { margin: 0 0 0.5rem; font-size: 1.05rem; font-weight: 700; color: #0e2358; text-transform: none; }
 .sp-dash-p { margin: 0; font-size: 0.92rem; line-height: 1.65; color: rgba(14, 35, 88, 0.62); }
 .sp-dash-links { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.1rem; }
 .sp-dash-link {
@@ -4366,3 +4374,598 @@ html {
 /* the staff panel on the dashboard: the same card as the rest, marked by its
    heading rather than by a colour, because it is not a warning */
 .sp-dash-staff[hidden] { display: none; }
+
+/* ============ the hero, full height ============
+   corp.css is loaded after landing.css and is where this site's current look is
+   actually decided, so the hero's frame has to be settled here or the older
+   `html.theme-light .lp-hero` rule further up wins: it sets `min-height: 0` and
+   paints its own drifting orbs, which is the background the field replaces.
+
+   the ground is flat and dark. everything visible behind the words is drawn on
+   the canvas, and two backgrounds through one veil is mud. */
+html.theme-light .lp-hero {
+    min-height: 100svh;
+    padding: 7.5rem 1.5rem 6rem;
+    background: #06070f;
+}
+html.theme-light .lp-hero .sp-hero-h1 { color: #ffffff; }
+/* the gradient on the second line has to survive the older rule that forces
+   white with !important on anything inside the hero */
+html.theme-light .lp-hero .sp-hero-l2 {
+    color: transparent !important;
+    -webkit-text-fill-color: transparent !important;
+}
+@media (max-width: 900px) {
+    html.theme-light .lp-hero { padding: 6.5rem 1.25rem 5.5rem; }
+}
+
+/* the two soft lights behind the field.
+   the mesh on its own is fine and it is also flat: a hundred thin lines with
+   nothing behind them reads as a diagram. the reference gets its depth from a
+   video full of large slow forms, and this is the cheap honest version of that,
+   two enormous blurred discs drifting on the compositor.
+
+   the markup already had four orbs from the old hero. two of them are reused
+   and the other two are dropped: four was busy even then. */
+html.theme-light .lp-hero-fx { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+html.theme-light .lp-fx-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(110px);
+    opacity: 1;
+    animation: none;
+}
+html.theme-light .lp-fx-o1 {
+    top: -22%; left: -12%;
+    width: 62rem; height: 44rem;
+    background: radial-gradient(circle, rgba(0, 190, 220, 0.18), transparent 68%);
+    animation: spDriftA 34s ease-in-out infinite alternate;
+}
+html.theme-light .lp-fx-o2 {
+    bottom: -28%; right: -14%;
+    width: 58rem; height: 46rem;
+    background: radial-gradient(circle, rgba(140, 70, 240, 0.2), transparent 68%);
+    animation: spDriftB 41s ease-in-out infinite alternate;
+}
+html.theme-light .lp-fx-o3,
+html.theme-light .lp-fx-o4 { display: none; }
+
+/* transform only, so neither one ever asks the page to lay out again */
+@keyframes spDriftA {
+    from { transform: translate3d(0, 0, 0) scale(1); }
+    to   { transform: translate3d(6vw, 4vh, 0) scale(1.12); }
+}
+@keyframes spDriftB {
+    from { transform: translate3d(0, 0, 0) scale(1.08); }
+    to   { transform: translate3d(-5vw, -5vh, 0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+    html.theme-light .lp-fx-orb { animation: none !important; }
+}
+
+/* the logo marquee was the one thing on the page that kept moving for somebody
+   who has asked the system for less movement. it predates the reveals and it was
+   easy to miss because it is a background detail, which is exactly the kind of
+   motion that makes people ill. it holds still now. */
+@media (prefers-reduced-motion: reduce) {
+    .lp-net-track { animation: none !important; }
+}
+
+/* ============ the hero folding away ============
+   the panel steps back as the page scrolls: a few percent smaller with a corner
+   radius, so the white page underneath shows as a margin around it. scroll.js
+   sets the two numbers, this owns what is done with them.
+
+   the origin is the top centre, so the panel shrinks toward the nav rather than
+   toward the middle of itself and the headline stays where the eye left it.
+
+   a fallback of 1 and 0 is written into the property values, so a page whose
+   javascript did not run gets the full-bleed hero and no animation. */
+html.theme-light .lp-hero {
+    transform-origin: 50% 0;
+    transform: scale(var(--sp-fold-scale, 1));
+    border-radius: var(--sp-fold-radius, 0px);
+    /* the scene and the veil have to be clipped by the new corners */
+    overflow: hidden;
+    /* the shadow only appears once it has stepped back, which is what makes it
+       read as a card set down on the page rather than a section that shrank */
+    box-shadow: 0 30px 80px -40px rgba(6, 10, 30, calc(var(--sp-fold, 0) * 0.55));
+    transition: box-shadow 0.3s linear;
+}
+
+/* the logo band underneath loses its top gap: with the panel lifted there is
+   already a margin there, and two margins read as a mistake */
+html.theme-light .lp-logo-bar { position: relative; z-index: 2; }
+
+@media (prefers-reduced-motion: reduce) {
+    html.theme-light .lp-hero {
+        transform: none;
+        border-radius: 0;
+        box-shadow: none;
+    }
+}
+
+/* the navigation follows the panel.
+   once the hero has stepped back, a dark bar running the full width of a white
+   page reads as a mistake: it is the only thing left touching both edges. so it
+   comes in by the same amount the panel does and takes the same corner, and ends
+   up as a bar floating over the page rather than stuck to the top of it.
+
+   it uses the same `--sp-fold` the panel does, which is set on the root by
+   scroll.js. on every other page the property does not exist, the fallbacks are
+   zero, and the nav is exactly what it was. */
+html.theme-light .lp-nav {
+    left: calc(var(--sp-fold, 0) * 24px);
+    right: calc(var(--sp-fold, 0) * 24px);
+    top: calc(var(--sp-fold, 0) * 12px);
+    border-radius: var(--sp-fold-radius, 0px);
+    /* the hairline under it is what makes it look attached, so it fades out as
+       the bar lifts away */
+    border-bottom-color: rgba(255, 255, 255, calc(0.08 * (1 - var(--sp-fold, 0))));
+    box-shadow: 0 18px 44px -26px rgba(6, 10, 30, calc(var(--sp-fold, 0) * 0.5));
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html.theme-light .lp-nav {
+        left: 0; right: 0; top: 0;
+        border-radius: 0;
+        box-shadow: none;
+    }
+}
+
+/* ---- the dark bands opening out as they arrive ---------------------------- */
+/* driven by `--sp-in` from scroll.js: 0 the moment the band's top edge reaches
+   the bottom of the window, 1 once it is a third of the way up. the fallback is 1
+   in every direction, so with javascript off, on a browser that has never heard
+   of this property, and under reduced motion, the band is simply full width the
+   way it always was. nothing here can hide content.
+
+   only what is painted changes: `clip-path` does not move the text inside by a
+   pixel, which is the point (a width animation would reflow the numbers on every
+   frame of the scroll). */
+.lp-statsx, .lp-cta-band {
+    clip-path: inset(
+        0
+        calc((1 - var(--sp-in, 1)) * 4.5%)
+        0
+        calc((1 - var(--sp-in, 1)) * 4.5%)
+        round calc((1 - var(--sp-in, 1)) * 30px)
+    );
+    /* it also comes up a touch dimmer, so the opening reads as the panel coming
+       to rest rather than as a mask sliding off it */
+    opacity: calc(0.55 + var(--sp-in, 1) * 0.45);
+    transition: opacity 0.2s linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lp-statsx, .lp-cta-band { clip-path: none; opacity: 1; }
+}
+
+/* ---- one trick per section ------------------------------------------------ */
+/* the numbers come from flair.js as --sp-mx and --sp-my, the cursor's position
+   inside the element from 0 to 1 on each axis. the design lives here.
+
+   the fallbacks are 0.5, the middle, so every one of these rules is a no-op
+   until a pointer actually moves over the element: the page with the script
+   blocked is the page as it was. */
+
+/* built for you: the role card leans toward the cursor.
+
+   the perspective is on the card itself rather than on a wrapper, and the tilt
+   is under three degrees. anything more and the text on the far edge visibly
+   blurs, which is the difference between an object with weight and a gimmick. */
+.lp-role-feature {
+    transform: perspective(1100px)
+               rotateX(calc((0.5 - var(--sp-my, 0.5)) * 3.4deg))
+               rotateY(calc((var(--sp-mx, 0.5) - 0.5) * 4.2deg));
+    transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.5s ease;
+    transform-style: preserve-3d;
+    will-change: auto;
+}
+/* while the cursor is on it the transition is short, so it follows rather than
+   trails; the long one above is what lets it settle back when the cursor leaves */
+.lp-role-feature.sp-lean-on {
+    transition: transform 0.12s linear, box-shadow 0.5s ease;
+    box-shadow: 0 40px 80px -40px rgba(0, 0, 0, 0.75);
+}
+/* the light on it moves with the lean, which is what sells the tilt as a
+   surface catching a light rather than as a rectangle being rotated */
+.lp-role-feature::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.35s ease;
+    background: radial-gradient(
+        420px circle at calc(var(--sp-mx, 0.5) * 100%) calc(var(--sp-my, 0.5) * 100%),
+        rgba(120, 210, 255, 0.10),
+        transparent 62%
+    );
+}
+.lp-role-feature.sp-lean-on::after { opacity: 1; }
+
+/* nine tools: the card lights along the edge nearest the cursor.
+
+   a border cannot take a gradient and keep a radius, so this is a layer inset by
+   the border width and masked to the frame. the alternative, a second element
+   behind a padded background, needs markup on nine cards. */
+.lp-sol-card { position: relative; }
+.lp-sol-card::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    background: radial-gradient(
+        200px circle at calc(var(--sp-mx, 0.5) * 100%) calc(var(--sp-my, 0.5) * 100%),
+        rgba(0, 240, 255, 0.75),
+        rgba(160, 32, 240, 0.35) 45%,
+        transparent 70%
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+}
+.lp-sol-card.sp-lit-on::before { opacity: 1; }
+
+/* stats and guides: one pass of light as the band arrives.
+
+   `forwards` and one iteration, and the class is never taken off again, so it
+   happens once in a visit rather than every time the band scrolls back past. */
+.lp-statsx::after,
+.lp-intel-banner::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    opacity: 0;
+    background: linear-gradient(
+        104deg,
+        transparent 38%,
+        rgba(140, 220, 255, 0.10) 47%,
+        rgba(255, 255, 255, 0.14) 50%,
+        rgba(180, 140, 255, 0.10) 53%,
+        transparent 62%
+    );
+    transform: translateX(-100%);
+}
+.lp-statsx.sp-swept::after,
+.lp-intel-banner.sp-swept::after {
+    animation: spSweepBand 1.35s cubic-bezier(0.3, 0, 0.2, 1) 0.15s 1 forwards;
+}
+@keyframes spSweepBand {
+    from { transform: translateX(-100%); opacity: 1; }
+    to   { transform: translateX(100%); opacity: 0; }
+}
+
+/* guides: the card lags the scroll.
+
+   --sp-lag is a pixel offset from flair.js, roughly plus or minus 26 at the top
+   and bottom of the window. it is the only foreground object over a background
+   on this page, and a small difference in speed is the whole reason two planes
+   read as two planes. */
+.lp-intel-guide {
+    transform: translateY(var(--sp-lag, 0px));
+}
+/* the existing hover lift has to keep working, so it is restated with the lag
+   folded in rather than being overwritten by the rule above */
+.lp-intel-guide:hover {
+    transform: translateY(calc(var(--sp-lag, 0px) - 6px)) scale(1.02);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lp-role-feature { transform: none; }
+    .lp-role-feature::after, .lp-sol-card::before { display: none; }
+    .lp-statsx::after, .lp-intel-banner::after { display: none; }
+    .lp-intel-guide, .lp-intel-guide:hover { transform: none; }
+}
+
+/* the role card's copy has to sit above its canvas, the same way the intel
+   banner's does. the card is the host, so the canvas is its first child and
+   everything else needs a stacking context of its own. */
+.lp-role-feature > *:not(.sp-band-gl) { position: relative; z-index: 1; }
+
+/* ---- the page's punctuation: every heading wiped up from behind a mask ----- */
+/* the one move that repeats, deliberately. it is how you know a new section has
+   started before you have read a word of it.
+
+   a clip rather than a per-line reveal. the fashionable version splits a heading
+   into lines and staggers them, which means splitting a sentence at whatever
+   point english happens to wrap, and croatian and german do not wrap there. this
+   gets the same feel out of one element and survives translation.
+
+   the class is added by script, so a page whose javascript never runs shows
+   every heading: worst case no animation, never invisible copy. */
+.lp-h2[data-sp-once],
+.lp-statsx-heading[data-sp-once],
+.lp-eyebrow[data-sp-once] {
+    clip-path: inset(0 0 105% 0);
+    transform: translateY(0.35em);
+    opacity: 0;
+    transition: clip-path 0.85s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.85s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.5s ease;
+}
+.lp-h2.sp-in,
+.lp-statsx-heading.sp-in,
+.lp-eyebrow.sp-in {
+    clip-path: inset(0 0 -20% 0);
+    transform: translateY(0);
+    opacity: 1;
+}
+/* the eyebrow leads the heading it belongs to by a beat, which is the order you
+   read them in anyway */
+.lp-eyebrow[data-sp-once] { transition-duration: 0.55s; }
+
+/* ---- nine tools: the cards are dealt ------------------------------------- */
+/* each card arrives tipped back in three dimensions and settles flat, one after
+   another. the perspective is on the card rather than on the grid, so a card
+   that is still tipped does not drag its neighbours' geometry with it. */
+.lp-sol-card[data-sp-once] {
+    opacity: 0;
+    transform: perspective(1200px) rotateX(9deg) translateY(26px);
+    transform-origin: 50% 0%;
+    transition: opacity 0.5s ease, transform 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: calc(var(--sp-order, 0) * 65ms);
+}
+.lp-sol-card.sp-dealt {
+    opacity: 1;
+    transform: perspective(1200px) rotateX(0deg) translateY(0);
+}
+
+/* ---- insights: the featured article drifts sideways ----------------------- */
+/* horizontal, where the guide card above is vertical, so the two parallax
+   sections on the page are not the same parallax. it is a smaller number
+   because sideways movement is far more noticeable: nothing else on a page
+   moves that way. */
+.lp-ins-featured {
+    transform: translateX(var(--sp-drift, 0px));
+    transition: box-shadow 0.3s ease;
+}
+
+/* ---- questions: a rail that fills as you read past it --------------------- */
+/* the only place on the page that says where you are inside a section rather
+   than on the page. the list is long and has no landmarks, which is exactly when
+   a reader wants to know how much is left. */
+.lp-faq-list {
+    position: relative;
+    padding-left: 1.35rem;
+}
+.lp-faq-list::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.4rem;
+    bottom: 0.4rem;
+    width: 2px;
+    border-radius: 2px;
+    background: rgba(16, 39, 91, 0.10);
+}
+.lp-faq-list::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.4rem;
+    width: 2px;
+    border-radius: 2px;
+    /* scaled rather than sized: a height in percent is a layout change on every
+       frame of the scroll, a scale is not */
+    height: calc(100% - 0.8rem);
+    transform-origin: top;
+    transform: scaleY(var(--sp-prog, 0));
+    background: linear-gradient(180deg, #00c8e6, #7b6cff);
+}
+@media (max-width: 640px) {
+    .lp-faq-list { padding-left: 1rem; }
+}
+
+/* ---- book a demo: one pass of light around the border --------------------- */
+/* the last thing on the homepage and the only thing anyone is asked to fill in,
+   so it gets the one effect that draws the eye to an outline. a conic gradient
+   rotated once, masked to the border, then it stops: a border that keeps
+   spinning is a page that will not sit still while you type in it.
+
+   scoped by `data-sp-once` on purpose. `lp-demo-card` is not only the demo
+   form: the sign-in panel on /auth carries the same class for its shape, and
+   the trace was running around that too, which is a light chasing itself around
+   a password field. the attribute is only ever put on the card by flair.js, and
+   only in the section it belongs to. */
+.lp-demo-card[data-sp-once] { position: relative; }
+.lp-demo-card[data-sp-once]::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1.5px;
+    pointer-events: none;
+    opacity: 0;
+    background: conic-gradient(
+        from var(--sp-turn, 0deg),
+        transparent 0deg,
+        transparent 250deg,
+        rgba(0, 240, 255, 0.85) 320deg,
+        rgba(160, 32, 240, 0.85) 350deg,
+        transparent 360deg
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+}
+.lp-demo-card[data-sp-once].sp-traced::after {
+    animation: spTrace 1.6s cubic-bezier(0.4, 0, 0.2, 1) 0.2s 1 forwards;
+}
+@keyframes spTrace {
+    0%   { opacity: 0;   --sp-turn: 0deg; }
+    12%  { opacity: 1; }
+    88%  { opacity: 1; }
+    100% { opacity: 0;   --sp-turn: 360deg; }
+}
+/* a custom property is not animatable unless it is registered, and without this
+   the border would jump from 0 to 360 at the end instead of travelling */
+@property --sp-turn {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lp-h2[data-sp-once], .lp-statsx-heading[data-sp-once], .lp-eyebrow[data-sp-once],
+    .lp-sol-card[data-sp-once] {
+        clip-path: none;
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+    .lp-ins-featured { transform: none; }
+    .lp-faq-list::after { display: none; }
+    .lp-demo-card[data-sp-once]::after { display: none; }
+}
+
+/* ---- the mega menu has to follow the nav when the nav lifts --------------- */
+/* scrolled, the bar becomes a floating pill: inset 24px from each side, 12px
+   down from the top, with a 26px radius. the panel that hangs off it was still
+   pinned to the window edges with square corners and a top edge 12px inside the
+   pill, so the two read as two unrelated objects and the panel looked like it
+   had come from somewhere else on the page.
+
+   it now takes the same three numbers the nav takes, from the same custom
+   properties scroll.js writes, so there is one source of truth for where the bar
+   is and the panel cannot drift out of step with it. all three fall back to the
+   flush position, which is what every other page and every browser that has
+   never heard of these properties gets. */
+@media (min-width: 1281px) {
+    html.theme-light .lp-nav .lp-nav-dd.lp-mega {
+        left: calc(var(--sp-fold, 0) * 24px) !important;
+        right: calc(var(--sp-fold, 0) * 24px) !important;
+        width: auto !important;
+        top: calc(64px + var(--sp-status-h) + var(--sp-fold, 0) * 12px) !important;
+        /* square where it meets the bar, rounded where it leaves the page, so
+           the pill and the panel are one shape rather than two */
+        border-radius: 0 0 var(--sp-fold-radius, 0px) var(--sp-fold-radius, 0px) !important;
+    }
+
+    /* and the bar gives up its own bottom corners while a panel is hanging off
+       it, or there is a notch between the two where both are rounded */
+    html.theme-light .lp-nav:has(.lp-nav-dd-wrap:hover) {
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+        transition: border-radius 0.15s ease;
+    }
+
+    /* the strip the lift opens above the bar.
+
+       twelve pixels of whatever happens to be scrolling past, sliced by the
+       pill's top edge, and when what is passing is a dark full-bleed band it
+       reads as a rendering fault rather than as a floating bar. it is plugged
+       with the page's own background, so the strip is simply page.
+
+       the pill still reads as floating: it is the twenty four pixels down each
+       side and the shadow under it that do that, not the sliver at the top. and
+       it costs nothing above the fold, where the bar is flush and this is zero
+       pixels tall. */
+    html.theme-light .lp-nav::before {
+        content: "";
+        position: fixed;
+        left: 0;
+        right: 0;
+        top: var(--sp-status-h, 0px);
+        height: calc(var(--sp-fold, 0) * 12px);
+        pointer-events: none;
+        z-index: -1;
+        background: #ffffff;
+    }
+}
+
+/* ---- the typeface system ------------------------------------------------- */
+/* uber runs two faces, not one: UberMove for display and UberMoveText for
+   everything you actually read, both with the same skeleton at two optical
+   sizes. that split is the part worth copying, and it is why their headings
+   look tight and deliberate while their paragraphs stay easy.
+
+   we cannot use their faces. Uber Move is a commissioned proprietary typeface
+   licensed to uber, and serving it, or hotlinking the files off their cdn, is
+   not something to do on a compliance company's website. so this is the same
+   structure with the closest openly licensed pair:
+
+     display   Plus Jakarta Sans. geometric, wide apertures, low contrast, and
+               the nearest open face to Uber Move's skeleton. it carries the
+               headings, the statistics and the brand.
+
+     text      Inter, which the site already used. it is the standard stand-in
+               for UberMoveText: tall x-height, open counters, drawn for
+               screens at small sizes.
+
+   the fallback chain is uber's own, minus their face: system-ui first so a
+   device shows its native ui font rather than a serif while the webfont is
+   still arriving, then the helveticas, then whatever there is.
+
+   every rule in the stylesheets points at one of these two variables now, so
+   changing a typeface is one line rather than a hundred and fifty. */
+:root {
+    --sp-text: 'Inter', system-ui, -apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    --sp-display: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+/* what the display face is for: the things read at a glance rather than read
+   through. anything that is a paragraph stays on the text face, however large
+   it happens to be. */
+h1, h2, h3, h4,
+.sp-hero-h1,
+.lp-h2,
+.lp-statsx-heading,
+.lp-statsx-num,
+.lp-hero-title,
+.lp-mega-heading,
+.lp-sol-title,
+.lp-role-title,
+.lp-intel-banner-title,
+.lp-intel-guide-title,
+.lp-ins-title,
+.lp-faq-q,
+.sp-auth-h,
+.lp-logo-text,
+.lp-stat-num,
+.lp-cta-title,
+.bad-title {
+    font-family: var(--sp-display);
+    /* plus jakarta sans is a wider face than inter at the same size, so the
+       tracking that suited inter reads loose on it. this is the one metric that
+       has to move with the typeface rather than staying put. */
+    letter-spacing: -0.022em;
+}
+
+/* the hero headline is set large enough that it needs more of the same */
+/* jakarta sets wider than inter, so it wants less negative tracking, not more:
+   at -0.035em the words in a croatian headline start touching. uber sets its own
+   display face around this value. */
+.sp-hero-h1 { letter-spacing: -0.024em; }
+.lp-statsx-num, .lp-stat-num { letter-spacing: -0.03em; }
+
+/* eyebrows and small caps labels are the exception: they are set in the text
+   face because a wide display face at 0.75rem with letter-spacing on it turns
+   into a row of disconnected letters. */
+.lp-eyebrow, .lp-mega-eyebrow, .sp-hero-scroll span {
+    font-family: var(--sp-text);
+    letter-spacing: 0.18em;
+}
+
+/* the highlight is a background on an inline span, and its horizontal padding
+   pushes whatever follows away from the word: "guides , " with a gap before the
+   comma.
+   
+   a negative right margin looked like the fix and is not: it cancels the
+   padding everywhere, so where a space follows instead of a comma the two words
+   collide. there is no selector for "followed by punctuation", so the honest
+   answer is a smaller box. 0.1em still reads as a highlight and leaves a gap
+   before a comma small enough that nobody looks at it. */
+.lp-hl, .lp-statsx-hl {
+    padding: 0 0.1em;
+}

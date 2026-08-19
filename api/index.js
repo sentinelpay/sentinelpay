@@ -157,8 +157,13 @@ app.use(helmet({
                 'https://*.intercom.io',
                 'blob:'
             ],
-            'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://fonts.intercomcdn.com'],
-            'font-src': ["'self'", 'https://fonts.gstatic.com', 'https://fonts.intercomcdn.com'],
+            // google's font hosts are gone from both of these: the site serves its
+            // own faces now, so nothing here asks for them, and a policy that
+            // still permits an origin nothing uses is a policy that has stopped
+            // describing the site. intercom's stays, because the chat widget
+            // does load a face from it.
+            'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.intercomcdn.com'],
+            'font-src': ["'self'", 'https://fonts.intercomcdn.com'],
             'img-src': [
                 "'self'",
                 'data:',
@@ -425,6 +430,49 @@ function statusBanner() {
         '<div class="sp-status-inner">' + inner + '</div>' + dismiss + '</div>';
 }
 
+// ---------------------------------------------------------------------------
+// the staging ribbon
+// ---------------------------------------------------------------------------
+//
+// A copy of the site that looks exactly like the real one is a trap. Somebody
+// tests a fix on staging and reports it live; somebody else edits data on
+// production believing it is the copy. The whole value of staging is being
+// identical, so the one thing that must not be identical is the label.
+//
+// It is fixed to the bottom rather than the top: the top already has the nav
+// and the incident banner, and this must not push the layout it exists to let
+// you check. It carries the commit it is running, which Railway hands us, so
+// "is my change up yet" is answered by looking rather than by guessing.
+//
+// The styles ride with it in a <style> element rather than a style attribute:
+// the site's policy allows inline stylesheets and forbids inline style
+// attributes, and this is not a good enough reason to weaken that.
+const IS_STAGING = String(process.env.APP_ENV || '').toLowerCase() === 'staging';
+
+function stagingRibbon() {
+    if (!IS_STAGING) return '';
+    const sha = String(process.env.RAILWAY_GIT_COMMIT_SHA || '').slice(0, 7);
+    const branch = String(process.env.RAILWAY_GIT_BRANCH || '');
+    const bits = ['staging', 'not production'];
+    // the branch is usually called staging too, and saying it twice reads as a
+    // bug in the ribbon rather than as information
+    if (branch && branch.toLowerCase() !== 'staging') bits.push(branch);
+    if (sha) bits.push(sha);
+    return '<style>' +
+        '.sp-staging{position:fixed;z-index:2147483000;left:0;right:0;bottom:0;' +
+        'display:flex;align-items:center;justify-content:center;gap:.6rem;' +
+        'padding:.42rem .8rem;background:#ffb300;color:#1a1200;' +
+        'font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;' +
+        'font-size:11px;letter-spacing:.08em;text-transform:uppercase;' +
+        'box-shadow:0 -6px 20px rgba(0,0,0,.35);pointer-events:none}' +
+        '.sp-staging b{font-weight:700}' +
+        '@media print{.sp-staging{display:none}}' +
+        '</style>' +
+        '<div class="sp-staging" role="status" data-i18n-skip>' +
+        '<b>' + escapeHtml(bits[0]) + '</b><span>' + escapeHtml(bits.slice(1).join(' · ')) + '</span>' +
+        '</div>';
+}
+
 function renderPage(file, req, forcedLang) {
     // keyed on mtime, so an edited page is picked up without a restart. in
     // production files only change on deploy, which restarts anyway.
@@ -455,7 +503,7 @@ function renderPage(file, req, forcedLang) {
         .replace('<!--SP_NOSCRIPT-->', notice)
         .replace('<!--SP_HREFLANG-->', () => homepageLinkTags(forcedLang))
         .replace(/<html lang="en">/, '<html lang="en"' + attrs + '>')
-        .replace('<body class="lp-body">', () => '<body class="lp-body">' + statusBanner());
+        .replace('<body class="lp-body">', () => '<body class="lp-body">' + statusBanner() + stagingRibbon());
 }
 
 function sendPage(res, req, file, status, forcedLang) {
@@ -481,13 +529,35 @@ app.use(rateLimit({
     message: { error: 'too many requests, please slow down' }
 }));
 
+// Nothing on staging is for the public. The header goes on every response and
+// robots.txt refuses the whole site, because the one thing worse than a staging
+// copy is a staging copy in google competing with the real page for its own
+// name. Belt and braces on purpose: a header covers the pages a crawler asks
+// for without reading robots.txt first.
+if (IS_STAGING) {
+    app.use((req, res, next) => {
+        res.set('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
+        next();
+    });
+    app.get('/robots.txt', (req, res) => {
+        res.type('text/plain').send('User-agent: *\nDisallow: /\n');
+    });
+}
+
 // Subdomain routing, served by this same service via Host header (no extra service):
-//  - blog.sentinelpay.org -> the blog page (public/blog.html)
-//  - help.sentinelpay.org -> a blank page until real content exists
+//  - blog.* -> the blog page (public/blog.html)
+//  - help.* -> a blank page until real content exists
+//
+// Matched on the first label rather than on the full production hostname. The
+// blog is not a separate deployment, it is these same files behind a different
+// host, so pinning the check to blog.sentinelpay.org meant staging had no blog
+// at all: every change to the blog could only be seen by shipping it to
+// production first, which is the one thing staging exists to prevent.
 const BLANK_PAGE = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>sentinelpay</title><style>html,body{margin:0;height:100%;background:#06070f}</style></head><body></body></html>';
 app.use((req, res, next) => {
     const host = String(req.headers.host || '').split(':')[0].toLowerCase();
-    if (host === 'blog.sentinelpay.org') {
+    const label = host.split('.')[0];
+    if (label === 'blog') {
         // serve blog pages for navigation requests; let assets (.css/.svg/.png)
         // fall through to express.static so the shared homepage styles load.
         if (req.method === 'GET' && !path.extname(req.path)) {
@@ -516,7 +586,7 @@ app.use((req, res, next) => {
         }
         return next();
     }
-    if (host === 'help.sentinelpay.org') {
+    if (label === 'help') {
         res.set('X-Robots-Tag', 'noindex, nofollow');
         return res.status(200).type('html').send(BLANK_PAGE);
     }

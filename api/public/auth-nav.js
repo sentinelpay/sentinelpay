@@ -2,7 +2,7 @@
 
    the pair of buttons in the corner is an invitation, and an invitation to
    somebody who has already accepted it reads as the site not knowing who they
-   are. so "log in" and "get started" become one button that goes to the
+   are. so "Log in" and "Get started" become one button that goes to the
    dashboard, and a round mark with their initials next to it.
 
    why one button and not a menu: there is exactly one place to go. a menu that
@@ -52,7 +52,7 @@
             // the full name is on the mark rather than beside it: the corner of a
             // navigation bar is not where somebody's address belongs, and a
             // screen reader still reads it
-            mark.setAttribute('aria-label', me.name || t('your account'));
+            mark.setAttribute('aria-label', me.name || t('Your account'));
             mark.title = me.name || '';
 
             var go = document.createElement('a');
@@ -77,7 +77,7 @@
         }
     }
 
-    // hidden while we ask, so the first paint is not "log in" flipping to a name
+    // hidden while we ask, so the first paint is not "Log in" flipping to a name
     box.classList.add('auth-nav-asking');
     function done() { box.classList.remove('auth-nav-asking'); }
 

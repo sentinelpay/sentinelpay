@@ -1,5 +1,11 @@
-# Build artifacts
-node_modules/
+# Build artifacts.
+#
+# the pattern has to be `**/node_modules`: docker anchors a plain `node_modules/`
+# to the root of the context, so `api/node_modules` was never excluded. that
+# meant whatever happened to be installed on the machine that ran the build got
+# copied into the image on top of the one the dockerfile had just installed,
+# which is how a build passes locally and fails in the container.
+**/node_modules/
 npm-debug.log*
 
 # Environment & secrets

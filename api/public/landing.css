@@ -58,14 +58,14 @@ body.lp-body {
 }
 
 .lp-logo-text {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.05rem;
     font-weight: 700;
     background: linear-gradient(135deg, #fff 0%, #888 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     letter-spacing: -0.5px;
-    text-transform: lowercase;
+    text-transform: none;
 }
 
 .lp-nav-links {
@@ -92,13 +92,13 @@ body.lp-body {
     gap: 0.45rem;
     color: var(--text-muted);
     text-decoration: none;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.82rem;
     padding: 0.45rem 1rem;
     border-radius: 50px;
     border: 1px solid rgba(255, 255, 255, 0.07);
     background: transparent;
-    text-transform: lowercase;
+    text-transform: none;
     transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
 }
 
@@ -111,12 +111,12 @@ body.lp-body {
 .lp-nav-link {
     color: var(--text-muted);
     text-decoration: none;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.82rem;
     padding: 0.4rem 0.85rem;
     border-radius: 6px;
     transition: all 0.2s ease;
-    text-transform: lowercase;
+    text-transform: none;
 }
 
 .lp-nav-link:hover {
@@ -198,9 +198,9 @@ body.lp-body {
     padding: 0.5rem 0.8rem;
     color: var(--text-muted);
     text-decoration: none;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.7rem;
-    text-transform: lowercase;
+    text-transform: none;
     transition: background 0.13s, color 0.13s;
     white-space: nowrap;
     border-bottom: 1px solid rgba(255,255,255,0.04);
@@ -279,10 +279,10 @@ body.lp-body {
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 6px;
     padding: 0.35rem 0.75rem;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.68rem;
     color: rgba(255, 255, 255, 0.4);
-    text-transform: lowercase;
+    text-transform: none;
     letter-spacing: 0.02em;
     text-decoration: none;
     transition: background 0.15s, border-color 0.15s, color 0.15s;
@@ -330,10 +330,10 @@ body.lp-body {
     border: 1px solid rgba(0, 240, 255, 0.15);
     border-radius: 50px;
     padding: 0.4rem 1.1rem;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.72rem;
     color: var(--neon-blue);
-    text-transform: lowercase;
+    text-transform: none;
     letter-spacing: 0.03em;
 }
 
@@ -352,7 +352,7 @@ body.lp-body {
 }
 
 .lp-h1 {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: clamp(2.4rem, 6vw, 3.75rem);
     font-weight: 700;
     line-height: 1.1;
@@ -360,18 +360,18 @@ body.lp-body {
     background: linear-gradient(160deg, #ffffff 0%, #909090 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    text-transform: lowercase;
+    text-transform: none;
     margin: 0;
 }
 
 .lp-hero-sub {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.05rem;
     color: var(--text-muted);
     line-height: 1.65;
     max-width: 520px;
     font-weight: 300;
-    text-transform: lowercase;
+    text-transform: none;
     margin: 0;
 }
 
@@ -390,11 +390,11 @@ body.lp-body {
     color: #000;
     padding: 0.8rem 1.85rem;
     border-radius: 8px;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.875rem;
     font-weight: 700;
     text-decoration: none;
-    text-transform: lowercase;
+    text-transform: none;
     transition: all 0.2s ease;
     white-space: nowrap;
 }
@@ -410,11 +410,11 @@ body.lp-body {
     color: var(--text-muted);
     padding: 0.8rem 1.5rem;
     border-radius: 8px;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.875rem;
     font-weight: 400;
     text-decoration: none;
-    text-transform: lowercase;
+    text-transform: none;
     transition: all 0.2s ease;
     border: 1px solid var(--border-glass);
     white-space: nowrap;
@@ -522,19 +522,19 @@ body.lp-body {
 }
 
 .lp-diag-node-name {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.75rem;
     color: var(--text-main);
     font-weight: 700;
-    text-transform: lowercase;
+    text-transform: none;
 }
 
 .lp-diag-node-sub {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.68rem;
     color: var(--text-muted);
     font-weight: 300;
-    text-transform: lowercase;
+    text-transform: none;
     line-height: 1.3;
 }
 
@@ -574,7 +574,7 @@ body.lp-body {
 }
 
 .lp-diag-score-num {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.1rem;
     font-weight: 700;
     line-height: 1;
@@ -586,7 +586,7 @@ body.lp-body {
 .lp-risk-low .lp-diag-score-num { color: var(--color-green); }
 
 .lp-diag-score-sep {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.7rem;
     opacity: 0.4;
     transition: color 0.3s ease;
@@ -597,9 +597,9 @@ body.lp-body {
 .lp-risk-low .lp-diag-score-sep { color: var(--color-green); }
 
 .lp-diag-score-cat {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.62rem;
-    text-transform: lowercase;
+    text-transform: none;
     transition: color 0.3s ease;
 }
 
@@ -610,9 +610,9 @@ body.lp-body {
 .lp-diag-email-toast {
     border-radius: 6px;
     padding: 0.3rem 0.65rem;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.62rem;
-    text-transform: lowercase;
+    text-transform: none;
     margin-top: 0.35rem;
     width: 154px;
     white-space: nowrap;
@@ -650,10 +650,10 @@ body.lp-body {
 }
 
 .lp-diag-pipe-label {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.58rem;
     color: var(--text-muted);
-    text-transform: lowercase;
+    text-transform: none;
     letter-spacing: 0.04em;
     white-space: nowrap;
     opacity: 0.7;
@@ -704,7 +704,7 @@ body.lp-body {
 .lp-diag-track-arrow {
     position: absolute;
     right: 0;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.1rem;
     color: var(--neon-blue);
     opacity: 0.4;
@@ -773,19 +773,19 @@ body.lp-body {
 }
 
 .lp-stat-value {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.75rem;
     font-weight: 700;
     color: #fff;
     letter-spacing: -0.02em;
-    text-transform: lowercase;
+    text-transform: none;
 }
 
 .lp-stat-label {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.75rem;
     color: var(--text-muted);
-    text-transform: lowercase;
+    text-transform: none;
     font-weight: 400;
     line-height: 1.4;
     max-width: 140px;
@@ -805,22 +805,22 @@ body.lp-body {
 }
 
 .lp-eyebrow {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.7rem;
     color: var(--neon-blue);
-    text-transform: lowercase;
+    text-transform: none;
     letter-spacing: 0.12em;
     margin-bottom: 0.85rem;
     display: block;
 }
 
 .lp-h2 {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: clamp(1.75rem, 3.5vw, 2.4rem);
     font-weight: 700;
     letter-spacing: -0.03em;
     color: #fff;
-    text-transform: lowercase;
+    text-transform: none;
     line-height: 1.15;
     margin-bottom: 3rem;
 }
@@ -848,7 +848,7 @@ body.lp-body {
     display: flex;
     align-items: flex-start;
     padding: 2.5rem 1.5rem 0;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.1rem;
     color: var(--text-muted);
     opacity: 0.35;
@@ -856,7 +856,7 @@ body.lp-body {
 }
 
 .lp-step-num {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.7rem;
     color: var(--neon-blue);
     font-weight: 700;
@@ -864,21 +864,21 @@ body.lp-body {
 }
 
 .lp-step-title {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.15rem;
     font-weight: 600;
     color: #fff;
-    text-transform: lowercase;
+    text-transform: none;
     margin: 0;
 }
 
 .lp-step-desc {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.875rem;
     color: var(--text-muted);
     line-height: 1.6;
     font-weight: 300;
-    text-transform: lowercase;
+    text-transform: none;
     margin: 0;
 }
 
@@ -922,7 +922,7 @@ body.lp-body {
 }
 
 .lp-signal-flag {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.78rem;
     color: var(--text-main);
     background: rgba(255, 255, 255, 0.05);
@@ -932,7 +932,7 @@ body.lp-body {
 }
 
 .lp-signal-score {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.85rem;
     font-weight: 700;
     flex-shrink: 0;
@@ -943,12 +943,12 @@ body.lp-body {
 .lp-score-blue { color: var(--neon-blue); }
 
 .lp-signal-desc {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.84rem;
     color: var(--text-muted);
     line-height: 1.55;
     font-weight: 300;
-    text-transform: lowercase;
+    text-transform: none;
     margin: 0;
 }
 
@@ -971,12 +971,12 @@ body.lp-body {
 }
 
 .lp-code-label {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.68rem;
     color: var(--text-muted);
     padding: 0.7rem 1.25rem;
     border-bottom: 1px solid var(--border-glass);
-    text-transform: lowercase;
+    text-transform: none;
     letter-spacing: 0.05em;
 }
 
@@ -984,7 +984,7 @@ body.lp-body {
     padding: 1.5rem 1.25rem;
     margin: 0;
     overflow-x: auto;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.83rem;
     line-height: 1.75;
     color: var(--text-main);
@@ -1000,15 +1000,15 @@ body.lp-body {
 .lp-c-bool { color: #a78bfa; }
 
 .lp-code-note {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.84rem;
     color: var(--text-muted);
     font-weight: 300;
-    text-transform: lowercase;
+    text-transform: none;
 }
 
 .lp-code-note code {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.8rem;
     color: var(--neon-blue);
     background: rgba(0, 240, 255, 0.06);
@@ -1044,10 +1044,10 @@ body.lp-body {
     transform: translateX(-50%);
     background: var(--neon-blue);
     color: #000;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.65rem;
     font-weight: 700;
-    text-transform: lowercase;
+    text-transform: none;
     padding: 0.25rem 0.9rem;
     border-radius: 50px;
     white-space: nowrap;
@@ -1055,10 +1055,10 @@ body.lp-body {
 }
 
 .lp-plan-name {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.78rem;
     color: var(--text-muted);
-    text-transform: lowercase;
+    text-transform: none;
     letter-spacing: 0.1em;
     margin-bottom: 1.25rem;
 }
@@ -1071,14 +1071,14 @@ body.lp-body {
 }
 
 .lp-plan-currency {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.2rem;
     font-weight: 500;
     color: var(--text-muted);
 }
 
 .lp-plan-amount {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 3rem;
     font-weight: 700;
     color: #fff;
@@ -1087,7 +1087,7 @@ body.lp-body {
 }
 
 .lp-plan-period {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.85rem;
     color: var(--text-muted);
     font-weight: 400;
@@ -1098,7 +1098,7 @@ body.lp-body {
 }
 
 .lp-plan-amount-custom {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 2.4rem;
     font-weight: 700;
     color: #fff;
@@ -1107,12 +1107,12 @@ body.lp-body {
 }
 
 .lp-plan-desc {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.84rem;
     color: var(--text-muted);
     line-height: 1.55;
     font-weight: 300;
-    text-transform: lowercase;
+    text-transform: none;
     margin: 0 0 1.75rem 0;
     padding-bottom: 1.75rem;
     border-bottom: 1px solid var(--border-glass);
@@ -1132,17 +1132,17 @@ body.lp-body {
     display: flex;
     align-items: flex-start;
     gap: 0.65rem;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.84rem;
     color: var(--text-muted);
-    text-transform: lowercase;
+    text-transform: none;
     font-weight: 300;
     line-height: 1.4;
 }
 
 .lp-feat-check {
     color: var(--color-green);
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.85rem;
     flex-shrink: 0;
     line-height: 1.4;
@@ -1154,11 +1154,11 @@ body.lp-body {
     justify-content: center;
     padding: 0.8rem 1.5rem;
     border-radius: 8px;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.85rem;
     font-weight: 700;
     text-decoration: none;
-    text-transform: lowercase;
+    text-transform: none;
     transition: all 0.2s ease;
 }
 
@@ -1215,22 +1215,22 @@ body.lp-body {
 .lp-usecase-icon svg { width: 100%; height: 100%; }
 
 .lp-usecase-title {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.95rem;
     font-weight: 600;
     color: #fff;
-    text-transform: lowercase;
+    text-transform: none;
     line-height: 1.3;
     margin: 0;
 }
 
 .lp-usecase-desc {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.84rem;
     color: var(--text-muted);
     line-height: 1.6;
     font-weight: 300;
-    text-transform: lowercase;
+    text-transform: none;
     margin: 0;
 }
 
@@ -1263,11 +1263,11 @@ body.lp-body {
 }
 
 .lp-cta-sub {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1rem;
     color: var(--text-muted);
     font-weight: 300;
-    text-transform: lowercase;
+    text-transform: none;
 }
 
 
@@ -1399,9 +1399,9 @@ html.lp-scroll-lock body {
     border-radius: 8px;
     color: var(--text-main);
     text-decoration: none;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.88rem;
-    text-transform: lowercase;
+    text-transform: none;
     transition: background 0.15s ease;
 }
 
@@ -1423,9 +1423,9 @@ html.lp-scroll-lock body {
     padding: 0.75rem 0.75rem;
     border-radius: 8px;
     color: var(--text-main);
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.88rem;
-    text-transform: lowercase;
+    text-transform: none;
     text-align: left;
     transition: background 0.15s ease;
 }
@@ -1464,9 +1464,9 @@ html.lp-scroll-lock body {
     border-radius: 6px;
     color: var(--text-muted);
     text-decoration: none;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.83rem;
-    text-transform: lowercase;
+    text-transform: none;
     transition: background 0.15s ease, color 0.15s ease;
 }
 
@@ -1512,11 +1512,11 @@ html.lp-scroll-lock body {
     text-align: center;
     padding: 0.85rem 1.3rem;
     border-radius: 999px;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.92rem;
     font-weight: 600;
     text-decoration: none;
-    text-transform: lowercase;
+    text-transform: none;
     transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
 }
 
@@ -1619,12 +1619,12 @@ html.lp-scroll-lock body {
 .lp-footer-logo { font-size: 1rem; }
 
 .lp-footer-tagline {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.84rem;
     color: var(--text-muted);
     line-height: 1.55;
     font-weight: 300;
-    text-transform: lowercase;
+    text-transform: none;
     margin: 0;
 }
 
@@ -1640,21 +1640,21 @@ html.lp-scroll-lock body {
 }
 
 .lp-footer-col-title {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.68rem;
     color: var(--text-main);
-    text-transform: lowercase;
+    text-transform: none;
     letter-spacing: 0.1em;
     font-weight: 700;
     margin-bottom: 0.2rem;
 }
 
 .lp-footer-link {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.84rem;
     color: var(--text-muted);
     text-decoration: none;
-    text-transform: lowercase;
+    text-transform: none;
     transition: color 0.2s ease;
 }
 
@@ -1669,18 +1669,18 @@ html.lp-scroll-lock body {
 }
 
 .lp-footer-copy {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.75rem;
     color: var(--text-muted);
-    text-transform: lowercase;
+    text-transform: none;
 }
 
 .lp-footer-email {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.75rem;
     color: var(--text-muted);
     text-decoration: none;
-    text-transform: lowercase;
+    text-transform: none;
     transition: color 0.2s ease;
 }
 
@@ -1876,8 +1876,8 @@ html.auth-session-present #lp-mm-dashboard { display: block !important; }
 
 .lp-reveal {
     opacity: 0;
-    transform: translateY(28px);
-    transition: opacity 0.65s ease, transform 0.65s ease;
+    transform: translateY(18px);
+    transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .lp-reveal.lp-visible {
     opacity: 1;
@@ -1921,10 +1921,10 @@ html.auth-session-present #lp-mm-dashboard { display: block !important; }
 .lp-dot-green  { background: #27c93f; }
 
 .lp-terminal-title {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.67rem;
     color: var(--text-muted);
-    text-transform: lowercase;
+    text-transform: none;
     margin-left: 0.25rem;
     letter-spacing: 0.04em;
 }
@@ -1933,7 +1933,7 @@ html.auth-session-present #lp-mm-dashboard { display: block !important; }
     padding: 0.65rem 0.85rem;
     margin: 0;
     overflow-x: auto;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.74rem;
     line-height: 1.65;
     color: var(--text-main);
@@ -1980,13 +1980,13 @@ html.auth-session-present #lp-mm-dashboard { display: block !important; }
 }
 
 .lp-connected-label {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.64rem;
     color: var(--color-green);
     padding: 0.4rem 1.25rem 0.8rem;
     opacity: 0.7;
     letter-spacing: 0.03em;
-    text-transform: lowercase;
+    text-transform: none;
 }
 
 
@@ -2013,7 +2013,7 @@ html.auth-session-present #lp-mm-dashboard { display: block !important; }
 }
 
 .lp-how-step-num {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.6rem;
     color: var(--neon-blue);
     font-weight: 700;
@@ -2021,23 +2021,23 @@ html.auth-session-present #lp-mm-dashboard { display: block !important; }
 }
 
 .lp-how-title {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1rem;
     font-weight: 700;
     color: #fff;
-    text-transform: lowercase;
+    text-transform: none;
     letter-spacing: -0.02em;
     line-height: 1.2;
     margin: 0;
 }
 
 .lp-how-desc {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.73rem;
     color: var(--text-muted);
     line-height: 1.6;
     font-weight: 300;
-    text-transform: lowercase;
+    text-transform: none;
     margin: 0;
 }
 
@@ -2051,7 +2051,7 @@ html.auth-session-present #lp-mm-dashboard { display: block !important; }
 .lp-log-line {
     display: flex;
     align-items: baseline;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.74rem;
     line-height: 1.7;
     color: var(--text-muted);
@@ -2193,10 +2193,10 @@ html.auth-session-present #lp-mm-dashboard { display: block !important; }
 }
 
 .lp-alert-badge {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.62rem;
     font-weight: 700;
-    text-transform: lowercase;
+    text-transform: none;
     letter-spacing: 0.1em;
     color: var(--color-red);
     background: rgba(255, 51, 51, 0.1);
@@ -2206,7 +2206,7 @@ html.auth-session-present #lp-mm-dashboard { display: block !important; }
 }
 
 .lp-alert-score {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.8rem;
     font-weight: 700;
     color: var(--color-red);
@@ -2221,7 +2221,7 @@ html.auth-session-present #lp-mm-dashboard { display: block !important; }
 }
 
 .lp-alert-wallet {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.78rem;
     color: var(--text-muted);
     letter-spacing: 0.02em;
@@ -2234,7 +2234,7 @@ html.auth-session-present #lp-mm-dashboard { display: block !important; }
 }
 
 .lp-alert-flag {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.72rem;
     color: var(--color-red);
     background: rgba(255, 51, 51, 0.08);
@@ -2247,7 +2247,7 @@ html.auth-session-present #lp-mm-dashboard { display: block !important; }
     display: flex;
     justify-content: space-between;
     gap: 0.5rem;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.7rem;
     color: rgba(255, 255, 255, 0.18);
     border-top: 1px solid rgba(255, 255, 255, 0.05);
@@ -2351,10 +2351,10 @@ html.auth-session-present #lp-mm-dashboard { display: block !important; }
 
 .lp-usecase-tag {
     display: inline-block;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.6rem;
     font-weight: 700;
-    text-transform: lowercase;
+    text-transform: none;
     letter-spacing: 0.1em;
     color: var(--neon-blue);
     background: rgba(0, 240, 255, 0.07);
@@ -2380,10 +2380,10 @@ html.auth-session-present #lp-mm-dashboard { display: block !important; }
 
 .lp-cta-label {
     display: inline-block;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.62rem;
     font-weight: 700;
-    text-transform: lowercase;
+    text-transform: none;
     letter-spacing: 0.12em;
     color: var(--neon-blue);
     background: rgba(0, 240, 255, 0.07);
@@ -2453,12 +2453,12 @@ html.auth-session-present #lp-cta-dashboard { display: inline-flex !important; }
 }
 
 .lp-chains-desc {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.9rem;
     color: var(--text-muted);
     line-height: 1.65;
     font-weight: 300;
-    text-transform: lowercase;
+    text-transform: none;
     max-width: 560px;
     margin: -1.5rem 0 2.5rem;
 }
@@ -2496,10 +2496,10 @@ html.auth-session-present #lp-cta-dashboard { display: inline-flex !important; }
 }
 
 .lp-scn-live-text {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.64rem;
     color: rgba(255, 255, 255, 0.28);
-    text-transform: lowercase;
+    text-transform: none;
     letter-spacing: 0.05em;
 }
 
@@ -2538,10 +2538,10 @@ html.auth-session-present #lp-cta-dashboard { display: inline-flex !important; }
 }
 
 .lp-scn-name {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.65rem;
     color: rgba(255, 255, 255, 0.35);
-    text-transform: lowercase;
+    text-transform: none;
     letter-spacing: 0.04em;
     white-space: nowrap;
 }
@@ -2615,10 +2615,10 @@ html.auth-session-present #lp-cta-dashboard { display: inline-flex !important; }
     border: 1px solid rgba(255, 255, 255, 0.07);
     border-radius: 50px;
     padding: 0.4rem 0.95rem;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.75rem;
     color: var(--text-muted);
-    text-transform: lowercase;
+    text-transform: none;
     transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
@@ -2721,10 +2721,10 @@ html.auth-session-present #lp-cta-dashboard { display: inline-flex !important; }
     content: attr(data-label);
     position: absolute;
     right: calc(100% + 10px);
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.57rem;
     color: transparent;
-    text-transform: lowercase;
+    text-transform: none;
     letter-spacing: 0.08em;
     white-space: nowrap;
     transform: translateX(8px);
@@ -2826,10 +2826,10 @@ html.auth-session-present #lp-cta-dashboard { display: inline-flex !important; }
 
 .lp-marquee-label {
     text-align: center;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.72rem;
     letter-spacing: 0.14em;
-    text-transform: lowercase;
+    text-transform: none;
     color: var(--text-muted);
     margin: 0 0 1.4rem;
 }
@@ -2880,7 +2880,7 @@ html.auth-session-present #lp-cta-dashboard { display: inline-flex !important; }
 .lp-stat:hover { border-color: rgba(0, 240, 255, 0.25); transform: translateY(-3px); }
 
 .lp-stat-num {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 2.3rem;
     font-weight: 800;
     letter-spacing: -0.02em;
@@ -2895,7 +2895,7 @@ html.auth-session-present #lp-cta-dashboard { display: inline-flex !important; }
     margin-top: 0.55rem;
     font-size: 0.78rem;
     color: var(--text-muted);
-    text-transform: lowercase;
+    text-transform: none;
 }
 
 .lp-roles-tabs {
@@ -2907,9 +2907,9 @@ html.auth-session-present #lp-cta-dashboard { display: inline-flex !important; }
 }
 
 .lp-role-tab {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.78rem;
-    text-transform: lowercase;
+    text-transform: none;
     color: var(--text-muted);
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -2953,11 +2953,11 @@ html.auth-session-present #lp-cta-dashboard { display: inline-flex !important; }
 }
 
 .lp-role-title {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.25rem;
     font-weight: 700;
     color: var(--text-main);
-    text-transform: lowercase;
+    text-transform: none;
     margin: 0 0 0.7rem;
 }
 
@@ -2990,7 +2990,7 @@ html.auth-session-present #lp-cta-dashboard { display: inline-flex !important; }
     font-size: 0.8rem;
     color: var(--neon-blue);
     text-decoration: none;
-    text-transform: lowercase;
+    text-transform: none;
     transition: opacity 0.2s ease;
 }
 
@@ -3022,4 +3022,513 @@ html.theme-light .lp-role-tab {
 html.theme-light .lp-role-tab.active {
     color: #fff;
     background: linear-gradient(120deg, #0090aa, #6a1fb0);
+}
+
+
+/* ============================================================================
+   the hero
+   ============================================================================
+   what it was: a centred stack on a flat dark ground with four blurred orbs
+   behind it, the headline in clipped white-to-grey, two equal buttons, and the
+   logo strip starting eighty pixels later. every part of that is the default,
+   and the sum of the defaults is a page that looks like forty other pages.
+
+   what it is now, and each of these is a specific decision rather than a taste:
+
+   the whole viewport, and nothing else in it. one screen, one sentence, one
+   thing to do. the logo strip has to be scrolled to, which is the point: it is
+   proof, and proof is worth something only after a claim.
+
+   a moving field behind everything rather than static blur. it is a canvas, not
+   a video, so it costs no download. see hero.js.
+
+   the type is the design. bigger than feels comfortable, line-height at exactly
+   1, tracking pulled in hard, and `text-wrap: balance` so the lines break
+   evenly instead of leaving one word alone. the accent is a gradient on the
+   second line, which is the mechanism, while the first stays plain white.
+
+   one primary button and one quiet one, not two of equal weight. */
+
+.lp-hero {
+    position: relative;
+    /* svh rather than vh: on a phone `vh` is the height with the browser bars
+       retracted, so a full-height hero sized in vh is always a little taller
+       than the screen and the scroll cue sits under the address bar */
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 7.5rem 1.5rem 6rem;
+    overflow: hidden;
+    z-index: 10;
+}
+
+/* ---- the scene ----------------------------------------------------------- */
+.sp-hero-scene {
+    position: absolute;
+    z-index: 1;
+    /* fitted rather than sliced, so on a wide screen the whole mark is in shot
+       and its two long edges frame the copy. on a phone that leaves the scene as
+       a band under the buttons, which the media query further down fixes by
+       oversizing the element instead of by changing preserveAspectRatio, since
+       that is an attribute and not something css can reach. */
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    pointer-events: none;
+}
+
+/* the blooms breathe, on transform only */
+.sp-scene-bloom { transform-box: fill-box; transform-origin: center; }
+.sp-scene-bloom-a { animation: spBloomA 26s ease-in-out infinite alternate; }
+.sp-scene-bloom-b { animation: spBloomB 33s ease-in-out infinite alternate; }
+@keyframes spBloomA { from { transform: translate(0, 0) scale(1); } to { transform: translate(5%, -4%) scale(1.14); } }
+@keyframes spBloomB { from { transform: translate(0, 0) scale(1.1); } to { transform: translate(-4%, 5%) scale(1); } }
+
+/* ---- our own mark, at the size of the screen ----------------------------- */
+/* the shield from the logo, drawn as line rather than filled, at a size where the
+   viewport crops it: the shoulders are above the top edge and the point is below
+   the bottom one, so what is left is two long edges sweeping down either side of
+   the copy. the words sit inside the shield.
+
+   it draws itself once: the stroke is dashed to its own length and the offset
+   animates to nothing, so the mark traces on over five seconds rather than being
+   there from the first frame. it does not loop, because a mark that keeps
+   redrawing itself is a mark that never settles.
+
+   this is the part of the page nobody else can copy without copying our logo. */
+.sp-shield {
+    fill: none;
+    stroke: url(#spShield);
+    stroke-linejoin: round;
+    stroke-width: 2;
+    stroke-dasharray: 4400;
+    stroke-dashoffset: 4400;
+    animation: spDraw 5s cubic-bezier(0.35, 0, 0.2, 1) 0.2s forwards;
+}
+@keyframes spDraw { to { stroke-dashoffset: 0; } }
+
+/* the range it watches. three rings about the same centre, breathing slowly and
+   out of step with each other. */
+.sp-ring {
+    fill: none;
+    stroke: #5ad9ff;
+    stroke-opacity: 0.07;
+    stroke-width: 1;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: spRing 12s ease-in-out infinite alternate;
+}
+.sp-ring-b { stroke-opacity: 0.055; animation-duration: 15s; animation-delay: -3s; }
+.sp-ring-c { stroke-opacity: 0.04; animation-duration: 18s; animation-delay: -7s; }
+@keyframes spRing { from { transform: scale(1); } to { transform: scale(1.035); } }
+
+/* the sweep. one line about the centre of the mark, once every twenty two
+   seconds, because something that watches does not need to hurry. */
+.sp-sweep {
+    transform-origin: 800px 470px;
+    animation: spSweep 22s linear infinite;
+    opacity: 0.5;
+}
+@keyframes spSweep { to { transform: rotate(360deg); } }
+
+/* ---- the weave and the flow ---------------------------------------------- */
+/* two things only, and neither of them names a subject: a lattice of dots that
+   drifts, and four curves with a pulse travelling each one.
+
+   the drift is exactly one tile of the pattern, 34 units, so the end of the loop
+   is pixel identical to its start and there is no seam to see. the second layer
+   is turned 1.4 degrees and drifts the other way: two grids at a small angle
+   interfere, and that slow moire is the whole effect. it is why this does not
+   read as a background image.
+
+   both layers move on transform only, and the pulses are `stroke-dashoffset`, so
+   nothing here touches layout and nothing wakes the main thread. */
+.sp-weave-a {
+    animation: spWeaveA 44s linear infinite;
+}
+.sp-weave-b {
+    opacity: 0.5;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: spWeaveB 62s linear infinite;
+}
+@keyframes spWeaveA {
+    from { transform: translate(0, 0); }
+    to   { transform: translate(34px, 34px); }
+}
+@keyframes spWeaveB {
+    from { transform: rotate(1.4deg) translate(0, 0); }
+    to   { transform: rotate(1.4deg) translate(-34px, 34px); }
+}
+
+.sp-flow {
+    fill: none;
+    /* a flat tint rather than a gradient: a gradient on a path is laid out across
+       the path's bounding box, not along the dash, so the pulse was only lit
+       while it happened to be over the opaque middle of the gradient and
+       invisible for most of every loop */
+    stroke: var(--sp-tint, #5ad9ff);
+    stroke-opacity: 0.55;
+    stroke-width: 2;
+    stroke-linecap: round;
+    /* one lit run and a gap longer than any path here, so exactly one pulse is on
+       a curve at a time. the numbers are literal rather than a custom property:
+       chromium will not interpolate a keyframe whose value is a calc() over a
+       var(), and the animation silently sits at its first frame. */
+    stroke-dasharray: 300 2600;
+    animation-name: spFlowRun;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.5, 1);
+    animation-iteration-count: infinite;
+}
+.sp-flow-faint { opacity: 0.5; stroke-width: 1.2; }
+
+/* on a portrait screen the 16:9 scene fitted into a tall box is a strip along the
+   bottom. blowing it up to two and a half times the width and centring it gives
+   the same result `slice` would, and unlike `slice` it is a media query rather
+   than an attribute, so there is no script and no second copy of the markup. */
+@media (max-width: 760px) {
+    .sp-hero-scene {
+        width: 250%;
+        left: -75%;
+        right: auto;
+        height: 100%;
+    }
+}
+@keyframes spFlowRun {
+    from { stroke-dashoffset: 2600; }
+    to   { stroke-dashoffset: -2600; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sp-scene-bloom, .sp-sweep, .sp-ring, .sp-weave-a, .sp-weave-b { animation: none; }
+    /* the mark is shown finished rather than mid-draw, and the pulses are parked
+       part way along their curves rather than removed: the composition is the
+       same picture, held still */
+    .sp-shield { animation: none; stroke-dashoffset: 0; }
+    .sp-flow { animation: none; stroke-dashoffset: 900; }
+}
+
+.sp-hero-mid {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 60rem;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 2rem;
+}
+
+.sp-hero-h1 {
+    margin: 0;
+    font-family: var(--sp-text);
+    /* 3.7rem at the top end. it was 4.4 when the headline was two short poetic
+       lines; the sentence that replaced them says what we actually do, which
+       takes more words, and words that wrap four deep stop being a statement. */
+    font-size: clamp(2.05rem, 4.4vw, 3.7rem);
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    text-transform: none;
+    text-wrap: balance;
+    color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    gap: 0.12em;
+}
+/* the accent, on the line that says how rather than what. clipped gradient text
+   is a cliche when it is on the whole headline and it is right when it is on one
+   half, because then it is doing a job: separating the promise from the
+   mechanism without a second colour of ink. */
+.sp-hero-l2 {
+    background: linear-gradient(92deg, #00f0ff 0%, #a675ff 62%, #c9a7ff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    /* clipped text loses its descenders to the box, so the box is given the
+       room back and the space is taken off again underneath */
+    padding-block-end: 0.12em;
+    margin-block-end: -0.12em;
+}
+
+.sp-hero-sub {
+    margin: 0;
+    /* measured in characters rather than pixels: a line of prose is comfortable
+       between about 45 and 75 characters whatever the screen is doing. 68 rather
+       than the 52 it was: the paragraph now has to carry what we do, for whom,
+       and in what time, and at 52 that was six lines of a narrow column. */
+    max-width: 68ch;
+    font-family: var(--sp-text);
+    font-size: clamp(0.98rem, 1.15vw, 1.12rem);
+    font-weight: 300;
+    line-height: 1.62;
+    text-transform: none;
+    color: rgba(255, 255, 255, 0.66);
+}
+
+.sp-hero-ctas {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+}
+
+.sp-hero-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 3rem;
+    padding: 0 1.9rem;
+    border-radius: 10px;
+    /* the brand's gradient on the one thing we want pressed. it is the only
+       filled element in the hero, so it needs no other emphasis. */
+    background: linear-gradient(96deg, #00f0ff, #a675ff);
+    color: #06070f;
+    font-family: var(--sp-text);
+    font-size: 0.92rem;
+    font-weight: 700;
+    text-transform: none;
+    text-decoration: none;
+    transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s ease, filter 0.2s ease;
+}
+.sp-hero-cta:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.06);
+    box-shadow: 0 16px 40px -14px rgba(0, 240, 255, 0.6);
+}
+
+/* the same light sweep the nav buttons have.
+
+   it is worth having in both places for one reason: the two buttons in the hero
+   and the two in the bar are the only four things on the page you are meant to
+   press, and a control that behaves like the others is a control you already
+   know how to use. the sweep is parked off the left edge with no transition, so
+   it only ever animates on the way in and never slides back out when the cursor
+   leaves.
+
+   `overflow: hidden` on the button is what clips it, and it is also why the
+   ghost button needs its radius restated: the sweep is a rectangle and would
+   otherwise square off the corners it passes. */
+.sp-hero-cta,
+.sp-hero-second {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+}
+.sp-hero-cta::after,
+.sp-hero-second::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -80%;
+    width: 55%;
+    height: 100%;
+    background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.35) 50%, transparent);
+    transform: skewX(-18deg);
+    transition: none;
+    pointer-events: none;
+    z-index: 1;
+}
+/* on the filled button the white sweep would just wash it out, so it carries the
+   violet end of the gradient instead, exactly as the solid nav button does */
+.sp-hero-cta::after {
+    background: linear-gradient(105deg, transparent, rgba(123, 108, 255, 0.30) 50%, transparent);
+}
+.sp-hero-cta:hover::after,
+.sp-hero-second:hover::after {
+    left: 130%;
+    transition: left 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sp-hero-second {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+    height: 3rem;
+    padding: 0 1.4rem 0 0.45rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.02);
+    color: rgba(255, 255, 255, 0.86);
+    font-family: var(--sp-text);
+    font-size: 0.92rem;
+    font-weight: 600;
+    text-transform: none;
+    text-decoration: none;
+    transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+.sp-hero-second:hover { border-color: rgba(0, 240, 255, 0.5); background: rgba(255, 255, 255, 0.05); color: #ffffff; }
+.sp-hero-second-ico {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.1rem;
+    height: 2.1rem;
+    flex: 0 0 auto;
+    border-radius: 8px;
+    background: rgba(0, 240, 255, 0.12);
+    color: #7bdcff;
+}
+.sp-hero-second-ico svg { width: 15px; height: 15px; }
+.sp-hero-second:hover .sp-hero-second-ico { background: rgba(0, 240, 255, 0.2); color: #00f0ff; }
+
+/* the cue at the bottom. it exists because a hero that fills the screen gives
+   no hint that there is anything under it, and a page whose second screen is
+   never reached may as well not have one. */
+.sp-hero-scroll {
+    position: absolute;
+    z-index: 2;
+    left: 50%;
+    bottom: 2rem;
+    transform: translateX(-50%);
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: var(--sp-text);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.34);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+.sp-hero-scroll:hover { color: rgba(255, 255, 255, 0.7); }
+.sp-hero-scroll-line {
+    position: relative;
+    width: 1px;
+    height: 2.6rem;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.12);
+}
+/* a short bright run travelling down the line, rather than a bouncing arrow.
+   the arrow is the default and it draws more attention than the thing it points
+   at. */
+.sp-hero-scroll-line::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: -60%;
+    width: 1px;
+    height: 60%;
+    background: linear-gradient(180deg, transparent, #00f0ff);
+    animation: spScrollRun 2.4s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+@keyframes spScrollRun {
+    0%   { transform: translateY(0); opacity: 0; }
+    25%  { opacity: 1; }
+    100% { transform: translateY(280%); opacity: 0; }
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+    .sp-hero-scroll-line::after { animation: none; opacity: 0.7; transform: translateY(120%); }
+}
+
+@media (max-width: 900px) {
+    .lp-hero { padding: 6.5rem 1.25rem 5.5rem; }
+    .sp-hero-mid { gap: 1.6rem; }
+    .sp-hero-h1 { font-size: clamp(2.3rem, 8.5vw, 3.2rem); letter-spacing: -0.035em; }
+}
+@media (max-width: 560px) {
+    .sp-hero-h1 { font-size: clamp(2.05rem, 10vw, 2.7rem); }
+    .sp-hero-sub { font-size: 0.98rem; }
+    .sp-hero-ctas { flex-direction: column; align-items: stretch; width: 100%; gap: 0.7rem; }
+    .sp-hero-cta, .sp-hero-second { width: 100%; justify-content: center; }
+    /* full width the asymmetric padding stops being a nice detail and becomes a
+       group that sits off centre, so it goes */
+    .sp-hero-second { padding: 0; gap: 0.6rem; }
+    .sp-hero-scroll { display: none; }
+    /* the veil is tighter on a narrow screen, because the field has less room
+       to be out of the way in */
+    /* the scene sits as a band across the bottom on a phone, so the veil stops
+       darkening down there: it was covering the only part of it that shows */
+    .sp-hero-veil { background:
+        radial-gradient(ellipse 92% 40% at 50% 40%, rgba(4, 6, 14, 0.94) 0%, rgba(4, 6, 14, 0.6) 55%, transparent 86%),
+        linear-gradient(180deg, rgba(4, 6, 14, 0.6) 0%, transparent 22%, transparent 88%, rgba(4, 6, 14, 0.45) 100%); }
+}
+
+/* ---- the raymarched hero ------------------------------------------------- */
+/* the canvas hero3d.js draws into. it is not in the markup: the file adds it and
+   removes itself on anything that cannot run it, so this rule only ever applies
+   to a page where the animation is actually working, and the svg scene under it
+   is what shows otherwise.
+
+   `screen` is the whole compositing story: black in the shader adds nothing, so
+   the hero's own gradient stays the background and this is light laid over it.
+   painting it opaque would mean matching that gradient in glsl and rematching it
+   every time the palette moves. */
+.sp-hero-gl {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    display: block;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    /* it renders below css resolution and is stretched back up. left to itself a
+       browser may pick nearest neighbour on an upscaled canvas, which would put
+       stair steps on every tube. */
+    image-rendering: auto;
+}
+
+/* the svg scene stays where it is and keeps doing its job: it is the fallback,
+   and behind the lattice it is still our own mark framing the copy. it only
+   steps back a little so the two are not competing. */
+.sp-hero-gl ~ .sp-hero-scene {
+    opacity: 0.4;
+}
+/* its dot lattice is not one of the two, though: a flat grid of dots sitting on
+   top of a lattice with real depth reads as dirt on the screen. the mark, the
+   rings and the pulses stay; the weave is for the page that has no canvas. */
+.sp-hero-gl ~ .sp-hero-scene .sp-weave {
+    display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sp-hero-gl { display: none; }
+    .sp-hero-gl ~ .sp-hero-scene { opacity: 1; }
+}
+
+/* ---- the same lattice behind the dark bands ------------------------------ */
+/* the band canvases. the hero's rule cannot simply be reused: a band is not
+   full height, it is clipped as it opens, and it must not paint over the copy
+   that sits on top of it. everything else is the same trick, `screen` over the
+   band's own gradient. */
+.sp-band-gl {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    /* quieter than the hero by design: this is a texture behind three lines of
+       copy, not the picture itself */
+    opacity: 0.85;
+}
+
+/* the band's own dot grid goes when the lattice is there, for the same reason
+   it goes in the hero: flat dots on top of real depth read as dirt */
+.sp-band-gl ~ .lp-statsx-bg,
+.sp-band-gl ~ .lp-intel-dots {
+    display: none;
+}
+
+/* and the copy has to sit above it */
+.lp-intel-banner > *:not(.sp-band-gl) { position: relative; z-index: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+    .sp-band-gl { display: none; }
 }

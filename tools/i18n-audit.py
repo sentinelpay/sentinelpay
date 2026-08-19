@@ -15,12 +15,27 @@ PUB = 'api/public'
 KEYS = set(json.load(open(sys.argv[1], encoding='utf-8')))
 
 SKIP_EXACT = {
-    'sentinelpay', 'support@sentinelpay.org', 'privacy@sentinelpay.org',
+    # the company, its domain and its addresses. the brand is written Sentinelpay
+    # in prose now that the site is no longer all lowercase, and lowercase inside
+    # a domain, so both spellings are here.
+    'sentinelpay', 'Sentinelpay', 'support@sentinelpay.org', 'privacy@sentinelpay.org',
     'yourcompany.com', 'sentinelpay.org',
     # author bylines, alone or together: names, not copy
     'ceem', 'mind', 'chibby', 'mind, chibby', 'ceem, mind, chibby',
+    'Ceem', 'Mind', 'Chibby', 'Mind, chibby', 'Ceem, mind, chibby',
+    # the companies in the logo strip. real names, the same in every language.
+    'elektromaterijal', 'Elektromaterijal', 'racunala', 'Racunala',
+    'traveler', 'Traveler', 'futura', 'Futura', 'majice', 'Majice',
 }
 SKIP_RE = re.compile(r'^[\W\d\s]*$')          # punctuation / numbers only
+# an invented wallet address in the hero illustration. it is data, not copy, and
+# translating it would be meaningless in any language.
+SKIP_RE_LIST = [
+    re.compile(r'^0x[0-9a-f]{4}_[0-9a-f]{3}$'),
+    # amounts on the chips in the hero illustration: a number and a ticker. the
+    # ticker is the same in every language, and the number is not copy.
+    re.compile(r'^[\d.,]+[km]? [A-Z]{3,5}$'),
+]
 LOGOS = {'elektromaterijal', 'racunala.hr', 'traveler', 'majice.hr', 'futura'}
 
 
@@ -30,6 +45,8 @@ def report(kind, path, strings):
     for s in strings:
         s = re.sub(r'\s+', ' ', s).strip()
         if not s or s in seen or s in KEYS or s in SKIP_EXACT or s in LOGOS:
+            continue
+        if any(r.match(s) for r in SKIP_RE_LIST):
             continue
         if SKIP_RE.match(s) or not re.search(r'[a-zA-Z]{2}', s):
             continue
@@ -60,6 +77,11 @@ for f in sorted(x for x in os.listdir(PUB) if x.endswith('.js')):
     src = open(os.path.join(PUB, f), encoding='utf-8').read()
     if f in ('i18n.js', 'i18n-title.js'):
         continue                                   # the dictionary itself
+    if f in ('hero3d.js',):
+        # the raymarched hero background. every string in it is glsl source for
+        # the gpu, not a word anybody reads, so there is nothing here to
+        # translate and every literal would be a false positive.
+        continue
     if f in ('inbox.js',):
         # the staff inbox. english on purpose and not translated: it is an
         # internal tool for three people who all read english, and the three

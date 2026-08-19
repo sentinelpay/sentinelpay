@@ -20,14 +20,14 @@
             var CONFIG = {
                 demo: {
                     endpoint: '/v1/demo-request',
-                    submitLabel: 'request a demo',
-                    heads: { 1: 'tell us about yourself', 2: 'help us understand your business', 3: 'your crypto exposure & needs', 4: 'one last thing' },
+                    submitLabel: 'Request a demo',
+                    heads: { 1: 'Tell us about yourself', 2: 'Help us understand your business', 3: 'Your crypto exposure & needs', 4: 'One last thing' },
                     required: { 1: ['firstName','lastName','jobTitle','email'], 2: ['company','website','industry','country'], 3: ['size','volume'], 4: [] }
                 },
                 trial: {
                     endpoint: '/v1/trial-request',
-                    submitLabel: 'start free trial',
-                    heads: { 1: 'who is signing up', 2: 'confirm and start' },
+                    submitLabel: 'Start free trial',
+                    heads: { 1: 'Who is signing up', 2: 'Confirm and start' },
                     required: { 1: ['firstName','lastName','email','website'], 2: [] }
                 }
             };
@@ -62,53 +62,53 @@
                 switch (inp.name) {
                     case 'firstName':
                     case 'lastName':
-                        if (!v) return t('this field is required');
-                        if (v.length < 2) return t('that looks too short');
-                        if (!nameRe.test(v)) return t('letters only, no numbers or symbols');
+                        if (!v) return t('This field is required');
+                        if (v.length < 2) return t('That looks too short');
+                        if (!nameRe.test(v)) return t('Letters only, no numbers or symbols');
                         return '';
                     case 'jobTitle':
-                        if (!v) return t('this field is required');
-                        if (v.length < 2) return t('that looks too short');
-                        if (!letterRe.test(v)) return t('enter a real job title');
+                        if (!v) return t('This field is required');
+                        if (v.length < 2) return t('That looks too short');
+                        if (!letterRe.test(v)) return t('Enter a real job title');
                         return '';
                     case 'company':
-                        if (!v) return t('this field is required');
-                        if (v.length < 2) return t('that looks too short');
-                        if (!alnumRe.test(v)) return t('enter a real company name');
+                        if (!v) return t('This field is required');
+                        if (v.length < 2) return t('That looks too short');
+                        if (!alnumRe.test(v)) return t('Enter a real company name');
                         return '';
                     case 'website':
-                        if (!v) return t('this field is required');
+                        if (!v) return t('This field is required');
                         var host = v.replace(/^https?:\/\//i, '').replace(/\/.*$/, '').replace(/^www\./i, '').trim().toLowerCase();
-                        if (!domainRe.test(host)) return t('enter a valid domain, e.g. company.com');
+                        if (!domainRe.test(host)) return t('Enter a valid domain, e.g. company.com');
                         var emailInp = form.querySelector('input[name="email"]');
                         var emailDomain = emailInp && emailInp.value.indexOf('@') !== -1 ? emailInp.value.trim().split('@').pop().toLowerCase() : '';
                         if (emailDomain && host !== emailDomain && host.slice(-(emailDomain.length + 1)) !== '.' + emailDomain && emailDomain.slice(-(host.length + 1)) !== '.' + host) {
-                            return t('must match your work email domain') + ' (@' + emailDomain + ')';
+                            return t('Must match your work email domain') + ' (@' + emailDomain + ')';
                         }
                         return '';
                     case 'size':
-                        if (!v) return t('please select company size');
+                        if (!v) return t('Please select company size');
                         return '';
                     case 'industry':
-                        if (!v) return t('please pick an industry');
-                        if (gamblingRe.test(v)) return t('we do not work with gambling operators. this is a policy, not a limit we can lift.');
+                        if (!v) return t('Please pick an industry');
+                        if (gamblingRe.test(v)) return t('We do not work with gambling operators. This is a policy, not a limit we can lift.');
                         return '';
                     case 'country':
-                        if (!v) return t('please pick your country');
+                        if (!v) return t('Please pick your country');
                         return '';
                     case 'volume':
-                        if (!v) return t('please pick an expected volume');
+                        if (!v) return t('Please pick an expected volume');
                         return '';
                     case 'message':
                         // optional: skip it entirely, or write as little as you like
                         if (!v) return '';
-                        if (v.length > 250) return t('keep it under 250 characters');
+                        if (v.length > 250) return t('Keep it under 250 characters');
                         return '';
                     case 'email':
-                        if (!v) return t('this field is required');
-                        if (/\s/.test(v)) return t('email cannot contain spaces');
-                        if (!emailRe.test(v)) return t('enter a valid email address');
-                        if (/\.\./.test(v) || /@\./.test(v) || /\.$/.test(v)) return t('enter a valid email address');
+                        if (!v) return t('This field is required');
+                        if (/\s/.test(v)) return t('Email cannot contain spaces');
+                        if (!emailRe.test(v)) return t('Enter a valid email address');
+                        if (/\.\./.test(v) || /@\./.test(v) || /\.$/.test(v)) return t('Enter a valid email address');
                         return '';
                 }
                 return '';
@@ -135,7 +135,7 @@
                         var cerr = checkField.querySelector('.lp-demo-error');
                         if (!anyChecked) {
                             if (!cerr) { cerr = document.createElement('span'); cerr.className = 'lp-demo-error'; checkField.appendChild(cerr); }
-                            cerr.textContent = t('pick at least one');
+                            cerr.textContent = t('Pick at least one');
                             ok = false;
                         } else if (cerr) { cerr.remove(); }
                     }
@@ -299,11 +299,11 @@
             form.querySelectorAll('input[name="solutions"]').forEach(function(cb) {
                 cb.addEventListener('change', function() {
                     if (cb.checked) {
-                        var isNotSure = cb.value === 'not sure yet';
+                        var isNotSure = cb.value === 'Not sure yet';
                         form.querySelectorAll('input[name="solutions"]').forEach(function(other) {
                             if (other === cb) return;
-                            var otherIsNotSure = other.value === 'not sure yet';
-                            // checking "not sure yet" clears all others; checking any other clears "not sure yet"
+                            var otherIsNotSure = other.value === 'Not sure yet';
+                            // checking "Not sure yet" clears all others; checking any other clears "Not sure yet"
                             if ((isNotSure && !otherIsNotSure) || (!isNotSure && otherIsNotSure)) other.checked = false;
                         });
                     }
@@ -440,7 +440,7 @@
                 if (!form.closest('.bad-form-card')) {
                     var warn = document.createElement('p');
                     warn.className = 'lp-demo-mail-down';
-                    warn.textContent = t('we cannot receive form submissions right now. we are working on it, please try again shortly.');
+                    warn.textContent = t('We cannot receive form submissions right now. We are working on it, please try again shortly.');
                     var actions = form.querySelector('.lp-demo-actions');
                     if (actions && actions.parentNode) actions.parentNode.insertBefore(warn, actions);
                 }
@@ -451,7 +451,7 @@
                 if (mailDown) return;
                 if (!validateStep(cur)) return;
                 if (turnstileEnabled && !turnstileToken) {
-                    if (window.SentinelToast) window.SentinelToast.show(t('please complete the verification below.'), 'warning');
+                    if (window.SentinelToast) window.SentinelToast.show(t('Please complete the verification below.'), 'warning');
                     return;
                 }
                 var data = {};
@@ -511,7 +511,7 @@
                     // everything else is something the visitor can act on.
                     var msg = (err && err.reason && err.status && err.status < 500)
                         ? t(err.reason)
-                        : t('could not send right now. please email support@sentinelpay.org');
+                        : t('Could not send right now. Please email support@sentinelpay.org');
                     if (window.SentinelToast) window.SentinelToast.show(msg, 'error');
                     else alert(msg);
                 });

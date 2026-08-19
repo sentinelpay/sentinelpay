@@ -1,0 +1,60 @@
+/* the two faces, served from our own origin.
+
+   uber runs UberMove for display and UberMoveText for reading. that split is
+   the part worth copying and their actual faces are not ours to use: Uber Move
+   is a commissioned proprietary typeface. this is the same structure with the
+   closest openly licensed pair, Plus Jakarta Sans for display and Inter for
+   text, both under the SIL open font license, which permits exactly this.
+
+   self hosted rather than linked from google, for three reasons and the first
+   one is the point:
+
+     a request to fonts.googleapis.com hands google the ip address of every
+     visitor to a compliance company's website, on every page load. a german
+     court has already ruled that embedding google fonts without consent
+     breaches the gdpr. we are not going to argue about our own privacy policy
+     with our own font loader.
+
+     it is faster. two extra dns lookups and two extra tls handshakes to two
+     more hosts, before a single glyph arrives, against a file that comes down
+     the connection the page is already using.
+
+     it removes two third parties from the content security policy.
+
+   one variable file per family per subset instead of six static weights: every
+   weight from 300 to 800 comes out of the same 48 kilobytes, and the ext file
+   is only fetched when a page actually contains a character that needs it,
+   which for us means the croatian diacritics. */
+
+@font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 300 800;
+    font-display: swap;
+    src: url('/fonts/inter-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 300 800;
+    font-display: swap;
+    src: url('/fonts/inter-latin-ext.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+    font-family: 'Plus Jakarta Sans';
+    font-style: normal;
+    font-weight: 400 800;
+    font-display: swap;
+    src: url('/fonts/jakarta-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: 'Plus Jakarta Sans';
+    font-style: normal;
+    font-weight: 400 800;
+    font-display: swap;
+    src: url('/fonts/jakarta-latin-ext.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}

@@ -7,15 +7,29 @@
          the company-size options open the call sheet instead of selecting -->
     <meta name="format-detection" content="telephone=no">
     <meta name="robots" content="noindex, nofollow">
-    <title>sentinelpay | blog | wallet screening vs. kyc: why you need both</title>
-    <script>/* tab title before first paint; for articles this is the h1 translation */(function(){var T={"hr":"sentinelpay | blog | screening novčanika i kyc: zašto trebate oboje","de":"sentinelpay | blog | wallet-screening und kyc: warum sie beides brauchen"},m=document.cookie.match(/(?:^|; )sp-lang=([^;]*)/),l=m?decodeURIComponent(m[1]):null;if(!l){try{l=localStorage.getItem("sp-lang")}catch(e){}}if(l!=="hr"&&l!=="de"&&l!=="en")l=document.documentElement.getAttribute("data-geo-lang");if(l!=="hr"&&l!=="de")return;document.documentElement.lang=l;if(!T)return;window.__SP_TITLE_SRC=document.title.replace(/\s+/g," ").trim();document.title=T[l];})();</script>
+    <title>Sentinelpay | Blog | Wallet screening vs. KYC: why you need both</title>
+    <meta name="description" content="KYC checks the person. It does not check the money. Here is what each one actually catches, what regulators require, and what they expect on top of that.">
+    <link rel="canonical" href="https://blog.sentinelpay.org/article/05">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://blog.sentinelpay.org/article/05">
+    <meta property="og:title" content="Wallet screening vs. KYC: why you need both">
+    <meta property="og:description" content="KYC checks the person. It does not check the money. Here is what each one actually catches, what regulators require, and what they expect on top of that.">
+    <meta property="og:image" content="https://blog.sentinelpay.org/covers/kyc-vs-screening.png">
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://blog.sentinelpay.org/article/05">
+    <meta property="twitter:title" content="Wallet screening vs. KYC: why you need both">
+    <meta property="twitter:description" content="KYC checks the person. It does not check the money. Here is what each one actually catches, what regulators require, and what they expect on top of that.">
+    <meta property="twitter:image" content="https://blog.sentinelpay.org/covers/kyc-vs-screening.png">
+    <script>/* tab title before first paint; for articles this is the h1 translation */(function(){var T={"hr": "Sentinelpay | Blog | Screening novčanika i KYC: zašto trebate oboje", "de": "Sentinelpay | Blog | Wallet-Screening und KYC: warum Sie beides brauchen"},m=document.cookie.match(/(?:^|; )sp-lang=([^;]*)/),l=m?decodeURIComponent(m[1]):null;if(!l){try{l=localStorage.getItem("sp-lang")}catch(e){}}if(l!=="hr"&&l!=="de"&&l!=="en")l=document.documentElement.getAttribute("data-geo-lang");if(l!=="hr"&&l!=="de")return;document.documentElement.lang=l;if(!T)return;window.__SP_TITLE_SRC=document.title.replace(/\s+/g," ").trim();document.title=T[l];})();</script>
     <script>document.documentElement.classList.add('theme-light');</script>
     <script>if(history.scrollRestoration)history.scrollRestoration='manual';window.scrollTo(0,0);</script>
     <link rel="icon" type="image/svg+xml" href="/logo.svg">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/jakarta-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="/fonts.css?v=1">
     <link rel="stylesheet" href="/style.css?v=24">
-    <link rel="stylesheet" href="/landing.css?v=4.4">
-    <link rel="stylesheet" href="/corp.css?v=218">
+    <link rel="stylesheet" href="/landing.css?v=14.4">
+    <link rel="stylesheet" href="/corp.css?v=237">
     <style>
         /* page loader: hold the page until everything is loaded (matches homepage) */
         #sp-loader{position:fixed;inset:0;z-index:99999;background:#050505;display:flex;align-items:center;justify-content:center;transition:opacity 0.55s ease;}
@@ -68,7 +82,7 @@
         .article-back svg { width: 14px; height: 14px; transition: transform 0.2s ease; }
         .article-back:hover { color: #0e2358; border-color: rgba(14,35,88,0.32); background: #fbfcfd; box-shadow: 0 6px 18px -10px rgba(14,35,88,0.35); }
         .article-back:hover svg { transform: translateX(-3px); }
-        .article-title { margin: 0 0 1.4rem; font-size: 2.7rem; font-weight: 800; line-height: 1.14; letter-spacing: -0.02em; color: #0e2358; text-transform: lowercase; }
+        .article-title { margin: 0 0 1.4rem; font-size: 2.7rem; font-weight: 800; line-height: 1.14; letter-spacing: -0.02em; color: #0e2358; text-transform: none; }
         /* show-original pill: only rendered on a translated article.
            cut from the same pattern as .article-back so the two read as a set. */
         .article-original { margin-top: 1.5rem; }
@@ -126,7 +140,7 @@
         .article-body { margin-top: 2.6rem; padding-bottom: 1rem; }
         .article-body > p { margin: 1.35rem 0; font-size: 1.13rem; line-height: 1.8; color: #2a3550; }
         .article-body > p.lead { font-size: 1.35rem; line-height: 1.6; font-weight: 500; color: #0e2358; }
-        .article-body h2 { margin: 3rem 0 1rem; font-size: 1.7rem; font-weight: 800; line-height: 1.25; letter-spacing: -0.01em; color: #0e2358; text-transform: lowercase; }
+        .article-body h2 { margin: 3rem 0 1rem; font-size: 1.7rem; font-weight: 800; line-height: 1.25; letter-spacing: -0.01em; color: #0e2358; text-transform: none; }
         .article-body strong { font-weight: 700; color: #0e2358; }
         .article-body a { color: #0091c8; text-decoration: none; border-bottom: 1px solid rgba(0,145,200,0.35); }
         .article-body a:hover { border-bottom-color: #0091c8; }
@@ -143,7 +157,7 @@
         }
         /* case blocks: plain flow, sub-heading + text, no card */
         .article-example { margin: 1.6rem 0; padding: 0; background: none; border: none; box-shadow: none; }
-        .article-example h3 { margin: 0 0 0.5rem; font-size: 1.2rem; font-weight: 700; color: #0e2358; text-transform: lowercase; }
+        .article-example h3 { margin: 0 0 0.5rem; font-size: 1.2rem; font-weight: 700; color: #0e2358; text-transform: none; }
         .article-example p { margin: 0.7rem 0 0; font-size: 1.08rem; line-height: 1.75; color: #2a3550; }
         .article-example p:first-of-type { margin-top: 0; }
 
@@ -166,8 +180,8 @@
         html, body { overflow: hidden !important; height: 100%; }
         #sp-loader { background: #fbfcfd !important; flex-direction: column; gap: 1.6rem; padding: 0 1.5rem; }
         #sp-loader .spl-logo-svg { animation: none; filter: none; opacity: 0.75; width: 96px; height: 96px; }
-        .sp-ns { max-width: 30rem; text-align: center; font-family: 'Inter', sans-serif; }
-        .sp-ns-title { margin: 0 0 0.5rem; font-size: 1.12rem; font-weight: 700; letter-spacing: -0.01em; color: #0e2358; text-transform: lowercase; }
+        .sp-ns { max-width: 30rem; text-align: center; font-family: var(--sp-text); }
+        .sp-ns-title { margin: 0 0 0.5rem; font-size: 1.12rem; font-weight: 700; letter-spacing: -0.01em; color: #0e2358; text-transform: none; }
         .sp-ns-text { margin: 0 0 1.3rem; font-size: 0.95rem; line-height: 1.6; color: rgba(14,35,88,0.62); }
         .sp-ns-link { display: inline-block; padding: 0.62rem 1.15rem; border-radius: 10px; border: 1px solid rgba(14,35,88,0.16); background: rgba(255,255,255,0.75); font-size: 0.88rem; font-weight: 600; color: #0e2358; text-decoration: none; }
         .sp-ns-link:hover { border-color: rgba(0,145,200,0.5); background: #fff; }
@@ -193,91 +207,91 @@
                 </svg>
             </a>
             <div style="display:flex; align-items:center;">
-                <a href="https://sentinelpay.org" class="auth-nav-btn lp-btn-ghost">back to sentinelpay</a>
+                <a href="https://sentinelpay.org" class="auth-nav-btn lp-btn-ghost">Back to Sentinelpay</a>
             </div>
         </div>
     </nav>
 
     <article class="lp-section article">
         <div class="article-shell">
-            <a href="/" class="article-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>all articles</a>
-            <h1 class="article-title" data-original-scope>wallet screening vs. kyc: why you need both</h1>
+            <a href="/" class="article-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>All articles</a>
+            <h1 class="article-title" data-original-scope>Wallet screening vs. KYC: why you need both</h1>
             <div class="article-byline">
                 <span class="article-avatars">
-                    <span class="article-avatar"><img src="/authors/chibby.png" alt="chibby" decoding="async"><svg viewBox="0 0 120 120"><g fill="none" stroke="#0091c8" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"><path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/><circle cx="60" cy="60" r="7"/></g></svg></span>
+                    <span class="article-avatar"><img src="/authors/chibby.png" alt="Chibby" decoding="async"><svg viewBox="0 0 120 120"><g fill="none" stroke="#0091c8" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"><path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/><circle cx="60" cy="60" r="7"/></g></svg></span>
                 </span>
-                <div><b>chibby</b><small>august 9, 2026 · 5 min read</small></div>
+                <div><b>Chibby</b><small>August 9, 2026 · 5 min read</small></div>
             </div>
             <div class="article-original" data-original-toggle data-i18n-skip></div>
         </div>
 
         <div class="article-shell article-body" data-original-scope>
-            <p class="lead">i used to think kyc was enough. i had a customer file to prove it: passport, proof of address, sanctions check, all green. six months later that same customer took money from a wallet tied to a sanctioned entity, and not one page in that file had a chance of catching it.</p>
-            <p>that is the part that stayed with me. kyc did not fail. kyc did exactly what it is built to do. it checked a person. nobody ever asked it to check the money.</p>
-            <p>you verify an identity. you look at an id. you run the name against a sanctions list. they pass, you onboard them, you move on. for a bank that is enough, because in a bank the money arrives from another regulated institution with a name attached to it.</p>
-            <p>crypto does not work like that. the money arrives from an address. the address has a history. and that history is the only thing in the whole transaction that has ever met a criminal.</p>
+            <p class="lead">I used to think KYC was enough. I had a customer file to prove it: passport, proof of address, sanctions check, all green. Six months later that same customer took money from a wallet tied to a sanctioned entity, and not one page in that file had a chance of catching it.</p>
+            <p>That is the part that stayed with me. KYC did not fail. KYC did exactly what it is built to do. It checked a person. Nobody ever asked it to check the money.</p>
+            <p>You verify an identity. You look at an id. You run the name against a sanctions list. They pass, you onboard them, you move on. For a bank that is enough, because in a bank the money arrives from another regulated institution with a name attached to it.</p>
+            <p>Crypto does not work like that. The money arrives from an address. The address has a history. And that history is the only thing in the whole transaction that has ever met a criminal.</p>
 
-            <h2>one checks the person, the other checks the money</h2>
-            <p>kyc happens once, at onboarding. name, address, government id. does this person exist, and is this person on a list. then you file it and you are done.</p>
-            <p>wallet screening happens every time money moves. you take the address and put it against blockchain risk data. has it ever touched a sanctioned entity. has it taken funds out of a mixer. does it sit in a cluster that leads to a darknet market. you get a score and a reason.</p>
-            <p>different questions, different moments, different threats. kyc tells you who somebody claims to be. screening tells you what the address has already done, whoever is holding it today.</p>
-            <p>which is why a customer can be completely real and completely clean on paper, and still hand you money that is not.</p>
+            <h2>One checks the person, the other checks the money</h2>
+            <p>KYC happens once, at onboarding. Name, address, government id. Does this person exist, and is this person on a list. Then you file it and you are done.</p>
+            <p>Wallet screening happens every time money moves. You take the address and put it against blockchain risk data. Has it ever touched a sanctioned entity. Has it taken funds out of a mixer. Does it sit in a cluster that leads to a darknet market. You get a score and a reason.</p>
+            <p>Different questions, different moments, different threats. KYC tells you who somebody claims to be. Screening tells you what the address has already done, whoever is holding it today.</p>
+            <p>Which is why a customer can be completely real and completely clean on paper, and still hand you money that is not.</p>
 
-            <h2>what it looks like when the gap opens</h2>
-            <p>these are not hypotheticals. they are the two shapes i keep running into, written as they feel from your side of the desk.</p>
+            <h2>What it looks like when the gap opens</h2>
+            <p>These are not hypotheticals. They are the two shapes I keep running into, written as they feel from your side of the desk.</p>
             <div class="article-example">
-                <h3>the customer who passed everything</h3>
-                <p>real passport. real address. biometric check, clean. the sanctions screen on the name comes back empty. you onboard them the same day and you are right to.</p>
-                <p>months later they receive funds from an address that traces back to a sanctioned entity. nothing about the person changed. nothing in your file was wrong. the risk was never in the person, it was in the address, and you never looked at the address because nobody told you it was part of the job.</p>
+                <h3>The customer who passed everything</h3>
+                <p>Real passport. Real address. Biometric check, clean. The sanctions screen on the name comes back empty. You onboard them the same day and you are right to.</p>
+                <p>Months later they receive funds from an address that traces back to a sanctioned entity. Nothing about the person changed. Nothing in your file was wrong. The risk was never in the person, it was in the address, and you never looked at the address because nobody told you it was part of the job.</p>
             </div>
             <div class="article-example">
-                <h3>the withdrawal nobody screened</h3>
-                <p>same customer, three months on, withdraws to a wallet that has been fed by a mixer. that mixer is one a north korean group runs money through.</p>
-                <p>the regulator flags the transaction. your bank starts asking what you knew. and the honest answer is the worst one available: you have no record of ever checking that address, because you never checked any of them. kyc did not fail here either. it just never covered this.</p>
+                <h3>The withdrawal nobody screened</h3>
+                <p>Same customer, three months on, withdraws to a wallet that has been fed by a mixer. That mixer is one a north korean group runs money through.</p>
+                <p>The regulator flags the transaction. Your bank starts asking what you knew. And the honest answer is the worst one available: you have no record of ever checking that address, because you never checked any of them. KYC did not fail here either. It just never covered this.</p>
             </div>
 
-            <h2>what the rules actually say, and what they expect</h2>
-            <p>this is where most people get it wrong in both directions, so it is worth being precise.</p>
-            <p>the transfer of funds regulation, the travel rule, makes casps send verified originator and beneficiary information with every transfer. for a self-hosted wallet above €1,000 you have to verify that your customer owns or controls the destination address. read that again: it is an identity question. it proves whose wallet it is. it says nothing about what that wallet has done.</p>
-            <p>so no, the travel rule does not order you to screen against sanctions lists, darknet records or scam databases. anyone telling you it does has not read it.</p>
-            <p>now the other direction. fatf expects screening as part of any serious crypto compliance program, and says plainly that vasps should apply sanctions screening and assess the risk attached to virtual assets and wallet addresses. mica does not name wallet screening either, but it does require casps to run systems that detect and prevent money laundering and market abuse, and screening is how that requirement gets met in practice. ofac has sanctioned entire protocols and individual addresses, which only means something if you are checking addresses against their lists.</p>
-            <p>the uk's joint money laundering steering group is the least ambiguous of the lot: casps should use blockchain analytics for ongoing monitoring of wallet addresses, as part of a risk-based approach. not in the travel rule text. very much in the guidance.</p>
+            <h2>What the rules actually say, and what they expect</h2>
+            <p>This is where most people get it wrong in both directions, so it is worth being precise.</p>
+            <p>The transfer of funds regulation, the travel rule, makes CASPs send verified originator and beneficiary information with every transfer. For a self-hosted wallet above €1,000 you have to verify that your customer owns or controls the destination address. Read that again: it is an identity question. It proves whose wallet it is. It says nothing about what that wallet has done.</p>
+            <p>So no, the travel rule does not order you to screen against sanctions lists, darknet records or scam databases. Anyone telling you it does has not read it.</p>
+            <p>Now the other direction. FATF expects screening as part of any serious crypto compliance program, and says plainly that vasps should apply sanctions screening and assess the risk attached to virtual assets and wallet addresses. MiCA does not name wallet screening either, but it does require CASPs to run systems that detect and prevent money laundering and market abuse, and screening is how that requirement gets met in practice. Ofac has sanctioned entire protocols and individual addresses, which only means something if you are checking addresses against their lists.</p>
+            <p>The UK's joint money laundering steering group is the least ambiguous of the lot: CASPs should use blockchain analytics for ongoing monitoring of wallet addresses, as part of a risk-based approach. Not in the travel rule text. Very much in the guidance.</p>
 
-            <h2>the gap lives between the text and the expectation</h2>
-            <p>the law says verify ownership. the expectation is that you also know whether the address has been anywhere near a mixer, a darknet cluster or a laundering chain that crosses four networks.</p>
-            <p>that gap is not an oversight you can argue your way out of. it is where enforcement happens. the standard did not come from a statute, it came from the industry moving and regulators making clear what they now consider normal. by the time someone is asking you about it, "the regulation did not explicitly require it" is not a defence, it is a transcript.</p>
+            <h2>The gap lives between the text and the expectation</h2>
+            <p>The law says verify ownership. The expectation is that you also know whether the address has been anywhere near a mixer, a darknet cluster or a laundering chain that crosses four networks.</p>
+            <p>That gap is not an oversight you can argue your way out of. It is where enforcement happens. The standard did not come from a statute, it came from the industry moving and regulators making clear what they now consider normal. By the time someone is asking you about it, "the regulation did not explicitly require it" is not a defence, it is a transcript.</p>
 
-            <h2>the api call is the easy part</h2>
-            <p>screening one wallet is not technically hard. you send an address, you get back a score, a level and a reason. it takes a fraction of a second and the code is a few lines.</p>
-            <p>the hard part is everything behind that answer. the data you need to be right is not in one place, it is scattered:</p>
+            <h2>The API call is the easy part</h2>
+            <p>Screening one wallet is not technically hard. You send an address, you get back a score, a level and a reason. It takes a fraction of a second and the code is a few lines.</p>
+            <p>The hard part is everything behind that answer. The data you need to be right is not in one place, it is scattered:</p>
             <ul>
-                <li>sanctions lists</li>
-                <li>scam databases</li>
-                <li>usdt blacklists</li>
-                <li>darknet records</li>
-                <li>cross-chain activity</li>
+                <li>Sanctions lists</li>
+                <li>Scam databases</li>
+                <li>USDT blacklists</li>
+                <li>Darknet records</li>
+                <li>Cross-chain activity</li>
             </ul>
-            <p>you need all of them. you need to know which ones move daily and which sit still for months. you need to know which flag is a reason to stop and which is noise, because treating them the same is how you either block good customers or wave through bad ones.</p>
-            <p>and when you do flag a wallet, you need a reason you can put in front of your bank and defend out loud. that is the actual work. not the call.</p>
+            <p>You need all of them. You need to know which ones move daily and which sit still for months. You need to know which flag is a reason to stop and which is noise, because treating them the same is how you either block good customers or wave through bad ones.</p>
+            <p>And when you do flag a wallet, you need a reason you can put in front of your bank and defend out loud. That is the actual work. Not the call.</p>
 
-            <h2>this is the gap we built sentinelpay to close</h2>
-            <p>we pull the risk data together so you do not have to. one address in, one score out, with the reason written in words instead of a code. every scan logged, so months later you can show exactly what you checked and when.</p>
+            <h2>This is the gap we built Sentinelpay to close</h2>
+            <p>We pull the risk data together so you do not have to. One address in, one score out, with the reason written in words instead of a code. Every scan logged, so months later you can show exactly what you checked and when.</p>
 
-            <h2>bottom line</h2>
-            <p>kyc tells you who your customer is. screening tells you what the money has been doing while nobody was looking. you need both. one without the other is a gap, and a gap is precisely what gets found.</p>
-            <p>check before you accept.</p>
+            <h2>Bottom line</h2>
+            <p>KYC tells you who your customer is. Screening tells you what the money has been doing while nobody was looking. You need both. One without the other is a gap, and a gap is precisely what gets found.</p>
+            <p>Check before you accept.</p>
 
-            <p class="article-sources-title">sources</p>
+            <p class="article-sources-title">Sources</p>
             <ul class="article-sources">
-                <li><a href="https://www.fatf-gafi.org/en/topics/virtual-assets.html" rel="noopener noreferrer" target="_blank">fatf, virtual assets</a></li>
-                <li><a href="https://www.fatf-gafi.org/en/publications/Fatfrecommendations/Guidance-rba-virtual-assets-2021.html" rel="noopener noreferrer" target="_blank">fatf, updated guidance for a risk-based approach to virtual assets and vasps (2021)</a></li>
-                <li><a href="https://eur-lex.europa.eu/eli/reg/2023/1114/2024-01-09/eng" rel="noopener noreferrer" target="_blank">mica, regulation (eu) 2023/1114, consolidated text</a></li>
-                <li><a href="https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32023R1114" rel="noopener noreferrer" target="_blank">mica, official journal version</a></li>
-                <li><a href="https://ofac.treasury.gov/sanctions-list-search-tool" rel="noopener noreferrer" target="_blank">ofac, sanctions list search tool</a></li>
-                <li><a href="https://sanctionslist.ofac.treas.gov/Home/SdnList" rel="noopener noreferrer" target="_blank">ofac, specially designated nationals (sdn) list</a></li>
-                <li><a href="https://eur-lex.europa.eu/eli/reg/2023/1113/oj/eng" rel="noopener noreferrer" target="_blank">tfr, regulation (eu) 2023/1113, official text</a></li>
-                <li><a href="https://www.jmlsg.org.uk/guidance/current-guidance/" rel="noopener noreferrer" target="_blank">jmlsg, part ii sector 22, cryptoasset exchange and custodian wallet providers</a></li>
-                <li><a href="https://eur-lex.europa.eu/legal-content/EN/LSU/?uri=CELEX:32023R1113" rel="noopener noreferrer" target="_blank">tfr, eur-lex plain-language summary</a></li>
+                <li><a href="https://www.fatf-gafi.org/en/topics/virtual-assets.html" rel="noopener noreferrer" target="_blank">FATF, virtual assets</a></li>
+                <li><a href="https://www.fatf-gafi.org/en/publications/Fatfrecommendations/Guidance-rba-virtual-assets-2021.html" rel="noopener noreferrer" target="_blank">FATF, updated guidance for a risk-based approach to virtual assets and vasps (2021)</a></li>
+                <li><a href="https://eur-lex.europa.eu/eli/reg/2023/1114/2024-01-09/eng" rel="noopener noreferrer" target="_blank">MiCA, regulation (EU) 2023/1114, consolidated text</a></li>
+                <li><a href="https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32023R1114" rel="noopener noreferrer" target="_blank">MiCA, official journal version</a></li>
+                <li><a href="https://ofac.treasury.gov/sanctions-list-search-tool" rel="noopener noreferrer" target="_blank">Ofac, sanctions list search tool</a></li>
+                <li><a href="https://sanctionslist.ofac.treas.gov/Home/SdnList" rel="noopener noreferrer" target="_blank">Ofac, specially designated nationals (sdn) list</a></li>
+                <li><a href="https://eur-lex.europa.eu/eli/reg/2023/1113/oj/eng" rel="noopener noreferrer" target="_blank">Tfr, regulation (EU) 2023/1113, official text</a></li>
+                <li><a href="https://www.jmlsg.org.uk/guidance/current-guidance/" rel="noopener noreferrer" target="_blank">JMLSG, part ii sector 22, cryptoasset exchange and custodian wallet providers</a></li>
+                <li><a href="https://eur-lex.europa.eu/legal-content/EN/LSU/?uri=CELEX:32023R1113" rel="noopener noreferrer" target="_blank">Tfr, eur-lex plain-language summary</a></li>
             </ul>
         </div>
     </article>
@@ -312,64 +326,64 @@
                             <path d="M60 90 V 105" stroke-width="2" opacity="0.6"/>
                           </g>
                         </svg>
-                        <span class="lp-logo-text lp-footer-logo">sentinelpay</span>
+                        <span class="lp-logo-text lp-footer-logo">Sentinelpay</span>
                     </div>
-                    <p class="lp-footer-tagline">real-time blockchain monitoring for crypto payment operators.</p>
+                    <p class="lp-footer-tagline">Real-time blockchain monitoring for crypto payment operators.</p>
                 </div>
                 <div class="lp-footer-links">
                     <div class="lp-footer-col">
-                        <span class="lp-footer-col-title">solutions</span>
-                        <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">crypto compliance</a>
-                        <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">transaction screening</a>
-                        <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">wallet investigations</a>
-                        <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">threat intelligence</a>
-                        <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">real-time alerting</a>
-                        <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">configurable thresholds</a>
-                        <a href="https://sentinelpay.org/#demo" class="lp-footer-link">pricing</a>
+                        <span class="lp-footer-col-title">Solutions</span>
+                        <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">Crypto compliance</a>
+                        <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">Transaction screening</a>
+                        <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">Wallet investigations</a>
+                        <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">Threat intelligence</a>
+                        <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">Real-time alerting</a>
+                        <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">Configurable thresholds</a>
+                        <a href="https://sentinelpay.org/#demo" class="lp-footer-link">Pricing</a>
                     </div>
                     <div class="lp-footer-col">
-                        <span class="lp-footer-col-title">industries</span>
-                        <a href="https://sentinelpay.org/#who-its-for" class="lp-footer-link">financial institutions</a>
-                        <a href="https://sentinelpay.org/#who-its-for" class="lp-footer-link">centralized exchanges</a>
-                        <a href="https://sentinelpay.org/#who-its-for" class="lp-footer-link">payment services</a>
-                        <a href="https://sentinelpay.org/#who-its-for" class="lp-footer-link">stablecoin &amp; token issuers</a>
-                        <a href="https://sentinelpay.org/#who-its-for" class="lp-footer-link">network operators</a>
-                        <a href="https://sentinelpay.org/#who-its-for" class="lp-footer-link">law enforcement</a>
-                        <a href="https://sentinelpay.org/#who-its-for" class="lp-footer-link">regulators</a>
+                        <span class="lp-footer-col-title">Industries</span>
+                        <a href="https://sentinelpay.org/#who-its-for" class="lp-footer-link">Financial institutions</a>
+                        <a href="https://sentinelpay.org/#who-its-for" class="lp-footer-link">Centralized exchanges</a>
+                        <a href="https://sentinelpay.org/#who-its-for" class="lp-footer-link">Payment services</a>
+                        <a href="https://sentinelpay.org/#who-its-for" class="lp-footer-link">Stablecoin &amp; token issuers</a>
+                        <a href="https://sentinelpay.org/#who-its-for" class="lp-footer-link">Network operators</a>
+                        <a href="https://sentinelpay.org/#who-its-for" class="lp-footer-link">Law enforcement</a>
+                        <a href="https://sentinelpay.org/#who-its-for" class="lp-footer-link">Regulators</a>
                     </div>
                     <div class="lp-footer-col">
-                        <span class="lp-footer-col-title">platform</span>
-                        <span class="lp-footer-link is-soon">data &amp; apis</span>
-                        <span class="lp-footer-link is-soon">api documentation</span>
-                        <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">risk scoring</a>
-                        <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">coverage</a>
-                        <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">scalability</a>
-                        <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">configurability</a>
+                        <span class="lp-footer-col-title">Platform</span>
+                        <span class="lp-footer-link is-soon">Data &amp; APIs</span>
+                        <span class="lp-footer-link is-soon">API documentation</span>
+                        <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">Risk scoring</a>
+                        <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">Coverage</a>
+                        <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">Scalability</a>
+                        <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">Configurability</a>
                     </div>
                     <div class="lp-footer-col">
-                        <span class="lp-footer-col-title">resources</span>
-                        <a href="/" class="lp-footer-link">blog</a>
-                        <a href="https://blog.sentinelpay.org" class="lp-footer-link">reports &amp; guides</a>
-                        <a href="/faq" class="lp-footer-link">questions and answers</a>
-                        <span class="lp-footer-link is-soon">documentation</span>
-                        <span class="lp-footer-link is-soon">quickstart</span>
-                        <span class="lp-footer-link is-soon">newsletter</span>
-                        <span class="lp-footer-link is-soon">crypto glossary</span>
+                        <span class="lp-footer-col-title">Resources</span>
+                        <a href="/" class="lp-footer-link">Blog</a>
+                        <a href="https://blog.sentinelpay.org" class="lp-footer-link">Reports &amp; guides</a>
+                        <a href="/faq" class="lp-footer-link">Questions and answers</a>
+                        <span class="lp-footer-link is-soon">Documentation</span>
+                        <span class="lp-footer-link is-soon">Quickstart</span>
+                        <span class="lp-footer-link is-soon">Newsletter</span>
+                        <span class="lp-footer-link is-soon">Crypto glossary</span>
                     </div>
                     <div class="lp-footer-col">
-                        <span class="lp-footer-col-title">company</span>
-                        <span class="lp-footer-link is-soon">who we are</span>
-                        <a href="/privacy-policy#data" class="lp-footer-link">security</a>
-                        <span class="lp-footer-link is-soon">careers</span>
-                        <a href="mailto:support@sentinelpay.org" class="lp-footer-link">contact us</a>
-                        <span class="lp-footer-link is-soon">partner program</span>
-                        <a href="https://sentinelpay.org/privacy-policy" class="lp-footer-link">privacy policy</a>
-                        <a href="https://sentinelpay.org/terms-of-service" class="lp-footer-link">terms of service</a>
+                        <span class="lp-footer-col-title">Company</span>
+                        <span class="lp-footer-link is-soon">Who we are</span>
+                        <a href="/privacy-policy#data" class="lp-footer-link">Security</a>
+                        <span class="lp-footer-link is-soon">Careers</span>
+                        <a href="mailto:support@sentinelpay.org" class="lp-footer-link">Contact us</a>
+                        <span class="lp-footer-link is-soon">Partner program</span>
+                        <a href="https://sentinelpay.org/privacy-policy" class="lp-footer-link">Privacy policy</a>
+                        <a href="https://sentinelpay.org/terms-of-service" class="lp-footer-link">Terms of service</a>
                     </div>
                 </div>
             </div>
             <div class="lp-footer-bottom">
-                <span class="lp-footer-copy">© 2026 sentinelpay. all rights reserved.</span>
+                <span class="lp-footer-copy">© 2026 Sentinelpay. All rights reserved.</span>
                 <a href="mailto:support@sentinelpay.org" class="lp-footer-email">support@sentinelpay.org</a>
             </div>
         </div>
@@ -389,6 +403,6 @@
     </script>
     <script>window.addEventListener('load',function(){window.scrollTo(0,0);var l=document.getElementById('sp-loader');if(!l)return;var finish=function(){l.classList.add('spl-done');setTimeout(function(){l.remove();},620);};/* the load event does not wait for lazy images, and nearly every image on the site is lazy, so the loader used to clear while the first screen was still filling in. wait for the ones that will actually be visible: an image further down has not started loading yet and never would, so waiting for all of them would hold the loader open for ever. */var pending=[],im,r,i;for(i=0;i<document.images.length;i++){im=document.images[i];r=im.getBoundingClientRect();if(r.bottom<0||r.top>window.innerHeight*1.2)continue;if(im.complete&&im.naturalWidth>0)continue;pending.push(im);}if(!pending.length){finish();return;}var left=pending.length,fired=false;var one=function(){if(--left<=0&&!fired){fired=true;finish();}};pending.forEach(function(x){x.addEventListener('load',one,{once:true});x.addEventListener('error',one,{once:true});});/* a slow or broken image must never trap anybody behind the loader */setTimeout(function(){if(!fired){fired=true;finish();}},2500);});</script>
     <script src="/img-fallback.js?v=2" defer></script>
-    <script src="/i18n.js?v=69" defer></script>
+    <script src="/i18n.js?v=75" defer></script>
 </body>
 </html>

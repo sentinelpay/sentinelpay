@@ -72,7 +72,7 @@
     // button, "could not send" sends them to support for no reason.
     function reason(err) {
         if (err && err.reason && err.status && err.status < 500) return t(err.reason);
-        return t('could not reach us just now. please try again in a moment.');
+        return t('Could not reach us just now. Please try again in a moment.');
     }
 
     function el(tag, cls, text) {
@@ -128,7 +128,7 @@
             consentWrap.classList.toggle('lp-demo-consent-err', !ok);
             if (!consentNote) return;
             if (ok) { consentNote.hidden = true; return; }
-            consentNote.textContent = t('please accept the terms of service to continue.');
+            consentNote.textContent = t('Please accept the terms of service to continue.');
             consentNote.hidden = false;
             replay(consentNote, 'is-shown');
         }
@@ -143,7 +143,7 @@
         //   the widget is not rendered until the form is actually submitted. it
         //   is a check on the send, not a field to fill in, so it has no business
         //   sitting in the form while somebody types their name: it only appears
-        //   once "create account" is pressed, and in the ordinary case it passes
+        //   once "Create account" is pressed, and in the ordinary case it passes
         //   on its own and is gone again before it is read. rendering it earlier
         //   also risked running it inside a display:none dialog, where nobody can
         //   see or finish a challenge that asks for a click.
@@ -268,9 +268,9 @@
             '<rect x="2.5" y="4.5" width="19" height="15" rx="2.5"></rect>' +
             '<polyline points="3 6.5 12 13 21 6.5"></polyline></svg>';
         vhead.appendChild(vmark);
-        vhead.appendChild(el('h3', null, 'check your email'));
+        vhead.appendChild(el('h3', null, 'Check your email'));
         var vsub = el('p');
-        vsub.appendChild(document.createTextNode('we sent a 6 digit code to'));
+        vsub.appendChild(document.createTextNode('We sent a 6 digit code to'));
         // its own node with its own space: a translation that begins with
         // punctuation renders with a gap in front of it, which is how the last
         // one of these ended up reading "voditelja compliancea ."
@@ -282,7 +282,7 @@
 
         var codeWrap = el('div', 'sp-auth-code');
         codeWrap.setAttribute('role', 'group');
-        codeWrap.setAttribute('aria-label', t('verification code'));
+        codeWrap.setAttribute('aria-label', t('Verification code'));
         var boxes = [];
         for (var i = 0; i < 6; i++) {
             var box = document.createElement('input');
@@ -290,7 +290,7 @@
             box.inputMode = 'numeric';
             box.maxLength = 1;
             box.autocomplete = i === 0 ? 'one-time-code' : 'off';
-            box.setAttribute('aria-label', t('digit') + ' ' + (i + 1));
+            box.setAttribute('aria-label', t('Digit') + ' ' + (i + 1));
             codeWrap.appendChild(box);
             boxes.push(box);
         }
@@ -301,16 +301,16 @@
         vErr.setAttribute('role', 'alert');
         verify.appendChild(vErr);
 
-        var vBtn = el('button', 'lp-demo-submit', 'verify and create account');
+        var vBtn = el('button', 'lp-demo-submit', 'Verify and create account');
         vBtn.classList.add('sp-auth-submit');
         vBtn.type = 'submit';
         verify.appendChild(vBtn);
 
         var vfoot = el('div', 'sp-auth-vfoot');
-        var resendBtn = el('button', 'sp-auth-linkbtn', 'send a new code');
+        var resendBtn = el('button', 'sp-auth-linkbtn', 'Send a new code');
         resendBtn.classList.add('sp-auth-resend');
         resendBtn.type = 'button';
-        var backBtn = el('button', 'sp-auth-linkbtn', 'use a different email');
+        var backBtn = el('button', 'sp-auth-linkbtn', 'Use a different email');
         backBtn.type = 'button';
         vfoot.appendChild(resendBtn);
         vfoot.appendChild(backBtn);
@@ -322,11 +322,11 @@
         mark.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" ' +
             'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>';
         done.appendChild(mark);
-        done.appendChild(el('h3', null, 'your account is ready'));
+        done.appendChild(el('h3', null, 'Your account is ready'));
         // said, and then done: the account exists, they are signed in, and the
         // next screen follows on its own. the panel used to promise an email
         // instead, which is what you write when there is nowhere to send anyone.
-        done.appendChild(el('p', null, 'you are signed in. taking you to your account…'));
+        done.appendChild(el('p', null, 'You are signed in. Taking you to your account…'));
 
         form.parentNode.insertBefore(verify, form.nextSibling);
         form.parentNode.insertBefore(done, verify.nextSibling);
@@ -453,13 +453,13 @@
                 if (left <= 0) {
                     clearInterval(tick);
                     resendBtn.disabled = false;
-                    resendBtn.textContent = t('send a new code');
+                    resendBtn.textContent = t('Send a new code');
                     return;
                 }
                 resendBtn.disabled = true;
                 // the wait is shown rather than the button simply not working: a
                 // dead button reads as a bug, a countdown reads as a rule
-                resendBtn.textContent = t('send a new code in') + ' ' + left + 's';
+                resendBtn.textContent = t('Send a new code in') + ' ' + left + 's';
                 left--;
             }
             resendBtn.disabled = true;
@@ -471,7 +471,7 @@
             if (resendBtn.disabled) return;
             holdResend(RESEND_WAIT);
             post('/v1/auth/resend', { email: pendingEmail }).then(function (data) {
-                showError(t('a new code is on its way.'), 'good');
+                showError(t('A new code is on its way.'), 'good');
                 remember(pendingEmail, data && data.expiresInMin, Date.now() + RESEND_WAIT * 1000);
                 watchExpiry();
             }).catch(function (err) {
@@ -518,7 +518,7 @@
                 clearCode(false);
                 showError('');
                 step('register');
-                formError(t('that code has expired. sign up again and we will send a new one.'));
+                formError(t('That code has expired. Sign up again and we will send a new one.'));
             }, Math.max(0, state.expires - Date.now()));
         }
 
@@ -541,11 +541,11 @@
             data.lang = lang();
 
             if (!data.firstName || !data.lastName || !data.email) {
-                formError(t('please fill in every field.'));
+                formError(t('Please fill in every field.'));
                 return;
             }
             if (!data.password || data.password.length < 12) {
-                formError(t('password must be at least 12 characters'));
+                formError(t('Password must be at least 12 characters'));
                 return;
             }
             if (!data.consent) {
@@ -558,7 +558,7 @@
             busy = true;
             submitBtn.disabled = true;
             var label = submitBtn.textContent;
-            submitBtn.textContent = t('creating your account…');
+            submitBtn.textContent = t('Creating your account…');
 
             // the check comes first, and it may have to run again: a page that has
             // been open a while is holding a token the server will refuse
@@ -582,7 +582,7 @@
                 setTimeout(function () { boxes[0].focus(); }, 340);
             }).catch(function (err) {
                 if (err.noToken) {
-                    formError(t('the check below did not finish. please try again in a moment.'));
+                    formError(t('The check below did not finish. Please try again in a moment.'));
                     return;
                 }
                 // "a code was just sent" is an answer to the button that was
@@ -644,7 +644,7 @@
         verify.addEventListener('submit', function (e) {
             e.preventDefault();
             if (codeValue().length !== 6) {
-                showError(t('enter all six digits.'));
+                showError(t('Enter all six digits.'));
                 return;
             }
             submitCode();
@@ -706,7 +706,7 @@
         function paint() {
             btn.textContent = '';
             btn.appendChild(svg([EYE, 'M12 9.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6Z'], shown));
-            var label = t(shown ? 'hide password' : 'show password');
+            var label = t(shown ? 'Hide password' : 'Show password');
             btn.setAttribute('aria-label', label);
             btn.setAttribute('title', label);
             btn.setAttribute('aria-pressed', shown ? 'true' : 'false');
@@ -818,7 +818,7 @@
             // never trimmed: a space is a character somebody chose
             var password = passInput ? passInput.value : '';
             if (!email || !password) {
-                say(t('please fill in every field.'));
+                say(t('Please fill in every field.'));
                 return;
             }
 
@@ -826,7 +826,7 @@
             busy = true;
             submitBtn.disabled = true;
             var label = submitBtn.textContent;
-            submitBtn.textContent = t('signing you in…');
+            submitBtn.textContent = t('Signing you in…');
 
             post('/v1/auth/login', { email: email, password: password }).then(function () {
                 // replace rather than assign: the back button should not come
