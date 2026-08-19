@@ -204,20 +204,58 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use(cors({
-    origin: (origin, callback) => {
-        if (allowedOrigins.includes('*')) {
-            if (isProduction) return callback(new Error('Wildcard CORS disallowed in production.'));
-            return callback(null, true);
-        }
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.length === 0) {
-            return callback(isProduction ? new Error('ALLOWED_ORIGINS must be configured in production.') : null, !isProduction);
-        }
-        if (allowedOrigins.indexOf(origin) !== -1) return callback(null, true);
-        callback(new Error('Not allowed by CORS'));
-    },
-    methods: ['POST', 'GET']
+// A request from one of our own hostnames is not a cross origin request in any
+// sense this list is meant to police. The list exists to stop somebody else's
+// site calling our endpoints from their visitors' browsers; it was never meant
+// to stop our own pages loading our own files.
+//
+// It did, though, and the way it showed up is worth writing down. A @font-face
+// fetch is made in cors mode by specification, even when the file sits on the
+// same origin as the page asking for it, and `<link rel="preload" as="font">`
+// requires the crossorigin attribute for the same reason. So the browser sends
+// an Origin header for every font on every page. On sentinelpay.org that header
+// matched ALLOWED_ORIGINS and the font loaded. On blog.sentinelpay.org it did
+// not, this middleware answered 403, and the blog rendered in whatever serif the
+// browser falls back to. Same server, same files, same html: one hostname short
+// in an environment variable.
+//
+// Rather than asking somebody to keep every subdomain of every environment in
+// sync in a variable, the check is now: is this request coming from the host it
+// is addressed to, or from a sibling under the same registrable domain. Those
+// are our own pages by definition.
+function sameSite(origin, host) {
+    if (!origin || !host) return false;
+    let from;
+    try {
+        from = new URL(origin).hostname.toLowerCase();
+    } catch (err) {
+        return false;
+    }
+    const to = String(host).split(':')[0].toLowerCase();
+    if (from === to) return true;
+    // one label off the front of either: blog.sentinelpay.org against
+    // sentinelpay.org, and the other way round. deliberately not a suffix match:
+    // "notsentinelpay.org" must never look like a sibling of "sentinelpay.org".
+    const apex = (h) => h.split('.').slice(-2).join('.');
+    return apex(from) === apex(to) && apex(to).includes('.');
+}
+
+app.use(cors((req, callback) => {
+    const origin = req.headers.origin;
+    const options = { methods: ['POST', 'GET'] };
+
+    if (allowedOrigins.includes('*')) {
+        if (isProduction) return callback(new Error('Wildcard CORS disallowed in production.'));
+        return callback(null, Object.assign({ origin: true }, options));
+    }
+    if (!origin) return callback(null, Object.assign({ origin: true }, options));
+    if (sameSite(origin, req.headers.host)) return callback(null, Object.assign({ origin: true }, options));
+    if (allowedOrigins.length === 0) {
+        if (isProduction) return callback(new Error('ALLOWED_ORIGINS must be configured in production.'));
+        return callback(null, Object.assign({ origin: true }, options));
+    }
+    if (allowedOrigins.indexOf(origin) !== -1) return callback(null, Object.assign({ origin: true }, options));
+    callback(new Error('Not allowed by CORS'));
 }));
 
 app.use(express.json({ limit: '10kb' }));
