@@ -613,7 +613,7 @@
             busy = true;
             vBtn.disabled = true;
             var label = vBtn.textContent;
-            vBtn.textContent = t('checking…');
+            vBtn.textContent = t('Checking…');
             showError('');
 
             post('/v1/auth/verify', { email: pendingEmail, code: code }).then(function (out) {

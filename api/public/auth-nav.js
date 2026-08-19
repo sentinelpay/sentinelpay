@@ -41,7 +41,7 @@
     }
 
     function signedIn(me) {
-        var label = t('dashboard');
+        var label = t('Dashboard');
 
         if (login && register) {
             var mark = document.createElement('a');

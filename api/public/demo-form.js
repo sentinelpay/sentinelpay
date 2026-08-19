@@ -462,7 +462,7 @@
                 // the confirmation email is written in whatever language the visitor is reading
                 data.lang = (window.SentinelI18n && typeof window.SentinelI18n.lang === 'function' ? window.SentinelI18n.lang() : 'en') || 'en';
                 submitBtn.disabled = true;
-                submitBtn.textContent = t('sending…');
+                submitBtn.textContent = t('Sending…');
                 fetch(cfg.endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
