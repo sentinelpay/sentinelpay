@@ -4949,6 +4949,29 @@ h1, h2, h3, h4,
 .sp-hero-h1 { letter-spacing: -0.024em; }
 .lp-statsx-num, .lp-stat-num { letter-spacing: -0.03em; }
 
+/* the navigation goes on the display face too.
+
+   uber does the same: their nav items sit with the display type, not with the
+   body copy, and it is the reason their bar reads as part of the brand rather
+   than as a row of links. these are labels glanced at, never read through,
+   which is what a display face is for. it also fixes the thing that looked
+   wrong here: headings in one typeface and the bar above them in another.
+
+   tracking stays near zero. the negative tracking that suits a 3rem headline
+   closes up a 0.95rem label. */
+.lp-nav-link,
+.lp-nav-dd-btn,
+.auth-nav-btn,
+.lp-mega-title,
+.lp-mobile-link,
+.lp-mm-acc-btn,
+.lp-mm-btn-ghost,
+.lp-mm-btn-solid,
+.lp-blog-back {
+    font-family: var(--sp-display);
+    letter-spacing: -0.006em;
+}
+
 /* eyebrows and small caps labels are the exception: they are set in the text
    face because a wide display face at 0.75rem with letter-spacing on it turns
    into a row of disconnected letters. */
