@@ -12,10 +12,12 @@
     <script>document.documentElement.classList.add('theme-light');</script>
     <script>if(history.scrollRestoration)history.scrollRestoration='manual';window.scrollTo(0,0);</script>
     <link rel="icon" type="image/svg+xml" href="/logo.svg">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/jakarta-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="/fonts.css?v=1">
     <link rel="stylesheet" href="/style.css?v=24">
     <link rel="stylesheet" href="/landing.css?v=14.4">
-    <link rel="stylesheet" href="/corp.css?v=234">
+    <link rel="stylesheet" href="/corp.css?v=237">
     <style>
         /* page loader: hold the page until everything is loaded (matches homepage) */
         #sp-loader{position:fixed;inset:0;z-index:99999;background:#050505;display:flex;align-items:center;justify-content:center;transition:opacity 0.55s ease;}
@@ -154,7 +156,7 @@
         html, body { overflow: hidden !important; height: 100%; }
         #sp-loader { background: #fbfcfd !important; flex-direction: column; gap: 1.6rem; padding: 0 1.5rem; }
         #sp-loader .spl-logo-svg { animation: none; filter: none; opacity: 0.75; width: 96px; height: 96px; }
-        .sp-ns { max-width: 30rem; text-align: center; font-family: 'Inter', sans-serif; }
+        .sp-ns { max-width: 30rem; text-align: center; font-family: var(--sp-text); }
         .sp-ns-title { margin: 0 0 0.5rem; font-size: 1.12rem; font-weight: 700; letter-spacing: -0.01em; color: #0e2358; text-transform: none; }
         .sp-ns-text { margin: 0 0 1.3rem; font-size: 0.95rem; line-height: 1.6; color: rgba(14,35,88,0.62); }
         .sp-ns-link { display: inline-block; padding: 0.62rem 1.15rem; border-radius: 10px; border: 1px solid rgba(14,35,88,0.16); background: rgba(255,255,255,0.75); font-size: 0.88rem; font-weight: 600; color: #0e2358; text-decoration: none; }

@@ -74,7 +74,7 @@ html.theme-light .lp-marquee-strip {
 }
 
 .lp-client-mark {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.05rem;
     font-weight: 700;
     letter-spacing: 0.01em;
@@ -230,7 +230,7 @@ html.theme-light .lp-role-feature .lp-role-desc {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.82rem;
     font-weight: 600;
     text-transform: none;
@@ -759,7 +759,7 @@ html.theme-light .lp-nav .auth-nav-btn:hover::after {
     align-items: center;
     gap: 0.65rem;
     margin-right: 3.4rem;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1rem;
     font-weight: 600;
     letter-spacing: -0.01em;
@@ -987,7 +987,7 @@ html.theme-light .lp-roles-selector-label { font-size: 0.95rem; color: #5b6b8c; 
     border: none;
     border-radius: 50px;
     padding: 0.6rem 1.2rem;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.95rem;
     font-weight: 600;
     cursor: pointer;
@@ -1022,7 +1022,7 @@ html.theme-light .lp-roles-selector-label { font-size: 0.95rem; color: #5b6b8c; 
     border: none;
     border-radius: 8px;
     padding: 0.6rem 0.9rem;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.9rem;
     font-weight: 500;
     color: #33456b;
@@ -1289,7 +1289,7 @@ html.theme-light .lp-statsx {
 }
 html.theme-light .lp-statsx .lp-section-inner { position: relative; z-index: 1; }
 html.theme-light .lp-statsx-heading {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.55rem;
     font-weight: 700;
     line-height: 1.4;
@@ -1327,7 +1327,7 @@ html.theme-light .lp-statsx-heading {
 .lp-statsx-icon { margin-bottom: 1.1rem; }
 .lp-statsx-icon svg { width: 34px; height: 34px; }
 .lp-statsx-num {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 2.9rem;
     font-weight: 800;
     letter-spacing: -0.02em;
@@ -1401,7 +1401,7 @@ html.theme-light .lp-roles .lp-h2 { margin: 0 0 1.15rem; }
 }
 .lp-intel-copy { position: relative; z-index: 2; }
 .lp-intel-banner-title {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.7rem;
     font-weight: 700;
     line-height: 1.3;
@@ -1419,7 +1419,7 @@ html.theme-light .lp-roles .lp-h2 { margin: 0 0 1.15rem; }
     gap: 0.6rem;
     background: #ffffff;
     color: #0a0d1c;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.85rem;
     font-weight: 700;
     text-transform: none;
@@ -1547,7 +1547,7 @@ html.theme-light .lp-roles .lp-h2 { margin: 0 0 1.15rem; }
 .lp-intel-book-title {
     margin: 0.5rem 0 0;
     padding-left: 0.4rem;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.55rem;
     font-weight: 800;
     line-height: 1.12;
@@ -1643,7 +1643,7 @@ html.theme-light .lp-roles .lp-h2 { margin: 0 0 1.15rem; }
     margin-bottom: 0.55rem;
 }
 .lp-intel-guide-title {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.4rem;
     font-weight: 800;
     line-height: 1.15;
@@ -1749,7 +1749,7 @@ html.theme-light .lp-roles .lp-h2 { margin: 0 0 1.15rem; }
 }
 .lp-demo-left { position: relative; z-index: 1; }
 .lp-demo-title {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 2.6rem;
     font-weight: 800;
     line-height: 1.08;
@@ -1786,7 +1786,7 @@ html.theme-light .lp-demo-card .lp-cta-label {
     display: inline-flex;
     align-items: center;
     gap: 0.6rem;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.15rem;
     font-weight: 700;
     color: #ffffff;
@@ -1826,7 +1826,7 @@ html.theme-light .lp-demo-card .lp-cta-label {
 .lp-demo-field textarea {
     width: 100%;
     box-sizing: border-box;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.9rem;
     color: #ffffff;
     background: rgba(255, 255, 255, 0.045);
@@ -2056,7 +2056,7 @@ html.theme-light .lp-demo-select-list { scrollbar-width: thin; scrollbar-color: 
     background: none;
     border: none;
     color: rgba(255, 255, 255, 0.6);
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.85rem;
     font-weight: 600;
     cursor: pointer;
@@ -2083,7 +2083,7 @@ html.theme-light .lp-demo-select-list { scrollbar-width: thin; scrollbar-color: 
     color: #06070f;
     border: none;
     border-radius: 10px;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.85rem;
     font-weight: 700;
     padding: 0.8rem 1.9rem;
@@ -2577,14 +2577,14 @@ html.theme-light .lp-demo-select-list { scrollbar-width: thin; scrollbar-color: 
 /* ============ language switcher (footer) ============ */
 .sp-lang { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1.6rem; align-items: flex-start; max-width: 220px; }
 .sp-lang-label {
-    font-family: 'Inter', sans-serif; font-size: 0.78rem; font-weight: 700;
+    font-family: var(--sp-text); font-size: 0.78rem; font-weight: 700;
     color: #0e2358; text-transform: none; letter-spacing: 0.01em;
 }
 .sp-lang-dd { position: relative; width: 100%; }
 /* the trigger keeps the plain white field look */
 .sp-lang-btn {
     display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; width: 100%;
-    font-family: 'Inter', sans-serif; font-size: 0.9rem; font-weight: 500; line-height: 1.2; text-align: left;
+    font-family: var(--sp-text); font-size: 0.9rem; font-weight: 500; line-height: 1.2; text-align: left;
     color: #0e2358; background: #fff; cursor: pointer;
     padding: 0.62rem 0.85rem 0.62rem 0.95rem;
     border: 1px solid rgba(14, 35, 88, 0.16); border-radius: 10px;
@@ -2609,7 +2609,7 @@ html.theme-light .lp-demo-select-list { scrollbar-width: thin; scrollbar-color: 
 .sp-lang-dd.up .sp-lang-menu { top: auto; bottom: calc(100% + 6px); transform: translateY(6px); }
 .sp-lang-dd.up.open .sp-lang-menu { transform: translateY(0); }
 .sp-lang-opt {
-    font-family: 'Inter', sans-serif; font-size: 0.88rem; font-weight: 500; text-align: left;
+    font-family: var(--sp-text); font-size: 0.88rem; font-weight: 500; text-align: left;
     color: #33456b; background: none; border: none; border-radius: 8px;
     padding: 0.5rem 0.7rem; cursor: pointer;
     transition: background 0.15s ease, color 0.15s ease;
@@ -4882,4 +4882,90 @@ html.theme-light .lp-nav {
         z-index: -1;
         background: #ffffff;
     }
+}
+
+/* ---- the typeface system ------------------------------------------------- */
+/* uber runs two faces, not one: UberMove for display and UberMoveText for
+   everything you actually read, both with the same skeleton at two optical
+   sizes. that split is the part worth copying, and it is why their headings
+   look tight and deliberate while their paragraphs stay easy.
+
+   we cannot use their faces. Uber Move is a commissioned proprietary typeface
+   licensed to uber, and serving it, or hotlinking the files off their cdn, is
+   not something to do on a compliance company's website. so this is the same
+   structure with the closest openly licensed pair:
+
+     display   Plus Jakarta Sans. geometric, wide apertures, low contrast, and
+               the nearest open face to Uber Move's skeleton. it carries the
+               headings, the statistics and the brand.
+
+     text      Inter, which the site already used. it is the standard stand-in
+               for UberMoveText: tall x-height, open counters, drawn for
+               screens at small sizes.
+
+   the fallback chain is uber's own, minus their face: system-ui first so a
+   device shows its native ui font rather than a serif while the webfont is
+   still arriving, then the helveticas, then whatever there is.
+
+   every rule in the stylesheets points at one of these two variables now, so
+   changing a typeface is one line rather than a hundred and fifty. */
+:root {
+    --sp-text: 'Inter', system-ui, -apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    --sp-display: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+/* what the display face is for: the things read at a glance rather than read
+   through. anything that is a paragraph stays on the text face, however large
+   it happens to be. */
+h1, h2, h3, h4,
+.sp-hero-h1,
+.lp-h2,
+.lp-statsx-heading,
+.lp-statsx-num,
+.lp-hero-title,
+.lp-mega-heading,
+.lp-sol-title,
+.lp-role-title,
+.lp-intel-banner-title,
+.lp-intel-guide-title,
+.lp-ins-title,
+.lp-faq-q,
+.sp-auth-h,
+.lp-logo-text,
+.lp-stat-num,
+.lp-cta-title,
+.bad-title {
+    font-family: var(--sp-display);
+    /* plus jakarta sans is a wider face than inter at the same size, so the
+       tracking that suited inter reads loose on it. this is the one metric that
+       has to move with the typeface rather than staying put. */
+    letter-spacing: -0.022em;
+}
+
+/* the hero headline is set large enough that it needs more of the same */
+/* jakarta sets wider than inter, so it wants less negative tracking, not more:
+   at -0.035em the words in a croatian headline start touching. uber sets its own
+   display face around this value. */
+.sp-hero-h1 { letter-spacing: -0.024em; }
+.lp-statsx-num, .lp-stat-num { letter-spacing: -0.03em; }
+
+/* eyebrows and small caps labels are the exception: they are set in the text
+   face because a wide display face at 0.75rem with letter-spacing on it turns
+   into a row of disconnected letters. */
+.lp-eyebrow, .lp-mega-eyebrow, .sp-hero-scroll span {
+    font-family: var(--sp-text);
+    letter-spacing: 0.18em;
+}
+
+/* the highlight is a background on an inline span, and its horizontal padding
+   pushes whatever follows away from the word: "guides , " with a gap before the
+   comma.
+   
+   a negative right margin looked like the fix and is not: it cancels the
+   padding everywhere, so where a space follows instead of a comma the two words
+   collide. there is no selector for "followed by punctuation", so the honest
+   answer is a smaller box. 0.1em still reads as a highlight and leaves a gap
+   before a comma small enough that nobody looks at it. */
+.lp-hl, .lp-statsx-hl {
+    padding: 0 0.1em;
 }

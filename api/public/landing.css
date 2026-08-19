@@ -58,7 +58,7 @@ body.lp-body {
 }
 
 .lp-logo-text {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.05rem;
     font-weight: 700;
     background: linear-gradient(135deg, #fff 0%, #888 100%);
@@ -92,7 +92,7 @@ body.lp-body {
     gap: 0.45rem;
     color: var(--text-muted);
     text-decoration: none;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.82rem;
     padding: 0.45rem 1rem;
     border-radius: 50px;
@@ -111,7 +111,7 @@ body.lp-body {
 .lp-nav-link {
     color: var(--text-muted);
     text-decoration: none;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.82rem;
     padding: 0.4rem 0.85rem;
     border-radius: 6px;
@@ -198,7 +198,7 @@ body.lp-body {
     padding: 0.5rem 0.8rem;
     color: var(--text-muted);
     text-decoration: none;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.7rem;
     text-transform: none;
     transition: background 0.13s, color 0.13s;
@@ -279,7 +279,7 @@ body.lp-body {
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 6px;
     padding: 0.35rem 0.75rem;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.68rem;
     color: rgba(255, 255, 255, 0.4);
     text-transform: none;
@@ -330,7 +330,7 @@ body.lp-body {
     border: 1px solid rgba(0, 240, 255, 0.15);
     border-radius: 50px;
     padding: 0.4rem 1.1rem;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.72rem;
     color: var(--neon-blue);
     text-transform: none;
@@ -352,7 +352,7 @@ body.lp-body {
 }
 
 .lp-h1 {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: clamp(2.4rem, 6vw, 3.75rem);
     font-weight: 700;
     line-height: 1.1;
@@ -365,7 +365,7 @@ body.lp-body {
 }
 
 .lp-hero-sub {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.05rem;
     color: var(--text-muted);
     line-height: 1.65;
@@ -390,7 +390,7 @@ body.lp-body {
     color: #000;
     padding: 0.8rem 1.85rem;
     border-radius: 8px;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.875rem;
     font-weight: 700;
     text-decoration: none;
@@ -410,7 +410,7 @@ body.lp-body {
     color: var(--text-muted);
     padding: 0.8rem 1.5rem;
     border-radius: 8px;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.875rem;
     font-weight: 400;
     text-decoration: none;
@@ -522,7 +522,7 @@ body.lp-body {
 }
 
 .lp-diag-node-name {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.75rem;
     color: var(--text-main);
     font-weight: 700;
@@ -530,7 +530,7 @@ body.lp-body {
 }
 
 .lp-diag-node-sub {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.68rem;
     color: var(--text-muted);
     font-weight: 300;
@@ -574,7 +574,7 @@ body.lp-body {
 }
 
 .lp-diag-score-num {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.1rem;
     font-weight: 700;
     line-height: 1;
@@ -586,7 +586,7 @@ body.lp-body {
 .lp-risk-low .lp-diag-score-num { color: var(--color-green); }
 
 .lp-diag-score-sep {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.7rem;
     opacity: 0.4;
     transition: color 0.3s ease;
@@ -597,7 +597,7 @@ body.lp-body {
 .lp-risk-low .lp-diag-score-sep { color: var(--color-green); }
 
 .lp-diag-score-cat {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.62rem;
     text-transform: none;
     transition: color 0.3s ease;
@@ -610,7 +610,7 @@ body.lp-body {
 .lp-diag-email-toast {
     border-radius: 6px;
     padding: 0.3rem 0.65rem;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.62rem;
     text-transform: none;
     margin-top: 0.35rem;
@@ -650,7 +650,7 @@ body.lp-body {
 }
 
 .lp-diag-pipe-label {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.58rem;
     color: var(--text-muted);
     text-transform: none;
@@ -704,7 +704,7 @@ body.lp-body {
 .lp-diag-track-arrow {
     position: absolute;
     right: 0;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.1rem;
     color: var(--neon-blue);
     opacity: 0.4;
@@ -773,7 +773,7 @@ body.lp-body {
 }
 
 .lp-stat-value {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.75rem;
     font-weight: 700;
     color: #fff;
@@ -782,7 +782,7 @@ body.lp-body {
 }
 
 .lp-stat-label {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.75rem;
     color: var(--text-muted);
     text-transform: none;
@@ -805,7 +805,7 @@ body.lp-body {
 }
 
 .lp-eyebrow {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.7rem;
     color: var(--neon-blue);
     text-transform: none;
@@ -815,7 +815,7 @@ body.lp-body {
 }
 
 .lp-h2 {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: clamp(1.75rem, 3.5vw, 2.4rem);
     font-weight: 700;
     letter-spacing: -0.03em;
@@ -848,7 +848,7 @@ body.lp-body {
     display: flex;
     align-items: flex-start;
     padding: 2.5rem 1.5rem 0;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.1rem;
     color: var(--text-muted);
     opacity: 0.35;
@@ -856,7 +856,7 @@ body.lp-body {
 }
 
 .lp-step-num {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.7rem;
     color: var(--neon-blue);
     font-weight: 700;
@@ -864,7 +864,7 @@ body.lp-body {
 }
 
 .lp-step-title {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.15rem;
     font-weight: 600;
     color: #fff;
@@ -873,7 +873,7 @@ body.lp-body {
 }
 
 .lp-step-desc {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.875rem;
     color: var(--text-muted);
     line-height: 1.6;
@@ -922,7 +922,7 @@ body.lp-body {
 }
 
 .lp-signal-flag {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.78rem;
     color: var(--text-main);
     background: rgba(255, 255, 255, 0.05);
@@ -932,7 +932,7 @@ body.lp-body {
 }
 
 .lp-signal-score {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.85rem;
     font-weight: 700;
     flex-shrink: 0;
@@ -943,7 +943,7 @@ body.lp-body {
 .lp-score-blue { color: var(--neon-blue); }
 
 .lp-signal-desc {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.84rem;
     color: var(--text-muted);
     line-height: 1.55;
@@ -971,7 +971,7 @@ body.lp-body {
 }
 
 .lp-code-label {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.68rem;
     color: var(--text-muted);
     padding: 0.7rem 1.25rem;
@@ -984,7 +984,7 @@ body.lp-body {
     padding: 1.5rem 1.25rem;
     margin: 0;
     overflow-x: auto;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.83rem;
     line-height: 1.75;
     color: var(--text-main);
@@ -1000,7 +1000,7 @@ body.lp-body {
 .lp-c-bool { color: #a78bfa; }
 
 .lp-code-note {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.84rem;
     color: var(--text-muted);
     font-weight: 300;
@@ -1008,7 +1008,7 @@ body.lp-body {
 }
 
 .lp-code-note code {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.8rem;
     color: var(--neon-blue);
     background: rgba(0, 240, 255, 0.06);
@@ -1044,7 +1044,7 @@ body.lp-body {
     transform: translateX(-50%);
     background: var(--neon-blue);
     color: #000;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.65rem;
     font-weight: 700;
     text-transform: none;
@@ -1055,7 +1055,7 @@ body.lp-body {
 }
 
 .lp-plan-name {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.78rem;
     color: var(--text-muted);
     text-transform: none;
@@ -1071,14 +1071,14 @@ body.lp-body {
 }
 
 .lp-plan-currency {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.2rem;
     font-weight: 500;
     color: var(--text-muted);
 }
 
 .lp-plan-amount {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 3rem;
     font-weight: 700;
     color: #fff;
@@ -1087,7 +1087,7 @@ body.lp-body {
 }
 
 .lp-plan-period {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.85rem;
     color: var(--text-muted);
     font-weight: 400;
@@ -1098,7 +1098,7 @@ body.lp-body {
 }
 
 .lp-plan-amount-custom {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 2.4rem;
     font-weight: 700;
     color: #fff;
@@ -1107,7 +1107,7 @@ body.lp-body {
 }
 
 .lp-plan-desc {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.84rem;
     color: var(--text-muted);
     line-height: 1.55;
@@ -1132,7 +1132,7 @@ body.lp-body {
     display: flex;
     align-items: flex-start;
     gap: 0.65rem;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.84rem;
     color: var(--text-muted);
     text-transform: none;
@@ -1142,7 +1142,7 @@ body.lp-body {
 
 .lp-feat-check {
     color: var(--color-green);
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.85rem;
     flex-shrink: 0;
     line-height: 1.4;
@@ -1154,7 +1154,7 @@ body.lp-body {
     justify-content: center;
     padding: 0.8rem 1.5rem;
     border-radius: 8px;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.85rem;
     font-weight: 700;
     text-decoration: none;
@@ -1215,7 +1215,7 @@ body.lp-body {
 .lp-usecase-icon svg { width: 100%; height: 100%; }
 
 .lp-usecase-title {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.95rem;
     font-weight: 600;
     color: #fff;
@@ -1225,7 +1225,7 @@ body.lp-body {
 }
 
 .lp-usecase-desc {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.84rem;
     color: var(--text-muted);
     line-height: 1.6;
@@ -1263,7 +1263,7 @@ body.lp-body {
 }
 
 .lp-cta-sub {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1rem;
     color: var(--text-muted);
     font-weight: 300;
@@ -1399,7 +1399,7 @@ html.lp-scroll-lock body {
     border-radius: 8px;
     color: var(--text-main);
     text-decoration: none;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.88rem;
     text-transform: none;
     transition: background 0.15s ease;
@@ -1423,7 +1423,7 @@ html.lp-scroll-lock body {
     padding: 0.75rem 0.75rem;
     border-radius: 8px;
     color: var(--text-main);
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.88rem;
     text-transform: none;
     text-align: left;
@@ -1464,7 +1464,7 @@ html.lp-scroll-lock body {
     border-radius: 6px;
     color: var(--text-muted);
     text-decoration: none;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.83rem;
     text-transform: none;
     transition: background 0.15s ease, color 0.15s ease;
@@ -1512,7 +1512,7 @@ html.lp-scroll-lock body {
     text-align: center;
     padding: 0.85rem 1.3rem;
     border-radius: 999px;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.92rem;
     font-weight: 600;
     text-decoration: none;
@@ -1619,7 +1619,7 @@ html.lp-scroll-lock body {
 .lp-footer-logo { font-size: 1rem; }
 
 .lp-footer-tagline {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.84rem;
     color: var(--text-muted);
     line-height: 1.55;
@@ -1640,7 +1640,7 @@ html.lp-scroll-lock body {
 }
 
 .lp-footer-col-title {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.68rem;
     color: var(--text-main);
     text-transform: none;
@@ -1650,7 +1650,7 @@ html.lp-scroll-lock body {
 }
 
 .lp-footer-link {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.84rem;
     color: var(--text-muted);
     text-decoration: none;
@@ -1669,14 +1669,14 @@ html.lp-scroll-lock body {
 }
 
 .lp-footer-copy {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.75rem;
     color: var(--text-muted);
     text-transform: none;
 }
 
 .lp-footer-email {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.75rem;
     color: var(--text-muted);
     text-decoration: none;
@@ -1921,7 +1921,7 @@ html.auth-session-present #lp-mm-dashboard { display: block !important; }
 .lp-dot-green  { background: #27c93f; }
 
 .lp-terminal-title {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.67rem;
     color: var(--text-muted);
     text-transform: none;
@@ -1933,7 +1933,7 @@ html.auth-session-present #lp-mm-dashboard { display: block !important; }
     padding: 0.65rem 0.85rem;
     margin: 0;
     overflow-x: auto;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.74rem;
     line-height: 1.65;
     color: var(--text-main);
@@ -1980,7 +1980,7 @@ html.auth-session-present #lp-mm-dashboard { display: block !important; }
 }
 
 .lp-connected-label {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.64rem;
     color: var(--color-green);
     padding: 0.4rem 1.25rem 0.8rem;
@@ -2013,7 +2013,7 @@ html.auth-session-present #lp-mm-dashboard { display: block !important; }
 }
 
 .lp-how-step-num {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.6rem;
     color: var(--neon-blue);
     font-weight: 700;
@@ -2021,7 +2021,7 @@ html.auth-session-present #lp-mm-dashboard { display: block !important; }
 }
 
 .lp-how-title {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1rem;
     font-weight: 700;
     color: #fff;
@@ -2032,7 +2032,7 @@ html.auth-session-present #lp-mm-dashboard { display: block !important; }
 }
 
 .lp-how-desc {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.73rem;
     color: var(--text-muted);
     line-height: 1.6;
@@ -2051,7 +2051,7 @@ html.auth-session-present #lp-mm-dashboard { display: block !important; }
 .lp-log-line {
     display: flex;
     align-items: baseline;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.74rem;
     line-height: 1.7;
     color: var(--text-muted);
@@ -2193,7 +2193,7 @@ html.auth-session-present #lp-mm-dashboard { display: block !important; }
 }
 
 .lp-alert-badge {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.62rem;
     font-weight: 700;
     text-transform: none;
@@ -2206,7 +2206,7 @@ html.auth-session-present #lp-mm-dashboard { display: block !important; }
 }
 
 .lp-alert-score {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.8rem;
     font-weight: 700;
     color: var(--color-red);
@@ -2221,7 +2221,7 @@ html.auth-session-present #lp-mm-dashboard { display: block !important; }
 }
 
 .lp-alert-wallet {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.78rem;
     color: var(--text-muted);
     letter-spacing: 0.02em;
@@ -2234,7 +2234,7 @@ html.auth-session-present #lp-mm-dashboard { display: block !important; }
 }
 
 .lp-alert-flag {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.72rem;
     color: var(--color-red);
     background: rgba(255, 51, 51, 0.08);
@@ -2247,7 +2247,7 @@ html.auth-session-present #lp-mm-dashboard { display: block !important; }
     display: flex;
     justify-content: space-between;
     gap: 0.5rem;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.7rem;
     color: rgba(255, 255, 255, 0.18);
     border-top: 1px solid rgba(255, 255, 255, 0.05);
@@ -2351,7 +2351,7 @@ html.auth-session-present #lp-mm-dashboard { display: block !important; }
 
 .lp-usecase-tag {
     display: inline-block;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.6rem;
     font-weight: 700;
     text-transform: none;
@@ -2380,7 +2380,7 @@ html.auth-session-present #lp-mm-dashboard { display: block !important; }
 
 .lp-cta-label {
     display: inline-block;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.62rem;
     font-weight: 700;
     text-transform: none;
@@ -2453,7 +2453,7 @@ html.auth-session-present #lp-cta-dashboard { display: inline-flex !important; }
 }
 
 .lp-chains-desc {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.9rem;
     color: var(--text-muted);
     line-height: 1.65;
@@ -2496,7 +2496,7 @@ html.auth-session-present #lp-cta-dashboard { display: inline-flex !important; }
 }
 
 .lp-scn-live-text {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.64rem;
     color: rgba(255, 255, 255, 0.28);
     text-transform: none;
@@ -2538,7 +2538,7 @@ html.auth-session-present #lp-cta-dashboard { display: inline-flex !important; }
 }
 
 .lp-scn-name {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.65rem;
     color: rgba(255, 255, 255, 0.35);
     text-transform: none;
@@ -2615,7 +2615,7 @@ html.auth-session-present #lp-cta-dashboard { display: inline-flex !important; }
     border: 1px solid rgba(255, 255, 255, 0.07);
     border-radius: 50px;
     padding: 0.4rem 0.95rem;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.75rem;
     color: var(--text-muted);
     text-transform: none;
@@ -2721,7 +2721,7 @@ html.auth-session-present #lp-cta-dashboard { display: inline-flex !important; }
     content: attr(data-label);
     position: absolute;
     right: calc(100% + 10px);
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.57rem;
     color: transparent;
     text-transform: none;
@@ -2826,7 +2826,7 @@ html.auth-session-present #lp-cta-dashboard { display: inline-flex !important; }
 
 .lp-marquee-label {
     text-align: center;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.72rem;
     letter-spacing: 0.14em;
     text-transform: none;
@@ -2880,7 +2880,7 @@ html.auth-session-present #lp-cta-dashboard { display: inline-flex !important; }
 .lp-stat:hover { border-color: rgba(0, 240, 255, 0.25); transform: translateY(-3px); }
 
 .lp-stat-num {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 2.3rem;
     font-weight: 800;
     letter-spacing: -0.02em;
@@ -2907,7 +2907,7 @@ html.auth-session-present #lp-cta-dashboard { display: inline-flex !important; }
 }
 
 .lp-role-tab {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.78rem;
     text-transform: none;
     color: var(--text-muted);
@@ -2953,7 +2953,7 @@ html.auth-session-present #lp-cta-dashboard { display: inline-flex !important; }
 }
 
 .lp-role-title {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 1.25rem;
     font-weight: 700;
     color: var(--text-main);
@@ -3226,7 +3226,7 @@ html.theme-light .lp-role-tab.active {
 
 .sp-hero-h1 {
     margin: 0;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     /* 3.7rem at the top end. it was 4.4 when the headline was two short poetic
        lines; the sentence that replaced them says what we actually do, which
        takes more words, and words that wrap four deep stop being a statement. */
@@ -3264,7 +3264,7 @@ html.theme-light .lp-role-tab.active {
        than the 52 it was: the paragraph now has to carry what we do, for whom,
        and in what time, and at 52 that was six lines of a narrow column. */
     max-width: 68ch;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: clamp(0.98rem, 1.15vw, 1.12rem);
     font-weight: 300;
     line-height: 1.62;
@@ -3292,7 +3292,7 @@ html.theme-light .lp-role-tab.active {
        filled element in the hero, so it needs no other emphasis. */
     background: linear-gradient(96deg, #00f0ff, #a675ff);
     color: #06070f;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.92rem;
     font-weight: 700;
     text-transform: none;
@@ -3358,7 +3358,7 @@ html.theme-light .lp-role-tab.active {
     border: 1px solid rgba(255, 255, 255, 0.14);
     background: rgba(255, 255, 255, 0.02);
     color: rgba(255, 255, 255, 0.86);
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.92rem;
     font-weight: 600;
     text-transform: none;
@@ -3393,7 +3393,7 @@ html.theme-light .lp-role-tab.active {
     flex-direction: column;
     align-items: center;
     gap: 0.6rem;
-    font-family: 'Inter', sans-serif;
+    font-family: var(--sp-text);
     font-size: 0.68rem;
     font-weight: 600;
     letter-spacing: 0.18em;

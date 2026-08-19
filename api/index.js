@@ -157,8 +157,13 @@ app.use(helmet({
                 'https://*.intercom.io',
                 'blob:'
             ],
-            'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://fonts.intercomcdn.com'],
-            'font-src': ["'self'", 'https://fonts.gstatic.com', 'https://fonts.intercomcdn.com'],
+            // google's font hosts are gone from both of these: the site serves its
+            // own faces now, so nothing here asks for them, and a policy that
+            // still permits an origin nothing uses is a policy that has stopped
+            // describing the site. intercom's stays, because the chat widget
+            // does load a face from it.
+            'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.intercomcdn.com'],
+            'font-src': ["'self'", 'https://fonts.intercomcdn.com'],
             'img-src': [
                 "'self'",
                 'data:',
@@ -540,12 +545,19 @@ if (IS_STAGING) {
 }
 
 // Subdomain routing, served by this same service via Host header (no extra service):
-//  - blog.sentinelpay.org -> the blog page (public/blog.html)
-//  - help.sentinelpay.org -> a blank page until real content exists
+//  - blog.* -> the blog page (public/blog.html)
+//  - help.* -> a blank page until real content exists
+//
+// Matched on the first label rather than on the full production hostname. The
+// blog is not a separate deployment, it is these same files behind a different
+// host, so pinning the check to blog.sentinelpay.org meant staging had no blog
+// at all: every change to the blog could only be seen by shipping it to
+// production first, which is the one thing staging exists to prevent.
 const BLANK_PAGE = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>sentinelpay</title><style>html,body{margin:0;height:100%;background:#06070f}</style></head><body></body></html>';
 app.use((req, res, next) => {
     const host = String(req.headers.host || '').split(':')[0].toLowerCase();
-    if (host === 'blog.sentinelpay.org') {
+    const label = host.split('.')[0];
+    if (label === 'blog') {
         // serve blog pages for navigation requests; let assets (.css/.svg/.png)
         // fall through to express.static so the shared homepage styles load.
         if (req.method === 'GET' && !path.extname(req.path)) {
@@ -574,7 +586,7 @@ app.use((req, res, next) => {
         }
         return next();
     }
-    if (host === 'help.sentinelpay.org') {
+    if (label === 'help') {
         res.set('X-Robots-Tag', 'noindex, nofollow');
         return res.status(200).type('html').send(BLANK_PAGE);
     }
