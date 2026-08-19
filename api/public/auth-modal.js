@@ -22,7 +22,7 @@
             '<div class="lp-demo-card bad-form-card sp-authm-panel">' +
                 '<span class="lp-demo-dots" aria-hidden="true"></span>' +
                 '<span class="lp-demo-edge" aria-hidden="true"></span>' +
-                '<button type="button" class="sp-authm-x" id="sp-authm-close" aria-label="close">' +
+                '<button type="button" class="sp-authm-x" id="sp-authm-close" aria-label="Close">' +
                     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">' +
                     '<path d="M6 6l12 12M18 6L6 18"></path></svg>' +
                 '</button>' +

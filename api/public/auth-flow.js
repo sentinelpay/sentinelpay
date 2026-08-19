@@ -290,7 +290,7 @@
             box.inputMode = 'numeric';
             box.maxLength = 1;
             box.autocomplete = i === 0 ? 'one-time-code' : 'off';
-            box.setAttribute('aria-label', t('digit') + ' ' + (i + 1));
+            box.setAttribute('aria-label', t('Digit') + ' ' + (i + 1));
             codeWrap.appendChild(box);
             boxes.push(box);
         }
