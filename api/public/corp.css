@@ -4491,12 +4491,18 @@ html.theme-light .lp-logo-bar { position: relative; z-index: 2; }
    comes in by the same amount the panel does and takes the same corner, and ends
    up as a bar floating over the page rather than stuck to the top of it.
 
-   it uses the same `--sp-fold` the panel does, which is set on the root by
-   scroll.js. on every other page the property does not exist, the fallbacks are
-   zero, and the nav is exactly what it was. */
+   `--sp-fold` runs from 0 to 1 and is written by navlift.js, which every page
+   loads. it used to come from scroll.js, which measures the hero, so the bar
+   only ever lifted on the homepage and stayed square on the other thirteen.
+   the fallback is 0 everywhere, so a page whose script never runs gets exactly
+   the bar it had before.
+
+   the inset is a custom property rather than a number, because 24px off each
+   side of a phone is a tenth of the screen. */
 html.theme-light .lp-nav {
-    left: calc(var(--sp-fold, 0) * 24px);
-    right: calc(var(--sp-fold, 0) * 24px);
+    --sp-inset: 24px;
+    left: calc(var(--sp-fold, 0) * var(--sp-inset));
+    right: calc(var(--sp-fold, 0) * var(--sp-inset));
     top: calc(var(--sp-fold, 0) * 12px);
     border-radius: var(--sp-fold-radius, 0px);
     /* the hairline under it is what makes it look attached, so it fades out as
@@ -4991,4 +4997,143 @@ h1, h2, h3, h4,
    before a comma small enough that nobody looks at it. */
 .lp-hl, .lp-statsx-hl {
     padding: 0 0.1em;
+}
+
+/* the pill on a phone: pulled in less and rounded less, because the same 24px
+   that reads as generous on a desktop is a tenth of a 390px screen, and a 26px
+   radius on a 56px tall bar starts eating the buttons inside it. */
+@media (max-width: 720px) {
+    html.theme-light .lp-nav { --sp-inset: 10px; }
+    html.theme-light .lp-nav { border-radius: calc(var(--sp-fold-radius, 0px) * 0.62); }
+}
+
+/* ---- the phone ------------------------------------------------------------ */
+/* measured rather than guessed: every page was rendered at 390 by 844 and every
+   control on it sized. what came back was a list of things that are fine under a
+   mouse and wrong under a thumb.
+
+   the numbers here are apple's and google's, and they agree: 44 css pixels is
+   the smallest a control should be before people start missing it. the visual
+   size of these controls does not change, only the area that answers a tap. a
+   hamburger that looks 36px and answers at 44 is the right shape; one that looks
+   44 is a hamburger nobody asked for. */
+@media (max-width: 900px) {
+    /* the two controls in the bar, and the two most used on a phone: the menu
+       button was 36 square and the logo 30 */
+    .lp-hamburger {
+        min-width: 44px;
+        min-height: 44px;
+    }
+    .lp-logo-link {
+        min-width: 44px;
+        min-height: 44px;
+        justify-content: center;
+    }
+
+    /* the language picker and the footer, which were 31 to 33 tall */
+    .sp-lang-opt,
+    .lp-footer-link,
+    .lp-footer-email,
+    .lp-mobile-link,
+    .lp-mm-acc-btn,
+    /* the links inside the mobile menu's accordions. these are the whole
+       navigation on a phone and they were 30px: the one place on the site where
+       a missed tap costs somebody the page they were going to. */
+    .lp-mobile-sub-link,
+    /* the three links under the sign-in card, which are the only navigation on
+       that page and were 29px tall */
+    .sp-auth-foot a {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+    }
+
+    /* a checkbox is 18px because 44px of blue box beside one line of text is a
+       checkbox that has taken over the sentence. it keeps its size and the tap
+       area comes from the label around it, which is already a tap target: a
+       label points at its control, so anywhere on it toggles the box.
+       
+       an earlier version of this grew the area with a pseudo element on the
+       input itself. that does nothing at all: an input is a replaced element and
+       browsers do not render ::before or ::after on one. it measured as fixed
+       and was not. */
+    .lp-demo-check,
+    .lp-demo-consent label,
+    .lp-demo-checks label,
+    .sp-auth-remember {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+    }
+
+    /* nothing user facing goes below 12px on a phone. these are eyebrows, stat
+       captions and footer column headings, all of which were set between 11.5
+       and 11.9 and are the first things to become unreadable outdoors. */
+    .lp-eyebrow,
+    .lp-mega-eyebrow,
+    .lp-statsx-label,
+    .lp-intel-guide-kicker,
+    .lp-footer-col-title,
+    .lp-demo-note {
+        /* px and not rem, deliberately. the root font size on this site is
+           15.79px, so 0.75rem lands at 11.84 and the floor this rule exists to
+           set would sit below the floor. a readability minimum has to be an
+           absolute number or it is not a minimum. */
+        font-size: 12px;
+    }
+    /* this one is set with !important further up, so it needs the same weight
+       rather than a louder selector */
+    .lp-statsx-label { font-size: 12px !important; }
+
+    /* the field labels on the sign-in and sign-up forms. these are the words
+       telling somebody what to type into the box under them, which makes them
+       the last thing on the site that should be the smallest text on it. */
+    .sp-auth-form label { font-size: 12.5px; }
+
+    /* the date and reading time under each article on the blog index */
+    .lp-ins-meta, .lp-ins-date { font-size: 12px; }
+    /* the byline under each article: a <small> inside a plain div, so it is
+       reached by where it sits rather than by a class it does not have */
+    .lp-ins-meta small, .lp-ins-card small, .lp-ins-featured small { font-size: 12px; }
+
+    /* the links inside the mobile menu are white at 55 percent over a near
+       black panel, which is around four to one: enough to see indoors and not
+       enough on a phone held outside. this is the entire navigation on a small
+       screen, so it gets the contrast of something you are meant to read rather
+       than the contrast of something you are meant to notice. the !important is
+       matching the weight of the rule it overrides, not raising the stakes. */
+    .lp-mobile-menu .lp-mobile-sub-link,
+    html.theme-light .lp-mobile-menu .lp-mobile-sub-link {
+        color: rgba(255, 255, 255, 0.74) !important;
+    }
+
+    /* the chat bubble sits in the bottom right corner over whatever is there.
+       on a desktop that is the margin; on a phone it lands on the last line of
+       the page. */
+    .lp-footer,
+    .bad-wrap {
+        padding-bottom: 5.5rem;
+    }
+}
+
+/* the tables in the policy pages are wider than a phone by design: a five column
+   table squeezed into 390px is unreadable in a different way. they scroll inside
+   their own box, which the wrapper already provides, and this is the part that
+   was missing: something telling you the box scrolls. */
+@media (max-width: 720px) {
+    .pp-table-wrap {
+        position: relative;
+        -webkit-overflow-scrolling: touch;
+    }
+    .pp-table-wrap::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 28px;
+        pointer-events: none;
+        background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.92));
+        border-radius: 0 12px 12px 0;
+    }
 }

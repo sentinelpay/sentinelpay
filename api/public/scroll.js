@@ -77,11 +77,9 @@
     var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduced) return;
 
-    // how far the panel travels: seven percent smaller and a 26px corner. more
-    // than that and the headline visibly shrinks, which reads as a zoom out
-    // rather than as a step back.
+    // how far the panel travels: seven percent smaller. more than that and the
+    // headline visibly shrinks, which reads as a zoom out rather than a step back.
     var MAX_SHRINK = 0.07;
-    var MAX_RADIUS = 26;
 
     var ticking = false;
     var lastP = -1;
@@ -98,9 +96,13 @@
         if (Math.abs(e - lastP) < 0.002) return;
         lastP = e;
 
-        root.style.setProperty('--sp-fold', e.toFixed(4));
+        // only the shrink that belongs to the hero. the lift and the radius on
+        // the bar come from navlift.js, which every page loads: keyed on
+        // having scrolled rather
+        // than on a hero, so the bar behaves the same on the blog and on the
+        // privacy policy as it does here. two files writing one property would
+        // be two answers to the same question.
         root.style.setProperty('--sp-fold-scale', (1 - e * MAX_SHRINK).toFixed(4));
-        root.style.setProperty('--sp-fold-radius', (e * MAX_RADIUS).toFixed(1) + 'px');
         // a layer while it moves, and not a moment longer
         hero.style.willChange = (e > 0.001 && e < 0.999) ? 'transform' : 'auto';
     }
