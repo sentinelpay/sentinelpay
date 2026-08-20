@@ -564,7 +564,7 @@ app.use(rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => `all:${req.realIp}`,
-    message: { error: 'too many requests, please slow down' }
+    message: { error: 'Too many requests, please slow down' }
 }));
 
 // Nothing on staging is for the public. The header goes on every response and
@@ -748,7 +748,7 @@ const demoRequestLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => `demo_request:${req.realIp}`,
-    message: { error: 'too many requests, please try again later' }
+    message: { error: 'Too many requests, please try again later' }
 });
 
 // Rate-limit trial sign-ups harder than demo requests: a trial grants access,
@@ -759,7 +759,7 @@ const trialRequestLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => `trial_request:${req.realIp}`,
-    message: { error: 'too many requests, please try again later' }
+    message: { error: 'Too many requests, please try again later' }
 });
 
 // Creating an account is the most attackable thing on the site: it sends mail to
@@ -836,7 +836,7 @@ const authRegisterLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => `auth_register:${req.realIp}`,
-    message: { error: 'too many attempts, please try again later' }
+    message: { error: 'Too many attempts, please try again later' }
 });
 // Guessing is the attack here, and a six digit code has a million answers. Twenty
 // tries an hour per ip on top of five per sign-up leaves nothing worth trying.
@@ -847,7 +847,7 @@ const authVerifyLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => `auth_verify:${req.realIp}`,
-    message: { error: 'too many attempts, please try again later' }
+    message: { error: 'Too many attempts, please try again later' }
 });
 // Signing in is where a leaked password list gets tried. Ten an hour per ip is
 // generous for a person who has forgotten which password they used and useless
@@ -859,7 +859,7 @@ const authLoginLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => `auth_login:${req.realIp}`,
-    message: { error: 'too many attempts, please try again later' }
+    message: { error: 'Too many attempts, please try again later' }
 });
 // A resend button is a button that sends mail to somebody else's inbox on demand.
 const authResendLimiter = rateLimit({
@@ -869,7 +869,7 @@ const authResendLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => `auth_resend:${req.realIp}`,
-    message: { error: 'too many attempts, please try again later' }
+    message: { error: 'Too many attempts, please try again later' }
 });
 
 // Diagnostics for outbound mail. Off unless ADMIN_TOKEN is set, and it answers 404
@@ -976,7 +976,7 @@ app.get('/v1/submissions', requireStaff('submissions json'), async (req, res) =>
 // somebody will follow by accident.
 app.post('/v1/forget', requireStaff('erase'), async (req, res) => {
     const email = String((req.body && req.body.email) || req.query.email || '').trim();
-    if (!email || email.length > 254) return res.status(400).json({ error: 'email required' });
+    if (!email || email.length > 254) return res.status(400).json({ error: 'Email required' });
     try {
         const removed = await db.forget(email);
         // an erasure request covers the account too, and anything half-made under
@@ -1194,7 +1194,7 @@ app.get('/v1/inbox', requireStaff('inbox'), (req, res) => {
 //     curl -H "x-admin-token: ..." "https://sentinelpay.org/v1/account-status?email=someone@example.com"
 app.get('/v1/account-status', requireStaff('account status'), async (req, res) => {
     const email = String(req.query.email || '').trim().toLowerCase();
-    if (!email || email.length > 254) return res.status(400).json({ error: 'email required' });
+    if (!email || email.length > 254) return res.status(400).json({ error: 'Email required' });
     try {
         res.set('Cache-Control', 'no-store, private');
         res.json(await accounts.inspect(email));
@@ -1355,7 +1355,7 @@ function passwordProblem(password, email, firstName, lastName) {
     const local = String(email || '').split('@')[0].toLowerCase();
     const parts = [local, String(email || '').toLowerCase(), String(firstName || '').toLowerCase(), String(lastName || '').toLowerCase(), 'sentinelpay']
         .filter((p) => p && p.length >= 4);
-    if (parts.some((p) => low.includes(p))) return 'please choose a password that is not your name or email';
+    if (parts.some((p) => low.includes(p))) return 'Please choose a password that is not your name or email';
     return '';
 }
 
@@ -1368,7 +1368,7 @@ app.post('/v1/auth/register', requireCloudflareOrigin, authRegisterLimiter, asyn
             return res.json({ ok: true, next: 'verify' });
         }
         if (!(await verifyTurnstile(b['cf-turnstile-response'] || b.turnstileToken, req.realIp))) {
-            return res.status(400).json({ error: 'verification failed, please try again' });
+            return res.status(400).json({ error: 'Verification failed, please try again' });
         }
 
         const clean = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
@@ -1381,13 +1381,13 @@ app.post('/v1/auth/register', requireCloudflareOrigin, authRegisterLimiter, asyn
         const lang = ['hr', 'de', 'en'].includes(b.lang) ? b.lang : 'en';
 
         if (!nameRe.test(firstName) || !nameRe.test(lastName) || !emailRe.test(email) || b.consent !== true) {
-            return res.status(400).json({ error: 'invalid submission' });
+            return res.status(400).json({ error: 'Invalid submission' });
         }
         const pwProblem = passwordProblem(password, email, firstName, lastName);
         if (pwProblem) return res.status(400).json({ error: pwProblem });
 
         if (!db.available()) {
-            return res.status(503).json({ error: 'accounts are not available right now. please try again shortly.' });
+            return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
         }
 
         const emailDomain = email.split('@').pop();
@@ -1421,26 +1421,26 @@ app.post('/v1/auth/register', requireCloudflareOrigin, authRegisterLimiter, asyn
             // So the honest answer wins: the tab says the address is taken, no
             // mail goes out, and nobody waits for a code that was never sent.
             console.log('[auth] register: address already has an account, said so');
-            return res.status(409).json({ error: 'that email address already has an account. try logging in instead.' });
+            return res.status(409).json({ error: 'That email address already has an account. Try logging in instead.' });
         }
         if (started.reason === 'slow-down') {
             console.log('[auth] register: a code went out less than a minute ago, asked them to wait');
-            return res.status(429).json({ error: 'a code was just sent. check your inbox, or ask for another in a minute.', retryIn: started.retryIn });
+            return res.status(429).json({ error: 'A code was just sent. Check your inbox, or ask for another in a minute.', retryIn: started.retryIn });
         }
         if (started.reason === 'too-many-sends') {
             console.log('[auth] register: this address is at its hourly send ceiling');
-            return res.status(429).json({ error: 'too many codes sent to this address. please try again later.' });
+            return res.status(429).json({ error: 'Too many codes sent to this address. Please try again later.' });
         }
         if (!started.ok) {
             console.error('[auth] register: the account store is unavailable (' + (started.reason || 'no reason') + ')');
-            return res.status(503).json({ error: 'accounts are not available right now. please try again shortly.' });
+            return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
         }
 
         try {
             await mailer.sendSignupCode({ to: email, code: started.code, lang, minutes: started.expiresInMin });
         } catch (mailErr) {
             console.error('[auth register mail failed]', mailErr.code || '', mailErr.message);
-            return res.status(500).json({ error: 'could not send the code. please try again shortly.' });
+            return res.status(500).json({ error: 'Could not send the code. Please try again shortly.' });
         }
 
         // the code itself is never written anywhere we can read: not here, not in
@@ -1451,22 +1451,22 @@ app.post('/v1/auth/register', requireCloudflareOrigin, authRegisterLimiter, asyn
         res.json({ ok: true, next: 'verify', expiresInMin: started.expiresInMin });
     } catch (err) {
         console.error('[auth register error]', err.message);
-        res.status(500).json({ error: 'could not create the account right now. please try again shortly.' });
+        res.status(500).json({ error: 'Could not create the account right now. Please try again shortly.' });
     }
 });
 
 app.post('/v1/auth/resend', requireCloudflareOrigin, authResendLimiter, async (req, res) => {
     try {
         const email = String((req.body && req.body.email) || '').trim().toLowerCase().slice(0, 160);
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'invalid submission' });
-        if (!db.available()) return res.status(503).json({ error: 'accounts are not available right now. please try again shortly.' });
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Invalid submission' });
+        if (!db.available()) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
 
         const again = await accounts.resendSignup(email);
         if (again.reason === 'slow-down') {
-            return res.status(429).json({ error: 'a code was just sent. check your inbox, or ask for another in a minute.', retryIn: again.retryIn });
+            return res.status(429).json({ error: 'A code was just sent. Check your inbox, or ask for another in a minute.', retryIn: again.retryIn });
         }
         if (again.reason === 'too-many-sends') {
-            return res.status(429).json({ error: 'too many codes sent to this address. please try again later.' });
+            return res.status(429).json({ error: 'Too many codes sent to this address. Please try again later.' });
         }
         // no pending sign-up and an expired one are both answered as if a code went
         // out: otherwise this endpoint tells anyone which addresses are mid sign-up
@@ -1476,12 +1476,12 @@ app.post('/v1/auth/resend', requireCloudflareOrigin, authResendLimiter, async (r
             await mailer.sendSignupCode({ to: email, code: again.code, lang: again.lang, minutes: again.expiresInMin });
         } catch (mailErr) {
             console.error('[auth resend mail failed]', mailErr.code || '', mailErr.message);
-            return res.status(500).json({ error: 'could not send the code. please try again shortly.' });
+            return res.status(500).json({ error: 'Could not send the code. Please try again shortly.' });
         }
         res.json({ ok: true, sendsLeft: again.sendsLeft, expiresInMin: again.expiresInMin });
     } catch (err) {
         console.error('[auth resend error]', err.message);
-        res.status(500).json({ error: 'could not send the code. please try again shortly.' });
+        res.status(500).json({ error: 'Could not send the code. Please try again shortly.' });
     }
 });
 
@@ -1490,20 +1490,20 @@ app.post('/v1/auth/verify', requireCloudflareOrigin, authVerifyLimiter, async (r
         const b = req.body || {};
         const email = String(b.email || '').trim().toLowerCase().slice(0, 160);
         const code = String(b.code || '').replace(/\s+/g, '').slice(0, 6);
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'invalid submission' });
-        if (!db.available()) return res.status(503).json({ error: 'accounts are not available right now. please try again shortly.' });
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Invalid submission' });
+        if (!db.available()) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
 
         const out = await accounts.verifySignup(email, code);
         if (out.reason === 'expired') {
-            return res.status(400).json({ error: 'that code has expired. ask for a new one.' });
+            return res.status(400).json({ error: 'That code has expired. Ask for a new one.' });
         }
         if (out.reason === 'too-many-attempts') {
-            return res.status(429).json({ error: 'too many wrong codes. ask for a new one.' });
+            return res.status(429).json({ error: 'Too many wrong codes. Ask for a new one.' });
         }
         if (out.reason === 'bad-code') {
-            return res.status(400).json({ error: 'that code is not right. check your email and try again.', attemptsLeft: out.attemptsLeft });
+            return res.status(400).json({ error: 'That code is not right. Check your email and try again.', attemptsLeft: out.attemptsLeft });
         }
-        if (!out.ok) return res.status(503).json({ error: 'accounts are not available right now. please try again shortly.' });
+        if (!out.ok) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
 
         // a record of the account, kept next to the form submissions so there is one
         // place a person looks to see who arrived and how
@@ -1534,7 +1534,7 @@ app.post('/v1/auth/verify', requireCloudflareOrigin, authVerifyLimiter, async (r
         res.json({ ok: true, signedIn: Boolean(out.session), name: out.name });
     } catch (err) {
         console.error('[auth verify error]', err.message);
-        res.status(500).json({ error: 'could not create the account right now. please try again shortly.' });
+        res.status(500).json({ error: 'Could not create the account right now. Please try again shortly.' });
     }
 });
 
@@ -1586,25 +1586,25 @@ app.post('/v1/auth/login', requireCloudflareOrigin, authLoginLimiter, async (req
         const email = String(b.email || '').trim().toLowerCase().slice(0, 160);
         const password = typeof b.password === 'string' ? b.password : '';
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !password) {
-            return res.status(400).json({ error: 'that email and password do not match an account.' });
+            return res.status(400).json({ error: 'That email and password do not match an account.' });
         }
         if (!db.available()) {
-            return res.status(503).json({ error: 'accounts are not available right now. please try again shortly.' });
+            return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
         }
 
         const out = await accounts.signIn(email, password);
         if (out.reason === 'bad-credentials') {
             console.log('[auth] login: refused');
-            return res.status(401).json({ error: 'that email and password do not match an account.' });
+            return res.status(401).json({ error: 'That email and password do not match an account.' });
         }
-        if (!out.ok) return res.status(503).json({ error: 'accounts are not available right now. please try again shortly.' });
+        if (!out.ok) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
 
         console.log('[auth] login: signed in');
         setSessionCookie(res, out.session.token, out.session.maxAgeSeconds);
         res.json({ ok: true, name: out.name });
     } catch (err) {
         console.error('[auth login error]', err.message);
-        res.status(500).json({ error: 'could not sign you in right now. please try again shortly.' });
+        res.status(500).json({ error: 'Could not sign you in right now. Please try again shortly.' });
     }
 });
 
@@ -1647,7 +1647,7 @@ app.post('/v1/trial-request', requireCloudflareOrigin, trialRequestLimiter, asyn
         }
         const turnstileToken = b['cf-turnstile-response'] || b.turnstileToken;
         if (!(await verifyTurnstile(turnstileToken, req.realIp))) {
-            return res.status(400).json({ error: 'verification failed, please try again' });
+            return res.status(400).json({ error: 'Verification failed, please try again' });
         }
 
         const clean = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
@@ -1669,7 +1669,7 @@ app.post('/v1/trial-request', requireCloudflareOrigin, trialRequestLimiter, asyn
         if (!nameRe.test(firstName) || !nameRe.test(lastName) ||
             !emailRe.test(email) || !website ||
             b.consent !== true || b.notGambling !== true) {
-            return res.status(400).json({ error: 'invalid submission' });
+            return res.status(400).json({ error: 'Invalid submission' });
         }
 
         const host = website.replace(/^https?:\/\//i, '').replace(/\/.*$/, '').replace(/^www\./i, '').toLowerCase();
@@ -1681,13 +1681,13 @@ app.post('/v1/trial-request', requireCloudflareOrigin, trialRequestLimiter, asyn
         // decides what the submission is tagged with afterwards.
         const flags = reviewFlags(emailDomain, host);
         if (flags.indexOf('domain-mismatch') !== -1) {
-            return res.status(400).json({ error: 'website domain must match your work email domain' });
+            return res.status(400).json({ error: 'Website domain must match your work email domain' });
         }
 
         // we publicly refuse gambling operators, so the declared industry is checked
         // here too and not only in the tickbox above.
         if (industry && /gambling|igaming|casino|betting|sportsbook|wager/i.test(industry)) {
-            return res.status(400).json({ error: 'we do not onboard gambling operators' });
+            return res.status(400).json({ error: 'We do not onboard gambling operators' });
         }
 
         // the mail that matters is the one to the person who signed up: it is their
@@ -1751,7 +1751,7 @@ app.post('/v1/demo-request', requireCloudflareOrigin, demoRequestLimiter, async 
         // Bot challenge: verify the Cloudflare Turnstile token (no-op until keys are set).
         const turnstileToken = b['cf-turnstile-response'] || b.turnstileToken;
         if (!(await verifyTurnstile(turnstileToken, req.realIp))) {
-            return res.status(400).json({ error: 'verification failed, please try again' });
+            return res.status(400).json({ error: 'Verification failed, please try again' });
         }
 
         const clean = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
@@ -1772,13 +1772,13 @@ app.post('/v1/demo-request', requireCloudflareOrigin, demoRequestLimiter, async 
 
         if (!nameRe.test(firstName) || !nameRe.test(lastName) || jobTitle.length < 2 ||
             !emailRe.test(email) || !company || b.consent !== true) {
-            return res.status(400).json({ error: 'invalid submission' });
+            return res.status(400).json({ error: 'Invalid submission' });
         }
 
         // the same refusal as the trial endpoint: we do not onboard gambling, so a
         // demo request from one should not reach the inbox either.
         if (/gambling|igaming|casino|betting|sportsbook|wager/i.test(industry)) {
-            return res.status(400).json({ error: 'we do not onboard gambling operators' });
+            return res.status(400).json({ error: 'We do not onboard gambling operators' });
         }
 
         // same rule as the trial: any provider, as long as the site agrees with it
@@ -1788,7 +1788,7 @@ app.post('/v1/demo-request', requireCloudflareOrigin, demoRequestLimiter, async 
             : '';
         const flags = reviewFlags(emailDomain, host);
         if (flags.indexOf('domain-mismatch') !== -1) {
-            return res.status(400).json({ error: 'website domain must match your work email domain' });
+            return res.status(400).json({ error: 'Website domain must match your work email domain' });
         }
 
         const ref = submissions.record('demo', req, {

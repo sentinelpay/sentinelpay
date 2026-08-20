@@ -5003,8 +5003,26 @@ h1, h2, h3, h4,
    that reads as generous on a desktop is a tenth of a 390px screen, and a 26px
    radius on a 56px tall bar starts eating the buttons inside it. */
 @media (max-width: 720px) {
-    html.theme-light .lp-nav { --sp-inset: 10px; }
-    html.theme-light .lp-nav { border-radius: calc(var(--sp-fold-radius, 0px) * 0.62); }
+    /* the bar stays edge to edge on a phone and rounds off its bottom corners
+       instead of pulling in.
+
+       it did pull in, by ten pixels a side and twelve from the top, and on a
+       desktop that gap shows the page's own margin. a phone has no margin: the
+       text runs to within a few pixels of the glass, so the gap showed
+       sentences sliding past above and beside a floating black pill. it read as
+       a rendering fault rather than as a bar.
+
+       painting the gap was the other way out, and it does not survive contact
+       with the pages: the strip behind the bar is a dark hero on the homepage
+       and near-white on the policies and the blog, so it would need a colour
+       per page and would be wrong the moment one of them changed. this needs
+       nothing to agree with it. you still watch the bar go from square to
+       rounded as you scroll, which is the part you can see. */
+    html.theme-light .lp-nav {
+        --sp-inset: 0px;
+        top: 0;
+        border-radius: 0 0 calc(var(--sp-fold-radius, 0px) * 0.7) calc(var(--sp-fold-radius, 0px) * 0.7);
+    }
 }
 
 /* ---- the phone ------------------------------------------------------------ */
