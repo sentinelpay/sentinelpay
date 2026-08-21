@@ -133,8 +133,24 @@
        because they all need the same number, how far through the window an
        element is, and running three scroll listeners to compute the same thing
        three times is three times the work for no reason. */
-    var lagList = Array.prototype.slice.call(document.querySelectorAll('.lp-intel-guide'));
-    var driftList = Array.prototype.slice.call(document.querySelectorAll('.lp-ins-featured'));
+    /* two of the three stop at the phone.
+
+       the lag and the drift are parallax: a card sits a few pixels off where
+       the page put it, and the offset follows the scroll. on a desktop, where
+       scrolling is a wheel and the cards sit in a row, that reads as depth. on
+       a phone it does not, for two reasons. the cards are stacked one per row
+       and full width, so a card leaning against its neighbours has no
+       neighbours to lean against, and the movement is just wobble. and phone
+       scrolling has momentum: your finger has left the glass and the page is
+       still moving, so anything tied to scroll position keeps moving after you
+       have stopped asking it to. parallax that argues with momentum is the
+       thing that makes a site feel cheap on a phone.
+
+       the rail stays. it is a reading-progress line down the side of the
+       questions, it is one element, and a progress line that follows momentum
+       is a progress line doing its job rather than an effect fighting one. */
+    var lagList = fine ? Array.prototype.slice.call(document.querySelectorAll('.lp-intel-guide')) : [];
+    var driftList = fine ? Array.prototype.slice.call(document.querySelectorAll('.lp-ins-featured')) : [];
     var railList = Array.prototype.slice.call(document.querySelectorAll('.lp-faq-list'));
 
     if (lagList.length || driftList.length || railList.length) {
@@ -148,30 +164,41 @@
             return 1 - (r.top + r.height * 0.5) / (vh * 0.5);
         }
 
+        /* every measurement first, then every write.
+
+           these loops used to read a rectangle and set a property, read the
+           next and set the next. each write invalidates layout and each read
+           after a write forces the browser to redo it, so a handful of
+           elements became a handful of full layouts per frame on a page ten
+           thousand pixels tall. reading them all, then writing them all, is one
+           layout however many elements there are. */
         function scrollStep() {
             sraf = 0;
             var vh = window.innerHeight || 1;
-            var i, p, el, r;
+            var i, el, r;
+            var lagP = [], driftP = [], railP = [];
 
-            for (i = 0; i < lagList.length; i++) {
-                p = through(lagList[i], vh);
-                if (p !== null) lagList[i].style.setProperty('--sp-lag', (p * 26).toFixed(2) + 'px');
-            }
-            for (i = 0; i < driftList.length; i++) {
-                p = through(driftList[i], vh);
-                // sideways, and less of it: horizontal movement is far more
-                // noticeable than vertical because nothing else on the page does it
-                if (p !== null) driftList[i].style.setProperty('--sp-drift', (p * 14).toFixed(2) + 'px');
-            }
+            for (i = 0; i < lagList.length; i++) lagP.push(through(lagList[i], vh));
+            for (i = 0; i < driftList.length; i++) driftP.push(through(driftList[i], vh));
             for (i = 0; i < railList.length; i++) {
-                el = railList[i];
-                r = el.getBoundingClientRect();
-                if (r.bottom < -240 || r.top > vh + 240) continue;
+                r = railList[i].getBoundingClientRect();
+                if (r.bottom < -240 || r.top > vh + 240) { railP.push(null); continue; }
                 // 0 when the top of the list reaches the middle of the window,
                 // 1 when the bottom does: the rail tracks reading, not scrolling
                 var run = r.height + vh * 0.5;
-                var done = (vh * 0.5 - r.top) / (run || 1);
-                el.style.setProperty('--sp-prog', Math.min(1, Math.max(0, done)).toFixed(4));
+                railP.push(Math.min(1, Math.max(0, (vh * 0.5 - r.top) / (run || 1))));
+            }
+
+            for (i = 0; i < lagList.length; i++) {
+                if (lagP[i] !== null) lagList[i].style.setProperty('--sp-lag', (lagP[i] * 26).toFixed(2) + 'px');
+            }
+            for (i = 0; i < driftList.length; i++) {
+                // sideways, and less of it: horizontal movement is far more
+                // noticeable than vertical because nothing else on the page does it
+                if (driftP[i] !== null) driftList[i].style.setProperty('--sp-drift', (driftP[i] * 14).toFixed(2) + 'px');
+            }
+            for (i = 0; i < railList.length; i++) {
+                if (railP[i] !== null) railList[i].style.setProperty('--sp-prog', railP[i].toFixed(4));
             }
         }
         function scrollQueue() {

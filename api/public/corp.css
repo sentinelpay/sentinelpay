@@ -662,7 +662,52 @@ html.theme-light .lp-nav .lp-btn-solid.auth-nav-btn:hover {
 /* hamburger + mobile menu in the same dark tone */
 html.theme-light .lp-hamburger .lp-hb-line { background: rgba(255, 255, 255, 0.85) !important; }
 html.theme-light .lp-mobile-menu {
-    background: rgba(7, 8, 18, 0.98) !important;
+    background: #070812 !important;
+}
+
+/* the menu on a tablet.
+
+   the hamburger appears below 1281px, so everything from a large phone to a
+   1280px window gets this sheet, and it was built for a 390px one: the items
+   stretch the full width, so "Solutions" sits at the left edge with its chevron
+   a thousand pixels away, and the buttons are pinned to the bottom with half a
+   screen of black between them and the links.
+
+   the column stops growing at 560px and centres. bottom-pinned buttons are
+   right on a phone, where the bottom of the screen is where the thumb already
+   is; on a wide window there is no thumb and the gap is just a gap, so they
+   follow the links instead. */
+@media (min-width: 601px) {
+    .lp-mobile-menu-inner {
+        max-width: 560px;
+        margin: 0 auto;
+        width: 100%;
+    }
+    .lp-mobile-ctas {
+        margin-top: 1.5rem;
+    }
+}
+
+/* the bar goes flush while the menu is open.
+
+   the menu is a fixed sheet from the bottom of the bar to the bottom of the
+   window, and the bar is a pill: pulled in twenty four pixels a side and
+   dropped twelve from the top. so with the menu open there was a twelve pixel
+   band of page across the top and a column of it down each side of the pill,
+   with the sheet starting below all of it. you got the page you had left
+   showing in three strips around a floating black lozenge.
+
+   the alternative is teaching the menu where the pill is, which means the sheet
+   inherits the inset, the top offset and the radius, and gets them wrong on any
+   page where one of them changes. a bar and a sheet that meet edge to edge is
+   one shape and needs no arithmetic. the pill is a scrolling state; a menu is
+   not scrolling. */
+html.lp-scroll-lock .lp-nav {
+    left: 0 !important;
+    right: 0 !important;
+    top: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
 }
 html.theme-light .lp-mobile-menu .lp-mobile-link,
 html.theme-light .lp-mobile-menu .lp-mm-acc-btn { color: rgba(255, 255, 255, 0.8) !important; }
@@ -5153,5 +5198,55 @@ h1, h2, h3, h4,
         pointer-events: none;
         background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.92));
         border-radius: 0 12px 12px 0;
+    }
+}
+
+/* ---- how a block arrives on a phone --------------------------------------- */
+/* the desktop reveal is eighteen pixels of rise over half a second, which is
+   the right amount when a block is one of three in a row and you see the row
+   settle together.
+
+   on a phone every one of those rows is a column, so you watch each card do the
+   same eighteen pixels one after another, and the effect that read as one
+   considered movement reads as a queue. so the rise is shorter and quicker, and
+   it comes with a small amount of scale, which is what makes it read as the
+   card arriving rather than as the card sliding.
+
+   both properties are transform and opacity, which is the whole point: the
+   compositor owns them, so none of this touches layout on a device that has the
+   least room to spare for it. */
+@media (max-width: 900px) {
+    .lp-reveal {
+        transform: translateY(10px) scale(0.985);
+        transition: opacity 0.38s ease, transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .lp-reveal.lp-visible {
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* the nine cards on a phone.
+
+   dealt is a three dimensional move: each card arrives tipped nine degrees back
+   and settles flat, one after another, and on a desktop you see three of them
+   land together and it reads as a hand being put down.
+
+   a phone gets one card per row, so there is no hand: you see a single card
+   tilt and flatten, nine times, each one on its own. and the tilt costs more
+   there than anywhere else, because a perspective transform on a card with a
+   shadow and a border is the one thing on this page the compositor cannot do
+   without repainting.
+
+   so on a phone the card rises and fades like everything else, at the rhythm
+   everything else uses. the effect is not worth having if you can only see one
+   of it at a time. */
+@media (max-width: 900px) {
+    .lp-sol-card[data-sp-once] {
+        transform: translateY(10px) scale(0.985);
+        transition: opacity 0.38s ease, transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+        transition-delay: calc(var(--sp-order, 0) * 45ms);
+    }
+    .lp-sol-card.sp-dealt {
+        transform: translateY(0) scale(1);
     }
 }

@@ -43,6 +43,15 @@
         '.lp-footer-top > *'
     ];
 
+    /* the gap between one card in a group and the next.
+
+       a stagger is how you say "these belong together": the row settles left to
+       right and reads as one movement. a phone puts that row in a column, so
+       the same seventy milliseconds is no longer a row settling, it is a queue
+       forming, and by the fourth card you are waiting for it. narrower, and the
+       group still arrives in order without anybody counting it out. */
+    var STAGGER = window.matchMedia && window.matchMedia('(max-width: 900px)').matches ? 45 : 70;
+
     var seen = [];
     GROUPS.forEach(function (sel) {
         var found;
@@ -55,7 +64,7 @@
             if (el.closest('.lp-hero')) return;
             el.classList.add('lp-reveal');
             // capped, so the tenth card in a group is not a second and a half late
-            el.style.transitionDelay = Math.min(i, 5) * 70 + 'ms';
+            el.style.transitionDelay = Math.min(i, 5) * STAGGER + 'ms';
             seen.push(el);
         });
     });
@@ -76,7 +85,12 @@
         // is well inside the viewport: scroll quickly and you get a blank screen
         // for the length of the transition, which is exactly what this is meant
         // to avoid.
-        rootMargin: '0px 0px 260px 0px',
+        // relative to the window rather than a flat 260, because the number is
+        // really "start a bit before it is read" and a phone's window is half a
+        // desktop's. it also has to cover more ground: a flick scrolls a phone
+        // faster than a wheel scrolls a desktop, so the block has less time
+        // between being told to arrive and being looked at.
+        rootMargin: ['0px', '0px', Math.round(Math.max(260, (window.innerHeight || 800) * 0.45)) + 'px', '0px'].join(' '),
         threshold: 0
     });
 

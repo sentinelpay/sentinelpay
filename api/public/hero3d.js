@@ -401,15 +401,34 @@
     var t0 = 0;
     var shown = 0;           // the fade in, so the first frame is not a flash
 
+    /* half the frames on a phone.
+
+       everything these shaders draw drifts: the lattice turns, the ribbons
+       breathe, the sheets slide. none of it has an edge that crosses the screen
+       fast enough for thirty frames a second to read as anything other than
+       sixty. so on a phone we skip every other one, which halves the most
+       expensive thing on the page, and the animation still looks like what it
+       looked like.
+
+       it is a minimum interval rather than a timer: the callback still comes
+       from `requestAnimationFrame`, so it stays in step with the display and
+       stops dead when the tab is hidden. a `setInterval` at 33ms would keep
+       asking for work behind a lock screen. */
+    var minGap = coarse ? 32 : 0;
+    var lastDraw = 0;
+
     function frame(now) {
         raf = 0;
         if (!running || !awake) return;
         if (!t0) t0 = now;
-        resize();
-        shown = Math.min(1, shown + 0.02);
-        gl.uniform1f(uT, (now - t0) / 1000);
-        gl.uniform1f(uFade, shown);
-        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        if (now - lastDraw >= minGap) {
+            lastDraw = now;
+            resize();
+            shown = Math.min(1, shown + (minGap ? 0.04 : 0.02));
+            gl.uniform1f(uT, (now - t0) / 1000);
+            gl.uniform1f(uFade, shown);
+            gl.drawArrays(gl.TRIANGLES, 0, 3);
+        }
         raf = window.requestAnimationFrame(frame);
     }
 

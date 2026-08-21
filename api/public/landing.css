@@ -1364,9 +1364,12 @@ html.lp-scroll-lock body {
     right: 0;
     bottom: 0;
     z-index: 998;
-    background: rgba(5, 5, 8, 0.99);
-    backdrop-filter: blur(28px);
-    -webkit-backdrop-filter: blur(28px);
+    /* opaque, with no blur behind it.
+       it was 99 percent black over a 28px blur, and one percent of a white
+       policy page is not nothing: the headings behind it came through as grey
+       ghosts under the menu items. a panel you can read the page through is a
+       panel that looks broken rather than one that looks light. */
+    background: #050508;
     border-top: 1px solid var(--border-glass);
     opacity: 0;
     pointer-events: none;
