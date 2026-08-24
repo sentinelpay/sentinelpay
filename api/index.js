@@ -611,12 +611,14 @@ app.use((req, res, next) => {
                     '03': 'blog-article-3.html',
                     '04': 'blog-article-4.html',
                     '05': 'blog-article-5.html',
+                    '06': 'blog-article-6.html',
                     // legacy slug aliases (keep old links working)
                     'why-criminals-target-small-businesses': 'blog-article.html',
                     'real-time-aml-why-timing-matters': 'blog-article-2.html',
                     'compliance-without-becoming-a-bank': 'blog-article-3.html',
                     'we-dont-do-gambling': 'blog-article-4.html',
                     'wallet-screening-vs-kyc': 'blog-article-5.html',
+                    'explain-the-score': 'blog-article-6.html',
                 });
                 page = typeof articles[slug] === 'string' ? articles[slug] : 'blog-article.html';
             }
