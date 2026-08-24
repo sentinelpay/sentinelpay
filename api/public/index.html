@@ -1270,7 +1270,7 @@
                                         <label class="lp-demo-check"><input type="checkbox" name="solutions" value="transaction screening"><span>Transaction screening</span></label>
                                         <label class="lp-demo-check"><input type="checkbox" name="solutions" value="wallet investigations"><span>Wallet investigations</span></label>
                                         <label class="lp-demo-check"><input type="checkbox" name="solutions" value="risk scoring & kyt"><span>Risk scoring &amp; KYT</span></label>
-                                        <label class="lp-demo-check"><input type="checkbox" name="solutions" value="travel rule / vasp"><span>Travel rule / VASP</span></label>
+                                        <label class="lp-demo-check"><input type="checkbox" name="solutions" value="Travel Rule / vasp"><span>Travel Rule / VASP</span></label>
                                         <label class="lp-demo-check"><input type="checkbox" name="solutions" value="stablecoin monitoring"><span>Stablecoin monitoring</span></label>
                                         <label class="lp-demo-check"><input type="checkbox" name="solutions" value="api & data feeds"><span>API &amp; data feeds</span></label>
                                         <label class="lp-demo-check"><input type="checkbox" name="solutions" value="reporting & audit"><span>Reporting &amp; audit</span></label>
@@ -1532,18 +1532,23 @@
             function randomScore() {
                 var n = Math.floor(Math.random() * 101);
                 var cat, lvl;
-                if (n >= 60)      { cat = 'high risk'; lvl = 'high'; }
-                else if (n >= 30) { cat = 'mid risk';  lvl = 'medium'; }
-                else              { cat = 'low risk';  lvl = 'low'; }
+                if (n >= 60)      { cat = 'High risk'; lvl = 'high'; }
+                else if (n >= 30) { cat = 'Mid risk';  lvl = 'medium'; }
+                else              { cat = 'Low risk';  lvl = 'low'; }
                 return { n: n, cat: cat, lvl: lvl };
             }
 
+            // the labels are built here rather than sitting in the markup, so they
+            // missed the translation pass the same way the guide titles did and
+            // stayed english on a translated page
+            var rT = function (x) { return window.SentinelI18n ? window.SentinelI18n.t(x) : x; };
+
             function applyScore(r) {
                 scoreNum.textContent = r.n;
-                scoreCat.textContent = r.cat;
+                scoreCat.textContent = rT(r.cat);
                 badge.className = 'lp-diag-score-badge lp-risk-' + r.lvl;
                 if (emailToast) {
-                    emailToast.textContent = r.cat + ' · score ' + r.n;
+                    emailToast.textContent = rT(r.cat) + ' · ' + rT('score') + ' ' + r.n;
                     emailToast.className = 'lp-diag-email-toast lp-risk-' + r.lvl;
                 }
             }
@@ -1560,12 +1565,12 @@
     <script>
         (function () {
             var CHAINS = [
-                { name: 'ethereum',  img: '/chain-logos/eth.png'  },
-                { name: 'bitcoin',   img: '/chain-logos/btc.png'  },
-                { name: 'solana',    img: '/chain-logos/sol.png'  },
-                { name: 'bnb chain', img: '/chain-logos/bnb.png'  },
-                { name: 'polygon',   img: '/chain-logos/matic.png' },
-                { name: 'avalanche', img: '/chain-logos/avax.png' }
+                { name: 'Ethereum',  img: '/chain-logos/eth.png'  },
+                { name: 'Bitcoin',   img: '/chain-logos/btc.png'  },
+                { name: 'Solana',    img: '/chain-logos/sol.png'  },
+                { name: 'BNB Chain', img: '/chain-logos/bnb.png'  },
+                { name: 'Polygon',   img: '/chain-logos/matic.png' },
+                { name: 'Avalanche', img: '/chain-logos/avax.png' }
             ];
 
             var body = document.getElementById('lp-scn-body');
@@ -1687,17 +1692,24 @@
             var guideCard = document.getElementById('lp-guide-card');
             var guideBody = document.getElementById('lp-guide-body');
             if (guideCard && guideBody) {
+                /* these are written here rather than in the markup because the card
+                   shows one at a time and cycles. that put them outside two passes
+                   that everything else on the page went through: they stayed
+                   lowercase after the site stopped being lowercase, and they were
+                   never translated, so a german reader watched an english title in
+                   a card whose every other word was german. `t()` fixes the second
+                   and the source text fixes the first. */
                 var GUIDES = [
-                    { kicker: 'free compliance guide',   title: 'the crypto risk playbook',            pages: '48 pages' },
-                    { kicker: 'threat intelligence',     title: 'detecting mixers & tumblers',         pages: '32 pages' },
-                    { kicker: 'annual report',           title: 'the 2026 crypto typologies report',   pages: '60 pages' },
-                    { kicker: 'compliance guide',        title: 'sanctions screening for digital assets', pages: '28 pages' },
-                    { kicker: 'product guide',           title: 'wallet risk scoring, explained',      pages: '24 pages' },
-                    { kicker: 'compliance handbook',     title: 'the stablecoin compliance handbook',  pages: '40 pages' },
-                    { kicker: 'investigations guide',    title: 'tracing cross-chain fund flows',      pages: '36 pages' },
-                    { kicker: 'regulatory checklist',    title: 'the travel rule readiness checklist', pages: '18 pages' },
-                    { kicker: 'compliance guide',        title: 'onboarding crypto customers safely',  pages: '30 pages' },
-                    { kicker: 'threat report',           title: 'inside the top laundering typologies', pages: '44 pages' }
+                    { kicker: 'Free compliance guide',  title: 'The crypto risk playbook',            pages: '48 pages' },
+                    { kicker: 'Threat intelligence',    title: 'Detecting mixers & tumblers',         pages: '32 pages' },
+                    { kicker: 'Annual report',          title: 'The 2026 crypto typologies report',   pages: '60 pages' },
+                    { kicker: 'Compliance guide',       title: 'Sanctions screening for digital assets', pages: '28 pages' },
+                    { kicker: 'Product guide',          title: 'Wallet risk scoring, explained',      pages: '24 pages' },
+                    { kicker: 'Compliance handbook',    title: 'The stablecoin compliance handbook',  pages: '40 pages' },
+                    { kicker: 'Investigations guide',   title: 'Tracing cross-chain fund flows',      pages: '36 pages' },
+                    { kicker: 'Regulatory checklist',   title: 'The Travel Rule readiness checklist', pages: '18 pages' },
+                    { kicker: 'Compliance guide',       title: 'Onboarding crypto customers safely',  pages: '30 pages' },
+                    { kicker: 'Threat report',          title: 'Inside the top laundering typologies', pages: '44 pages' }
                 ];
                 for (var gi = GUIDES.length - 1; gi > 0; gi--) {
                     var gj = Math.floor(Math.random() * (gi + 1));
@@ -1708,10 +1720,11 @@
                 var gPages = document.getElementById('lp-guide-pages');
                 var gIcon = document.getElementById('lp-guide-icon');
                 var gIdx = 0;
+                var gT = function (x) { return window.SentinelI18n ? window.SentinelI18n.t(x) : x; };
                 var renderGuide = function(g) {
-                    gKicker.textContent = g.kicker;
-                    gTitle.textContent = g.title;
-                    gPages.textContent = g.pages;
+                    gKicker.textContent = gT(g.kicker);
+                    gTitle.textContent = gT(g.title);
+                    gPages.textContent = gT(g.pages);
                 };
                 renderGuide(GUIDES[0]);
                 var swapGuide = function() {
@@ -1973,6 +1986,6 @@
     <script src="/reveal.5.js" defer></script>
     <script src="/scroll.4.js" defer></script>
     <script src="/navlift.1.js" defer></script>
-    <script src="/i18n.79.js" defer></script>
+    <script src="/i18n.80.js" defer></script>
 </body>
 </html>
