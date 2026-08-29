@@ -724,8 +724,23 @@ app.use((req, res, next) => {
 // A version in the filename cannot be ignored by anything, because there is no
 // part of it to strip. This maps the versioned name back to the real file and
 // leaves everything else alone.
+//
+// Images are in here too now, and they were left out for a reason that turned
+// out to be wrong. The thinking was that a cover never changes, so it never
+// needs a new url. What actually happens is that a cover arrives late: the
+// article ships, the page asks for a cover that is not there yet, and the miss
+// is what gets cached. Cloudflare answers a 404 for a static extension with its
+// own four hour browser ttl, whatever this origin says, so for four hours after
+// the file lands the people who visited early are still being told it does not
+// exist, and the fallback script dutifully removes the image. A version in the
+// name makes the url new, and nothing has a cached answer for a url it has
+// never been asked about.
+//
+// The path may have directories in it (/covers/name.1.webp). Each segment is
+// still letters, digits and hyphens only, so there is no dot to build a `..`
+// out of and this cannot address anything above public/.
 app.use((req, res, next) => {
-    const m = req.path.match(/^\/([a-z0-9-]+)\.(\d+)\.(css|js)$/i);
+    const m = req.path.match(/^\/((?:[a-z0-9-]+\/)*[a-z0-9-]+)\.(\d+)\.(css|js|png|jpe?g|webp|gif|svg|avif)$/i);
     if (m) req.url = '/' + m[1] + '.' + m[3];
     next();
 });
