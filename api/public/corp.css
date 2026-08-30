@@ -5089,55 +5089,38 @@ h1, h2, h3, h4,
         border-radius: calc(var(--sp-fold-radius, 0px) * 0.62);
     }
 
-    /* the glass behind the bar.
+    /* the strip the lift opens above the bar, plugged.
 
-       a strip across the top of the window, from the very edge down to just
-       past the bottom of the pill, that blurs whatever passes under it. the
-       gaps around the pill then show a soft wash instead of legible text, and
-       the whole assembly reads as one piece of glass with a darker pill sitting
-       on it.
+       this is the same rule the desktop has had all along, at phone scale, and
+       arriving at it took two wrong answers first. taking the inset away made
+       the bar look welded to the top of the screen. putting a frosted strip
+       across the top made a grey smudge around the pill, which is worse,
+       because it puts a thing there that the desktop does not have.
 
-       blur rather than a colour, and that is the whole point. painting the
-       strip means choosing a colour, and the thing behind it is a dark hero on
-       the homepage and a near-white page on the policies and the blog, so any
-       colour is wrong on one of them and wrong again the first time a page
-       changes. a blur has nothing to agree with: it takes what is there.
+       what the desktop actually does is fill the sliver above the bar with the
+       page's own colour, and leave the columns beside it alone. that is why it
+       looks clean: the pill sits on page, not on whatever is scrolling. the
+       side gaps stay open there too, and you can see the marquee logos running
+       through them, which nobody has ever called a bug.
 
-       it only exists once the bar has lifted. at the top of the page the bar is
-       flush, there are no gaps, and a strip of frosted glass over nothing is
-       just a smear across the top of the hero.
+       #fbfcfd rather than white: the body gradient is `fixed`, so the top of
+       the viewport is always its first stop, and that is the colour. the
+       desktop copy of this rule uses #ffffff, which is two values out and
+       invisible, and not worth touching on a page that is working.
 
-       z-index -1 puts it behind the bar's own background but still inside the
-       bar's stacking context, which sits above the page. it is `fixed` rather
-       than absolute so it is measured against the window and not against a
-       parent that is itself being offset. */
+       it costs nothing above the fold. the height is driven by the same
+       progress as the lift, so before the bar has moved this is zero pixels
+       tall and there is no strip to be wrong. */
     html.theme-light .lp-nav::before {
         content: "";
         position: fixed;
-        top: 0;
         left: 0;
         right: 0;
-        height: calc(64px + var(--sp-status-h, 0px) + var(--sp-fold, 0) * 9px);
+        top: var(--sp-status-h, 0px);
+        height: calc(var(--sp-fold, 0) * 9px);
         z-index: -1;
         pointer-events: none;
-        opacity: var(--sp-fold, 0);
-        backdrop-filter: blur(16px) saturate(1.15);
-        -webkit-backdrop-filter: blur(16px) saturate(1.15);
-        /* a whisper of white so the blur has something to sit in on a light
-           page, far too little to tint a dark one */
-        background: rgba(255, 255, 255, 0.06);
-        /* faded out at the bottom rather than cut off. a blur that stops on a
-           hard line draws a seam across the page, and the seam is most visible
-           in the one place it matters, where the dark hero meets the light
-           section under it. the last few pixels are the only part anyone would
-           have looked at, so they are the part that stops existing gradually. */
-        -webkit-mask-image: linear-gradient(to bottom, #000 62%, transparent 100%);
-        mask-image: linear-gradient(to bottom, #000 62%, transparent 100%);
-    }
-
-    /* nothing to hide when nothing has moved */
-    @media (prefers-reduced-motion: reduce) {
-        html.theme-light .lp-nav::before { display: none; }
+        background: #fbfcfd;
     }
 }
 
