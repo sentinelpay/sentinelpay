@@ -5068,6 +5068,32 @@ h1, h2, h3, h4,
         top: 0;
         border-radius: 0 0 calc(var(--sp-fold-radius, 0px) * 0.7) calc(var(--sp-fold-radius, 0px) * 0.7);
     }
+
+    /* and the hero does the same thing, for the same reason.
+
+       the desktop move is that the panel steps back: seven percent smaller with
+       a corner radius, so the white page shows around it as a margin and the
+       hero reads as a card set down. that needs room either side to be a
+       margin. a phone does not have it. seven percent of 390px is thirteen
+       pixels a side, which is not a margin, it is a gap, and what you saw was a
+       dark slab floating in a white frame with the bar above it still running
+       edge to edge. the two halves of the same effect disagreeing is worse than
+       neither.
+
+       so on a phone the hero keeps the full width and rounds its bottom corners
+       instead, on the same easing and the same factor as the bar above it.
+       Bar rounds its bottom, hero rounds its bottom, and the dark block stays
+       one piece from the top of the screen down to where the logos begin. you
+       still see it happen as you scroll, which was the point.
+
+       the shadow goes with the scale: a shadow needs a gap to fall into, and
+       against a panel that touches both edges it renders as a grey smear along
+       the sides. */
+    html.theme-light .lp-hero {
+        transform: none;
+        border-radius: 0 0 calc(var(--sp-fold-radius, 0px) * 0.7) calc(var(--sp-fold-radius, 0px) * 0.7);
+        box-shadow: none;
+    }
 }
 
 /* ---- the phone ------------------------------------------------------------ */
