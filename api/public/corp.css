@@ -5044,55 +5044,100 @@ h1, h2, h3, h4,
     padding: 0 0.1em;
 }
 
-/* the pill on a phone: pulled in less and rounded less, because the same 24px
-   that reads as generous on a desktop is a tenth of a 390px screen, and a 26px
-   radius on a 56px tall bar starts eating the buttons inside it. */
+/* ---- the phone, and the two things that behave differently on it --------- */
 @media (max-width: 720px) {
-    /* the bar stays edge to edge on a phone and rounds off its bottom corners
-       instead of pulling in.
+    /* the hero does not move.
 
-       it did pull in, by ten pixels a side and twelve from the top, and on a
-       desktop that gap shows the page's own margin. a phone has no margin: the
-       text runs to within a few pixels of the glass, so the gap showed
-       sentences sliding past above and beside a floating black pill. it read as
-       a rendering fault rather than as a bar.
+       on a desktop it steps back as you scroll: a few percent smaller with a
+       corner radius, so the page shows around it as a margin and the panel
+       reads as a card set down. that is the effect and it is worth keeping
+       where there is room for it.
 
-       painting the gap was the other way out, and it does not survive contact
-       with the pages: the strip behind the bar is a dark hero on the homepage
-       and near-white on the policies and the blog, so it would need a colour
-       per page and would be wrong the moment one of them changed. this needs
-       nothing to agree with it. you still watch the bar go from square to
-       rounded as you scroll, which is the part you can see. */
-    html.theme-light .lp-nav {
-        --sp-inset: 0px;
-        top: 0;
-        border-radius: 0 0 calc(var(--sp-fold-radius, 0px) * 0.7) calc(var(--sp-fold-radius, 0px) * 0.7);
+       there is no room on a phone. seven percent of 390px is thirteen pixels a
+       side, and thirteen pixels is not a margin, it is a gap: what you get is a
+       dark slab that shrinks away from the edges of a screen it should be
+       filling. rounding the bottom corners instead was closer and still wrong,
+       because it is the same idea asking for space the screen has not got.
+
+       so here it holds still, full bleed, square. the scroll effect on a phone
+       is the bar above it, which has room to move because it is only 56 pixels
+       tall. */
+    html.theme-light .lp-hero {
+        transform: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
     }
 
-    /* and the hero does the same thing, for the same reason.
+    /* the bar floats, the same as it does on a desktop.
 
-       the desktop move is that the panel steps back: seven percent smaller with
-       a corner radius, so the white page shows around it as a margin and the
-       hero reads as a card set down. that needs room either side to be a
-       margin. a phone does not have it. seven percent of 390px is thirteen
-       pixels a side, which is not a margin, it is a gap, and what you saw was a
-       dark slab floating in a white frame with the bar above it still running
-       edge to edge. the two halves of the same effect disagreeing is worse than
-       neither.
+       it was flush to the top for a while, and flush is what "glued on" looks
+       like: a black strip welded to the edge of the screen with the page
+       running out from under it. the pill is the better shape and there is no
+       reason a phone should not have it.
 
-       so on a phone the hero keeps the full width and rounds its bottom corners
-       instead, on the same easing and the same factor as the bar above it.
-       Bar rounds its bottom, hero rounds its bottom, and the dark block stays
-       one piece from the top of the screen down to where the logos begin. you
-       still see it happen as you scroll, which was the point.
+       the reason it was taken away is real though, and it needs solving rather
+       than avoiding. the pill is inset, so there is a strip of page above it
+       and a column down each side, and on a phone the content runs to within a
+       few pixels of the glass. what shows in those gaps is whatever is
+       scrolling past: half a sentence over the top of the bar reads as a
+       rendering fault.
 
-       the shadow goes with the scale: a shadow needs a gap to fall into, and
-       against a panel that touches both edges it renders as a grey smear along
-       the sides. */
-    html.theme-light .lp-hero {
-        transform: none;
-        border-radius: 0 0 calc(var(--sp-fold-radius, 0px) * 0.7) calc(var(--sp-fold-radius, 0px) * 0.7);
-        box-shadow: none;
+       what fills them is below. */
+    html.theme-light .lp-nav {
+        --sp-inset: 10px;
+        top: calc(var(--sp-fold, 0) * 9px);
+        border-radius: calc(var(--sp-fold-radius, 0px) * 0.62);
+    }
+
+    /* the glass behind the bar.
+
+       a strip across the top of the window, from the very edge down to just
+       past the bottom of the pill, that blurs whatever passes under it. the
+       gaps around the pill then show a soft wash instead of legible text, and
+       the whole assembly reads as one piece of glass with a darker pill sitting
+       on it.
+
+       blur rather than a colour, and that is the whole point. painting the
+       strip means choosing a colour, and the thing behind it is a dark hero on
+       the homepage and a near-white page on the policies and the blog, so any
+       colour is wrong on one of them and wrong again the first time a page
+       changes. a blur has nothing to agree with: it takes what is there.
+
+       it only exists once the bar has lifted. at the top of the page the bar is
+       flush, there are no gaps, and a strip of frosted glass over nothing is
+       just a smear across the top of the hero.
+
+       z-index -1 puts it behind the bar's own background but still inside the
+       bar's stacking context, which sits above the page. it is `fixed` rather
+       than absolute so it is measured against the window and not against a
+       parent that is itself being offset. */
+    html.theme-light .lp-nav::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: calc(64px + var(--sp-status-h, 0px) + var(--sp-fold, 0) * 9px);
+        z-index: -1;
+        pointer-events: none;
+        opacity: var(--sp-fold, 0);
+        backdrop-filter: blur(16px) saturate(1.15);
+        -webkit-backdrop-filter: blur(16px) saturate(1.15);
+        /* a whisper of white so the blur has something to sit in on a light
+           page, far too little to tint a dark one */
+        background: rgba(255, 255, 255, 0.06);
+        /* faded out at the bottom rather than cut off. a blur that stops on a
+           hard line draws a seam across the page, and the seam is most visible
+           in the one place it matters, where the dark hero meets the light
+           section under it. the last few pixels are the only part anyone would
+           have looked at, so they are the part that stops existing gradually. */
+        -webkit-mask-image: linear-gradient(to bottom, #000 62%, transparent 100%);
+        mask-image: linear-gradient(to bottom, #000 62%, transparent 100%);
+    }
+
+    /* nothing to hide when nothing has moved */
+    @media (prefers-reduced-motion: reduce) {
+        html.theme-light .lp-nav::before { display: none; }
     }
 }
 
