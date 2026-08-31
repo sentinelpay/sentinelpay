@@ -527,15 +527,6 @@
         expo: 0.55
     });
 
-    var intel = document.querySelector('.lp-intel-banner');
-    if (intel) mount(intel, {
-        kind: 'sheets',
-        cls: 'sp-band-gl',
-        scale: coarse ? 0.45 : 0.6,
-        speed: 1.5,
-        expo: 0.85
-    });
-
     /* the role card, which is a band that moves.
 
        it is the same dark panel as the two above and it was the one dark block

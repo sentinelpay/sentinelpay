@@ -30,13 +30,10 @@
                      numbers are already counting up, and a second entrance for
                      the same block would fight the first.
 
-     guides          the guide card lags the scroll vertically. it is the only
-                     place on the page with a foreground object over a
+     insights        the featured article drifts sideways as you scroll. it is
+                     the one place on the page with a foreground object over a
                      background, and a small difference in speed is what makes
                      two planes read as two planes.
-
-     insights        the featured article drifts sideways instead, so the two
-                     parallax sections are not the same parallax.
 
      questions       a rail down the left of the list fills as you read past it.
                      the section is a long list with no landmarks, and the rail
@@ -115,7 +112,7 @@
        single time. removing the class on the way out and adding it again on the
        way back is a band that flashes every time you scroll past it. */
     if (window.IntersectionObserver) {
-        var bands = document.querySelectorAll('.lp-statsx, .lp-intel-banner');
+        var bands = document.querySelectorAll('.lp-statsx');
         if (bands.length) {
             var bandIo = new IntersectionObserver(function (entries) {
                 entries.forEach(function (e) {
@@ -129,18 +126,18 @@
     }
 
     /* ---- the things that follow the scroll ------------------------------ */
-    /* three effects, one loop, one custom property each. they are together
-       because they all need the same number, how far through the window an
-       element is, and running three scroll listeners to compute the same thing
-       three times is three times the work for no reason. */
-    /* two of the three stop at the phone.
+    /* two effects, one loop, one custom property each. they are together
+       because they both need the same number, how far through the window an
+       element is, and running two scroll listeners to compute the same thing
+       twice is twice the work for no reason. */
+    /* the drift stops at the phone.
 
-       the lag and the drift are parallax: a card sits a few pixels off where
-       the page put it, and the offset follows the scroll. on a desktop, where
-       scrolling is a wheel and the cards sit in a row, that reads as depth. on
-       a phone it does not, for two reasons. the cards are stacked one per row
-       and full width, so a card leaning against its neighbours has no
-       neighbours to lean against, and the movement is just wobble. and phone
+       the drift is parallax: a card sits a few pixels off where the page put
+       it, and the offset follows the scroll. on a desktop, where scrolling is a
+       wheel and the cards sit in a row, that reads as depth. on a phone it does
+       not, for two reasons. the cards are stacked one per row and full width,
+       so a card leaning against its neighbours has no neighbours to lean
+       against, and the movement is just wobble. and phone
        scrolling has momentum: your finger has left the glass and the page is
        still moving, so anything tied to scroll position keeps moving after you
        have stopped asking it to. parallax that argues with momentum is the
@@ -149,11 +146,10 @@
        the rail stays. it is a reading-progress line down the side of the
        questions, it is one element, and a progress line that follows momentum
        is a progress line doing its job rather than an effect fighting one. */
-    var lagList = fine ? Array.prototype.slice.call(document.querySelectorAll('.lp-intel-guide')) : [];
     var driftList = fine ? Array.prototype.slice.call(document.querySelectorAll('.lp-ins-featured')) : [];
     var railList = Array.prototype.slice.call(document.querySelectorAll('.lp-faq-list'));
 
-    if (lagList.length || driftList.length || railList.length) {
+    if (driftList.length || railList.length) {
         var sraf = 0;
 
         // -1 when the element's middle is at the bottom of the window, +1 at the
@@ -176,9 +172,8 @@
             sraf = 0;
             var vh = window.innerHeight || 1;
             var i, el, r;
-            var lagP = [], driftP = [], railP = [];
+            var driftP = [], railP = [];
 
-            for (i = 0; i < lagList.length; i++) lagP.push(through(lagList[i], vh));
             for (i = 0; i < driftList.length; i++) driftP.push(through(driftList[i], vh));
             for (i = 0; i < railList.length; i++) {
                 r = railList[i].getBoundingClientRect();
@@ -189,9 +184,6 @@
                 railP.push(Math.min(1, Math.max(0, (vh * 0.5 - r.top) / (run || 1))));
             }
 
-            for (i = 0; i < lagList.length; i++) {
-                if (lagP[i] !== null) lagList[i].style.setProperty('--sp-lag', (lagP[i] * 26).toFixed(2) + 'px');
-            }
             for (i = 0; i < driftList.length; i++) {
                 // sideways, and less of it: horizontal movement is far more
                 // noticeable than vertical because nothing else on the page does it

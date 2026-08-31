@@ -34,7 +34,6 @@
         // naming here or it is the one block on the page that does not arrive
         '.lp-statsx-heading',
         '.lp-statsx-grid > *',
-        '.lp-intel-featured, .lp-intel-guides > *',
         '.lp-sol-grid > *',
         '.lp-ins-featured, .lp-ins-grid > *',
         '.lp-faq-list > *',

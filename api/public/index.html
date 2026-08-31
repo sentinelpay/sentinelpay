@@ -944,35 +944,6 @@
         </div>
     </section>
 
-    <section class="lp-section lp-intel">
-        <div class="lp-section-inner">
-            <p class="lp-eyebrow">Guides &amp; playbooks</p>
-            <h2 class="lp-h2"><span class="lp-hl">Move faster</span> when the <br>rules change</h2>
-            <p class="lp-intel-sub">Regulators rewrite the playbook every quarter. Our guides tell you what changed, what it costs you, and what to do about it before your next audit asks.</p>
-            <div class="lp-intel-banner">
-                <div class="lp-intel-dots" aria-hidden="true"></div>
-                <div class="lp-intel-copy">
-                    <h3 class="lp-intel-banner-title">Stay one step ahead of crypto crime. The playbooks and the guides, all in one hub.</h3>
-                    <a href="https://blog.sentinelpay.org" class="lp-intel-btn">Explore the hub</a>
-                </div>
-                <div class="lp-intel-visual" aria-hidden="true">
-                    <span class="lp-intel-glow"></span>
-                    <div class="lp-intel-guide" id="lp-guide-card">
-                        <div class="lp-intel-guide-icon" id="lp-guide-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M14 4v5h5"/><path d="M8 13h8M8 17h5"/></svg>
-                        </div>
-                        <div class="lp-intel-guide-body" id="lp-guide-body">
-                            <span class="lp-intel-guide-kicker" id="lp-guide-kicker">Free compliance guide</span>
-                            <h4 class="lp-intel-guide-title" id="lp-guide-title">The crypto risk playbook</h4>
-                            <span class="lp-intel-guide-accent"></span>
-                            <div class="lp-intel-guide-meta"><span id="lp-guide-pages">48 pages</span><span class="lp-intel-guide-read">Read now</span></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
     <section class="lp-section lp-solutions" id="solutions">
         <div class="lp-section-inner">
             <p class="lp-eyebrow">Nine tools, one platform</p>
@@ -1689,65 +1660,6 @@
                 });
             }
 
-            var guideCard = document.getElementById('lp-guide-card');
-            var guideBody = document.getElementById('lp-guide-body');
-            if (guideCard && guideBody) {
-                /* these are written here rather than in the markup because the card
-                   shows one at a time and cycles. that put them outside two passes
-                   that everything else on the page went through: they stayed
-                   lowercase after the site stopped being lowercase, and they were
-                   never translated, so a german reader watched an english title in
-                   a card whose every other word was german. `t()` fixes the second
-                   and the source text fixes the first. */
-                var GUIDES = [
-                    { kicker: 'Free compliance guide',  title: 'The crypto risk playbook',            pages: '48 pages' },
-                    { kicker: 'Threat intelligence',    title: 'Detecting mixers & tumblers',         pages: '32 pages' },
-                    { kicker: 'Annual report',          title: 'The 2026 crypto typologies report',   pages: '60 pages' },
-                    { kicker: 'Compliance guide',       title: 'Sanctions screening for digital assets', pages: '28 pages' },
-                    { kicker: 'Product guide',          title: 'Wallet risk scoring, explained',      pages: '24 pages' },
-                    { kicker: 'Compliance handbook',    title: 'The stablecoin compliance handbook',  pages: '40 pages' },
-                    { kicker: 'Investigations guide',   title: 'Tracing cross-chain fund flows',      pages: '36 pages' },
-                    { kicker: 'Regulatory checklist',   title: 'The Travel Rule readiness checklist', pages: '18 pages' },
-                    { kicker: 'Compliance guide',       title: 'Onboarding crypto customers safely',  pages: '30 pages' },
-                    { kicker: 'Threat report',          title: 'Inside the top laundering typologies', pages: '44 pages' }
-                ];
-                for (var gi = GUIDES.length - 1; gi > 0; gi--) {
-                    var gj = Math.floor(Math.random() * (gi + 1));
-                    var gt = GUIDES[gi]; GUIDES[gi] = GUIDES[gj]; GUIDES[gj] = gt;
-                }
-                var gKicker = document.getElementById('lp-guide-kicker');
-                var gTitle = document.getElementById('lp-guide-title');
-                var gPages = document.getElementById('lp-guide-pages');
-                var gIcon = document.getElementById('lp-guide-icon');
-                var gIdx = 0;
-                var gT = function (x) { return window.SentinelI18n ? window.SentinelI18n.t(x) : x; };
-                var renderGuide = function(g) {
-                    gKicker.textContent = gT(g.kicker);
-                    gTitle.textContent = gT(g.title);
-                    gPages.textContent = gT(g.pages);
-                };
-                renderGuide(GUIDES[0]);
-                var swapGuide = function() {
-                    if (guideCard.matches(':hover')) return;
-                    guideBody.style.transition = 'opacity 0.34s ease, transform 0.34s ease';
-                    guideBody.style.opacity = '0';
-                    guideBody.style.transform = 'translateY(-14px)';
-                    if (gIcon) { gIcon.style.transition = 'transform 0.34s ease'; gIcon.style.transform = 'scale(0.82) rotate(-6deg)'; }
-                    setTimeout(function() {
-                        gIdx = (gIdx + 1) % GUIDES.length;
-                        renderGuide(GUIDES[gIdx]);
-                        guideBody.style.transition = 'none';
-                        guideBody.style.transform = 'translateY(16px)';
-                        void guideBody.offsetWidth;
-                        guideBody.style.transition = 'opacity 0.4s ease, transform 0.4s cubic-bezier(0.22, 1, 0.36, 1)';
-                        guideBody.style.opacity = '1';
-                        guideBody.style.transform = 'translateY(0)';
-                        if (gIcon) { gIcon.style.transform = 'scale(1) rotate(0deg)'; }
-                    }, 340);
-                };
-                setInterval(swapGuide, 3200);
-            }
-
             var statsxGrid = document.getElementById('lp-statsx-grid');
             if (statsxGrid) {
                 var animateStatNum = function(el) {
@@ -1981,9 +1893,9 @@
     <script src="/auth-modal.13.js" defer></script>
     <script src="/auth-flow.15.js" defer></script>
     <script src="/auth-nav.4.js" defer></script>
-    <script src="/hero3d.14.js" defer></script>
-    <script src="/flair.6.js" defer></script>
-    <script src="/reveal.5.js" defer></script>
+    <script src="/hero3d.15.js" defer></script>
+    <script src="/flair.7.js" defer></script>
+    <script src="/reveal.6.js" defer></script>
     <script src="/scroll.4.js" defer></script>
     <script src="/navlift.1.js" defer></script>
     <script src="/i18n.82.js" defer></script>
