@@ -4911,28 +4911,19 @@ html.theme-light .lp-nav {
         transition: border-radius 0.15s ease;
     }
 
-    /* the strip the lift opens above the bar.
+    /* the strip the lift opens above the bar is left open.
 
-       twelve pixels of whatever happens to be scrolling past, sliced by the
-       pill's top edge, and when what is passing is a dark full-bleed band it
-       reads as a rendering fault rather than as a floating bar. it is plugged
-       with the page's own background, so the strip is simply page.
+       it used to be plugged with the page's own white, on the reasoning that a
+       sliver of something scrolling past, sliced by the pill's top edge, reads
+       as a fault. the plug does look tidy, and it is the wrong kind of tidy:
+       what it actually does is put an opaque band between the bar and the page,
+       so the bar is floating on a strip of white rather than over the page
+       itself. above a dark hero that band is the only white thing on the
+       screen, which is precisely where it announces itself.
 
-       the pill still reads as floating: it is the twenty four pixels down each
-       side and the shadow under it that do that, not the sliver at the top. and
-       it costs nothing above the fold, where the bar is flush and this is zero
-       pixels tall. */
-    html.theme-light .lp-nav::before {
-        content: "";
-        position: fixed;
-        left: 0;
-        right: 0;
-        top: var(--sp-status-h, 0px);
-        height: calc(var(--sp-fold, 0) * 12px);
-        pointer-events: none;
-        z-index: -1;
-        background: #ffffff;
-    }
+       open, the background runs under the bar and out past it, which is what a
+       floating bar over a page looks like. the sides were never plugged and
+       nobody has ever minded the marquee logos passing through them. */
 }
 
 /* ---- the typeface system ------------------------------------------------- */
@@ -5089,39 +5080,20 @@ h1, h2, h3, h4,
         border-radius: calc(var(--sp-fold-radius, 0px) * 0.62);
     }
 
-    /* the strip the lift opens above the bar, plugged.
+    /* nothing above the bar, same as the desktop.
 
-       this is the same rule the desktop has had all along, at phone scale, and
-       arriving at it took two wrong answers first. taking the inset away made
-       the bar look welded to the top of the screen. putting a frosted strip
-       across the top made a grey smudge around the pill, which is worse,
-       because it puts a thing there that the desktop does not have.
+       this took four goes, so the shape of the mistake is worth keeping. the
+       gaps an inset bar opens can be closed three ways and I tried all of
+       them: take the inset away, and the bar is welded to the top of the
+       screen. blur the strip, and there is a grey smudge around the pill. fill
+       the strip, and the bar floats on an opaque band instead of on the page,
+       which is the tidiest of the three and still a thing that should not be
+       there.
 
-       what the desktop actually does is fill the sliver above the bar with the
-       page's own colour, and leave the columns beside it alone. that is why it
-       looks clean: the pill sits on page, not on whatever is scrolling. the
-       side gaps stay open there too, and you can see the marquee logos running
-       through them, which nobody has ever called a bug.
-
-       #fbfcfd rather than white: the body gradient is `fixed`, so the top of
-       the viewport is always its first stop, and that is the colour. the
-       desktop copy of this rule uses #ffffff, which is two values out and
-       invisible, and not worth touching on a page that is working.
-
-       it costs nothing above the fold. the height is driven by the same
-       progress as the lift, so before the bar has moved this is zero pixels
-       tall and there is no strip to be wrong. */
-    html.theme-light .lp-nav::before {
-        content: "";
-        position: fixed;
-        left: 0;
-        right: 0;
-        top: var(--sp-status-h, 0px);
-        height: calc(var(--sp-fold, 0) * 9px);
-        z-index: -1;
-        pointer-events: none;
-        background: #fbfcfd;
-    }
+       the fourth way is to leave it alone. the background runs under the bar
+       and out past it on every side, the bar reads as floating over the page
+       because that is what it is doing, and the sliver of content crossing the
+       top is the same sliver that has always crossed the sides. */
 }
 
 /* ---- the phone ------------------------------------------------------------ */
