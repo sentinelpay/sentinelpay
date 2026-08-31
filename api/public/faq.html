@@ -641,7 +641,7 @@
     <script>/* in-page link scrolls instead of jumping, and leaves the address bar alone */(function(){document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[data-scroll][href^="#"]');if(!a)return;var t=document.getElementById(a.getAttribute('href').slice(1));if(!t)return;e.preventDefault();t.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(function(){try{t.focus({preventScroll:true})}catch(err){}},600);});})();</script>
     <!-- the sign-in dialog. loaded before i18n so its copy is translated too -->
     <script src="/auth-modal.13.js" defer></script>
-    <script src="/auth-flow.15.js" defer></script>
+    <script src="/auth-flow.16.js" defer></script>
     <script src="/auth-nav.4.js" defer></script>
     <script src="/faq.1.js" defer></script>
     <!-- the questions page has the same list the homepage has, and it is the
@@ -650,6 +650,6 @@
          nothing was writing the progress it scales by. -->
     <script src="/flair.7.js" defer></script>
     <script src="/navlift.1.js" defer></script>
-    <script src="/i18n.82.js" defer></script>
+    <script src="/i18n.83.js" defer></script>
 </body>
 </html>

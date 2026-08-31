@@ -170,6 +170,23 @@
             if (waitingFor) { var go = waitingFor; waitingFor = null; go(turnstileToken); }
         }
 
+        /* why the check failed, kept rather than thrown away.
+
+           every one of these paths used to end in the same empty token, and the
+           person got one sentence that did not distinguish between cloudflare
+           being blocked by an extension, the site key not being allowed on this
+           hostname, and a challenge that simply needed longer. that is a
+           support conversation with nothing in it. `sp.turnstileFault` holds
+           the last reason, and it is on `window` on purpose: it is the one
+           thing worth being able to ask a browser about from the other end of a
+           message. */
+        var fault = '';
+        function setFault(why) {
+            fault = why;
+            try { window.sp = window.sp || {}; window.sp.turnstileFault = why; } catch (e) { /* sealed window */ }
+            if (why) console.error('[turnstile] ' + why);
+        }
+
         function renderTurnstile() {
             if (!window.turnstile || turnstileId !== null || !holder) return;
             try {
@@ -177,26 +194,50 @@
                     sitekey: window.__TURNSTILE_SITEKEY,
                     // the card is white now, and a dark widget on it read as a hole
                     theme: 'light',
-                    callback: tokenArrived,
-                    'expired-callback': function () { tokenArrived(''); },
-                    'error-callback': function () { tokenArrived(''); }
+                    callback: function (tok) { setFault(''); tokenArrived(tok); },
+                    'expired-callback': function () { setFault('expired'); tokenArrived(''); },
+                    // cloudflare hands the callback a code. 400020 and its
+                    // neighbours mean the key is not allowed on this hostname,
+                    // which is a dashboard problem and not something the person
+                    // filling in the form can do anything about, and it is worth
+                    // being able to tell those apart without guessing.
+                    'error-callback': function (code) { setFault('error-' + (code || 'unknown')); tokenArrived(''); }
                 });
             } catch (err) {
                 // a widget that will not render must not take the form down with it
-                console.error('[turnstile] ' + err.message);
+                setFault('render-threw:' + err.message);
             }
+        }
+
+        function scriptFailed() {
+            setFault('script-blocked');
+            tokenArrived('');
         }
 
         function loadTurnstile() {
             if (!turnstileOn) return;
             if (window.turnstile) { renderTurnstile(); return; }
             var existing = document.getElementById('sp-turnstile-src');
-            if (existing) { existing.addEventListener('load', renderTurnstile); return; }
+            if (existing) {
+                existing.addEventListener('load', renderTurnstile);
+                existing.addEventListener('error', scriptFailed);
+                return;
+            }
             var s = document.createElement('script');
             s.id = 'sp-turnstile-src';
             s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
             s.async = true; s.defer = true;
             s.onload = renderTurnstile;
+            // and answer straight away rather than letting the wait run out. a
+            // script that failed to load is not going to produce a token in
+            // twenty seconds any more than in one, and making somebody watch a
+            // spinner for a result already known is the rudest way to fail.
+            s.onerror = scriptFailed;
+            // the case that produced no signal at all: the request never
+            // arrives, nothing throws, and the only evidence was nine seconds of
+            // nothing followed by a message about a check that had never
+            // started. an ad blocker or a network filter refusing
+            // challenges.cloudflare.com lands here.
             document.head.appendChild(s);
         }
 
@@ -225,10 +266,21 @@
                     if (turnstileId !== null) window.turnstile.reset(turnstileId);
                 } catch (err) { /* not rendered yet: the render itself will answer */ }
                 // a challenge that needs a click, or a network that is not there,
-                // must not leave the button spinning for ever
+                // must not leave the button spinning for ever.
+                //
+                // twenty seconds rather than nine. nine is comfortable for a
+                // widget that is already loaded and being reset, and it is not
+                // enough for the first one on a slow connection: the script has
+                // to be fetched, then the challenge itself, and an interactive
+                // one wants a click in the middle of that. giving up at nine
+                // turns a slow success into a failure with no explanation, and
+                // this is the last step before somebody has an account.
                 setTimeout(function () {
-                    if (waitingFor === resolve) { waitingFor = null; resolve(turnstileToken); }
-                }, 9000);
+                    if (waitingFor !== resolve) return;
+                    waitingFor = null;
+                    if (!turnstileToken && !fault) setFault('timed-out');
+                    resolve(turnstileToken);
+                }, 20000);
             });
         }
 
@@ -582,7 +634,13 @@
                 setTimeout(function () { boxes[0].focus(); }, 340);
             }).catch(function (err) {
                 if (err.noToken) {
-                    formError(t('The check below did not finish. Please try again in a moment.'));
+                    // the two failures need different sentences, because they
+                    // need different things from the person reading. a blocked
+                    // script is theirs to fix and telling them to try again
+                    // wastes their time; anything else is worth one more go.
+                    formError(t(fault === 'script-blocked'
+                        ? 'The security check could not load. An ad blocker or network filter may be blocking it.'
+                        : 'The check below did not finish. Please try again in a moment.'));
                     return;
                 }
                 // "a code was just sent" is an answer to the button that was
