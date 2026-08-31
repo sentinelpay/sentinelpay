@@ -2661,6 +2661,28 @@ html.theme-light .lp-demo-select-list { scrollbar-width: thin; scrollbar-color: 
 }
 .sp-lang-opt:hover { background: #f2f4fb; color: #0e2358; }
 .sp-lang-opt.active { background: #eef1fb; color: #2563eb; font-weight: 600; }
+/* the language menu has to paint over the column beside it.
+
+   the menu is absolutely positioned with z-index 30, which ought to be the end
+   of it, and on a desktop it is: the footer columns sit side by side and the
+   menu opens into empty space. on a phone they stack, so the menu opens across
+   the links column, and there it was drawn underneath: the option list showing
+   through with "Crypto compliance" and "Industries" printed over the top of it.
+
+   z-index 30 was not being ignored, it was being contained. reveal.js gives
+   every child of .lp-footer-top a transform, and a transform makes a stacking
+   context whether or not you wanted one. so both columns became atomic units at
+   z-index auto, painted in document order, and the links column comes second.
+   Nothing inside the brand column can climb out of that, however large its own
+   z-index, because that number is only compared against its siblings inside the
+   brand column.
+
+   giving the brand column a z-index of its own puts the comparison back at the
+   level where the two columns meet. this is also why the bug only appeared with
+   javascript running: no reveal, no transform, no stacking context, and the 30
+   worked the way it reads. */
+.lp-footer-brand { position: relative; z-index: 2; }
+
 /* blog + article footers are one centred row */
 .lp-footer .lp-section-inner[style*="center"] .sp-lang { align-items: center; margin: 0 auto 1.4rem; }
 
