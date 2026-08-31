@@ -44,7 +44,21 @@ const C = {
     tintLine: '#cfe9f4',
 };
 
-const FONT = "Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+/* the same two faces the site runs, in the order it runs them.
+   ------------------------------------------------------------------------
+   Inter for everything anybody reads, Plus Jakarta Sans for the headline, the
+   code and the button, which is exactly the split in corp.css: headings, big
+   numbers and buttons get the display face and body copy does not.
+
+   named rather than loaded. an inbox is not a browser: @font-face is stripped
+   by outlook and gmail's web client among others, and a webfont request from an
+   email is a tracking pixel as far as several of them are concerned. so these
+   are stacks, not downloads. where the reader happens to have the face
+   installed the mail matches the site exactly; where they do not it falls to
+   the system UI face, which is what the site falls to as well. the shape of the
+   fallback chain is the part that has to be right, and it is the same chain. */
+const FONT = "Inter,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Helvetica,Arial,sans-serif";
+const DISPLAY = "'Plus Jakarta Sans',Inter,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Helvetica,Arial,sans-serif";
 const LOGO = SITE + '/logo.png';
 // the site's checklist marker, rendered once to a png at three times the size it
 // is used at, so it stays sharp on a retina screen
@@ -59,18 +73,18 @@ const CHECK = SITE + '/mail-check.png';
 // for. Placeholders until the d.o.o. is registered; set them without a code
 // change once it is.
 const LEGAL = {
-    name: process.env.COMPANY_LEGAL_NAME || 'sentinelpay d.o.o. (in registration)',
-    address: process.env.COMPANY_ADDRESS || 'ulica i kucni broj, 10000 zagreb, croatia',
-    reg: process.env.COMPANY_REG || 'oib 00000000000 · mbs 000000000',
+    name: process.env.COMPANY_LEGAL_NAME || 'Sentinelpay d.o.o. (in registration)',
+    address: process.env.COMPANY_ADDRESS || 'Ulica i kućni broj, 10000 Zagreb, Croatia',
+    reg: process.env.COMPANY_REG || 'OIB 00000000000 · MBS 000000000',
 };
 
 const FOOTER = {
-    en: { questions: 'questions', privacy: 'privacy', terms: 'terms', blog: 'blog',
-          contact: 'need a hand? write to', seat: 'registered office' },
-    hr: { questions: 'pitanja', privacy: 'privatnost', terms: 'uvjeti', blog: 'blog',
-          contact: 'trebate pomoć? pišite na', seat: 'sjedište' },
-    de: { questions: 'fragen', privacy: 'datenschutz', terms: 'bedingungen', blog: 'blog',
-          contact: 'brauchen sie hilfe? schreiben sie an', seat: 'sitz' },
+    en: { questions: 'Questions', privacy: 'Privacy', terms: 'Terms', blog: 'Blog',
+          contact: 'Need a hand? Write to', seat: 'Registered office' },
+    hr: { questions: 'Pitanja', privacy: 'Privatnost', terms: 'Uvjeti', blog: 'Blog',
+          contact: 'Trebate pomoć? Pišite na', seat: 'Sjedište' },
+    de: { questions: 'Fragen', privacy: 'Datenschutz', terms: 'Bedingungen', blog: 'Blog',
+          contact: 'Brauchen Sie Hilfe? Schreiben Sie an', seat: 'Sitz' },
 };
 
 function row(label, value) {
@@ -90,7 +104,7 @@ function reviewBand(notes) {
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" ' +
         'style="background:#fff8ee;border:1px solid #f6dfbc;border-radius:12px;">' +
         '<tr><td style="padding:14px 16px;">' +
-        '<div style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;font-weight:700;color:#b26a00;">worth a look</div>' +
+        '<div style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;font-weight:700;color:#b26a00;">Worth a look</div>' +
         notes.map((n) =>
             '<div style="margin-top:7px;font-size:13px;line-height:20px;color:#7a5417;">' + esc(n) + '</div>'
         ).join('') +
@@ -107,7 +121,7 @@ function codeBlock(code) {
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" ' +
         'style="background:' + C.tint + ';border:1px solid ' + C.tintLine + ';border-radius:14px;">' +
         '<tr><td align="center" style="padding:22px 14px;">' +
-        '<div style="font-family:' + FONT + ';font-size:38px;line-height:46px;font-weight:800;' +
+        '<div style="font-family:' + DISPLAY + ';font-size:38px;line-height:46px;font-weight:800;' +
         'letter-spacing:0.24em;text-indent:0.24em;color:' + C.text + ';' +
         // tabular figures so the six digits sit on an even rhythm. most clients
         // ignore it and inter's default figures are even anyway, so it costs
@@ -162,8 +176,8 @@ function button(cta) {
     return '<tr><td style="padding:6px 36px 0;">' +
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">' +
         '<tr><td align="center" bgcolor="' + C.text + '" style="border-radius:12px;">' +
-        '<a href="' + esc(cta.href) + '" style="display:block;padding:15px 24px;font-family:' + FONT + ';' +
-        'font-size:14.5px;font-weight:700;line-height:19px;color:#ffffff;text-decoration:none;' +
+        '<a href="' + esc(cta.href) + '" style="display:block;padding:15px 24px;font-family:' + DISPLAY + ';' +
+        'font-size:14.5px;font-weight:700;letter-spacing:-0.006em;line-height:19px;color:#ffffff;text-decoration:none;' +
         'border-radius:12px;text-align:center;">' +
         esc(cta.label) + '</a>' +
         '</td></tr></table></td></tr>';
@@ -204,7 +218,7 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, c
         // and the name is in the sender line anyway.
         '<tr><td align="center" style="padding:32px 36px 0;">' +
         '<a href="' + SITE + '" style="text-decoration:none;">' +
-        '<img src="' + LOGO + '" width="44" height="44" alt="sentinelpay" ' +
+        '<img src="' + LOGO + '" width="44" height="44" alt="Sentinelpay" ' +
         'style="display:inline-block;width:44px;height:44px;border:0;outline:none;text-decoration:none;">' +
         '</a></td></tr>' +
 
@@ -212,7 +226,7 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, c
 
         '<tr><td style="padding:0 36px;">' +
         (eyebrow ? '<div style="font-size:11px;letter-spacing:0.11em;text-transform:uppercase;font-weight:700;color:' + C.cyan + ';">' + esc(eyebrow) + '</div>' : '') +
-        '<div style="margin-top:10px;font-size:26px;line-height:33px;font-weight:800;letter-spacing:-0.02em;color:' + C.text + ';">' + esc(title) + '</div>' +
+        '<div style="margin-top:10px;font-family:' + DISPLAY + ';font-size:26px;line-height:33px;font-weight:800;letter-spacing:-0.02em;color:' + C.text + ';">' + esc(title) + '</div>' +
         '<div style="margin-top:12px;font-size:15px;line-height:24px;color:' + C.muted + ';">' + esc(intro) + '</div>' +
         '</td></tr>' +
 
@@ -278,7 +292,7 @@ function textVersion({ title, intro, pairs, bullets, cta, footnote, review, code
     if (code) lines.push(code, '');
     if (meta && meta.length) lines.push(meta.join(' · '), '');
     if (review && review.length) {
-        lines.push('worth a look:');
+        lines.push('Worth a look:');
         review.forEach((n) => lines.push('  - ' + n));
         lines.push('');
     }
@@ -413,49 +427,49 @@ async function send(msg) {
 // site in, and nothing else.
 const TRIAL_COPY = {
     en: {
-        subject: 'your sentinelpay trial is ready',
-        eyebrow: 'free trial',
-        title: 'your trial is ready',
-        intro: 'you signed up at sentinelpay.org. here is what is waiting for you.',
+        subject: 'Your Sentinelpay trial is ready',
+        eyebrow: 'Free trial',
+        title: 'Your trial is ready',
+        intro: 'You signed up at sentinelpay.org. Here is what is waiting for you.',
         bullets: [
-            'one free scan plus one from your history, right away',
-            'the rest of your history is already there, just locked',
-            'verify your number and the rest opens, plus 10 live checks',
-            'every scan logged, so you can prove what you checked',
+            'One free scan plus one from your history, right away',
+            'The rest of your history is already there, just locked',
+            'Verify your number and the rest opens, plus 10 live checks',
+            'Every scan logged, so you can prove what you checked',
         ],
-        ctaLabel: 'open your trial',
-        viaAccount: 'your trial lives in your sentinelpay account, so the button opens the account first.',
-        footnote: 'you are getting this because this address was used to start a trial at sentinelpay.org. if that was not you, ignore this email and nothing happens.',
+        ctaLabel: 'Open your trial',
+        viaAccount: 'Your trial lives in your Sentinelpay account, so the button opens the account first.',
+        footnote: 'You are getting this because this address was used to start a trial at sentinelpay.org. If that was not you, ignore this email and nothing happens.',
     },
     hr: {
-        subject: 'vaša sentinelpay proba je spremna',
-        eyebrow: 'besplatna proba',
-        title: 'vaša proba je spremna',
-        intro: 'prijavili ste se na sentinelpay.org. evo što vas čeka.',
+        subject: 'Vaša Sentinelpay proba je spremna',
+        eyebrow: 'Besplatna proba',
+        title: 'Vaša proba je spremna',
+        intro: 'Prijavili ste se na sentinelpay.org. Evo što vas čeka.',
         bullets: [
-            'odmah jedna besplatna provjera i jedna iz vaše povijesti',
-            'ostatak povijesti već je tu, samo je zaključan',
-            'potvrdite broj i otvara se ostatak, uz 10 provjera uživo',
-            'svaka provjera zapisana, pa možete dokazati što ste provjerili',
+            'Odmah jedna besplatna provjera i jedna iz vaše povijesti',
+            'Ostatak povijesti već je tu, samo je zaključan',
+            'Potvrdite broj i otvara se ostatak, uz 10 provjera uživo',
+            'Svaka provjera zapisana, pa možete dokazati što ste provjerili',
         ],
-        ctaLabel: 'otvorite svoju probu',
-        viaAccount: 'vaša proba živi u vašem sentinelpay računu, pa vas gumb prvo vodi na račun.',
-        footnote: 'ovaj mail dobivate jer je s ove adrese pokrenuta proba na sentinelpay.org. ako to niste bili vi, samo ga zanemarite i ništa se ne događa.',
+        ctaLabel: 'Otvorite svoju probu',
+        viaAccount: 'Vaša proba živi u vašem Sentinelpay računu, pa vas gumb prvo vodi na račun.',
+        footnote: 'Ovaj mail dobivate jer je s ove adrese pokrenuta proba na sentinelpay.org. Ako to niste bili vi, samo ga zanemarite i ništa se ne događa.',
     },
     de: {
-        subject: 'ihre sentinelpay testphase ist bereit',
-        eyebrow: 'kostenlose testphase',
-        title: 'ihre testphase ist bereit',
-        intro: 'sie haben sich auf sentinelpay.org angemeldet. das erwartet sie.',
+        subject: 'Ihre Sentinelpay-Testphase ist bereit',
+        eyebrow: 'Kostenlose Testphase',
+        title: 'Ihre Testphase ist bereit',
+        intro: 'Sie haben sich auf sentinelpay.org angemeldet. Das erwartet Sie.',
         bullets: [
-            'sofort eine kostenlose prüfung und eine aus ihrer historie',
-            'der rest ihrer historie ist schon da, nur gesperrt',
-            'bestätigen sie ihre nummer, dann öffnet sich der rest, plus 10 live-prüfungen',
-            'jede prüfung protokolliert, damit sie belegen können, was sie geprüft haben',
+            'Sofort eine kostenlose Prüfung und eine aus Ihrer Historie',
+            'Der Rest Ihrer Historie ist schon da, nur gesperrt',
+            'Bestätigen Sie Ihre Nummer, dann öffnet sich der Rest, plus 10 Live-Prüfungen',
+            'Jede Prüfung protokolliert, damit Sie belegen können, was Sie geprüft haben',
         ],
-        ctaLabel: 'testphase öffnen',
-        viaAccount: 'ihre testphase liegt in ihrem sentinelpay konto, der button öffnet also zuerst das konto.',
-        footnote: 'sie erhalten diese e-mail, weil mit dieser adresse eine testphase auf sentinelpay.org gestartet wurde. waren sie das nicht, ignorieren sie die e-mail einfach.',
+        ctaLabel: 'Testphase öffnen',
+        viaAccount: 'Ihre Testphase liegt in Ihrem Sentinelpay-Konto, der Button öffnet also zuerst das Konto.',
+        footnote: 'Sie erhalten diese E-Mail, weil mit dieser Adresse eine Testphase auf sentinelpay.org gestartet wurde. Waren Sie das nicht, ignorieren Sie die E-Mail einfach.',
     },
 };
 
@@ -488,31 +502,31 @@ async function sendTrialWelcome(opts) { return send(trialWelcomeMessage(opts)); 
 // who has an account here.
 const SIGNUP_COPY = {
     en: {
-        subject: 'your sentinelpay code',
-        eyebrow: 'verify your email',
-        title: 'here is your code',
-        intro: 'enter this to finish creating your sentinelpay account.',
-        meta: (m) => ['expires in ' + m + ' minutes', 'single use'],
-        footnote: 'if you did not try to create an account, ignore this email. nothing has been created and nobody can use this code without it.',
-        warning: 'we will never ask you for this code, by email, chat or phone.',
+        subject: 'Your Sentinelpay code',
+        eyebrow: 'Verify your email',
+        title: 'Here is your code',
+        intro: 'Enter this to finish creating your Sentinelpay account.',
+        meta: (m) => ['Expires in ' + m + ' minutes', 'Single use'],
+        footnote: 'If you did not try to create an account, ignore this email. Nothing has been created and nobody can use this code without it.',
+        warning: 'We will never ask you for this code, by email, chat or phone.',
     },
     hr: {
-        subject: 'vaš sentinelpay kod',
-        eyebrow: 'potvrdite svoj email',
-        title: 'evo vašeg koda',
-        intro: 'unesite ga da dovršite izradu sentinelpay računa.',
-        meta: (m) => ['istječe za ' + m + ' minuta', 'jednokratan'],
-        footnote: 'ako niste vi pokušali izraditi račun, samo zanemarite ovaj mail. ništa nije izrađeno i bez njega nitko ne može iskoristiti ovaj kod.',
-        warning: 'nikada vas nećemo tražiti ovaj kod, ni mailom, ni chatom, ni telefonom.',
+        subject: 'Vaš Sentinelpay kod',
+        eyebrow: 'Potvrdite svoj email',
+        title: 'Evo vašeg koda',
+        intro: 'Unesite ga da dovršite izradu Sentinelpay računa.',
+        meta: (m) => ['Istječe za ' + m + ' minuta', 'Jednokratan'],
+        footnote: 'Ako niste vi pokušali izraditi račun, samo zanemarite ovaj mail. Ništa nije izrađeno i bez njega nitko ne može iskoristiti ovaj kod.',
+        warning: 'Nikada vas nećemo tražiti ovaj kod, ni mailom, ni chatom, ni telefonom.',
     },
     de: {
-        subject: 'ihr sentinelpay code',
-        eyebrow: 'bestätigen sie ihre e-mail',
-        title: 'hier ist ihr code',
-        intro: 'geben sie ihn ein, um ihr sentinelpay konto fertig anzulegen.',
-        meta: (m) => ['läuft in ' + m + ' minuten ab', 'einmalig'],
-        footnote: 'wenn sie kein konto anlegen wollten, ignorieren sie diese e-mail. es wurde nichts angelegt, und ohne sie kann niemand diesen code verwenden.',
-        warning: 'wir fragen sie nie nach diesem code, weder per e-mail noch im chat oder am telefon.',
+        subject: 'Ihr Sentinelpay-Code',
+        eyebrow: 'Bestätigen Sie Ihre E-Mail',
+        title: 'Hier ist Ihr Code',
+        intro: 'Geben Sie ihn ein, um Ihr Sentinelpay-Konto fertig anzulegen.',
+        meta: (m) => ['Läuft in ' + m + ' Minuten ab', 'Einmalig'],
+        footnote: 'Wenn Sie kein Konto anlegen wollten, ignorieren Sie diese E-Mail. Es wurde nichts angelegt, und ohne sie kann niemand diesen Code verwenden.',
+        warning: 'Wir fragen Sie nie nach diesem Code, weder per E-Mail noch im Chat oder am Telefon.',
     },
 };
 
@@ -556,25 +570,25 @@ const PREVIEWS = {
     // if the endpoint changes and this does not, the preview is stale, and the
     // note below says so out loud.
     'trial-notice': () => ({
-        subject: 'review: new trial sign-up: ana anic @ primjer d.o.o.',
-        eyebrow: 'free trial',
-        title: 'a company signed up for the trial',
-        intro: 'the welcome email has been sent to them, but something here is worth a second look.',
-        review: ['the address is on a free consumer mailbox, and the website they gave is on that same domain. worth thirty seconds on the company name before you reply.'],
+        subject: 'Review: new trial sign-up: Ana Anić @ Primjer d.o.o.',
+        eyebrow: 'Free trial',
+        title: 'A company signed up for the trial',
+        intro: 'The welcome email has been sent to them, but something here is worth a second look.',
+        review: ['The address is on a free consumer mailbox, and the website they gave is on that same domain. Worth thirty seconds on the company name before you reply.'],
         pairs: [
-            ['name', 'ana anic'], ['job title', 'head of compliance'],
-            ['work email', 'ana@primjer.hr'], ['company', 'primjer d.o.o.'],
-            ['website', 'primjer.hr'], ['industry', 'payments'],
-            ['country', 'croatia'], ['language', 'hr'],
-            ['domain check', 'free-email'],
+            ['Name', 'Ana Anić'], ['Job title', 'Head of compliance'],
+            ['Work email', 'ana@primjer.hr'], ['Company', 'Primjer d.o.o.'],
+            ['Website', 'primjer.hr'], ['Industry', 'Payments'],
+            ['Country', 'Croatia'], ['Language', 'hr'],
+            ['Domain check', 'Free email'],
         ],
     }),
     'account-notice': () => ({
-        subject: 'new account: ana anic',
-        eyebrow: 'accounts',
-        title: 'somebody created an account',
-        intro: 'the address was verified by code before the account was written.',
-        pairs: [['name', 'ana anic'], ['email', 'ana@primjer.hr'], ['language', 'hr']],
+        subject: 'New account: Ana Anić',
+        eyebrow: 'Accounts',
+        title: 'Somebody created an account',
+        intro: 'The address was verified by code before the account was written.',
+        pairs: [['Name', 'Ana Anić'], ['Email', 'ana@primjer.hr'], ['Language', 'hr']],
     }),
 };
 
