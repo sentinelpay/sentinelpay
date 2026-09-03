@@ -296,15 +296,34 @@
                 document.addEventListener('click', function(e) { if (!wrap.contains(e.target)) open(false); });
             });
 
+            /* "not sure yet" and the rest cannot both be true.
+               ------------------------------------------------------------
+               ticking it clears everything else, and ticking anything else
+               clears it. someone who has picked four products is not unsure,
+               and a submission that says both tells us nothing.
+
+               which box is the exclusive one comes from `data-exclusive` in
+               the markup rather than from matching its value against a string.
+               it used to compare against 'Not sure yet' while the markup said
+               value="not sure yet", so the two never matched and none of this
+               ran: the case had drifted apart in a pass over the site's
+               capitalisation, and a comparison against display text is a thing
+               that will drift again. an attribute is not copy and nothing
+               rewrites it.
+
+               the values themselves now read the way the labels do, because
+               they are not internal codes: they are what lands in the
+               notification email, and "transaction screening, api & data
+               feeds" was arriving in lower case in a mail whose every other
+               line had been fixed. */
             form.querySelectorAll('input[name="solutions"]').forEach(function(cb) {
                 cb.addEventListener('change', function() {
                     if (cb.checked) {
-                        var isNotSure = cb.value === 'Not sure yet';
+                        var isExclusive = cb.hasAttribute('data-exclusive');
                         form.querySelectorAll('input[name="solutions"]').forEach(function(other) {
                             if (other === cb) return;
-                            var otherIsNotSure = other.value === 'Not sure yet';
-                            // checking "Not sure yet" clears all others; checking any other clears "Not sure yet"
-                            if ((isNotSure && !otherIsNotSure) || (!isNotSure && otherIsNotSure)) other.checked = false;
+                            var otherIsExclusive = other.hasAttribute('data-exclusive');
+                            if (isExclusive || otherIsExclusive) other.checked = false;
                         });
                     }
                     var field = cb.closest('.lp-demo-field');
