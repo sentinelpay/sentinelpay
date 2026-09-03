@@ -3412,6 +3412,16 @@ html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }
     border-color: rgba(14, 35, 88, 0.14);
     box-shadow: none;
 }
+/* the answer, once one has been picked.
+   ------------------------------------------------------------------------
+   the placeholder was given a colour for the light card and the chosen value
+   was not, so it kept the dark theme's #ffffff and landed white on a near
+   white field. the box did not look broken, it looked empty, which is worse:
+   somebody picks an industry, sees nothing appear, and picks it again.
+
+   it is the same navy as the rest of the form and darker than the
+   placeholder it replaces, because a filled field should read as filled. */
+.lp-demo-select-val { color: #0e2358; }
 .lp-demo-select-val.is-placeholder { color: rgba(14, 35, 88, 0.3); }
 .lp-demo-select-caret { color: rgba(14, 35, 88, 0.45); }
 .lp-demo-select.is-open .lp-demo-select-btn { border-color: #0091c8; background: #ffffff; }

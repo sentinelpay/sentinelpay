@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="/fonts.1.css">
     <link rel="stylesheet" href="/style.24.css">
     <link rel="stylesheet" href="/landing.145.css">
-    <link rel="stylesheet" href="/corp.251.css">
+    <link rel="stylesheet" href="/corp.252.css">
     <style>
         /* page loader */
         #sp-loader{position:fixed;inset:0;z-index:99999;background:#050505;display:flex;align-items:center;justify-content:center;transition:opacity 0.55s ease;}
@@ -407,7 +407,7 @@
 
                         <div class="lp-demo-step" data-step="2" hidden>
                             <div class="lp-demo-grid">
-                                <div class="lp-demo-field lp-demo-field-full"><label>Registered company name<i>*</i></label><input name="company" type="text" autocomplete="organization" placeholder="E.g. Sentinelpay ltd"></div>
+                                <div class="lp-demo-field lp-demo-field-full"><label>Registered company name<i>*</i></label><input name="company" type="text" autocomplete="organization" placeholder="e.g. Sentinelpay Ltd."></div>
                                 <div class="lp-demo-field lp-demo-field-full">
                                     <label>Company website<i>*</i></label>
                                     <span class="lp-demo-note">Only domains that match your work email will be contacted.</span>
@@ -494,14 +494,14 @@
                                 <div class="lp-demo-field lp-demo-field-full">
                                     <label>Which solutions interest you <span class="lp-demo-note-inline">(select all that apply)</span><i>*</i></label>
                                     <div class="lp-demo-checks">
-                                        <label class="lp-demo-check"><input type="checkbox" name="solutions" value="transaction screening"><span>Transaction screening</span></label>
-                                        <label class="lp-demo-check"><input type="checkbox" name="solutions" value="wallet investigations"><span>Wallet investigations</span></label>
-                                        <label class="lp-demo-check"><input type="checkbox" name="solutions" value="risk scoring & kyt"><span>Risk scoring &amp; KYT</span></label>
-                                        <label class="lp-demo-check"><input type="checkbox" name="solutions" value="Travel Rule / vasp"><span>Travel Rule / VASP</span></label>
-                                        <label class="lp-demo-check"><input type="checkbox" name="solutions" value="stablecoin monitoring"><span>Stablecoin monitoring</span></label>
-                                        <label class="lp-demo-check"><input type="checkbox" name="solutions" value="api & data feeds"><span>API &amp; data feeds</span></label>
-                                        <label class="lp-demo-check"><input type="checkbox" name="solutions" value="reporting & audit"><span>Reporting &amp; audit</span></label>
-                                        <label class="lp-demo-check"><input type="checkbox" name="solutions" value="not sure yet"><span>Not sure yet</span></label>
+                                        <label class="lp-demo-check"><input type="checkbox" name="solutions" value="Transaction screening"><span>Transaction screening</span></label>
+                                        <label class="lp-demo-check"><input type="checkbox" name="solutions" value="Wallet investigations"><span>Wallet investigations</span></label>
+                                        <label class="lp-demo-check"><input type="checkbox" name="solutions" value="Risk scoring &amp; KYT"><span>Risk scoring &amp; KYT</span></label>
+                                        <label class="lp-demo-check"><input type="checkbox" name="solutions" value="Travel Rule / VASP"><span>Travel Rule / VASP</span></label>
+                                        <label class="lp-demo-check"><input type="checkbox" name="solutions" value="Stablecoin monitoring"><span>Stablecoin monitoring</span></label>
+                                        <label class="lp-demo-check"><input type="checkbox" name="solutions" value="API &amp; data feeds"><span>API &amp; data feeds</span></label>
+                                        <label class="lp-demo-check"><input type="checkbox" name="solutions" value="Reporting &amp; audit"><span>Reporting &amp; audit</span></label>
+                                        <label class="lp-demo-check"><input type="checkbox" name="solutions" value="Not sure yet" data-exclusive><span>Not sure yet</span></label>
                                     </div>
                                 </div>
                             </div>
@@ -510,7 +510,7 @@
                         <div class="lp-demo-step" data-step="4" hidden>
                             <div class="lp-demo-field lp-demo-field-full">
                                 <label>Anything specific you want to solve?</label>
-                                <textarea name="message" rows="3" maxlength="250" placeholder="E.g. We settle stablecoin payouts to 40+ countries and need to screen every counterparty wallet before funds move…"></textarea>
+                                <textarea name="message" rows="3" maxlength="250" placeholder="e.g. We settle stablecoin payouts to 40+ countries and need to screen every counterparty wallet before funds move…"></textarea>
                                 <div class="lp-demo-count"><span id="lp-demo-msg-count">0</span> / 250</div>
                             </div>
                             <label class="lp-demo-consent"><input type="checkbox" name="consent"><span>I agree to be contacted about Sentinelpay.</span></label>
@@ -721,13 +721,13 @@
     </script>
     <!-- the house toast: without it the form falls back to the browser alert -->
     <script src="/toast.2.js" defer></script>
-    <script src="/demo-form.23.js" defer></script>
+    <script src="/demo-form.24.js" defer></script>
     <script>window.addEventListener('load',function(){window.scrollTo(0,0);var l=document.getElementById('sp-loader');if(!l)return;var finish=function(){l.classList.add('spl-done');setTimeout(function(){l.remove();},620);};/* the load event does not wait for lazy images, and nearly every image on the site is lazy, so the loader used to clear while the first screen was still filling in. wait for the ones that will actually be visible: an image further down has not started loading yet and never would, so waiting for all of them would hold the loader open for ever. */var pending=[],im,r,i;for(i=0;i<document.images.length;i++){im=document.images[i];r=im.getBoundingClientRect();if(r.bottom<0||r.top>window.innerHeight*1.2)continue;if(im.complete&&im.naturalWidth>0)continue;pending.push(im);}if(!pending.length){finish();return;}var left=pending.length,fired=false;var one=function(){if(--left<=0&&!fired){fired=true;finish();}};pending.forEach(function(x){x.addEventListener('load',one,{once:true});x.addEventListener('error',one,{once:true});});/* a slow or broken image must never trap anybody behind the loader */setTimeout(function(){if(!fired){fired=true;finish();}},2500);});</script>
     <!-- the sign-in dialog. loaded before i18n so its copy is translated too -->
     <script src="/auth-modal.13.js" defer></script>
     <script src="/auth-flow.16.js" defer></script>
     <script src="/auth-nav.4.js" defer></script>
     <script src="/navlift.1.js" defer></script>
-    <script src="/i18n.83.js" defer></script>
+    <script src="/i18n.84.js" defer></script>
 </body>
 </html>
