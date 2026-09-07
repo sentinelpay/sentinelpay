@@ -3275,7 +3275,8 @@ html[data-mail-down] a[data-mail-subject] {
 .sp-authm-p { margin: 0; font-size: 0.9rem; line-height: 1.55; color: rgba(255, 255, 255, 0.55); }
 .sp-authm-p[hidden] { display: none; }
 
-.sp-authm-x {
+.sp-authm-x,
+.sp-auth-stepback {
     position: absolute;
     top: 0.7rem;
     right: 0.7rem;
@@ -3289,7 +3290,19 @@ html[data-mail-down] a[data-mail-subject] {
 }
 .sp-authm-x svg { width: 15px; height: 15px; }
 .sp-authm-x:hover { color: #fff; background: rgba(255, 255, 255, 0.09); }
-.sp-authm-x:focus-visible { outline: 2px solid rgba(0, 240, 255, 0.5); outline-offset: 2px; }
+.sp-authm-x:focus-visible,
+.sp-auth-stepback:focus-visible { outline: 2px solid rgba(0, 240, 255, 0.5); outline-offset: 2px; }
+
+/* the way out of the reset panel, opposite the cross.
+   the name is sp-auth-stepback and not sp-auth-back: /auth already has a
+   sp-auth-back, the "Back to Sentinelpay" link above the card, and these rules
+   would have picked it up and pinned it into the corner.
+   only the two auth cards are given a position, not every demo card: the arrow
+   needs a corner to measure from, and on /auth there is no dialog around it. */
+.sp-auth-panel, .sp-authm-panel { position: relative; }
+.sp-auth-stepback { right: auto; left: 0.7rem; }
+.sp-auth-stepback svg { width: 17px; height: 17px; }
+.sp-auth-stepback:hover { color: #fff; background: rgba(255, 255, 255, 0.09); }
 
 /* the page behind must not scroll while the dialog is up */
 /* the page behind must not scroll while the dialog is up. taking the scrollbar
@@ -3354,6 +3367,7 @@ html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }
     .sp-authm-h { font-size: 1.35rem; }
     /* the way out sits where a phone puts it, clear of the notch */
     .sp-authm-x { top: 0.65rem; right: 0.65rem; }
+    .sp-auth-stepback { top: 0.65rem; left: 0.65rem; right: auto; }
 }
 
 /* ============ forms, light ============
@@ -3634,8 +3648,8 @@ html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }
 /* the sign-in dialog's own pieces */
 .sp-authm-h { color: #0e2358; }
 .sp-authm-p { color: rgba(14, 35, 88, 0.58); }
-.sp-authm-x { color: rgba(14, 35, 88, 0.45); }
-.sp-authm-x:hover { color: #0e2358; background: rgba(14, 35, 88, 0.06); }
+.sp-authm-x, .sp-auth-stepback { color: rgba(14, 35, 88, 0.45); }
+.sp-authm-x:hover, .sp-auth-stepback:hover { color: #0e2358; background: rgba(14, 35, 88, 0.06); }
 .sp-auth-tabs { background: #f1f4f9; border-color: rgba(14, 35, 88, 0.07); }
 .sp-auth-tab { color: rgba(14, 35, 88, 0.5); }
 .sp-auth-tab:hover { color: #0e2358; }
@@ -4017,6 +4031,7 @@ html.theme-light .lp-demo-select-menu { scrollbar-color: rgba(14, 35, 88, 0.2) #
     /* the close button was 30px, and it is the one control on the dialog that
        has to work first time: a mis-hit lands on the form behind it */
     .sp-authm-x { width: 44px; height: 44px; top: 0.35rem; right: 0.35rem; }
+    .sp-auth-stepback { width: 44px; height: 44px; top: 0.35rem; left: 0.35rem; right: auto; }
     /* and the title gets out from under it. the padding is on both sides so it
        stays centred in what is left, rather than centred in the panel and only
        looking centred until a longer translation runs into the cross. the line

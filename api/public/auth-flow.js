@@ -908,6 +908,20 @@
             form.parentNode.insertBefore(reset, form.nextSibling);
             form.parentNode.insertBefore(sent, reset.nextSibling);
 
+            // the way back, in the corner opposite the cross. it belongs to the
+            // card rather than to either panel: one button that appears when
+            // there is somewhere to go back to, in the place the eye already
+            // checks because the cross taught it to.
+            var backArrow = el('button', 'sp-auth-stepback');
+            backArrow.type = 'button';
+            backArrow.hidden = true;
+            backArrow.setAttribute('aria-label', t('Back to sign in'));
+            backArrow.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
+                'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                '<path d="M15 5l-7 7 7 7"></path></svg>';
+            loginCard.insertBefore(backArrow, loginCard.firstChild);
+            backArrow.addEventListener('click', function () { lStep('login'); });
+
             // what the copy beside the card looked like on the way in, so coming
             // back restores it rather than guessing which of the pair was showing
             var lHeadState = null;
@@ -927,6 +941,7 @@
                         lHeads[k].hidden = name === 'login' ? (lHeadState ? lHeadState[k] : lHeads[k].hidden) : true;
                     }
                     if (name === 'login') lHeadState = null;
+                    backArrow.hidden = name === 'login';
                     loginCard.dataset.authStep = name === 'login' ? '' : name;
                 });
                 var into = name === 'login' ? form : (name === 'reset' ? reset : sent);
@@ -946,6 +961,39 @@
 
             rBack.addEventListener('click', function () { lStep('login'); });
             sBack.addEventListener('click', function () { lStep('login'); });
+
+            // closing the dialog puts the reset away. a half-made sign-up is
+            // worth coming back to, which is why that one is remembered, but a
+            // reset is one field and one press: somebody who shuts the dialog
+            // and presses Log in again means Log in, and the dialog reopening on
+            // a panel they walked away from reads as being stuck.
+            //
+            // reset on the way out rather than on the way in: the dialog picks
+            // its panel before it is shown, so doing this on the way in would
+            // undo a press of Create account.
+            var backdrop = loginCard.closest('.sp-authm-backdrop');
+            if (backdrop && window.MutationObserver) {
+                var wasOpen = !backdrop.hidden;
+                new MutationObserver(function () {
+                    var open = !backdrop.hidden;
+                    if (wasOpen && !open && loginCard.dataset.authStep) {
+                        // no glide: nothing is on screen to move
+                        form.hidden = false;
+                        reset.hidden = true;
+                        sent.hidden = true;
+                        backArrow.hidden = true;
+                        if (lTabs) lTabs.hidden = false;
+                        for (var m = 0; m < lHeads.length; m++) {
+                            lHeads[m].hidden = lHeadState ? lHeadState[m] : false;
+                        }
+                        lHeadState = null;
+                        loginCard.dataset.authStep = '';
+                        rSay('');
+                        rMail.value = '';
+                    }
+                    wasOpen = open;
+                }).observe(backdrop, { attributes: true, attributeFilter: ['hidden'] });
+            }
 
             function rSay(msg) {
                 rErr.textContent = msg || '';
