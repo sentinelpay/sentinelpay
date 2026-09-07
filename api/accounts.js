@@ -112,8 +112,22 @@ CREATE TABLE IF NOT EXISTS reset_tokens (
     sends         integer     NOT NULL DEFAULT 1,
     lang          text
 );
-CREATE INDEX IF NOT EXISTS reset_tokens_email_idx  ON reset_tokens (email_hash);
 CREATE INDEX IF NOT EXISTS reset_tokens_expiry_idx ON reset_tokens (expires_at);
+
+-- One row per address, and that is what makes the cooldown safe. Asking again
+-- replaces the row rather than adding one, so the whole of "have they waited,
+-- have they had too many, here is the new token" is a single insert with an
+-- on-conflict clause: two clicks arriving together cannot both find nothing and
+-- both send. Without this a burst of requests raced the check and posted a
+-- burst of mail.
+--
+-- the delete is the migration for tables written before the index existed. it
+-- keeps the newest row per address and is a no-op once the index is in place.
+DELETE FROM reset_tokens a USING reset_tokens b
+ WHERE a.email_hash = b.email_hash
+   AND (a.created_at < b.created_at OR (a.created_at = b.created_at AND a.ctid < b.ctid));
+CREATE UNIQUE INDEX IF NOT EXISTS reset_tokens_email_uniq ON reset_tokens (email_hash);
+DROP INDEX IF EXISTS reset_tokens_email_idx;
 `;
 
 let ready = null;
@@ -657,38 +671,50 @@ async function startReset(email, lang) {
     const emailHash = db.blindIndex(email);
     if (!emailHash) return { ok: false, reason: 'unavailable' };
 
-    // the ceiling follows the address, not the ip in front of it: otherwise a
-    // handful of proxies is a way of posting somebody a hundred emails
-    const prev = await db.query(
-        `SELECT sends, created_at FROM reset_tokens
-         WHERE email_hash = $1 AND created_at > now() - interval '1 hour'
-         ORDER BY created_at DESC LIMIT 1`,
-        [emailHash]
-    );
-    let sends = 1;
-    if (prev.rowCount) {
-        if (prev.rows[0].sends >= RESET_MAX_SENDS) return { ok: false, reason: 'too-many-sends' };
-        const waited = (Date.now() - new Date(prev.rows[0].created_at).getTime()) / 1000;
-        if (waited < RESET_RESEND_WAIT_S) {
-            return { ok: false, reason: 'slow-down', retryIn: Math.ceil(RESET_RESEND_WAIT_S - waited) };
-        }
-        sends = prev.rows[0].sends + 1;
-    }
-
     const token = crypto.randomBytes(32).toString('base64url');
     try {
-        // the old links go first. asking for a new one is how somebody says the
-        // last one did not arrive, and leaving it alive doubles the keys.
-        await db.query('DELETE FROM reset_tokens WHERE email_hash = $1', [emailHash]);
-        await db.query(
+        // One statement, and it is the whole rule.
+        //
+        // this used to read the last row, decide, and then write. two clicks a
+        // millisecond apart both read "nothing recent" and both wrote, which is
+        // two live links and two emails from one press of a button. the check
+        // and the write have to be the same operation or they are not a limit,
+        // and here they are: the unique index on email_hash makes the second
+        // request conflict with the first, and the WHERE on the update is what
+        // refuses it. postgres serialises the conflicting writers itself.
+        //
+        // the ceiling follows the address, not the ip in front of it: otherwise
+        // a handful of proxies is a way of posting somebody a hundred emails.
+        //
+        // and because the row is replaced rather than added to, the previous
+        // link stops working the moment a new one is issued. asking again is how
+        // somebody says the last one did not arrive; leaving it alive would mean
+        // three presses put three working keys in an inbox.
+        const wrote = await db.query(
             `INSERT INTO reset_tokens (token_hash, email_hash, email_enc, expires_at, sends, lang)
-             VALUES ($1, $2, $3, now() + ($4 || ' minutes')::interval, $5, $6)`,
+             VALUES ($1, $2, $3, now() + ($4 || ' minutes')::interval, 1, $5)
+             ON CONFLICT (email_hash) DO UPDATE SET
+                 token_hash = EXCLUDED.token_hash,
+                 email_enc  = EXCLUDED.email_enc,
+                 created_at = now(),
+                 expires_at = EXCLUDED.expires_at,
+                 lang       = EXCLUDED.lang,
+                 sends      = CASE WHEN reset_tokens.created_at > now() - interval '1 hour'
+                                   THEN reset_tokens.sends + 1 ELSE 1 END
+             WHERE reset_tokens.created_at <= now() - ($6 || ' seconds')::interval
+               AND (reset_tokens.created_at <= now() - interval '1 hour'
+                    OR reset_tokens.sends < $7)
+             RETURNING sends`,
             [
                 hashResetToken(token), emailHash,
                 db.seal('reset-email:' + emailHash, email),
-                String(RESET_TTL_MIN), sends, lang || 'en',
+                String(RESET_TTL_MIN), lang || 'en',
+                String(RESET_RESEND_WAIT_S), RESET_MAX_SENDS,
             ]
         );
+        // no row means the conflict was refused: too soon, or too many this
+        // hour. the caller answers the same either way, so they are one reason.
+        if (!wrote.rowCount) return { ok: false, reason: 'rate' };
     } catch (err) {
         console.error('[accounts] could not start a reset: ' + err.message);
         return { ok: false, reason: 'unavailable' };
@@ -815,7 +841,7 @@ function status() {
 
 module.exports = {
     startSignup, resendSignup, verifySignup, exists, inspect, purge, forget, status,
-    startReset, readReset, finishReset, RESET_TTL_MIN,
+    startReset, readReset, finishReset, RESET_TTL_MIN, RESET_RESEND_WAIT_S,
     hashPassword, verifyPassword,
     signIn, startSession, readSession, endSession,
     CODE_TTL_MIN, CODE_MAX_SENDS, CODE_RESEND_WAIT_S,

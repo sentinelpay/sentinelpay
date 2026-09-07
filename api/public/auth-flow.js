@@ -20,6 +20,7 @@
             ? window.SentinelI18n.lang() : 'en') || 'en';
     }
     var RESEND_WAIT = 60; // matches the server; it is the server's answer that counts
+    var RESET_RESEND_WAIT = 60; // likewise, and the reset endpoint sends its own
 
     // ---- the sign-up that is already under way -------------------------------
     // a code lives for a quarter of an hour, and in that time somebody will close
@@ -914,9 +915,24 @@
             var sMail = el('b');
             sSub.appendChild(sMail);
             sent.appendChild(sSub);
+            // a resend can fail, and the panel it fails on is this one, so this
+            // is where it says so
+            var sErr = el('p', 'sp-auth-verr');
+            sErr.hidden = true;
+            sErr.setAttribute('role', 'alert');
+            sent.appendChild(sErr);
+
             var sFoot = el('div', 'sp-auth-vfoot');
+            // the same pair the sign-up's code panel offers, in the same order:
+            // send another, or go back. somebody who does not see the mail wants
+            // the first of those and should not have to retype the address to
+            // reach it.
+            var sResend = el('button', 'sp-auth-linkbtn', 'Send a new link');
+            sResend.classList.add('sp-auth-resend');
+            sResend.type = 'button';
             var sBack = el('button', 'sp-auth-linkbtn', 'Back to sign in');
             sBack.type = 'button';
+            sFoot.appendChild(sResend);
             sFoot.appendChild(sBack);
             sent.appendChild(sFoot);
 
@@ -956,10 +972,7 @@
                         lHeads[k].hidden = name === 'login' ? (lHeadState ? lHeadState[k] : lHeads[k].hidden) : true;
                     }
                     if (name === 'login') lHeadState = null;
-                    // only the panel that asks for the address. once the mail is
-                    // gone there is nothing to go back and change, and an arrow
-                    // there invites somebody to send a second one.
-                    backArrow.hidden = name !== 'reset';
+                    backArrow.hidden = name === 'login';
                     loginCard.dataset.authStep = name === 'login' ? '' : name;
                 });
                 var into = name === 'login' ? form : (name === 'reset' ? reset : sent);
@@ -979,6 +992,80 @@
 
             rBack.addEventListener('click', function () { lStep('login'); });
             sBack.addEventListener('click', function () { lStep('login'); });
+
+            // ---- sending another one ------------------------------------------
+            // the countdown is manners, not a limit. the limit is in the
+            // database, where asking again is one statement that refuses itself
+            // if the last one was less than a minute ago or there have been too
+            // many this hour; the button being grey is only so that somebody
+            // pressing it does not think the page is broken. editing this file
+            // in a console gets you nothing the server has not already allowed.
+            var sTick = null;
+            var sAddress = '';
+
+            function sSay(msg) {
+                sErr.textContent = msg || '';
+                sErr.hidden = !msg;
+                if (msg) replay(sErr, 'sp-auth-enter');
+            }
+
+            function holdResendLink(seconds) {
+                clearInterval(sTick);
+                var left = seconds;
+                function paint() {
+                    if (left <= 0) {
+                        clearInterval(sTick);
+                        sResend.disabled = false;
+                        sResend.textContent = t('Send a new link');
+                        return;
+                    }
+                    sResend.disabled = true;
+                    // the wait is shown rather than the button simply not
+                    // working: a dead button reads as a bug, a countdown reads
+                    // as a rule
+                    sResend.textContent = t('Send a new link in') + ' ' + left + 's';
+                    left--;
+                }
+                sResend.disabled = true;
+                paint();
+                sTick = setInterval(paint, 1000);
+            }
+
+            sResend.addEventListener('click', function () {
+                if (sResend.disabled || !sAddress) return;
+                // held before the request rather than after it: a double click
+                // must not turn into two presses while the first is in flight
+                holdResendLink(RESET_RESEND_WAIT);
+                rSay('');
+                rts.freshToken().then(function (tok) {
+                    // the same check the first send makes. without it a challenge
+                    // that could not run sends a request the server is bound to
+                    // refuse, and the person watches a countdown for a mail that
+                    // was never going to arrive.
+                    if (rts.on && !tok) {
+                        var noTok = new Error('no_token');
+                        noTok.noToken = true;
+                        throw noTok;
+                    }
+                    var payload = { email: sAddress, lang: lang() };
+                    if (tok) payload['cf-turnstile-response'] = tok;
+                    return post('/v1/auth/forgot', payload);
+                }).then(function (data) {
+                    // the server's number, not ours, if it sent one
+                    if (data && data.resendIn) holdResendLink(data.resendIn);
+                }).catch(function (failed) {
+                    // it answers ok to everything it is willing to answer, so a
+                    // failure here is the network or the challenge. the message
+                    // goes on the panel, but the wait stands: a button that
+                    // frees itself on failure is a button somebody can free by
+                    // going offline.
+                    sSay(failed && failed.noToken
+                        ? t(rts.fault() === 'script-blocked'
+                            ? 'The security check could not load. An ad blocker or network filter may be blocking it.'
+                            : 'The check below did not finish. Please try again in a moment.')
+                        : t('Could not reach us just now. Please try again in a moment.'));
+                }).then(function () { rts.spend(); });
+            });
 
             // closing the dialog puts the reset away. a half-made sign-up is
             // worth coming back to, which is why that one is remembered, but a
@@ -1008,6 +1095,10 @@
                         loginCard.dataset.authStep = '';
                         rSay('');
                         rMail.value = '';
+                        // the countdown belongs to a panel that is no longer up
+                        clearInterval(sTick);
+                        sAddress = '';
+                        sSay('');
                     }
                     wasOpen = open;
                 }).observe(backdrop, { attributes: true, attributeFilter: ['hidden'] });
@@ -1048,8 +1139,11 @@
                     var payload = { email: address, lang: lang() };
                     if (tok) payload['cf-turnstile-response'] = tok;
                     return post('/v1/auth/forgot', payload);
-                }).then(function () {
+                }).then(function (data) {
                     sMail.textContent = address;
+                    sAddress = address;
+                    sSay('');
+                    holdResendLink((data && data.resendIn) || RESET_RESEND_WAIT);
                     lStep('sent');
                 }).catch(function (failed) {
                     if (failed && failed.noToken) {

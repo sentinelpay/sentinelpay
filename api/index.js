@@ -1696,7 +1696,12 @@ app.post('/v1/auth/login', requireCloudflareOrigin, authLoginLimiter, async (req
 app.post('/v1/auth/forgot', requireCloudflareOrigin, authForgotLimiter, async (req, res) => {
     // said once, and said no matter what happened. every early return below
     // uses it, so there is no branch that answers differently.
-    const same = () => res.json({ ok: true });
+    //
+    // resendIn is the policy, not this address's state: it is the same number
+    // every time, for an address that has one waiting and for one that has
+    // never been asked about. it tells the panel how long to hold the button
+    // down and tells a prober nothing.
+    const same = () => res.json({ ok: true, resendIn: accounts.RESET_RESEND_WAIT_S });
     try {
         const b = req.body || {};
         if (typeof b.company_url === 'string' && b.company_url.trim() !== '') return same();
