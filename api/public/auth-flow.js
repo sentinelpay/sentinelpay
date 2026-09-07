@@ -91,6 +91,34 @@
         node.classList.add(cls);
     }
 
+    // the panels are different heights, so the card is given the old height and
+    // then the new one and glides between the two. without it the dialog jumps,
+    // and on /auth the page under it reflows.
+    //
+    // this lives out here because both halves of the dialog move between panels
+    // now: the sign-up goes form -> code -> done, and the sign-in goes form ->
+    // reset -> sent. one implementation so the two feel like the same dialog.
+    function glideOn(card, change) {
+        var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reduced) { change(); return; }
+        var from = card.getBoundingClientRect().height;
+        card.style.height = '';
+        change();
+        var to = card.getBoundingClientRect().height;
+        clearTimeout(card.__spGlideTimer);
+        card.classList.remove('sp-auth-swapping');
+        card.style.height = from + 'px';
+        void card.offsetHeight;
+        card.classList.add('sp-auth-swapping');
+        card.style.height = to + 'px';
+        // the height goes back to the content once it has arrived: a message
+        // appearing later must not be trapped inside a fixed box
+        card.__spGlideTimer = setTimeout(function () {
+            card.classList.remove('sp-auth-swapping');
+            card.style.height = '';
+        }, 320);
+    }
+
     function attach(form) {
         var card = form.closest('.lp-demo-card');
         if (!card || form.__spAuthFlow) return;
@@ -385,30 +413,7 @@
 
         // ---- moving between them ---------------------------------------------
 
-        var glideTimer = null;
-        // the panels are different heights, so the card is given the old height and
-        // then the new one and glides between the two. without it the dialog jumps,
-        // and on /auth the page under it reflows.
-        function glide(change) {
-            var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-            if (reduced) { change(); return; }
-            var from = card.getBoundingClientRect().height;
-            card.style.height = '';
-            change();
-            var to = card.getBoundingClientRect().height;
-            clearTimeout(glideTimer);
-            card.classList.remove('sp-auth-swapping');
-            card.style.height = from + 'px';
-            void card.offsetHeight;
-            card.classList.add('sp-auth-swapping');
-            card.style.height = to + 'px';
-            // the height goes back to the content once it has arrived: a message
-            // appearing later must not be trapped inside a fixed box
-            glideTimer = setTimeout(function () {
-                card.classList.remove('sp-auth-swapping');
-                card.style.height = '';
-            }, 320);
-        }
+        function glide(change) { glideOn(card, change); }
 
         // what the headings looked like on the way in, so coming back restores the
         // create-account copy rather than guessing which of the pair was showing
@@ -816,6 +821,167 @@
         err.hidden = true;
         err.setAttribute('role', 'alert');
         form.insertBefore(err, submitBtn);
+
+        // ---- forgetting the password ------------------------------------------
+        // the same two steps the sign-up takes, and deliberately the same shapes:
+        // a panel that asks for one thing, then the envelope saying where it went.
+        // somebody who has already made an account here has seen this once, and
+        // recognising it is most of what makes a reset feel safe.
+        var loginCard = form.closest('.lp-demo-card');
+        var forgotLink = form.querySelector('.sp-auth-link');
+        if (loginCard && forgotLink) {
+            var lRoot = loginCard.closest('.sp-auth-stage') || loginCard.closest('.sp-authm') || loginCard;
+            var lTabs = loginCard.querySelector('.sp-auth-tabs');
+            var lHeads = lRoot.querySelectorAll('.sp-authm-head, .sp-auth-h, .sp-auth-p');
+
+            var reset = el('form', 'sp-auth-form');
+            reset.classList.add('sp-auth-verify');
+            reset.setAttribute('novalidate', '');
+            reset.hidden = true;
+
+            var rhead = el('div', 'sp-auth-vhead');
+            var rmark = el('div', 'sp-auth-vmark');
+            rmark.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
+                'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                '<rect x="4" y="10.5" width="16" height="10" rx="2.2"></rect>' +
+                '<path d="M8 10.5V7.6a4 4 0 0 1 8 0v2.9"></path></svg>';
+            rhead.appendChild(rmark);
+            rhead.appendChild(el('h3', null, 'Reset your password'));
+            rhead.appendChild(el('p', null, 'Enter the address on the account and we will send you a link to set a new password.'));
+            reset.appendChild(rhead);
+
+            var rField = el('div', 'lp-demo-field');
+            rField.classList.add('lp-demo-field-full');
+            var rLabel = el('label', null, 'Work email');
+            var rMailId = 'sp-reset-mail-' + Math.random().toString(36).slice(2, 8);
+            rLabel.setAttribute('for', rMailId);
+            var rMail = document.createElement('input');
+            rMail.id = rMailId;
+            rMail.type = 'email';
+            rMail.name = 'email';
+            rMail.autocomplete = 'email';
+            rMail.placeholder = t('you@yourcompany.com');
+            rField.appendChild(rLabel);
+            rField.appendChild(rMail);
+            reset.appendChild(rField);
+
+            var rErr = el('p', 'sp-auth-verr');
+            rErr.hidden = true;
+            rErr.setAttribute('role', 'alert');
+            reset.appendChild(rErr);
+
+            var rBtn = el('button', 'lp-demo-submit', 'Send the reset link');
+            rBtn.classList.add('sp-auth-submit');
+            rBtn.type = 'submit';
+            reset.appendChild(rBtn);
+
+            var rFoot = el('div', 'sp-auth-vfoot');
+            var rBack = el('button', 'sp-auth-linkbtn', 'Back to sign in');
+            rBack.type = 'button';
+            rFoot.appendChild(rBack);
+            reset.appendChild(rFoot);
+
+            // the envelope. it never says whether the address has an account:
+            // answering that would turn this box into a way of asking who banks
+            // here, and the person who does have one cannot tell the difference.
+            var sent = el('div', 'sp-auth-done');
+            sent.hidden = true;
+            var sMark = el('div', 'sp-auth-done-mark');
+            sMark.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
+                'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                '<rect x="2.5" y="4.5" width="19" height="15" rx="2.5"></rect>' +
+                '<polyline points="3 6.5 12 13 21 6.5"></polyline></svg>';
+            sent.appendChild(sMark);
+            sent.appendChild(el('h3', null, 'Check your email'));
+            var sSub = el('p');
+            sSub.appendChild(document.createTextNode(t('If that address has an account, a link to set a new password is on its way to')));
+            sSub.appendChild(document.createTextNode(' '));
+            var sMail = el('b');
+            sSub.appendChild(sMail);
+            sent.appendChild(sSub);
+            var sFoot = el('div', 'sp-auth-vfoot');
+            var sBack = el('button', 'sp-auth-linkbtn', 'Back to sign in');
+            sBack.type = 'button';
+            sFoot.appendChild(sBack);
+            sent.appendChild(sFoot);
+
+            form.parentNode.insertBefore(reset, form.nextSibling);
+            form.parentNode.insertBefore(sent, reset.nextSibling);
+
+            // what the copy beside the card looked like on the way in, so coming
+            // back restores it rather than guessing which of the pair was showing
+            var lHeadState = null;
+
+            function lStep(name) {
+                glideOn(loginCard, function () {
+                    if (name !== 'login' && !lHeadState) {
+                        lHeadState = Array.prototype.map.call(lHeads, function (h) { return h.hidden; });
+                    }
+                    form.hidden = name !== 'login';
+                    reset.hidden = name !== 'reset';
+                    sent.hidden = name !== 'sent';
+                    // there is no second tab to reach from inside a reset, the
+                    // same way there is none in the middle of a sign-up
+                    if (lTabs) lTabs.hidden = name !== 'login';
+                    for (var k = 0; k < lHeads.length; k++) {
+                        lHeads[k].hidden = name === 'login' ? (lHeadState ? lHeadState[k] : lHeads[k].hidden) : true;
+                    }
+                    if (name === 'login') lHeadState = null;
+                    loginCard.dataset.authStep = name === 'login' ? '' : name;
+                });
+                var into = name === 'login' ? form : (name === 'reset' ? reset : sent);
+                into.style.setProperty('--sp-auth-dir', name === 'login' ? '-14px' : '14px');
+                replay(into, 'sp-auth-enter');
+            }
+
+            forgotLink.addEventListener('click', function (e) {
+                e.preventDefault();
+                // carry over whatever they had already typed: retyping an address
+                // to be told an email is coming is a small insult
+                var typed = form.querySelector('input[type="email"]');
+                if (typed && typed.value.trim()) rMail.value = typed.value.trim();
+                lStep('reset');
+                setTimeout(function () { rMail.focus(); }, 60);
+            });
+
+            rBack.addEventListener('click', function () { lStep('login'); });
+            sBack.addEventListener('click', function () { lStep('login'); });
+
+            function rSay(msg) {
+                rErr.textContent = msg || '';
+                rErr.hidden = !msg;
+                if (msg) replay(rErr, 'sp-auth-enter');
+            }
+
+            var rBusy = false;
+            reset.addEventListener('submit', function (e) {
+                e.preventDefault();
+                if (rBusy) return;
+                var address = rMail.value.trim();
+                if (!address) {
+                    rSay(t('Please fill in every field.'));
+                    rMail.focus();
+                    return;
+                }
+
+                rSay('');
+                rBusy = true;
+                rBtn.disabled = true;
+                var rLabel = rBtn.textContent;
+                rBtn.textContent = t('Sending…');
+
+                post('/v1/auth/forgot', { email: address }).then(function () {
+                    sMail.textContent = address;
+                    lStep('sent');
+                }).catch(function (failed) {
+                    rSay(reason(failed));
+                }).then(function () {
+                    rBusy = false;
+                    rBtn.disabled = false;
+                    rBtn.textContent = rLabel;
+                });
+            });
+        }
 
         // ---- the form starts empty --------------------------------------------
         // the browser's password manager fills these in the moment the page
