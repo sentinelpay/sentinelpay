@@ -204,7 +204,11 @@ function divider(pad) {
 
 function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, code, meta, lang }) {
     const f = FOOTER[lang] || FOOTER.en;
-    return '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+    // the language the message is actually written in. this said "en" on every
+    // message whatever the copy was, so gmail offered to translate croatian into
+    // croatian, and a screen reader read it with english pronunciation. the
+    // parameter was already here and simply was not used.
+    return '<!doctype html><html lang="' + esc(lang || 'en') + '"><head><meta charset="utf-8">' +
         '<meta name="viewport" content="width=device-width,initial-scale=1">' +
         '<meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light">' +
         // apple mail and a few others honour this; everyone else falls through the
