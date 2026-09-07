@@ -119,69 +119,30 @@
         }, 320);
     }
 
-    function attach(form) {
-        var card = form.closest('.lp-demo-card');
-        if (!card || form.__spAuthFlow) return;
-        form.__spAuthFlow = true;
-
-        var root = card.closest('.sp-auth-stage') || card.closest('.sp-authm') || card;
-        var tabs = card.querySelector('.sp-auth-tabs');
-        var loginForm = card.querySelector('form[data-auth="login"]');
-        // the copy beside or above the card belongs to whichever panel is up, so
-        // it steps out of the way while the code is being entered
-        var heads = root.querySelectorAll('.sp-authm-head, .sp-auth-h, .sp-auth-p');
-        var submitBtn = form.querySelector('button[type="submit"]');
-        var emailInput = form.querySelector('input[type="email"]');
-
-        // ---- the terms tick ---------------------------------------------------
-        // an unticked box is not an error worth a popup in the corner: the thing
-        // that needs attention is right there in the form, so the box says so
-        // itself and the message sits under it.
-        var consentWrap = form.querySelector('.lp-demo-consent');
-        var consentNote = null;
-        if (consentWrap) {
-            consentNote = el('p', 'sp-auth-consent-note');
-            consentNote.hidden = true;
-            consentWrap.parentNode.insertBefore(consentNote, consentWrap.nextSibling);
-            var consentBox = consentWrap.querySelector('input[type="checkbox"]');
-            if (consentBox) {
-                consentBox.addEventListener('change', function () {
-                    if (consentBox.checked) markConsent(true);
-                });
-            }
-        }
-
-        function markConsent(ok) {
-            if (!consentWrap) return;
-            consentWrap.classList.toggle('lp-demo-consent-err', !ok);
-            if (!consentNote) return;
-            if (ok) { consentNote.hidden = true; return; }
-            consentNote.textContent = t('Please accept the terms of service to continue.');
-            consentNote.hidden = false;
-            replay(consentNote, 'is-shown');
-        }
-
-        // ---- the bot challenge ------------------------------------------------
-        // the register form can make us send mail to an address a stranger chose,
-        // which is exactly what turnstile is for. it is skipped when no site key
-        // is set, so the form still works before the keys exist.
-        //
-        // two things this has to get right, and the first version got neither:
-        //
-        //   the widget is not rendered until the form is actually submitted. it
-        //   is a check on the send, not a field to fill in, so it has no business
-        //   sitting in the form while somebody types their name: it only appears
-        //   once "Create account" is pressed, and in the ordinary case it passes
-        //   on its own and is gone again before it is read. rendering it earlier
-        //   also risked running it inside a display:none dialog, where nobody can
-        //   see or finish a challenge that asks for a click.
-        //
-        //   the token is not reused. cloudflare gives it a few minutes and then
-        //   refuses it, so a page left open while somebody reads the pricing
-        //   arrives at the form with a token the server will not accept: the
-        //   answer is "verification failed" for a check the visitor passed. the
-        //   token's age is checked at submit, and a stale one is replaced before
-        //   anything is sent.
+    // ---- the bot challenge, once, for every form that sends mail -------------
+    // both forms here can make us post a message to an address a stranger typed:
+    // the sign-up, and the reset link. that is the same problem twice, so it is
+    // the same widget twice rather than two of them drifting apart. each form
+    // gets its own instance: they are never on screen together, and a token is
+    // spent by the request that carries it. it is skipped when no site key is
+    // set, so the forms still work before the keys exist.
+    //
+    // two things this has to get right, and the first version got neither:
+    //
+    //   the widget is not rendered until the form is actually submitted. it is a
+    //   check on the send, not a field to fill in, so it has no business sitting
+    //   in the form while somebody types their name: it appears once the button
+    //   is pressed, and in the ordinary case it passes on its own and is gone
+    //   again before it is read. rendering it earlier also risked running it
+    //   inside a display:none dialog, where nobody can see or finish a challenge
+    //   that asks for a click.
+    //
+    //   the token is not reused. cloudflare gives it a few minutes and then
+    //   refuses it, so a page left open while somebody reads the pricing arrives
+    //   at the form with a token the server will not accept: the answer is
+    //   "verification failed" for a check the visitor passed. the token's age is
+    //   checked at submit, and a stale one is replaced before anything is sent.
+    function makeTurnstile(form, beforeEl) {
         var turnstileToken = '';
         var turnstileAt = 0;
         var turnstileId = null;
@@ -274,7 +235,7 @@
             // it keeps no room in the layout until it has something to show, so
             // the form does not carry a 65px hole through the whole visit
             holder.hidden = true;
-            form.insertBefore(holder, submitBtn);
+            form.insertBefore(holder, beforeEl);
         }
 
         // hands back a token the server will still accept, replacing a stale one
@@ -311,6 +272,65 @@
                 }, 20000);
             });
         }
+
+
+            // the token is spent whether or not the request worked, so the next
+            // press starts by asking for a new one, and the widget goes back out of
+            // the layout until something asks again.
+            function spend() {
+                tokenArrived('');
+                if (turnstileOn && turnstileId !== null) {
+                    try { window.turnstile.reset(turnstileId); } catch (err) { /* widget already gone */ }
+                }
+                if (holder) holder.hidden = true;
+            }
+
+            return { on: turnstileOn, freshToken: freshToken, spend: spend, fault: function () { return fault; } };
+        }
+
+    function attach(form) {
+        var card = form.closest('.lp-demo-card');
+        if (!card || form.__spAuthFlow) return;
+        form.__spAuthFlow = true;
+
+        var root = card.closest('.sp-auth-stage') || card.closest('.sp-authm') || card;
+        var tabs = card.querySelector('.sp-auth-tabs');
+        var loginForm = card.querySelector('form[data-auth="login"]');
+        // the copy beside or above the card belongs to whichever panel is up, so
+        // it steps out of the way while the code is being entered
+        var heads = root.querySelectorAll('.sp-authm-head, .sp-auth-h, .sp-auth-p');
+        var submitBtn = form.querySelector('button[type="submit"]');
+        var emailInput = form.querySelector('input[type="email"]');
+
+        // ---- the terms tick ---------------------------------------------------
+        // an unticked box is not an error worth a popup in the corner: the thing
+        // that needs attention is right there in the form, so the box says so
+        // itself and the message sits under it.
+        var consentWrap = form.querySelector('.lp-demo-consent');
+        var consentNote = null;
+        if (consentWrap) {
+            consentNote = el('p', 'sp-auth-consent-note');
+            consentNote.hidden = true;
+            consentWrap.parentNode.insertBefore(consentNote, consentWrap.nextSibling);
+            var consentBox = consentWrap.querySelector('input[type="checkbox"]');
+            if (consentBox) {
+                consentBox.addEventListener('change', function () {
+                    if (consentBox.checked) markConsent(true);
+                });
+            }
+        }
+
+        function markConsent(ok) {
+            if (!consentWrap) return;
+            consentWrap.classList.toggle('lp-demo-consent-err', !ok);
+            if (!consentNote) return;
+            if (ok) { consentNote.hidden = true; return; }
+            consentNote.textContent = t('Please accept the terms of service to continue.');
+            consentNote.hidden = false;
+            replay(consentNote, 'is-shown');
+        }
+
+        var ts = makeTurnstile(form, submitBtn);
 
         // ---- what goes wrong, said where it went wrong -----------------------
         // a message about this form belongs on this form. a toast in the corner
@@ -619,8 +639,8 @@
 
             // the check comes first, and it may have to run again: a page that has
             // been open a while is holding a token the server will refuse
-            freshToken().then(function (tok) {
-                if (turnstileOn && !tok) {
+            ts.freshToken().then(function (tok) {
+                if (ts.on && !tok) {
                     var err = new Error('no_token');
                     err.noToken = true;
                     throw err;
@@ -643,7 +663,7 @@
                     // need different things from the person reading. a blocked
                     // script is theirs to fix and telling them to try again
                     // wastes their time; anything else is worth one more go.
-                    formError(t(fault === 'script-blocked'
+                    formError(t(ts.fault() === 'script-blocked'
                         ? 'The security check could not load. An ad blocker or network filter may be blocking it.'
                         : 'The check below did not finish. Please try again in a moment.'));
                     return;
@@ -658,14 +678,7 @@
                 busy = false;
                 submitBtn.disabled = false;
                 submitBtn.textContent = label;
-                // the token is spent whether or not it worked, so the next attempt
-                // starts by asking for a new one
-                tokenArrived('');
-                if (turnstileOn && turnstileId !== null) {
-                    try { window.turnstile.reset(turnstileId); } catch (resetErr) { /* widget already gone */ }
-                }
-                // back out of the way until the next press asks for it again
-                if (holder) holder.hidden = true;
+                ts.spend();
             });
         });
 
@@ -875,6 +888,8 @@
             rBtn.type = 'submit';
             reset.appendChild(rBtn);
 
+            var rts = makeTurnstile(reset, rBtn);
+
             var rFoot = el('div', 'sp-auth-vfoot');
             var rBack = el('button', 'sp-auth-linkbtn', 'Back to sign in');
             rBack.type = 'button';
@@ -1021,15 +1036,34 @@
                 var rLabel = rBtn.textContent;
                 rBtn.textContent = t('Sending…');
 
-                post('/v1/auth/forgot', { email: address }).then(function () {
+                // this button posts mail to an address a stranger typed, which is
+                // the same thing the sign-up button does, so it carries the same
+                // check
+                rts.freshToken().then(function (tok) {
+                    if (rts.on && !tok) {
+                        var noTok = new Error('no_token');
+                        noTok.noToken = true;
+                        throw noTok;
+                    }
+                    var payload = { email: address, lang: lang() };
+                    if (tok) payload['cf-turnstile-response'] = tok;
+                    return post('/v1/auth/forgot', payload);
+                }).then(function () {
                     sMail.textContent = address;
                     lStep('sent');
                 }).catch(function (failed) {
+                    if (failed && failed.noToken) {
+                        rSay(t(rts.fault() === 'script-blocked'
+                            ? 'The security check could not load. An ad blocker or network filter may be blocking it.'
+                            : 'The check below did not finish. Please try again in a moment.'));
+                        return;
+                    }
                     rSay(reason(failed));
                 }).then(function () {
                     rBusy = false;
                     rBtn.disabled = false;
                     rBtn.textContent = rLabel;
+                    rts.spend();
                 });
             });
         }

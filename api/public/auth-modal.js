@@ -48,7 +48,7 @@
                     '</div>' +
                     '<div class="sp-auth-row">' +
                         '<label class="sp-auth-remember"><input type="checkbox" name="remember"><span>Keep me signed in</span></label>' +
-                        '<a class="sp-auth-link" href="/start-free-trial">Forgot your password?</a>' +
+                        '<a class="sp-auth-link" href="/auth">Forgot your password?</a>' +
                     '</div>' +
                     '<button type="submit" class="lp-demo-submit sp-auth-submit">Log in</button>' +
                 '</form>' +

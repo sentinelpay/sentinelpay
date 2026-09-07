@@ -1853,6 +1853,13 @@ html.theme-light .lp-demo-card .lp-cta-label {
     to   { opacity: 1; transform: translateY(0); }
 }
 .lp-demo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem 1.1rem; align-items: start; }
+/* these carry a display of their own, and an author's display beats the
+   browser's [hidden] { display: none }. every panel in the auth card is shown
+   and hidden with the hidden attribute, so without these the name fields and
+   the terms tick stayed on screen for somebody who already has an account. */
+.lp-demo-grid[hidden],
+.lp-demo-field[hidden],
+.lp-demo-consent[hidden] { display: none; }
 .lp-demo-field { display: flex; flex-direction: column; gap: 0.45rem; position: relative; }
 .lp-demo-field-full { grid-column: 1 / -1; }
 .lp-demo-field > label {
@@ -3306,6 +3313,18 @@ html[data-mail-down] a[data-mail-subject] {
    its hidden attribute was set. everything else here toggles with `hidden`,
    so the arrow does too, and this is what makes that work. */
 .sp-auth-stepback[hidden] { display: none; }
+
+/* whose reset this is, on the page the link opens. it is above the fields
+   rather than in the heading: the address is the one thing on that page worth
+   reading twice, because a link opened from the wrong inbox is the mistake it
+   catches. */
+.sp-auth-for {
+    margin: 0 0 1.15rem;
+    font-size: 0.86rem;
+    line-height: 1.5;
+    color: rgba(14, 35, 88, 0.55);
+    word-break: break-word;
+}
 .sp-auth-stepback svg { width: 17px; height: 17px; }
 .sp-auth-stepback:hover { color: #fff; background: rgba(255, 255, 255, 0.09); }
 

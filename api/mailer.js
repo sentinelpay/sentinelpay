@@ -546,6 +546,62 @@ function signupCodeMessage({ to, code, lang, minutes }) {
 }
 async function sendSignupCode(opts) { return send(signupCodeMessage(opts)); }
 
+// The forgotten password. This one goes to any address that asks, whether or
+// not there is an account behind it, because the panel answers the same either
+// way and this endpoint must not become a way of asking who has an account.
+//
+// So the copy cannot promise an account either. It says what the link does, not
+// whose it is, and the footnote is written for the person who did not ask: no
+// account of theirs is involved, and ignoring the mail leaves nothing changed.
+const RESET_COPY = {
+    en: {
+        subject: 'Reset your Sentinelpay password',
+        eyebrow: 'Password reset',
+        title: 'Set a new password',
+        intro: 'Somebody asked to set a new password for this address. Use the button below and choose one.',
+        label: 'Set a new password',
+        meta: (m) => ['Expires in ' + m + ' minutes', 'Works once'],
+        footnote: 'If this was not you, ignore this email. Nothing has changed, and the link stops working on its own.',
+        warning: 'We will never ask you for your password, by email, chat or phone.',
+    },
+    hr: {
+        subject: 'Postavite novu Sentinelpay lozinku',
+        eyebrow: 'Nova lozinka',
+        title: 'Postavite novu lozinku',
+        intro: 'Netko je zatražio novu lozinku za ovu adresu. Otvorite gumb ispod i izaberite je.',
+        label: 'Postavite novu lozinku',
+        meta: (m) => ['Istječe za ' + m + ' minuta', 'Vrijedi jednom'],
+        footnote: 'Ako to niste bili vi, samo zanemarite ovaj mail. Ništa nije promijenjeno, a poveznica prestaje vrijediti sama od sebe.',
+        warning: 'Nikada vas nećemo tražiti vašu lozinku, ni mailom, ni chatom, ni telefonom.',
+    },
+    de: {
+        subject: 'Setzen Sie Ihr Sentinelpay-Passwort zurück',
+        eyebrow: 'Passwort zurücksetzen',
+        title: 'Neues Passwort setzen',
+        intro: 'Jemand hat für diese Adresse ein neues Passwort angefordert. Öffnen Sie die Schaltfläche unten und wählen Sie eines.',
+        label: 'Neues Passwort setzen',
+        meta: (m) => ['Läuft in ' + m + ' Minuten ab', 'Gilt einmal'],
+        footnote: 'Wenn Sie das nicht waren, ignorieren Sie diese E-Mail. Es hat sich nichts geändert, und der Link verfällt von selbst.',
+        warning: 'Wir fragen Sie nie nach Ihrem Passwort, weder per E-Mail noch im Chat oder am Telefon.',
+    },
+};
+
+function resetLinkMessage({ to, link, lang, minutes }) {
+    const copy = RESET_COPY[lang] || RESET_COPY.en;
+    return {
+        to: to,
+        lang: lang,
+        subject: copy.subject,
+        eyebrow: copy.eyebrow,
+        title: copy.title,
+        intro: copy.intro,
+        cta: { href: link, label: copy.label },
+        meta: copy.meta(minutes),
+        footnote: copy.footnote + ' ' + copy.warning,
+    };
+}
+async function sendResetLink(opts) { return send(resetLinkMessage(opts)); }
+
 // There was a message here for "this address already has an account". It went
 // out instead of a code, so that the form could answer identically either way
 // and give nothing away. The form now says so itself, which means the person
@@ -565,6 +621,10 @@ async function sendSignupCode(opts) { return send(signupCodeMessage(opts)); }
 const PREVIEWS = {
     'signup-code': (lang) => signupCodeMessage({ to: 'ana@primjer.hr', code: '481902', lang, minutes: 15 }),
     'trial-welcome': (lang) => trialWelcomeMessage({ to: 'ana@primjer.hr', lang }),
+    'reset-link': (lang) => resetLinkMessage({
+        to: 'ana@primjer.hr', lang, minutes: 60,
+        link: SITE + '/reset-password?token=example-token-not-a-real-one',
+    }),
     // the two that go to us rather than to a customer. these are written where
     // they are sent, so the sample here mirrors them rather than sharing code:
     // if the endpoint changes and this does not, the preview is stale, and the
@@ -602,6 +662,6 @@ function render(name, lang) {
 }
 
 module.exports = {
-    send, compose, sendTrialWelcome, sendSignupCode,
+    send, compose, sendTrialWelcome, sendSignupCode, sendResetLink,
     render, previewNames, isConfigured, domainStatus, MAIL_FROM, MAIL_TO,
 };

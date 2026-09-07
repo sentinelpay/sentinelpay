@@ -35,6 +35,12 @@ const CODE_MAX_ATTEMPTS = 5;
 const CODE_MAX_SENDS = 5;          // per pending sign-up, counting the first one
 const CODE_RESEND_WAIT_S = 60;     // between one send and the next
 const PENDING_MAX_AGE_H = 24;      // an abandoned sign-up is swept after this
+// A reset link is a key to an account, sitting in an inbox. An hour is long
+// enough to go and find the mail on a phone, and short enough that a message
+// left unread for a week is not still a way in.
+const RESET_TTL_MIN = Math.min(Math.max(Number(process.env.RESET_TTL_MIN || 60), 5), 240);
+const RESET_MAX_SENDS = 3;         // per address per hour
+const RESET_RESEND_WAIT_S = 60;    // between one link and the next
 // An account nobody has signed into in two years is not an account, it is a row
 // with somebody's name in it. Storage limitation applies to us as much as to the
 // leads: the data goes when the reason for holding it does.
@@ -96,6 +102,18 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 CREATE INDEX IF NOT EXISTS sessions_user_idx ON sessions (user_id);
 CREATE INDEX IF NOT EXISTS sessions_expiry_idx ON sessions (expires_at);
+
+CREATE TABLE IF NOT EXISTS reset_tokens (
+    token_hash    text        PRIMARY KEY,
+    email_hash    text        NOT NULL,
+    email_enc     text        NOT NULL,
+    created_at    timestamptz NOT NULL DEFAULT now(),
+    expires_at    timestamptz NOT NULL,
+    sends         integer     NOT NULL DEFAULT 1,
+    lang          text
+);
+CREATE INDEX IF NOT EXISTS reset_tokens_email_idx  ON reset_tokens (email_hash);
+CREATE INDEX IF NOT EXISTS reset_tokens_expiry_idx ON reset_tokens (expires_at);
 `;
 
 let ready = null;
@@ -526,6 +544,8 @@ async function purge() {
         );
         swept = res.rowCount;
         if (swept) console.log('[accounts] swept ' + swept + ' unfinished sign-ups');
+        const links = await db.query("DELETE FROM reset_tokens WHERE expires_at < now() - interval '1 hour'");
+        if (links.rowCount) console.log('[accounts] swept ' + links.rowCount + ' expired reset links');
     } catch (err) {
         console.error('[accounts] sweep failed: ' + err.message);
     }
@@ -602,6 +622,171 @@ async function inspect(email) {
     };
 }
 
+// ---------------------------------------------------------------------------
+// forgotten passwords
+// ---------------------------------------------------------------------------
+//
+// The link carries a 32 byte random token. What is stored is a keyed hash of
+// it, the same way sessions are, so a copy of this table is not a set of keys.
+//
+// Three rules make this safe to hand to a stranger:
+//
+//   - it works once. finishing deletes the row inside the transaction that
+//     changes the password, so two clicks on the same link cannot both win, and
+//     a link forwarded or left in an inbox is dead the moment it is used
+//   - asking again kills the previous link. only the newest one works, so a
+//     link read over somebody's shoulder yesterday is already gone
+//   - it is issued for any address, whether or not there is an account behind
+//     it. the panel says the same sentence either way, so this endpoint cannot
+//     be used to ask who has an account here
+//
+// An address with no account gets a link too, and finishing it makes the
+// account. That is not a hole: the person had to read the mail, which is the
+// same proof the six digit code asks for. It is a different door to the same
+// check. What it must not skip is the name and the terms, so those are asked
+// for on the page, and an account made this way carries the same row as one
+// made through the form.
+function hashResetToken(token) {
+    return crypto.createHmac('sha256', db.indexKey() || Buffer.alloc(32))
+        .update('reset-token:' + token, 'utf8')
+        .digest('hex');
+}
+
+async function startReset(email, lang) {
+    if (!(await init())) return { ok: false, reason: 'unavailable' };
+    const emailHash = db.blindIndex(email);
+    if (!emailHash) return { ok: false, reason: 'unavailable' };
+
+    // the ceiling follows the address, not the ip in front of it: otherwise a
+    // handful of proxies is a way of posting somebody a hundred emails
+    const prev = await db.query(
+        `SELECT sends, created_at FROM reset_tokens
+         WHERE email_hash = $1 AND created_at > now() - interval '1 hour'
+         ORDER BY created_at DESC LIMIT 1`,
+        [emailHash]
+    );
+    let sends = 1;
+    if (prev.rowCount) {
+        if (prev.rows[0].sends >= RESET_MAX_SENDS) return { ok: false, reason: 'too-many-sends' };
+        const waited = (Date.now() - new Date(prev.rows[0].created_at).getTime()) / 1000;
+        if (waited < RESET_RESEND_WAIT_S) {
+            return { ok: false, reason: 'slow-down', retryIn: Math.ceil(RESET_RESEND_WAIT_S - waited) };
+        }
+        sends = prev.rows[0].sends + 1;
+    }
+
+    const token = crypto.randomBytes(32).toString('base64url');
+    try {
+        // the old links go first. asking for a new one is how somebody says the
+        // last one did not arrive, and leaving it alive doubles the keys.
+        await db.query('DELETE FROM reset_tokens WHERE email_hash = $1', [emailHash]);
+        await db.query(
+            `INSERT INTO reset_tokens (token_hash, email_hash, email_enc, expires_at, sends, lang)
+             VALUES ($1, $2, $3, now() + ($4 || ' minutes')::interval, $5, $6)`,
+            [
+                hashResetToken(token), emailHash,
+                db.seal('reset-email:' + emailHash, email),
+                String(RESET_TTL_MIN), sends, lang || 'en',
+            ]
+        );
+    } catch (err) {
+        console.error('[accounts] could not start a reset: ' + err.message);
+        return { ok: false, reason: 'unavailable' };
+    }
+    return { ok: true, token, expiresInMin: RESET_TTL_MIN };
+}
+
+// What is behind a token, without spending it. Every kind of no answers the
+// same way: a caller cannot tell an expired link from one that was never real.
+async function readReset(token) {
+    if (!token || typeof token !== 'string' || token.length > 200) return null;
+    if (!(await init())) return null;
+    try {
+        const res = await db.query(
+            'SELECT email_hash, email_enc, lang FROM reset_tokens WHERE token_hash = $1 AND expires_at > now()',
+            [hashResetToken(token)]
+        );
+        if (!res.rowCount) return null;
+        const row = res.rows[0];
+        const user = await db.query('SELECT 1 FROM users WHERE email_hash = $1', [row.email_hash]);
+        return {
+            email: db.open('reset-email:' + row.email_hash, row.email_enc),
+            hasAccount: user.rowCount > 0,
+            lang: row.lang || 'en',
+        };
+    } catch (err) {
+        console.error('[accounts] could not read a reset token: ' + err.message);
+        return null;
+    }
+}
+
+// Spend the token and set the password. `name` and `flags` are only read when
+// there is no account yet; for an existing one the row keeps the name it has.
+async function finishReset(token, password, { name, flags } = {}) {
+    if (!token || typeof token !== 'string' || token.length > 200) return { ok: false, reason: 'bad-token' };
+    if (!(await init())) return { ok: false, reason: 'unavailable' };
+
+    const tokenHash = hashResetToken(token);
+    const passwordHash = await hashPassword(password);
+
+    const client = await db.connect();
+    let userId = null;
+    let made = false;
+    try {
+        await client.query('BEGIN');
+        // spent first, and inside the transaction: two clicks arriving together
+        // must not both get through, and the loser must change nothing
+        const spent = await client.query(
+            'DELETE FROM reset_tokens WHERE token_hash = $1 AND expires_at > now() RETURNING email_hash, email_enc, lang',
+            [tokenHash]
+        );
+        if (!spent.rowCount) { await client.query('ROLLBACK'); return { ok: false, reason: 'bad-token' }; }
+        const row = spent.rows[0];
+
+        const found = await client.query('SELECT id FROM users WHERE email_hash = $1 FOR UPDATE', [row.email_hash]);
+        if (found.rowCount) {
+            userId = found.rows[0].id;
+            await client.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, userId]);
+        } else {
+            if (!name) { await client.query('ROLLBACK'); return { ok: false, reason: 'name-required' }; }
+            const insert = await client.query(
+                `INSERT INTO users (email_hash, email_enc, name_enc, password_hash, lang, flags, verified_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, now()) RETURNING id`,
+                [
+                    row.email_hash, row.email_enc,
+                    db.seal('signup-name:' + row.email_hash, name),
+                    passwordHash, row.lang || 'en', (flags || []).join(',').slice(0, 200),
+                ]
+            );
+            userId = insert.rows[0].id;
+            made = true;
+        }
+
+        // every other session goes. if somebody else was already signed in as
+        // them, this is the press that puts them out, and a reset that leaves
+        // the intruder holding a live cookie has not fixed anything.
+        await client.query('DELETE FROM sessions WHERE user_id = $1', [userId]);
+        // and the half-finished sign-up, if one was sitting there: the account
+        // exists now, and a code for it would create a second one
+        await client.query('DELETE FROM signup_codes WHERE email_hash = $1', [row.email_hash]);
+        await client.query('COMMIT');
+    } catch (err) {
+        try { await client.query('ROLLBACK'); } catch (rbErr) { /* connection already gone */ }
+        console.error('[accounts] could not finish a reset: ' + err.message);
+        return { ok: false, reason: 'unavailable' };
+    } finally {
+        client.release();
+    }
+
+    // signed in on the spot, the same as finishing a sign-up: they have just
+    // proved they can read the mail and chosen the password themselves
+    const session = await startSession(userId);
+    db.query('UPDATE users SET last_login_at = now() WHERE id = $1', [userId])
+        .catch((err) => console.error('[accounts] could not record the sign-in: ' + err.message));
+
+    return { ok: true, created: made, session };
+}
+
 // Erasure: an account and anything half-made under the same address.
 async function forget(email) {
     if (!(await init())) return 0;
@@ -609,7 +794,10 @@ async function forget(email) {
     if (!hash) return 0;
     const a = await db.query('DELETE FROM users WHERE email_hash = $1', [hash]);
     const b = await db.query('DELETE FROM signup_codes WHERE email_hash = $1', [hash]);
-    return a.rowCount + b.rowCount;
+    // a live reset link outlives the account it was for, and would make a new
+    // one under the address somebody just asked us to forget
+    const c = await db.query('DELETE FROM reset_tokens WHERE email_hash = $1', [hash]);
+    return a.rowCount + b.rowCount + c.rowCount;
 }
 
 function status() {
@@ -627,6 +815,7 @@ function status() {
 
 module.exports = {
     startSignup, resendSignup, verifySignup, exists, inspect, purge, forget, status,
+    startReset, readReset, finishReset, RESET_TTL_MIN,
     hashPassword, verifyPassword,
     signIn, startSession, readSession, endSession,
     CODE_TTL_MIN, CODE_MAX_SENDS, CODE_RESEND_WAIT_S,

@@ -6,23 +6,15 @@
     <!-- ios turns things like "1-10" and "51-200" into phone links, which made
          the company-size options open the call sheet instead of selecting -->
     <meta name="format-detection" content="telephone=no">
+    <title>Sentinelpay | Link expired</title>
+    <script>/* tab title before first paint; for articles this is the h1 translation */(function(){var T={"hr": "Sentinelpay | Poveznica je istekla", "de": "Sentinelpay | Link abgelaufen"},m=document.cookie.match(/(?:^|; )sp-lang=([^;]*)/),l=m?decodeURIComponent(m[1]):null;if(!l){try{l=localStorage.getItem("sp-lang")}catch(e){}}if(l!=="hr"&&l!=="de"&&l!=="en")l=document.documentElement.getAttribute("data-geo-lang");if(l!=="hr"&&l!=="de")return;document.documentElement.lang=l;if(!T)return;window.__SP_TITLE_SRC=document.title.replace(/\s+/g," ").trim();document.title=T[l];})();</script>
+        <meta name="description" content="This password link has expired or has already been used. Ask for a new one.">
     <meta name="robots" content="noindex, nofollow">
-    <title>Sentinelpay | Blog</title>
-    <meta name="description" content="Analysis, guides and updates on crypto risk and compliance from the Sentinelpay team: what regulators are changing, how laundering actually moves, and what small teams can do about it.">
-    <link rel="canonical" href="https://blog.sentinelpay.org/">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://blog.sentinelpay.org/">
-    <meta property="og:title" content="Blog">
-    <meta property="og:description" content="Analysis, guides and updates on crypto risk and compliance from the Sentinelpay team: what regulators are changing, how laundering actually moves, and what small teams can do about it.">
-    <meta property="og:image" content="https://blog.sentinelpay.org/logo.png">
-    <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="https://blog.sentinelpay.org/">
-    <meta property="twitter:title" content="Blog">
-    <meta property="twitter:description" content="Analysis, guides and updates on crypto risk and compliance from the Sentinelpay team: what regulators are changing, how laundering actually moves, and what small teams can do about it.">
-    <meta property="twitter:image" content="https://blog.sentinelpay.org/logo.png">
-    <script>/* tab title before first paint; for articles this is the h1 translation */(function(){var T={"hr": "Sentinelpay | Blog", "de": "Sentinelpay | Blog"},m=document.cookie.match(/(?:^|; )sp-lang=([^;]*)/),l=m?decodeURIComponent(m[1]):null;if(!l){try{l=localStorage.getItem("sp-lang")}catch(e){}}if(l!=="hr"&&l!=="de"&&l!=="en")l=document.documentElement.getAttribute("data-geo-lang");if(l!=="hr"&&l!=="de")return;document.documentElement.lang=l;if(!T)return;window.__SP_TITLE_SRC=document.title.replace(/\s+/g," ").trim();document.title=T[l];})();</script>
     <script>document.documentElement.classList.add('theme-light');</script>
     <script>if(history.scrollRestoration)history.scrollRestoration='manual';window.scrollTo(0,0);</script>
+    <script>window.intercomSettings={api_base:'https://api-iam.intercom.io',app_id:'obn3omwl',hide_default_launcher:true,language_override:'en'};</script>
+    <script>(function(){var w=window;var ic=w.Intercom;if(typeof ic==="function"){ic('reattach_activator');ic('update',w.intercomSettings);}else{var d=document;var i=function(){i.c(arguments);};i.q=[];i.c=function(a){i.q.push(a);};w.Intercom=i;var l=function(){var s=d.createElement('script');s.type='text/javascript';s.async=true;s.src='https://widget.intercom.io/widget/obn3omwl';var x=d.getElementsByTagName('script')[0];x.parentNode.insertBefore(s,x);};if(document.readyState==='complete'){l();}else if(w.attachEvent){w.attachEvent('onload',l);}else{w.addEventListener('load',l,false);}}})()</script>
+    <meta name="robots" content="noindex, nofollow">
     <link rel="icon" type="image/svg+xml" href="/logo.svg">
     <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/fonts/jakarta-latin.woff2" as="font" type="font/woff2" crossorigin>
@@ -31,7 +23,7 @@
     <link rel="stylesheet" href="/landing.145.css">
     <link rel="stylesheet" href="/corp.256.css">
     <style>
-        /* page loader: hold the page until everything is loaded (matches homepage) */
+        /* page loader */
         #sp-loader{position:fixed;inset:0;z-index:99999;background:#050505;display:flex;align-items:center;justify-content:center;transition:opacity 0.55s ease;}
         #sp-loader.spl-done{opacity:0;pointer-events:none;}
         /* nothing scrolls while the loader is up. the page behind it is already
@@ -52,117 +44,204 @@
         @keyframes splPulse{from{filter:drop-shadow(0 0 6px rgba(0,255,255,0.3)) drop-shadow(0 0 14px rgba(160,32,240,0.2));}to{filter:drop-shadow(0 0 14px rgba(0,255,255,0.65)) drop-shadow(0 0 28px rgba(160,32,240,0.4));}}
         .spl-eye-blink{transform-origin:60px 60px;animation:splBlink 3.5s ease-in-out infinite;}
         @keyframes splBlink{0%,35%,55%,88%,100%{transform:scaleY(1);}45%{transform:scaleY(0.05);}93%{transform:scaleY(0.05);}}
-        /* essential theme-light base (mirrors the homepage inline theme) */
+
+        /* theme-light base (mirrors the homepage) */
         html.theme-light {
             --bg-dark: #f6f7f9; --bg-panel: rgba(255,255,255,0.75);
             --border-glass: rgba(20,20,30,0.08); --text-main: #15161a; --text-muted: #82828c;
             --accent-glow: rgba(0,145,200,0.12); --accent-light: #0091c8; --neon-blue: #0091c8;
         }
         html.theme-light body.lp-body { background: linear-gradient(180deg, #fbfcfd 0%, #eef0f3 100%) fixed; }
-        /* pin the pager just above the footer; the empty space sits above the pager
-           (below the articles) so the articles get a little breathing room */
-        html.theme-light body.lp-body { display: flex !important; flex-direction: column; min-height: 100vh; }
-        body.lp-body .lp-insights { flex: 1 0 auto; display: flex; flex-direction: column; }
-        body.lp-body .lp-insights > .lp-section-inner { flex: 1 0 auto; display: flex; flex-direction: column; }
-        body.lp-body .lp-blog-pager { margin-top: auto; }
-        body.lp-body .lp-footer { flex-shrink: 0; }
-        /* same scrollbar as sentinelpay.org (light-blue on light track) */
         html.theme-light, html.theme-light * { scrollbar-color: rgba(0,145,200,0.25) #f0f0f2; }
         html.theme-light::-webkit-scrollbar-track, html.theme-light ::-webkit-scrollbar-track { background: #f0f0f2; }
         html.theme-light::-webkit-scrollbar-thumb, html.theme-light ::-webkit-scrollbar-thumb { background: rgba(0,145,200,0.25); border: 1px solid rgba(0,145,200,0.15); }
         html.theme-light::-webkit-scrollbar-thumb:hover, html.theme-light ::-webkit-scrollbar-thumb:hover { background: rgba(0,145,200,0.5); box-shadow: 0 0 10px rgba(0,145,200,0.3); }
+
+        /* homepage nav in theme-light */
         html.theme-light .lp-nav { background: rgba(255,255,255,0.85); border-bottom-color: rgba(0,0,0,0.06); }
-        html.theme-light .lp-logo-text,
-        html.theme-light .lp-h1,
-        html.theme-light .lp-h2 {
+        html.theme-light .lp-logo-text, html.theme-light .lp-h1, html.theme-light .lp-h2 {
             background: linear-gradient(160deg, #15161a 0%, #5a5a66 100%);
             -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
         }
-        html.theme-light .lp-btn-ghost.auth-nav-btn { border-color: rgba(0,0,0,0.08) !important; }
-        html.theme-light .lp-btn-ghost.auth-nav-btn:hover { background: rgba(0,0,0,0.04) !important; }
+        html.theme-light .lp-nav-link:hover, html.theme-light .lp-btn-ghost.auth-nav-btn:hover, html.theme-light .lp-nav-dd-item:hover { background: rgba(0,0,0,0.04) !important; }
+        html.theme-light .lp-btn-ghost.auth-nav-btn { color: var(--text-muted) !important; border: 1px solid rgba(0,0,0,0.1) !important; }
+        html.theme-light .lp-nav-dd { background: #fff; border-color: rgba(0,0,0,0.08); box-shadow: 0 8px 32px rgba(0,0,0,0.12); }
+        html.theme-light .lp-nav-dd-item { border-bottom-color: rgba(0,0,0,0.05); }
+        html.theme-light .lp-nav-dd-item:hover, html.theme-light .lp-nav-dd-item:hover svg { color: var(--text-main) !important; }
+        html.theme-light .lp-btn-solid.auth-nav-btn, html.theme-light .lp-btn-solid { background: #1a1a1c !important; border-color: #1a1a1c !important; color: #fff !important; }
+        html.theme-light .lp-btn-solid.auth-nav-btn:hover, html.theme-light .lp-btn-solid:hover { background: #34343a !important; box-shadow: 0 0 24px rgba(0,0,0,0.12) !important; }
+        html.theme-light .lp-mobile-menu { background: rgba(255,255,255,0.99); }
+        html.theme-light .lp-mobile-link:active, html.theme-light .lp-mm-acc-btn:active { background: rgba(0,0,0,0.05); }
+        html.theme-light .lp-mobile-sub-link:active { color: var(--text-main); background: rgba(0,0,0,0.04); }
+        html.theme-light .lp-mm-btn-ghost { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.18); color: #fff; }
+        html.theme-light .lp-mm-btn-ghost:hover { background: rgba(255,255,255,0.09); border-color: rgba(255,255,255,0.3); color: #fff; }
+        html.theme-light .lp-mm-btn-solid { background: #fff; color: #0a0a0f; }
+        html.theme-light .lp-mm-btn-solid:hover { background: #f0f0f2; }
+        /* whenever the hamburger shows, hide the desktop auth buttons */
+        @media (max-width: 1280px) { #auth-nav-container .lp-desktop-auth { display: none !important; } }
 
-        /* blog-specific: centered Howl-style header + card excerpt/byline/pagination in homepage's light style */
-        /* nav is 64px fixed; equal gaps -> nav→hero == hero→featured */
-        .lp-insights { padding-top: 9.5rem; }
-        .lp-blog-hero { position: relative; text-align: center; padding: 0; }
-        .blog-tag {
-            position: relative; z-index: 1; max-width: 26ch; margin: 0 auto;
-            font-size: 2.6rem; font-weight: 800; line-height: 1.5; letter-spacing: -0.02em; color: #0e2358;
+        /* floating live-chat button (same as homepage) */
+        #sp-chat-btn { position: fixed; bottom: 24px; right: 24px; width: 52px; height: 52px; border-radius: 50%; background: rgba(5,5,8,0.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(0,240,255,0.25); box-shadow: 0 0 20px rgba(0,240,255,0.1), 0 8px 32px rgba(0,0,0,0.5); cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 99998; transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease; color: #00f0ff; padding: 0; }
+        #sp-chat-btn:hover { border-color: rgba(0,240,255,0.55); box-shadow: 0 0 28px rgba(0,240,255,0.22), 0 8px 32px rgba(0,0,0,0.6); }
+        #sp-chat-btn:active { transform: translateY(0) scale(0.95); }
+        #sp-chat-btn .sp-chat-ico { position: absolute; inset: 0; margin: auto; width: 21px; height: 21px; transition: opacity 0.24s ease, transform 0.34s cubic-bezier(0.22, 1, 0.36, 1); }
+        #sp-chat-btn .sp-chat-ico-close { opacity: 0; transform: rotate(-90deg) scale(0.5); }
+        #sp-chat-btn.chat-open .sp-chat-ico-open { opacity: 0; transform: rotate(90deg) scale(0.5); }
+        #sp-chat-btn.chat-open .sp-chat-ico-close { opacity: 1; transform: rotate(0) scale(1); }
+        /* we use our own #sp-chat-btn; never show intercom's default launcher */
+        .intercom-lightweight-app-launcher, .intercom-launcher-frame, .intercom-launcher { display: none !important; }
+        #sp-chat-badge { position: absolute; top: 5px; right: 5px; width: 9px; height: 9px; border-radius: 50%; background: #00f0ff; box-shadow: 0 0 8px rgba(0,240,255,0.8); display: none; border: 1.5px solid rgba(5,5,8,1); pointer-events: none; }
+        html.theme-light #sp-chat-btn { background: rgba(255,255,255,0.85); border-color: rgba(0,145,200,0.25); box-shadow: 0 0 20px rgba(0,145,200,0.08), 0 8px 32px rgba(0,0,0,0.08); color: var(--accent-light); }
+        html.theme-light #sp-chat-btn:hover { border-color: rgba(0,145,200,0.45); box-shadow: 0 0 28px rgba(0,145,200,0.16), 0 8px 32px rgba(0,0,0,0.1); }
+        html.theme-light #sp-chat-badge { background: var(--accent-light); box-shadow: 0 0 8px rgba(0,145,200,0.6); border-color: rgba(255,255,255,1); }
+        @media (max-width: 1280px) {
+            #sp-chat-btn { width: 44px !important; height: 44px !important; bottom: 16px !important; right: 16px !important; }
+            html.lp-scroll-lock #sp-chat-btn { display: none !important; }
         }
-        .blog-tag .lp-hl {
-            -webkit-box-decoration-break: clone; box-decoration-break: clone;
-            line-height: 1.15;
-        }
-        .lp-ins-featured { margin-top: 5.5rem; text-decoration: none; color: inherit; }
-        a.lp-ins-featured, a.lp-ins-featured * { text-decoration: none; }
-        /* grid of smaller article cards below the featured one */
-        .lp-ins-grid { margin-top: 3rem; }
-        a.lp-ins-card { text-decoration: none; color: inherit; display: flex; flex-direction: column; height: 100%; }
-        a.lp-ins-card * { text-decoration: none; }
-        .lp-ins-card .lp-ins-img { flex-shrink: 0; }
-        .lp-ins-card .lp-ins-date { margin-top: 0.9rem; }
-        .lp-ins-card .lp-ins-title-sm { margin-top: 0.15rem; }
-        /* push the divider + author row to the bottom so cards line up regardless of excerpt length */
-        .lp-ins-card .lp-ins-by { margin-top: auto; }
+
+        /* privacy content */
+        .pp-shell { max-width: 820px; margin: 0 auto; padding: 0 1.4rem; }
+        .lp-section.pp { padding-top: 8rem; }
+        .pp-title { margin: 0 0 0.8rem; font-size: 2.8rem; font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; color: #0e2358; text-transform: none; }
+        .pp-meta { font-size: 0.9rem; color: rgba(14,35,88,0.5); }
+        .pp-intro { margin: 2rem 0 0; font-size: 1.18rem; line-height: 1.7; font-weight: 500; color: #0e2358; }
+
+        .pp-body { margin-top: 1rem; padding-bottom: 1rem; }
+        .pp-body h2 { margin: 3rem 0 1rem; font-size: 1.5rem; font-weight: 800; line-height: 1.3; letter-spacing: -0.01em; color: #0e2358; text-transform: none; }
+        .pp-body p { margin: 1.1rem 0; font-size: 1.02rem; line-height: 1.8; color: #2a3550; }
+        .pp-body strong { font-weight: 700; color: #0e2358; }
+        .pp-body a { color: #0091c8; text-decoration: none; border-bottom: 1px solid rgba(0,145,200,0.35); }
+        .pp-body a:hover { border-bottom-color: #0091c8; }
+
+        .pp-dl { margin: 1.3rem 0; display: grid; gap: 0.85rem; }
+        .pp-dl-row { padding: 1rem 1.2rem; border: 1px solid rgba(14,35,88,0.1); border-radius: 12px; background: rgba(255,255,255,0.55); }
+        .pp-dl-row b { display: block; font-size: 1rem; font-weight: 700; color: #0e2358; margin-bottom: 0.25rem; }
+        .pp-dl-row span { font-size: 0.98rem; line-height: 1.7; color: #2a3550; }
+
+        .pp-body ul { margin: 1.1rem 0; padding: 0; list-style: none; }
+        .pp-body ul li { position: relative; padding-left: 1.4rem; margin-bottom: 0.65rem; font-size: 1.02rem; line-height: 1.65; color: #2a3550; }
+        .pp-body ul li::before { content: ''; position: absolute; left: 0.15rem; top: 0.62em; width: 5px; height: 5px; border-radius: 50%; background: rgba(14,35,88,0.45); }
+
+        .pp-table-wrap { overflow-x: auto; margin: 1.4rem 0; border: 1px solid rgba(14,35,88,0.12); border-radius: 12px; }
+        .pp-table { width: 100%; border-collapse: collapse; min-width: 560px; font-size: 0.95rem; }
+        .pp-table th { text-align: left; padding: 0.85rem 1rem; background: rgba(0,145,200,0.06); color: #0e2358; font-weight: 700; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid rgba(14,35,88,0.12); }
+        .pp-table td { padding: 0.85rem 1rem; vertical-align: top; color: #2a3550; line-height: 1.55; border-bottom: 1px solid rgba(14,35,88,0.08); }
+        .pp-table tr:last-child td { border-bottom: none; }
+        .pp-table td:first-child { color: #0e2358; font-weight: 600; }
+
+        .pp-callout { margin: 2rem 0; padding: 1.1rem 1.4rem; border-left: 3px solid rgba(0,145,200,0.4); background: linear-gradient(90deg, rgba(0,145,200,0.06), transparent); border-radius: 0 10px 10px 0; font-size: 0.98rem; line-height: 1.7; color: #0e2358; }
+        .pp-contact { margin: 1.4rem 0; padding: 1.3rem 1.5rem; border: 1px solid rgba(14,35,88,0.12); border-radius: 14px; background: rgba(255,255,255,0.6); }
+        .pp-contact p { margin: 0.4rem 0; font-size: 0.98rem; }
+
         @media (max-width: 640px) {
-            .lp-insights { padding-top: 7rem; }
-            .lp-ins-featured { margin-top: 3rem; }
-            .blog-tag { font-size: 1.8rem; max-width: 20ch; }
+            .bad-net-mark { height: 36px; margin-right: 2.2rem; }
+            .bad-net-mark img { transform: scale(0.78); }
+            .pp-title { font-size: 2rem; }
+            .lp-section.pp { padding-top: 6.5rem; }
         }
-        .lp-ins-card-ex { margin: 0.55rem 0 0; font-size: 0.9rem; line-height: 1.6; color: rgba(14,35,88,0.6); }
-        .lp-ins-by { display: flex; align-items: center; gap: 0.6rem; margin-top: 1rem; padding-top: 0.9rem; border-top: 1px solid rgba(14,35,88,0.1); }
-        .lp-ins-avatar { position: relative; overflow: hidden; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: rgba(0,145,200,0.08); border: 1px solid rgba(14,35,88,0.1); }
-        .lp-ins-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 2; }
-        .lp-ins-avatar svg { width: 18px; height: 18px; }
-        /* overlapping avatar group (co-authors): one full circle + half of the next behind it */
-        .lp-ins-avatars { display: inline-flex; align-items: center; flex-shrink: 0; }
-        /* the same stack the article byline uses. every avatar after the first had
-           the same z-index, so the last one painted over the middle one and left it
-           as a sliver between two neighbours. each earlier author now sits above the
-           next, so three faces read left to right in the order the names do. */
-        .lp-ins-avatars .lp-ins-avatar { box-shadow: 0 0 0 2px #fff; background: #e7f3f9; }
-        .lp-ins-avatars .lp-ins-avatar:nth-child(1) { z-index: 3; }
-        .lp-ins-avatars .lp-ins-avatar:nth-child(2) { z-index: 2; }
-        .lp-ins-avatars .lp-ins-avatar:nth-child(3) { z-index: 1; }
-        /* less bite than before: at 30px, twelve pixels of overlap left barely a
-           third of the middle face showing */
-        .lp-ins-avatars .lp-ins-avatar + .lp-ins-avatar { margin-left: -9px; }
-        .lp-ins-by b { font-size: 0.82rem; font-weight: 600; color: #0e2358; }
-        /* a floor in pixels rather than in rem: 0.74rem lands under twelve
-           pixels at every root size we ship, and a byline is still text somebody
-           reads on a phone. */
-        .lp-ins-by small { display: block; font-size: 12px; color: rgba(14,35,88,0.5); }
-        .lp-ins-readmore { display: inline-flex; align-items: center; gap: 0.45rem; margin-top: 1.3rem; font-weight: 700; font-size: 0.9rem; color: #0e2358; }
-        .lp-ins-readmore span { transition: transform 0.25s; }
-        .lp-ins-featured:hover .lp-ins-readmore span { transform: translateX(4px); }
-        .lp-ins-card { cursor: pointer; }
-        /* Howl-style cover: brand + title + read-more baked onto the image */
-        .ins-cover { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; padding: 1.15rem 1.25rem; }
-        .ins-cover-logo { display: inline-flex; align-items: center; gap: 0.4rem; }
-        .ins-cover-logo svg { width: 22px; height: 22px; }
-        .ins-cover-logo span { font-size: 0.82rem; font-weight: 800; letter-spacing: -0.01em; color: #fff; }
-        .ins-cover-title { margin: 0.9rem 0 0; font-size: 1.06rem; font-weight: 800; line-height: 1.22; text-transform: uppercase; letter-spacing: 0.005em; color: #fff; max-width: 92%; }
-        .ins-cover-btn {
-            margin-top: auto; align-self: flex-start; font-size: 0.7rem; font-weight: 700; color: #fff;
-            padding: 0.4rem 0.85rem; border: 1px solid rgba(255,255,255,0.28); border-radius: 7px;
-            transition: background 0.2s, border-color 0.2s;
+
+        /* book-a-demo page: copy sits on the page (like the reference), only the
+           form lives in a card, and the card keeps our homepage dot/edge pattern */
+        .lp-section.bad-demo { padding-top: 8rem; }
+        .bad-grid { display: grid; grid-template-columns: 1fr 1.05fr; gap: 4rem; align-items: stretch; }
+        .bad-copy { padding-top: 0.5rem; }
+        .bad-title { margin: 0 0 1.2rem; font-size: 2.9rem; font-weight: 800; line-height: 1.08; letter-spacing: -0.02em; color: #0e2358; text-transform: none; }
+        .bad-sub { margin: 0; font-size: 1rem; line-height: 1.7; color: rgba(14,35,88,0.62); max-width: 44ch; }
+        .bad-form-card { grid-template-columns: 1fr !important; padding: 2.4rem 2.6rem !important; }
+        /* the shared form pins every step to 316px so the card never jumps. here the
+           card sits in the fold, so let it hug its content instead of holding a gap. */
+        .bad-form-card .lp-demo-step { height: auto !important; min-height: 0 !important; max-height: none !important; }
+        .bad-form-card .lp-demo-form { padding-top: 8px; }
+        .bad-form-card .lp-demo-progress { margin-top: 1.6rem; }
+        .bad-checklist { list-style: none; margin: 1.5rem 0 0; padding: 0; }
+        .bad-checklist li { position: relative; padding-left: 1.9rem; margin-bottom: 0.75rem; font-size: 0.98rem; line-height: 1.5; color: #2a3550; }
+        .bad-checklist li::before { content: ''; position: absolute; left: 0; top: 2px; width: 20px; height: 20px; border-radius: 50%; background: linear-gradient(135deg, #00f0ff, #a020f0);
+            -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") center / 12px no-repeat;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") center / 12px no-repeat; }
+        .bad-smallprint { margin-top: 1.6rem; font-size: 0.82rem; line-height: 1.65; color: rgba(14,35,88,0.5); }
+        /* first screen: nav + demo block + logo strip, nothing peeking from below */
+        /* nav is fixed and overlays the top, so the fold is a full viewport tall
+           and the demo section's own top padding clears the nav */
+        .bad-fold { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+        .bad-fold .lp-section.bad-demo { flex: 1 0 auto; display: flex; align-items: center; padding-top: 6.5rem; padding-bottom: 2.5rem; }
+        .bad-fold .lp-section-inner { width: 100%; }
+        .bad-logo-bar { flex-shrink: 0; padding: 1.9rem 0; }
+        /* moving company strip, same mechanic as the homepage network marquee */
+        .bad-net-track { display: flex; align-items: center; width: max-content; animation: badNetScroll 55s linear infinite; will-change: transform; }
+        @keyframes badNetScroll { from { transform: translate3d(-25%, 0, 0); } to { transform: translate3d(0, 0, 0); } }
+        .bad-net-track:has(.bad-net-mark:hover) { animation-play-state: paused; }
+        /* these logos run from 1:1 icons to 6.6:1 wordmarks. one shared box makes the
+           wide ones render short and unreadable, so each gets its own optical height. */
+        .bad-net-mark { display: inline-flex; align-items: center; justify-content: center; height: 48px; margin-right: 3.6rem; filter: grayscale(1); opacity: 0.55; transition: filter 0.3s ease, opacity 0.3s ease; }
+        .bad-net-mark img { width: auto; object-fit: contain; display: block; }
+        .bad-net-mark img[data-logo="traveler"] { height: 46px; }
+        .bad-net-mark img[data-logo="majicehr"] { height: 44px; }
+        .bad-net-mark img[data-logo="futura"] { height: 40px; }
+        .bad-net-mark img[data-logo="racunalahr"] { height: 38px; }
+        .bad-net-mark img[data-logo="elektromaterijal"] { height: 32px; }
+        .bad-net-mark:hover { filter: grayscale(0); opacity: 1; }
+        .bad-divider { height: 1px; margin: 3.6rem 0 3rem; background: linear-gradient(90deg, transparent, rgba(0,240,255,0.32) 22%, rgba(123,108,255,0.4) 50%, rgba(160,32,240,0.32) 78%, transparent); }
+        @media (max-width: 900px) { .bad-grid { grid-template-columns: 1fr; gap: 2.6rem; } .bad-sub { max-width: none; } }
+        @media (max-width: 640px) {
+            .bad-net-mark { height: 36px; margin-right: 2.2rem; }
+            .bad-net-mark img { transform: scale(0.78); }
+            .lp-section.bad-demo { padding-top: 6.5rem; }
+            .bad-title { font-size: 2.1rem; }
+            .bad-form-card { padding: 1.9rem 1.4rem !important; }
         }
-        .lp-ins-card:hover .ins-cover-btn, .lp-ins-featured:hover .ins-cover-btn { border-color: rgba(0,240,255,0.6); background: rgba(0,240,255,0.1); }
-        .lp-ins-featured .ins-cover { padding: 1.7rem 1.9rem; }
-        .lp-ins-featured .ins-cover-logo svg { width: 30px; height: 30px; }
-        .lp-ins-featured .ins-cover-logo span { font-size: 1rem; }
-        .lp-ins-featured .ins-cover-title { font-size: 1.75rem; margin-top: 1.1rem; max-width: 88%; }
-        .lp-ins-featured .ins-cover-btn { font-size: 0.8rem; padding: 0.55rem 1.15rem; }
-        .lp-blog-pager { display: flex; align-items: center; justify-content: center; gap: 1.4rem; padding: 3rem 0 1rem; }
-        .lp-blog-pager button {
-            font: inherit; font-size: 0.88rem; font-weight: 700; color: #0e2358; cursor: pointer;
-            padding: 0.65rem 1.5rem; border-radius: 10px; background: #fff; border: 1px solid rgba(14,35,88,0.14);
-            transition: border-color 0.2s, box-shadow 0.2s, opacity 0.2s;
+
+
+        /* 404: the shield stands in for the zero, same as the old page did, but in
+           the light theme the rest of the site now uses.
+
+           the block owns exactly one screen, so the footer sits below the fold and
+           has to be scrolled to. sizing asks the device itself rather than guessing
+           from a user agent: dvh follows the real visible height once mobile browser
+           chrome slides away, and clamp() ties type and spacing to the viewport so
+           the same layout holds from a 320px phone to a 4k display. */
+        .nf-main {
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            /* top padding clears the fixed nav, which overlays rather than pushes */
+            padding: clamp(5.5rem, 11vh, 8rem) clamp(1.1rem, 5vw, 2rem) clamp(2rem, 6vh, 4rem);
         }
-        .lp-blog-pager button:hover:not(:disabled) { border-color: rgba(37,99,235,0.45); box-shadow: 0 6px 18px rgba(14,35,88,0.08); }
-        .lp-blog-pager button:disabled { opacity: 0.4; cursor: default; }
-        .lp-blog-pager .cnt { font-size: 0.85rem; font-weight: 600; color: rgba(14,35,88,0.6); }
-        .lp-nav-inner { display: flex !important; justify-content: space-between; align-items: center; }
+        .nf-inner { text-align: center; max-width: 34rem; width: 100%; }
+
+        .nf-code { display: flex; align-items: center; justify-content: center; gap: clamp(0.2rem, 1vw, 0.5rem); margin-bottom: clamp(1.1rem, 3.2vh, 2rem); }
+        .nf-digit {
+            font-family: var(--sp-text); font-weight: 800; line-height: 1; letter-spacing: -0.04em;
+            font-size: clamp(3.2rem, 13vw, 7rem);
+            /* the site's headline gradient is grey; here it sits right above a navy
+               title, so tint it navy instead and the two read as one mark */
+            background: linear-gradient(160deg, #0e2358 0%, #46567f 100%);
+            -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+        }
+
+        .nf-title { margin: 0 0 clamp(0.55rem, 1.6vh, 1rem); font-size: clamp(1.45rem, 5.2vw, 2.3rem); font-weight: 800; line-height: 1.12; letter-spacing: -0.02em; color: #0e2358; text-transform: none; }
+        .nf-sub { margin: 0 auto; font-size: clamp(0.92rem, 2.6vw, 1rem); line-height: 1.65; color: rgba(14,35,88,0.62); max-width: 30rem; }
+
+        .nf-mark { display: flex; align-items: center; justify-content: center; width: clamp(64px, 16vw, 88px); height: clamp(64px, 16vw, 88px); border-radius: 50%; background: rgba(0,145,200,0.09); color: #0091c8; }
+        .nf-mark svg { width: 46%; height: 46%; }
+        .nf-actions { margin-top: clamp(1.4rem, 3.6vh, 2.2rem); display: flex; align-items: center; justify-content: center; gap: 0.75rem; flex-wrap: wrap; }
+
+        /* narrow phones: stack the buttons instead of letting them wrap unevenly */
+        @media (max-width: 420px) {
+            .nf-actions { flex-direction: column; align-items: stretch; }
+            .nf-actions a { justify-content: center; text-align: center; }
+        }
+        /* landscape phones and short windows: nothing may spill past one screen */
+        @media (max-height: 520px) {
+            .nf-main { padding-top: 4.6rem; padding-bottom: 1.2rem; }
+            .nf-code { margin-bottom: 0.7rem; }
+            .nf-digit { font-size: clamp(2.4rem, 9vh, 4rem); }
+            .nf-title { font-size: clamp(1.25rem, 4.6vh, 1.8rem); }
+            .nf-sub { font-size: 0.9rem; }
+            .nf-actions { margin-top: 1rem; flex-direction: row; }
+        }
     </style>
     <noscript><style>
         /* scripting is off, so the loader is the final screen, not a stage on the
@@ -184,32 +263,20 @@
 </head>
 <body class="lp-body">
     <div id="sp-loader"><svg class="spl-logo-svg" viewBox="0 0 120 120" fill="none"><defs><linearGradient id="spl-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00ffff"/><stop offset="100%" stop-color="#a020f0"/></linearGradient><filter id="spl-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3.5" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#spl-glow)" fill="none" stroke="url(#spl-grad)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/><g class="spl-eye-blink"><path d="M38 60 Q 60 40 82 60 Q 60 80 38 60 Z"/><circle cx="60" cy="60" r="6"/><circle cx="60" cy="60" r="2" fill="url(#spl-grad)" stroke="none"/></g><path d="M60 15 V 30" stroke-width="2" opacity="0.6"/><path d="M60 90 V 105" stroke-width="2" opacity="0.6"/></g></svg><noscript><!--SP_NOSCRIPT--></noscript></div>
+
     <nav class="lp-nav">
         <div class="lp-nav-inner">
-            <a href="https://sentinelpay.org/" class="lp-logo-link">
+            <a href="https://sentinelpay.org" class="lp-logo-link">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" class="lp-logo-svg">
                   <defs>
-                    <linearGradient id="neonGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stop-color="#00ffff" />
-                      <stop offset="100%" stop-color="#a020f0" />
-                    </linearGradient>
-                    <filter id="neonGlow" x="-50%" y="-50%" width="200%" height="200%">
-                      <feGaussianBlur stdDeviation="3.5" result="coloredBlur"/>
-                      <feMerge>
-                        <feMergeNode in="coloredBlur"/>
-                        <feMergeNode in="SourceGraphic"/>
-                      </feMerge>
-                    </filter>
+                    <linearGradient id="neonGradient" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00ffff" /><stop offset="100%" stop-color="#a020f0" /></linearGradient>
+                    <filter id="neonGlow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3.5" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
                   </defs>
                   <g filter="url(#neonGlow)" fill="none" stroke="url(#neonGradient)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z" />
                     <path d="M38 60 Q 60 40 82 60 Q 60 80 38 60 Z" />
-                    <g id="eye-pupil" style="transition: transform 0.1s ease-out;">
-                      <circle cx="60" cy="60" r="6" />
-                      <circle cx="60" cy="60" r="2" fill="url(#neonGradient)" stroke="none"/>
-                    </g>
-                    <path d="M60 15 V 30" stroke-width="2" opacity="0.6"/>
-                    <path d="M60 90 V 105" stroke-width="2" opacity="0.6"/>
+                    <g><circle cx="60" cy="60" r="6" /><circle cx="60" cy="60" r="2" fill="url(#neonGradient)" stroke="none"/></g>
+                    <path d="M60 15 V 30" stroke-width="2" opacity="0.6"/><path d="M60 90 V 105" stroke-width="2" opacity="0.6"/>
                   </g>
                 </svg>
             </a>
@@ -230,9 +297,9 @@
                                 <a href="https://sentinelpay.org/#solutions" class="lp-mega-item"><span class="lp-mega-title">Wallet investigations</span><span class="lp-mega-desc">From suspicion to attribution with on-demand scans</span></a>
                                 <a href="https://sentinelpay.org/#solutions" class="lp-mega-item"><span class="lp-mega-title">Threat intelligence</span><span class="lp-mega-desc">Emerging typologies with flag-level context</span></a>
                                 <a href="https://sentinelpay.org/#solutions" class="lp-mega-item"><span class="lp-mega-title">Real-time alerting</span><span class="lp-mega-desc">Instant email alerts with score and flags</span></a>
-                                <a href="https://sentinelpay.org/#demo" class="lp-mega-item"><span class="lp-mega-title">Pricing</span><span class="lp-mega-desc">Talk to us. Plans shaped around your volume</span></a>
+                                <a href="https://sentinelpay.org/start-free-trial" class="lp-mega-item"><span class="lp-mega-title">Pricing</span><span class="lp-mega-desc">Talk to us. Plans shaped around your volume</span></a>
                             </div>
-                            <a href="https://sentinelpay.org/#demo" class="lp-mega-promo">
+                            <a href="https://sentinelpay.org/start-free-trial" class="lp-mega-promo">
                                 <div class="lp-mega-promo-visual"><svg viewBox="0 0 120 120" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M60 16 L26 30 V56 C26 80 50 99 60 104 C70 99 94 80 94 56 V30 Z"/><path d="M40 60 Q60 42 80 60 Q60 78 40 60 Z"/><circle cx="60" cy="60" r="6" fill="#fff" stroke="none"/></svg></div>
                                 <span class="lp-mega-promo-title">Try a live wallet scan</span>
                                 <span class="lp-mega-promo-desc">Score any wallet against known threats in seconds.</span>
@@ -311,14 +378,14 @@
                                 <span class="lp-mega-item is-soon"><span class="lp-mega-title">Documentation</span><span class="lp-mega-desc">Product docs and how-tos</span></span>
                                 <span class="lp-mega-item is-soon"><span class="lp-mega-title">Newsletter</span><span class="lp-mega-desc">The latest insights in your inbox</span></span>
                                 <span class="lp-mega-item is-soon"><span class="lp-mega-title">Crypto glossary</span><span class="lp-mega-desc">The language of digital asset risk</span></span>
-                                <a href="https://sentinelpay.org/faq" class="lp-mega-item"><span class="lp-mega-title">Help center</span><span class="lp-mega-desc">Answers and troubleshooting</span></a>
+                                <a href="/faq" class="lp-mega-item"><span class="lp-mega-title">Help center</span><span class="lp-mega-desc">Answers and troubleshooting</span></a>
                             </div>
-                            <span class="lp-mega-promo is-soon">
+                            <a href="https://blog.sentinelpay.org" class="lp-mega-promo">
                                 <div class="lp-mega-promo-visual"><svg viewBox="0 0 120 120" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M60 16 L26 30 V56 C26 80 50 99 60 104 C70 99 94 80 94 56 V30 Z"/><path d="M40 60 Q60 42 80 60 Q60 78 40 60 Z"/><circle cx="60" cy="60" r="6" fill="#fff" stroke="none"/></svg></div>
                                 <span class="lp-mega-promo-title">The latest insights</span>
                                 <span class="lp-mega-promo-desc">Regulatory updates and new typologies in your inbox.</span>
                                 <span class="lp-mega-promo-cta">Learn more<span class="lp-mega-cta-arrow">→</span></span>
-                            </span>
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -334,32 +401,31 @@
                             </div>
                             <div class="lp-mega-grid">
                                 <span class="lp-mega-item is-soon"><span class="lp-mega-title">Who we are</span><span class="lp-mega-desc">The team behind Sentinelpay</span></span>
-                                <a href="https://sentinelpay.org/privacy-policy" class="lp-mega-item"><span class="lp-mega-title">Security</span><span class="lp-mega-desc">How we protect your data</span></a>
+                                <a href="/privacy-policy#data" class="lp-mega-item"><span class="lp-mega-title">Security</span><span class="lp-mega-desc">How we protect your data</span></a>
                                 <span class="lp-mega-item is-soon"><span class="lp-mega-title">Careers</span><span class="lp-mega-desc">Help build safer digital asset rails</span></span>
                                 <a href="mailto:support@sentinelpay.org" class="lp-mega-item"><span class="lp-mega-title">Contact us</span><span class="lp-mega-desc">Talk to our team</span></a>
-                                <span class="lp-mega-item is-soon"><span class="lp-mega-title">Partner program</span><span class="lp-mega-desc">Grow with us</span></span>
+                                <a href="/privacy-policy" class="lp-mega-item"><span class="lp-mega-title">Privacy policy</span><span class="lp-mega-desc">How we handle your data</span></a>
                             </div>
-                            <span class="lp-mega-promo is-soon">
+                            <a href="mailto:support@sentinelpay.org" class="lp-mega-promo">
                                 <div class="lp-mega-promo-visual"><svg viewBox="0 0 120 120" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M60 16 L26 30 V56 C26 80 50 99 60 104 C70 99 94 80 94 56 V30 Z"/><path d="M40 60 Q60 42 80 60 Q60 78 40 60 Z"/><circle cx="60" cy="60" r="6" fill="#fff" stroke="none"/></svg></div>
                                 <span class="lp-mega-promo-title">Join the team</span>
                                 <span class="lp-mega-promo-desc">Help build safer rails for digital asset payments.</span>
                                 <span class="lp-mega-promo-cta">Learn more<span class="lp-mega-cta-arrow">→</span></span>
-                            </span>
+                            </a>
                         </div>
                     </div>
                 </div>
             </div>
             <div id="auth-nav-container" style="display: flex; gap: 0.5rem; align-items: center;">
-                <a href="https://sentinelpay.org/auth" id="nav-login-btn" class="auth-nav-btn lp-btn-ghost lp-desktop-auth">Log in</a>
-                <a href="https://sentinelpay.org/auth#create" id="nav-register-btn" class="auth-nav-btn lp-btn-solid lp-desktop-auth">Get started</a>
+                <a href="https://sentinelpay.org/auth" class="auth-nav-btn lp-btn-ghost lp-desktop-auth">Log in</a>
+                <a href="https://sentinelpay.org/auth#create" class="auth-nav-btn lp-btn-solid lp-desktop-auth">Get started</a>
                 <button class="lp-hamburger" id="lp-hamburger" aria-label="Menu">
-                    <span class="lp-hb-line"></span>
-                    <span class="lp-hb-line"></span>
-                    <span class="lp-hb-line"></span>
+                    <span class="lp-hb-line"></span><span class="lp-hb-line"></span><span class="lp-hb-line"></span>
                 </button>
             </div>
         </div>
     </nav>
+
     <div class="lp-mobile-menu" id="lp-mobile-menu">
         <div class="lp-mobile-menu-inner">
             <div class="lp-mm-acc">
@@ -369,7 +435,7 @@
                     <a href="https://sentinelpay.org/#solutions" class="lp-mobile-sub-link">Transaction screening</a>
                     <a href="https://sentinelpay.org/#solutions" class="lp-mobile-sub-link">Wallet investigations</a>
                     <a href="https://sentinelpay.org/#solutions" class="lp-mobile-sub-link">Threat intelligence</a>
-                    <a href="https://sentinelpay.org/#demo" class="lp-mobile-sub-link">Pricing</a>
+                    <a href="https://sentinelpay.org/start-free-trial" class="lp-mobile-sub-link">Pricing</a>
                 </div>
             </div>
             <div class="lp-mm-acc">
@@ -380,14 +446,6 @@
                     <a href="https://sentinelpay.org/#who-its-for" class="lp-mobile-sub-link">Payment services</a>
                     <a href="https://sentinelpay.org/#who-its-for" class="lp-mobile-sub-link">Stablecoin &amp; token issuers</a>
                     <a href="https://sentinelpay.org/#who-its-for" class="lp-mobile-sub-link">Network operators</a>
-                </div>
-            </div>
-            <div class="lp-mm-acc">
-                <button class="lp-mm-acc-btn">Platform<svg class="lp-mm-acc-chev" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
-                <div class="lp-mm-acc-body">
-                    <span class="lp-mobile-sub-link is-soon">Documentation</span>
-                    <span class="lp-mobile-sub-link is-soon">API reference</span>
-                    <span class="lp-mobile-sub-link is-soon">Quickstart</span>
                 </div>
             </div>
             <div class="lp-mm-acc">
@@ -404,117 +462,33 @@
                     <span class="lp-mobile-sub-link is-soon">Who we are</span>
                     <span class="lp-mobile-sub-link is-soon">Careers</span>
                     <a href="mailto:support@sentinelpay.org" class="lp-mobile-sub-link">Contact us</a>
+                    <a href="/privacy-policy" class="lp-mobile-sub-link">Privacy policy</a>
                 </div>
             </div>
             <div class="lp-mobile-divider"></div>
             <div class="lp-mobile-ctas">
-                <a href="https://sentinelpay.org/#" id="lp-mm-livechat" class="lp-mm-btn-ghost">Live chat</a>
+                <a href="#" id="lp-mm-livechat" class="lp-mm-btn-ghost">Live chat</a>
                 <div class="lp-mm-ctas-row">
-                    <a href="https://sentinelpay.org/auth" id="lp-mm-login" class="lp-mm-btn-ghost">Log in</a>
-                    <a href="https://sentinelpay.org/auth#create" id="lp-mm-register" class="lp-mm-btn-solid">Get started</a>
+                    <a href="https://sentinelpay.org/start-free-trial" class="lp-mm-btn-ghost">Log in</a>
+                    <a href="https://sentinelpay.org/start-free-trial" class="lp-mm-btn-solid">Get started</a>
                 </div>
             </div>
         </div>
     </div>
 
-    <section class="lp-section lp-insights" id="blog">
-        <div class="lp-section-inner">
-            <header class="lp-blog-hero">
-                <h1 class="blog-tag">The latest <span class="lp-hl">guides</span>, <span class="lp-hl">breakdowns</span> and <span class="lp-hl">updates</span> on crypto risk &amp; compliance</h1>
-            </header>
+    <main class="nf-main">
+        <div class="nf-inner">
+            <div class="nf-code"><span class="nf-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline></svg></span></div>
 
-            <a class="lp-ins-featured" href="/article/06">
-                <div class="lp-ins-img lp-ins-img-lg has-cover">
-                    <img class="lp-ins-cover-img" src="/covers/explain-the-score.1.webp" alt="Every vendor says AI now. Ask them to explain one score." loading="lazy" decoding="async" data-fb="/covers/explain-the-score.1.png">
-                </div>
-                <div class="lp-ins-meta">
-                    <span class="lp-ins-date">August 23, 2026</span>
-                    <h3 class="lp-ins-title">Every vendor says AI now. Ask them to explain one score.</h3>
-                    <p class="lp-ins-excerpt">Explainability stopped being a nice-to-have the moment a regulator could ask why you let a payment through. Here is the test I put every risk vendor through, including us.</p>
-                    <div class="lp-ins-by">
-                        <span class="lp-ins-avatar"><img src="/authors/ceem.png" alt="Ceem" decoding="async"><svg viewBox="0 0 120 120"><g fill="none" stroke="#0091c8" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/><circle cx="60" cy="60" r="7"/></g></svg></span>
-                        <div><b>Ceem</b><small>August 23, 2026 · 4 min read</small></div>
-                    </div>
-                </div>
-            </a>
+            <h1 class="nf-title">This link has expired</h1>
+            <p class="nf-sub">A password link lives for an hour and works once. This one has been used already, or it has run out. Ask for a new one and it will be in your inbox in a moment.</p>
 
-            <div class="lp-ins-grid">
-                <a class="lp-ins-card" href="/article/05">
-                    <div class="lp-ins-img has-cover">
-                        <img class="lp-ins-cover-img" src="/covers/kyc-vs-screening.webp" alt="Wallet screening vs. KYC: why you need both" loading="lazy" decoding="async" data-fb="/covers/kyc-vs-screening.png">
-                    </div>
-                    <span class="lp-ins-date">August 9, 2026</span>
-                    <h3 class="lp-ins-title-sm">Wallet screening vs. KYC: why you need both</h3>
-                    <p class="lp-ins-card-ex">KYC checks the person. It does not check the money. Here is what each one actually catches, what regulators require, and what they expect on top of that.</p>
-                    <div class="lp-ins-by">
-                        <span class="lp-ins-avatar"><img src="/authors/chibby.png" alt="Chibby" decoding="async"><svg viewBox="0 0 120 120"><g fill="none" stroke="#0091c8" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/><circle cx="60" cy="60" r="7"/></g></svg></span>
-                        <div><b>Chibby</b><small>August 9, 2026 · 5 min read</small></div>
-                    </div>
-                </a>
-                <a class="lp-ins-card" href="/article/04">
-                    <div class="lp-ins-img has-cover">
-                        <img class="lp-ins-cover-img" src="/covers/no-gambling.webp" alt="We'll take almost any crypto business. Gambling is where we draw the line" loading="lazy" decoding="async" data-fb="/covers/no-gambling.png">
-                    </div>
-                    <span class="lp-ins-date">July 28, 2026</span>
-                    <h3 class="lp-ins-title-sm">We'll take almost any crypto business. Gambling is where we draw the line</h3>
-                    <p class="lp-ins-card-ex">Sentinelpay is built for crypto businesses of almost every shape, with one deliberate exception: gambling. Here is exactly where we draw the line, and why we're turning away real revenue to keep it.</p>
-                    <div class="lp-ins-by">
-                        <span class="lp-ins-avatars">
-                            <span class="lp-ins-avatar"><img src="/authors/ceem.png" alt="Ceem" decoding="async"><svg viewBox="0 0 120 120"><g fill="none" stroke="#0091c8" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/><circle cx="60" cy="60" r="7"/></g></svg></span>
-                            <span class="lp-ins-avatar"><img src="/authors/mind.png" alt="Mind" decoding="async"><svg viewBox="0 0 120 120"><g fill="none" stroke="#0091c8" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/><circle cx="60" cy="60" r="7"/></g></svg></span>
-                            <span class="lp-ins-avatar"><img src="/authors/chibby.png" alt="Chibby" decoding="async"><svg viewBox="0 0 120 120"><g fill="none" stroke="#0091c8" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/><circle cx="60" cy="60" r="7"/></g></svg></span>
-                        </span>
-                        <div><b>Ceem, mind, chibby</b><small>July 28, 2026 · 3 min read</small></div>
-                    </div>
-                </a>
-                <a class="lp-ins-card" href="/article/03">
-                    <div class="lp-ins-img has-cover">
-                        <img class="lp-ins-cover-img" src="/covers/compliance-bank.webp" alt="You shouldn't have to become a bank to stay compliant" loading="lazy" decoding="async" data-fb="/covers/compliance-bank.png">
-                    </div>
-                    <span class="lp-ins-date">July 21, 2026</span>
-                    <h3 class="lp-ins-title-sm">You shouldn't have to become a bank to stay compliant</h3>
-                    <p class="lp-ins-card-ex">Small crypto businesses get two options: ignore compliance until a bank freezes you, or build a department you can't afford. Here is the third option.</p>
-                    <div class="lp-ins-by">
-                        <span class="lp-ins-avatar"><img src="/authors/ceem.png" alt="Ceem" decoding="async"><svg viewBox="0 0 120 120"><g fill="none" stroke="#0091c8" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/><circle cx="60" cy="60" r="7"/></g></svg></span>
-                        <div><b>Ceem</b><small>July 21, 2026 · 4 min read</small></div>
-                    </div>
-                </a>
-                <a class="lp-ins-card" href="/article/02">
-                    <div class="lp-ins-img has-cover">
-                        <img class="lp-ins-cover-img" src="/covers/speed-problem.webp" alt="You don't have an AML problem, you have a speed problem" loading="lazy" decoding="async" data-fb="/covers/speed-problem.png">
-                    </div>
-                    <span class="lp-ins-date">July 14, 2026</span>
-                    <h3 class="lp-ins-title-sm">You don't have an AML problem, you have a speed problem</h3>
-                    <p class="lp-ins-card-ex">Everyone pictures AML as detection. The half nobody talks about is timing, and in crypto, finding suspicious activity too late is the same as not finding it.</p>
-                    <div class="lp-ins-by">
-                        <span class="lp-ins-avatars">
-                            <span class="lp-ins-avatar"><img src="/authors/mind.png" alt="Mind" decoding="async"><svg viewBox="0 0 120 120"><g fill="none" stroke="#0091c8" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/><circle cx="60" cy="60" r="7"/></g></svg></span>
-                            <span class="lp-ins-avatar"><img src="/authors/chibby.png" alt="Chibby" decoding="async"><svg viewBox="0 0 120 120"><g fill="none" stroke="#0091c8" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/><circle cx="60" cy="60" r="7"/></g></svg></span>
-                        </span>
-                        <div><b>Mind, chibby</b><small>July 14, 2026 · 5 min read</small></div>
-                    </div>
-                </a>
-                <a class="lp-ins-card" href="/article/01">
-                    <div class="lp-ins-img has-cover">
-                        <img class="lp-ins-cover-img" src="/covers/why-criminals.webp" alt="Why criminals target small businesses" loading="lazy" decoding="async" data-fb="/covers/why-criminals.png">
-                    </div>
-                    <span class="lp-ins-date">July 7, 2026</span>
-                    <h3 class="lp-ins-title-sm">Why criminals target small businesses (and exactly how they do it)</h3>
-                    <p class="lp-ins-card-ex">Criminals don't chase the big players with whole AML departments. They chase the easy path. Here is exactly how, with three real cases.</p>
-                    <div class="lp-ins-by">
-                        <span class="lp-ins-avatar"><img src="/authors/chibby.png" alt="Chibby" decoding="async"><svg viewBox="0 0 120 120"><g fill="none" stroke="#0091c8" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/><circle cx="60" cy="60" r="7"/></g></svg></span>
-                        <div><b>Chibby</b><small>July 7, 2026 · 5 min read</small></div>
-                    </div>
-                </a>
-            </div>
-
-            <div class="lp-blog-pager">
-                <button disabled>Prev</button>
-                <span class="cnt">Viewing 1–6 of 6</span>
-                <button disabled>Next</button>
+            <div class="nf-actions">
+                <a href="/auth" class="lp-cta-primary">Ask for a new link</a>
+                <a href="/" class="lp-cta-ghost">Back to homepage</a>
             </div>
         </div>
-    </section>
+    </main>
 
     <footer class="lp-footer">
         <div class="lp-section-inner">
@@ -523,27 +497,14 @@
                     <div class="lp-footer-brand-row">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" class="lp-footer-icon">
                           <defs>
-                            <linearGradient id="neonGradientFooter" x1="0%" y1="0%" x2="100%" y2="100%">
-                              <stop offset="0%" stop-color="#00ffff" />
-                              <stop offset="100%" stop-color="#a020f0" />
-                            </linearGradient>
-                            <filter id="neonGlowFooter" x="-50%" y="-50%" width="200%" height="200%">
-                              <feGaussianBlur stdDeviation="3.5" result="coloredBlur"/>
-                              <feMerge>
-                                <feMergeNode in="coloredBlur"/>
-                                <feMergeNode in="SourceGraphic"/>
-                              </feMerge>
-                            </filter>
+                            <linearGradient id="neonGradientFooter" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00ffff" /><stop offset="100%" stop-color="#a020f0" /></linearGradient>
+                            <filter id="neonGlowFooter" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3.5" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
                           </defs>
                           <g filter="url(#neonGlowFooter)" fill="none" stroke="url(#neonGradientFooter)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z" />
                             <path d="M38 60 Q 60 40 82 60 Q 60 80 38 60 Z" />
-                            <g>
-                              <circle cx="60" cy="60" r="6" />
-                              <circle cx="60" cy="60" r="2" fill="url(#neonGradientFooter)" stroke="none"/>
-                            </g>
-                            <path d="M60 15 V 30" stroke-width="2" opacity="0.6"/>
-                            <path d="M60 90 V 105" stroke-width="2" opacity="0.6"/>
+                            <g><circle cx="60" cy="60" r="6" /><circle cx="60" cy="60" r="2" fill="url(#neonGradientFooter)" stroke="none"/></g>
+                            <path d="M60 15 V 30" stroke-width="2" opacity="0.6"/><path d="M60 90 V 105" stroke-width="2" opacity="0.6"/>
                           </g>
                         </svg>
                         <span class="lp-logo-text lp-footer-logo">Sentinelpay</span>
@@ -558,8 +519,7 @@
                         <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">Wallet investigations</a>
                         <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">Threat intelligence</a>
                         <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">Real-time alerting</a>
-                        <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">Configurable thresholds</a>
-                        <a href="https://sentinelpay.org/#demo" class="lp-footer-link">Pricing</a>
+                        <a href="https://sentinelpay.org/start-free-trial" class="lp-footer-link">Pricing</a>
                     </div>
                     <div class="lp-footer-col">
                         <span class="lp-footer-col-title">Industries</span>
@@ -569,26 +529,15 @@
                         <a href="https://sentinelpay.org/#who-its-for" class="lp-footer-link">Stablecoin &amp; token issuers</a>
                         <a href="https://sentinelpay.org/#who-its-for" class="lp-footer-link">Network operators</a>
                         <a href="https://sentinelpay.org/#who-its-for" class="lp-footer-link">Law enforcement</a>
-                        <a href="https://sentinelpay.org/#who-its-for" class="lp-footer-link">Regulators</a>
-                    </div>
-                    <div class="lp-footer-col">
-                        <span class="lp-footer-col-title">Platform</span>
-                        <span class="lp-footer-link is-soon">Data &amp; APIs</span>
-                        <span class="lp-footer-link is-soon">API documentation</span>
-                        <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">Risk scoring</a>
-                        <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">Coverage</a>
-                        <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">Scalability</a>
-                        <a href="https://sentinelpay.org/#solutions" class="lp-footer-link">Configurability</a>
                     </div>
                     <div class="lp-footer-col">
                         <span class="lp-footer-col-title">Resources</span>
-                        <a href="/" class="lp-footer-link">Blog</a>
+                        <a href="https://blog.sentinelpay.org" class="lp-footer-link">Blog</a>
                         <a href="https://blog.sentinelpay.org" class="lp-footer-link">Reports &amp; guides</a>
                         <a href="/faq" class="lp-footer-link">Questions and answers</a>
                         <span class="lp-footer-link is-soon">Documentation</span>
                         <span class="lp-footer-link is-soon">Quickstart</span>
                         <span class="lp-footer-link is-soon">Newsletter</span>
-                        <span class="lp-footer-link is-soon">Crypto glossary</span>
                     </div>
                     <div class="lp-footer-col">
                         <span class="lp-footer-col-title">Company</span>
@@ -596,9 +545,8 @@
                         <a href="/privacy-policy#data" class="lp-footer-link">Security</a>
                         <span class="lp-footer-link is-soon">Careers</span>
                         <a href="mailto:support@sentinelpay.org" class="lp-footer-link">Contact us</a>
-                        <span class="lp-footer-link is-soon">Partner program</span>
-                        <a href="https://sentinelpay.org/privacy-policy" class="lp-footer-link">Privacy policy</a>
-                        <a href="https://sentinelpay.org/terms-of-service" class="lp-footer-link">Terms of service</a>
+                        <a href="/privacy-policy" class="lp-footer-link">Privacy policy</a>
+                        <a href="/terms-of-service" class="lp-footer-link">Terms of service</a>
                     </div>
                 </div>
             </div>
@@ -608,29 +556,87 @@
             </div>
         </div>
     </footer>
+
     <script>
-    (function(){
-        // reserve equal excerpt height across the grid (match the tallest) so every
-        // card's divider + author row sits at the same distance from the text
-        function equalizeExcerpts(){
-            var ex = [].slice.call(document.querySelectorAll('.lp-ins-grid .lp-ins-card-ex'));
-            if(!ex.length) return;
-            ex.forEach(function(e){ e.style.minHeight = '0px'; });
-            var max = 0;
-            ex.forEach(function(e){ if(e.offsetHeight > max) max = e.offsetHeight; });
-            ex.forEach(function(e){ e.style.minHeight = (max + 14) + 'px'; });
-        }
-        window.addEventListener('load', equalizeExcerpts);
-        var t; window.addEventListener('resize', function(){ clearTimeout(t); t = setTimeout(equalizeExcerpts, 120); });
-    })();
+        (function() {
+            function closeAllDropdowns() {
+                document.querySelectorAll('.lp-nav-dd-wrap.lp-dd-open').forEach(function(w){ w.classList.remove('lp-dd-open'); });
+            }
+            document.querySelectorAll('.lp-nav-dd-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var wrap = this.closest('.lp-nav-dd-wrap');
+                    var isOpen = wrap.classList.contains('lp-dd-open');
+                    closeAllDropdowns();
+                    if (!isOpen) wrap.classList.add('lp-dd-open');
+                });
+            });
+            document.querySelectorAll('.lp-nav-dd a').forEach(function(a){ a.addEventListener('click', closeAllDropdowns); });
+            document.addEventListener('click', function(e){ if (!e.target.closest('.lp-nav-dd-wrap')) closeAllDropdowns(); });
+
+            var hamburger = document.getElementById('lp-hamburger');
+            var mobileMenu = document.getElementById('lp-mobile-menu');
+            if (hamburger && mobileMenu) {
+                function closeMobileMenu() {
+                    hamburger.classList.remove('lp-hb-open');
+                    mobileMenu.classList.remove('lp-mm-open');
+                    document.documentElement.classList.remove('lp-scroll-lock');
+                }
+                hamburger.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    if (hamburger.classList.contains('lp-hb-open')) { closeMobileMenu(); }
+                    else {
+                        hamburger.classList.add('lp-hb-open');
+                        mobileMenu.classList.add('lp-mm-open');
+                        document.documentElement.classList.add('lp-scroll-lock');
+                    }
+                });
+                mobileMenu.querySelectorAll('a').forEach(function(a){ a.addEventListener('click', closeMobileMenu); });
+                document.addEventListener('click', function(e) {
+                    if (mobileMenu.classList.contains('lp-mm-open') && !mobileMenu.contains(e.target) && !hamburger.contains(e.target)) closeMobileMenu();
+                });
+                mobileMenu.querySelectorAll('.lp-mm-acc-btn').forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        var acc = this.closest('.lp-mm-acc');
+                        var isOpen = acc.classList.contains('lp-acc-open');
+                        mobileMenu.querySelectorAll('.lp-mm-acc.lp-acc-open').forEach(function(a){ a.classList.remove('lp-acc-open'); });
+                        if (!isOpen) acc.classList.add('lp-acc-open');
+                    });
+                });
+            }
+        })();
+    </script>
+    <button id="sp-chat-btn" aria-label="Open live chat">
+        <svg class="sp-chat-ico sp-chat-ico-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <svg class="sp-chat-ico sp-chat-ico-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        <span id="sp-chat-badge"></span>
+    </button>
+    <script>
+        (function(){
+            var btn = document.getElementById('sp-chat-btn');
+            function setOpen(o){ if (btn) btn.classList.toggle('chat-open', o); }
+            function openChat(){ if (window.Intercom) window.Intercom('show'); }
+            if (window.Intercom) {
+                window.Intercom('onUnreadCountChange', function(count){ var b=document.getElementById('sp-chat-badge'); if(b) b.style.display = count>0 ? 'block' : 'none'; });
+                window.Intercom('onShow', function(){ setOpen(true); });
+                window.Intercom('onHide', function(){ setOpen(false); });
+            }
+            if (btn) btn.addEventListener('click', function(){ if (!window.Intercom) return; if (btn.classList.contains('chat-open')) window.Intercom('hide'); else window.Intercom('show'); });
+            var oc = document.getElementById('pp-open-chat'); if (oc) oc.addEventListener('click', function(e){ e.preventDefault(); openChat(); });
+            var lc = document.getElementById('lp-mm-livechat');
+            if (lc) lc.addEventListener('click', function(e){
+                e.preventDefault();
+                var menu = document.getElementById('lp-mobile-menu'); var hb = document.getElementById('lp-hamburger');
+                if (menu) menu.classList.remove('lp-mm-open'); if (hb) hb.classList.remove('lp-hb-open');
+                document.documentElement.classList.remove('lp-scroll-lock');
+                setTimeout(openChat, 220);
+            });
+        })();
     </script>
     <script>window.addEventListener('load',function(){window.scrollTo(0,0);var l=document.getElementById('sp-loader');if(!l)return;var finish=function(){l.classList.add('spl-done');setTimeout(function(){l.remove();},620);};/* the load event does not wait for lazy images, and nearly every image on the site is lazy, so the loader used to clear while the first screen was still filling in. wait for the ones that will actually be visible: an image further down has not started loading yet and never would, so waiting for all of them would hold the loader open for ever. */var pending=[],im,r,i;for(i=0;i<document.images.length;i++){im=document.images[i];r=im.getBoundingClientRect();if(r.bottom<0||r.top>window.innerHeight*1.2)continue;if(im.complete&&im.naturalWidth>0)continue;pending.push(im);}if(!pending.length){finish();return;}var left=pending.length,fired=false;var one=function(){if(--left<=0&&!fired){fired=true;finish();}};pending.forEach(function(x){x.addEventListener('load',one,{once:true});x.addEventListener('error',one,{once:true});});/* a slow or broken image must never trap anybody behind the loader */setTimeout(function(){if(!fired){fired=true;finish();}},2500);});</script>
-    <script src="/img-fallback.2.js" defer></script>
-    <script src="/nav.1.js" defer></script>
+    <!-- the sign-in dialog. loaded before i18n so its copy is translated too -->
     <script src="/auth-modal.15.js" defer></script>
     <script src="/auth-flow.20.js" defer></script>
     <script src="/auth-nav.4.js" defer></script>
-    <script src="/toast.2.js" defer></script>
     <script src="/navlift.1.js" defer></script>
     <script src="/i18n.87.js" defer></script>
 </body>

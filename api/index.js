@@ -690,6 +690,30 @@ app.get('/dashboard', async (req, res, next) => {
     return next();
 });
 
+// The reset page is checked before it is drawn. A dead link then lands on the
+// page that explains it rather than on a form that looks fine and refuses on
+// submit, and there is no moment where a working form is on screen for a token
+// that was already spent.
+//
+// The token is in the query string, which means it is in this server's access
+// log and in the browser's history. That is true of every reset link anywhere
+// and is why the token is worth so little on its own: it lives an hour, it
+// works once, and using it ends every session the account had. The page also
+// takes it out of the address bar once it has read it.
+app.get('/reset-password', async (req, res, next) => {
+    res.set('Cache-Control', 'no-store, private');
+    try {
+        const token = String(req.query.token || '');
+        if (!token) return res.redirect(302, '/token-expired');
+        const found = await accounts.readReset(token);
+        if (!found) return res.redirect(302, '/token-expired');
+        return next();
+    } catch (err) {
+        console.error('[reset page error]', err.message);
+        return res.redirect(302, '/token-expired');
+    }
+});
+
 // Page requests go through the renderer above so the javascript-disabled notice
 // and the geo language land in the html. Assets fall straight through to
 // express.static below.
@@ -886,6 +910,30 @@ const authResendLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => `auth_resend:${req.realIp}`,
+    message: { error: 'Too many attempts, please try again later' }
+});
+// Asking for a reset link posts mail to an address the sender chooses, which is
+// the whole shape of a mail bomb. There is a second ceiling on the address
+// itself inside accounts, because an attacker with a list of proxies gets a
+// fresh ip whenever they like and the person being mailed only has one inbox.
+const authForgotLimiter = rateLimit({
+    handler: limitHandler,
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => `auth_forgot:${req.realIp}`,
+    message: { error: 'Too many attempts, please try again later' }
+});
+// Setting the password from a link. The token is 32 random bytes, so guessing
+// is not the risk; this is here so a script cannot sit on the endpoint.
+const authResetLimiter = rateLimit({
+    handler: limitHandler,
+    windowMs: 60 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => `auth_reset:${req.realIp}`,
     message: { error: 'Too many attempts, please try again later' }
 });
 
@@ -1622,6 +1670,116 @@ app.post('/v1/auth/login', requireCloudflareOrigin, authLoginLimiter, async (req
     } catch (err) {
         console.error('[auth login error]', err.message);
         res.status(500).json({ error: 'Could not sign you in right now. Please try again shortly.' });
+    }
+});
+
+// ---------------------------------------------------------------------------
+// forgotten passwords
+// ---------------------------------------------------------------------------
+//
+// Three endpoints and two pages. The rule that shapes all of them: this must
+// not become a way of asking who has an account here. So the answer is `ok`
+// whether the address is known, unknown, rate limited, or the database is down,
+// and the timing does not give it away either, because the same work happens
+// either way: a row is written and a mail is sent in both cases.
+app.post('/v1/auth/forgot', requireCloudflareOrigin, authForgotLimiter, async (req, res) => {
+    // said once, and said no matter what happened. every early return below
+    // uses it, so there is no branch that answers differently.
+    const same = () => res.json({ ok: true });
+    try {
+        const b = req.body || {};
+        if (typeof b.company_url === 'string' && b.company_url.trim() !== '') return same();
+        if (!(await verifyTurnstile(b['cf-turnstile-response'] || b.turnstileToken, req.realIp))) {
+            // the one thing that is answered honestly: the challenge is in front
+            // of the person, not about the address, so telling them it failed
+            // reveals nothing and saves them staring at an inbox
+            return res.status(400).json({ error: 'Verification failed, please try again' });
+        }
+
+        const email = String(b.email || '').trim().toLowerCase().slice(0, 160);
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return same();
+        if (!db.available()) return same();
+
+        const lang = ['hr', 'de', 'en'].includes(b.lang) ? b.lang : 'en';
+        const started = await accounts.startReset(email, lang);
+        // too-many-sends and slow-down are answered like everything else. the
+        // person who really asked has a link in their inbox already, and the
+        // one who did not is being told nothing.
+        if (!started.ok) {
+            console.log('[auth] forgot: not sent (' + started.reason + ')');
+            return same();
+        }
+
+        const link = SITE_URL + '/reset-password?token=' + encodeURIComponent(started.token);
+        mailer.sendResetLink({ to: email, link, lang, minutes: started.expiresInMin })
+            .then(() => console.log('[auth] forgot: link sent'))
+            .catch((err) => console.error('[auth] forgot: could not send: ' + err.message));
+        return same();
+    } catch (err) {
+        console.error('[auth forgot error]', err.message);
+        return same();
+    }
+});
+
+// What the page needs to draw itself: is the token live, and is there already
+// an account behind it. The address comes back so the page can show whose reset
+// this is; the token is in the url of the person holding it, so this tells them
+// only what they could already see in their own inbox.
+app.post('/v1/auth/reset-check', requireCloudflareOrigin, authResetLimiter, async (req, res) => {
+    res.set('Cache-Control', 'no-store, private');
+    try {
+        const found = await accounts.readReset(String((req.body || {}).token || ''));
+        if (!found) return res.status(410).json({ error: 'expired' });
+        res.json({ ok: true, email: found.email, hasAccount: found.hasAccount });
+    } catch (err) {
+        console.error('[auth reset-check error]', err.message);
+        res.status(500).json({ error: 'Could not reach us just now. Please try again in a moment.' });
+    }
+});
+
+app.post('/v1/auth/reset', requireCloudflareOrigin, authResetLimiter, async (req, res) => {
+    try {
+        const b = req.body || {};
+        const token = String(b.token || '');
+        const password = typeof b.password === 'string' ? b.password : '';
+
+        // read before spending it: the name and terms are only asked for when
+        // there is no account, and refusing after the token is gone would burn
+        // somebody's only link over a missing tick
+        const found = await accounts.readReset(token);
+        if (!found) return res.status(410).json({ error: 'expired' });
+
+        const clean = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+        const firstName = clean(b.firstName, 80);
+        const lastName = clean(b.lastName, 80);
+        const nameRe = /^[a-zA-ZÀ-ɏ'’.\- ]{2,}$/;
+
+        // an account made through this door carries the same row as one made
+        // through the form: a name on it, and a person who accepted the terms
+        if (!found.hasAccount) {
+            if (!nameRe.test(firstName) || !nameRe.test(lastName) || b.consent !== true) {
+                return res.status(400).json({ error: 'Invalid submission' });
+            }
+        }
+
+        const pwProblem = passwordProblem(password, found.email, firstName, lastName);
+        if (pwProblem) return res.status(400).json({ error: pwProblem });
+
+        const out = await accounts.finishReset(token, password, {
+            name: found.hasAccount ? '' : `${firstName} ${lastName}`,
+            flags: found.hasAccount ? [] : reviewFlags(found.email.split('@').pop(), ''),
+        });
+        // the token went between the check above and here, which means somebody
+        // else spent it: the same answer as an expired one, and nothing changed
+        if (out.reason === 'bad-token') return res.status(410).json({ error: 'expired' });
+        if (!out.ok) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
+
+        console.log('[auth] reset: ' + (out.created ? 'account created' : 'password changed') + ', other sessions ended');
+        if (out.session) setSessionCookie(res, out.session.token, out.session.maxAgeSeconds);
+        res.json({ ok: true, created: out.created });
+    } catch (err) {
+        console.error('[auth reset error]', err.message);
+        res.status(500).json({ error: 'Could not reach us just now. Please try again in a moment.' });
     }
 });
 
