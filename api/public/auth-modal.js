@@ -57,11 +57,11 @@
                     '<div class="lp-demo-grid">' +
                         '<div class="lp-demo-field">' +
                             '<label for="sp-authm-first">First name</label>' +
-                            '<input id="sp-authm-first" name="firstName" type="text" autocomplete="given-name">' +
+                            '<input id="sp-authm-first" name="firstName" type="text" autocomplete="given-name" placeholder="e.g. Alex">' +
                         '</div>' +
                         '<div class="lp-demo-field">' +
                             '<label for="sp-authm-last">Last name</label>' +
-                            '<input id="sp-authm-last" name="lastName" type="text" autocomplete="family-name">' +
+                            '<input id="sp-authm-last" name="lastName" type="text" autocomplete="family-name" placeholder="e.g. Morgan">' +
                         '</div>' +
                     '</div>' +
                     '<div class="lp-demo-field lp-demo-field-full">' +
