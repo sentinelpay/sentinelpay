@@ -195,7 +195,19 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, c
         '<meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light">' +
         // apple mail and a few others honour this; everyone else falls through the
         // stack to the system font, which is what the site uses anyway
-        '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">' +
+        // no webfont link. there was one here, to fonts.googleapis.com, which is
+        // the one host this company has written on its own website that it will
+        // not call: a german court has ruled that embedding google fonts without
+        // consent breaches the gdpr, and corp.css self hosts for exactly that
+        // reason. in an email it is worse than on a page, because the request
+        // fires when the message is opened and hands google the reader's ip and
+        // the fact that they read it. gmail and outlook strip it anyway, so it
+        // bought nothing and cost that.
+        //
+        // the stacks below are what does the work: where the reader has Inter
+        // installed the mail matches the site, and where they do not it falls to
+        // the same system face the site falls to.
+        '' +
         '</head>' +
         '<body style="margin:0;padding:0;background:' + C.page + ';">' +
 
@@ -203,8 +215,13 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, c
         // the visible body
         '<div style="display:none;max-height:0;overflow:hidden;opacity:0;">' + esc(intro) + '</div>' +
 
-        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:' + C.page + ';padding:40px 16px;">' +
-        '<tr><td align="center">' +
+        // the padding belongs to the cell, not to the table. a table that is
+        // width="100%" and also padded is 100% plus its padding wide in a client
+        // that measures the old way, which is most of them, and the result is a
+        // horizontal scrollbar under every message. the cell is inside the
+        // table, so its padding takes room rather than adding it.
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:' + C.page + ';">' +
+        '<tr><td align="center" style="padding:40px 16px;">' +
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" ' +
         'style="max-width:560px;background:' + C.card + ';border:1px solid ' + C.line + ';border-radius:18px;overflow:hidden;font-family:' + FONT + ';">' +
 
