@@ -1727,6 +1727,15 @@ app.post('/v1/auth/forgot', requireCloudflareOrigin, authForgotLimiter, async (r
         const email = String(b.email || '').trim().toLowerCase().slice(0, 160);
         // the shape of what was typed, not whether we know it
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            // the shape of the refusal, never the address. an address that looks
+            // perfectly ordinary to the person who typed it and is refused here
+            // is either not arriving as typed or is carrying something invisible,
+            // and those two need different fixes. this says which without writing
+            // anybody's address into a log.
+            console.warn('[auth] forgot: address refused (length ' + email.length +
+                ', ' + (email.split('@').length - 1) + ' at-signs' +
+                ', dot after at: ' + /@[^@]*\./.test(email) +
+                ', codepoints outside ascii: ' + (email.match(/[^\x20-\x7e]/g) || []).length + ')');
             return res.status(400).json({ error: 'Please enter a valid email address.' });
         }
         if (!db.available()) {

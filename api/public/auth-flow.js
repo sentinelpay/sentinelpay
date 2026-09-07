@@ -1435,6 +1435,19 @@
                     rMail.focus();
                     return;
                 }
+                // the same shape the server checks, checked here first. the
+                // sign-up form has always done this and this panel never did, so
+                // a mistyped address went all the way to the server and came back
+                // as a refusal a second later. it also settles a question when
+                // this goes wrong: if the message appears without a request being
+                // made, the address really is malformed; if the request is made
+                // and the server refuses it, something between here and there is
+                // changing it.
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)) {
+                    rSay(t('Please enter a valid email address.'));
+                    rMail.focus();
+                    return;
+                }
 
                 rSay('');
 
