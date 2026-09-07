@@ -226,6 +226,11 @@
     // both forms are handled by auth-flow.js: the sign-up, the code panel and the
     // sign-in are one flow and live in one file.
 
+    // the flow needs to be able to put this on screen by itself: somebody
+    // arriving from a reset link has to land on the dialog with the password
+    // panel already up, and only the flow knows that.
+    window.SentinelAuthModal = { open: open, close: close };
+
     // this script may run before or after the flow: whichever is second picks the
     // other up, so the dialog is never left as a form that does nothing
     if (window.SentinelAuthFlow) window.SentinelAuthFlow.scan();

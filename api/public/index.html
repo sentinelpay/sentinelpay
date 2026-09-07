@@ -34,6 +34,12 @@
       "description": "Crypto AML and blockchain monitoring. Screens every transaction on 10+ blockchains in real time and alerts your compliance team, with evidence, the moment funds trace back to a hack, a sanctioned address or a mixer."
 }</script>
 
+    <script>/* a reset link lands here. the token comes out of the address bar before
+       anything else on the page runs, because everything after this point can read
+       location.href and a link that sets somebody's password is not a thing to hand
+       to a third party script. the url is left reading sentinelpay.org and the
+       dialog opens over it. */
+    (function(){try{var m=location.search.match(/[?&]token=([^&]*)/);if(!m)return;window.__SP_RESET_TOKEN=decodeURIComponent(m[1]);if(history.replaceState)history.replaceState(null,'','/');}catch(e){window.__SP_RESET_TOKEN='';}})();</script>
     <script>document.documentElement.classList.add('theme-light');</script>
     <script>(function(){try{var s=localStorage.getItem('sb-aivqwkgjdpklxxuvkxpy-auth-token');if(s){var d=JSON.parse(s);if(d&&d.expires_at&&Math.floor(Date.now()/1000)<d.expires_at){document.documentElement.classList.add('auth-session-present');}}}catch(e){}})();</script>
     <link rel="icon" type="image/svg+xml" href="/logo.svg">
@@ -1890,8 +1896,8 @@
     <script src="/faq.1.js" defer></script>
     <script src="/img-fallback.2.js" defer></script>
     <!-- the sign-in dialog. loaded before i18n so its copy is translated too -->
-    <script src="/auth-modal.15.js" defer></script>
-    <script src="/auth-flow.24.js" defer></script>
+    <script src="/auth-modal.16.js" defer></script>
+    <script src="/auth-flow.25.js" defer></script>
     <script src="/auth-nav.4.js" defer></script>
     <script src="/hero3d.15.js" defer></script>
     <script src="/flair.7.js" defer></script>

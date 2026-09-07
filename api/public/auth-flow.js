@@ -138,6 +138,29 @@
         return n;
     }
 
+    // one labelled input, in the markup the card's own fields use. built here
+    // rather than written out four times: the panels this file adds have to look
+    // like the ones the html already carries, and the way to keep them looking
+    // like it is to have one place that decides what a field is.
+    function field(idBase, label, type, autocomplete, placeholder, full) {
+        var wrap = el('div', 'lp-demo-field');
+        if (full) wrap.classList.add('lp-demo-field-full');
+        var id = idBase + '-' + Math.random().toString(36).slice(2, 8);
+        var lab = el('label', null, label);
+        lab.setAttribute('for', id);
+        var input = document.createElement('input');
+        input.id = id;
+        input.type = type;
+        input.autocomplete = autocomplete;
+        // the label is left in english for the dictionary's dom walk to pick up,
+        // the way every other panel here does it. a placeholder is an attribute
+        // rather than a text node, so it is asked for directly.
+        input.placeholder = t(placeholder);
+        wrap.appendChild(lab);
+        wrap.appendChild(input);
+        return { wrap: wrap, input: input, label: lab };
+    }
+
     // restart an animation: removing the class alone is not a change the browser
     // can see, the element has to be laid out again in between
     function replay(node, cls) {
@@ -1008,6 +1031,85 @@
             loginCard.insertBefore(backArrow, loginCard.firstChild);
             backArrow.addEventListener('click', function () { lStep('login'); });
 
+            // ---- arriving from the link in the mail ----------------------------
+            // the message used to open a page of its own. it opens this dialog
+            // now, over the site, because that is where every other thing you do
+            // with an account happens and a second screen that looked almost the
+            // same was a second screen to keep in step.
+            //
+            // one panel for both endings: an address with an account is setting a
+            // new password, an address without one is making the account. the
+            // server decides which, and the difference on screen is the two name
+            // fields and the terms tick.
+            var setpw = el('form', 'sp-auth-form');
+            setpw.classList.add('sp-auth-verify');
+            setpw.setAttribute('novalidate', '');
+            setpw.hidden = true;
+
+            var pwHead = el('div', 'sp-auth-vhead');
+            var pwMark = el('div', 'sp-auth-vmark');
+            pwMark.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
+                'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                '<rect x="4" y="10.5" width="16" height="10" rx="2.2"></rect>' +
+                '<path d="M8 10.5V7.6a4 4 0 0 1 8 0v2.9"></path></svg>';
+            pwHead.appendChild(pwMark);
+            var pwTitle = el('h3', null, 'Set a new password');
+            var pwSub = el('p', null, 'Choose one you have not used anywhere else. You will be signed in as soon as it is saved.');
+            pwHead.appendChild(pwTitle);
+            pwHead.appendChild(pwSub);
+            setpw.appendChild(pwHead);
+
+            var pwFor = el('p', 'sp-auth-for');
+            pwFor.hidden = true;
+            setpw.appendChild(pwFor);
+
+            var pwNames = el('div', 'lp-demo-grid');
+            pwNames.hidden = true;
+            var pwFirst = field('sp-pw-first', 'First name', 'text', 'given-name', 'e.g. Alex');
+            var pwLast = field('sp-pw-last', 'Last name', 'text', 'family-name', 'e.g. Morgan');
+            pwNames.appendChild(pwFirst.wrap);
+            pwNames.appendChild(pwLast.wrap);
+            setpw.appendChild(pwNames);
+
+            var pwOne = field('sp-pw-one', 'New password', 'password', 'new-password', 'At least 12 characters', true);
+            var pwTwo = field('sp-pw-two', 'Repeat the password', 'password', 'new-password', 'At least 12 characters', true);
+            setpw.appendChild(pwOne.wrap);
+            setpw.appendChild(pwTwo.wrap);
+
+            var pwConsent = el('label', 'lp-demo-consent');
+            pwConsent.hidden = true;
+            var pwTick = document.createElement('input');
+            pwTick.type = 'checkbox';
+            pwTick.name = 'consent';
+            var pwTerms = el('span');
+            pwTerms.innerHTML = 'I agree to <a href="/terms-of-service">the terms of service</a> and to be contacted about this account.';
+            pwConsent.appendChild(pwTick);
+            pwConsent.appendChild(pwTerms);
+            setpw.appendChild(pwConsent);
+
+            var pwErr = el('p', 'sp-auth-verr');
+            pwErr.hidden = true;
+            pwErr.setAttribute('role', 'alert');
+            setpw.appendChild(pwErr);
+
+            var pwBtn = el('button', 'lp-demo-submit', 'Save the password');
+            pwBtn.classList.add('sp-auth-submit');
+            pwBtn.type = 'submit';
+            setpw.appendChild(pwBtn);
+
+            var pwDone = el('div', 'sp-auth-done');
+            pwDone.hidden = true;
+            var pwDoneMark = el('div', 'sp-auth-done-mark');
+            pwDoneMark.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" ' +
+                'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+            pwDone.appendChild(pwDoneMark);
+            var pwDoneTitle = el('h3', null, 'Your password is set');
+            pwDone.appendChild(pwDoneTitle);
+            pwDone.appendChild(el('p', null, 'You are signed in. Taking you to your account…'));
+
+            form.parentNode.insertBefore(setpw, sent.nextSibling);
+            form.parentNode.insertBefore(pwDone, setpw.nextSibling);
+
             // what the copy beside the card looked like on the way in, so coming
             // back restores it rather than guessing which of the pair was showing
             var lHeadState = null;
@@ -1020,6 +1122,8 @@
                     form.hidden = name !== 'login';
                     reset.hidden = name !== 'reset';
                     sent.hidden = name !== 'sent';
+                    setpw.hidden = name !== 'setpw';
+                    pwDone.hidden = name !== 'setpwdone';
                     // there is no second tab to reach from inside a reset, the
                     // same way there is none in the middle of a sign-up
                     if (lTabs) lTabs.hidden = name !== 'login';
@@ -1027,10 +1131,12 @@
                         lHeads[k].hidden = name === 'login' ? (lHeadState ? lHeadState[k] : lHeads[k].hidden) : true;
                     }
                     if (name === 'login') lHeadState = null;
-                    backArrow.hidden = name === 'login';
+                    // no way back from the link panels: the token is spent by
+                    // finishing and there is nothing behind them to return to
+                    backArrow.hidden = name === 'login' || name === 'setpw' || name === 'setpwdone';
                     loginCard.dataset.authStep = name === 'login' ? '' : name;
                 });
-                var into = name === 'login' ? form : (name === 'reset' ? reset : sent);
+                var into = { login: form, reset: reset, sent: sent, setpw: setpw, setpwdone: pwDone }[name];
                 into.style.setProperty('--sp-auth-dir', name === 'login' ? '-14px' : '14px');
                 replay(into, 'sp-auth-enter');
             }
@@ -1153,6 +1259,115 @@
                 }).then(function () { rts.spend(); });
             });
 
+            // ---- the panel the link opens -------------------------------------
+
+            function pwSay(msg) {
+                pwErr.textContent = msg || '';
+                pwErr.hidden = !msg;
+                if (msg) replay(pwErr, 'sp-auth-enter');
+            }
+
+            function expired() { location.replace('/token-expired'); }
+
+            var makingAccount = false;
+            var pwBusy = false;
+
+            function startFromLink(token) {
+                lStep('setpw');
+                setpw.hidden = false;
+                pwBtn.disabled = true;
+                post('/v1/auth/reset-check', { token: token }).then(function (out) {
+                    makingAccount = !out.hasAccount;
+                    pwFor.textContent = t('For') + ' ' + out.email;
+                    pwFor.hidden = false;
+                    if (makingAccount) {
+                        // no account on this address yet, and finishing here makes
+                        // one. it has to carry what the sign-up form asks for, or
+                        // it is an account with nobody's name on it and no record
+                        // of the terms.
+                        pwNames.hidden = false;
+                        pwConsent.hidden = false;
+                        pwTitle.textContent = t('Create your account');
+                        pwSub.textContent = t('This address has no account yet. Choose a password and it is yours; the link you clicked is the proof the address is.');
+                        pwBtn.textContent = t('Create account');
+                    }
+                    pwBtn.disabled = false;
+                    glideOn(loginCard, function () {});
+                    var coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+                    if (!coarse) (makingAccount ? pwFirst.input : pwOne.input).focus({ preventScroll: true });
+                }).catch(function (failed) {
+                    // 410 is the link being gone. anything else is us being
+                    // unreachable, and sending somebody to "expired" for a
+                    // network blip would tell them to ask for a link they have.
+                    if (failed && failed.status === 410) { expired(); return; }
+                    pwBtn.disabled = false;
+                    pwSay(t('Could not reach us just now. Please try again in a moment.'));
+                });
+            }
+
+            pwTick.addEventListener('change', function () {
+                if (pwTick.checked) pwConsent.classList.remove('lp-demo-consent-err');
+            });
+
+            setpw.addEventListener('submit', function (e) {
+                e.preventDefault();
+                if (pwBusy) return;
+                var token = window.__SP_RESET_TOKEN || '';
+                if (!token) { expired(); return; }
+
+                var one = pwOne.input.value;
+                var two = pwTwo.input.value;
+                if (makingAccount && (!pwFirst.input.value.trim() || !pwLast.input.value.trim())) {
+                    pwSay(t('Please fill in every field.'));
+                    (pwFirst.input.value.trim() ? pwLast.input : pwFirst.input).focus();
+                    return;
+                }
+                if (!one || !two) { pwSay(t('Please fill in every field.')); return; }
+                // checked here as well as by the server, because the server is
+                // told one password and cannot see that the second box disagreed
+                if (one !== two) {
+                    pwSay(t('The two passwords do not match.'));
+                    pwTwo.input.value = '';
+                    pwTwo.input.focus();
+                    return;
+                }
+                if (makingAccount && !pwTick.checked) {
+                    pwConsent.classList.add('lp-demo-consent-err');
+                    pwSay(t('Please accept the terms of service to continue.'));
+                    return;
+                }
+
+                pwSay('');
+                pwBusy = true;
+                pwBtn.disabled = true;
+                var pwLabel = pwBtn.textContent;
+                pwBtn.textContent = t('Saving…');
+
+                post('/v1/auth/reset', {
+                    token: token,
+                    password: one,
+                    firstName: pwFirst.input.value.trim(),
+                    lastName: pwLast.input.value.trim(),
+                    consent: makingAccount ? Boolean(pwTick.checked) : undefined,
+                    lang: lang()
+                }).then(function () {
+                    try { delete window.__SP_RESET_TOKEN; } catch (e) { window.__SP_RESET_TOKEN = ''; }
+                    lStep('setpwdone');
+                    // replace rather than assign: back must not return to a panel
+                    // whose token has just been spent
+                    setTimeout(function () { location.replace('/dashboard'); }, 1100);
+                }).catch(function (failed) {
+                    if (failed && failed.status === 410) { expired(); return; }
+                    pwSay(reason(failed));
+                    pwBusy = false;
+                    pwBtn.disabled = false;
+                    pwBtn.textContent = pwLabel;
+                    pwOne.input.value = '';
+                    pwTwo.input.value = '';
+                    pwOne.input.focus();
+                });
+            });
+
             // closing the dialog puts the reset away. a half-made sign-up is
             // worth coming back to, which is why that one is remembered, but a
             // reset is one field and one press: somebody who shuts the dialog
@@ -1172,6 +1387,8 @@
                         form.hidden = false;
                         reset.hidden = true;
                         sent.hidden = true;
+                        setpw.hidden = true;
+                        pwDone.hidden = true;
                         backArrow.hidden = true;
                         if (lTabs) lTabs.hidden = false;
                         for (var m = 0; m < lHeads.length; m++) {
@@ -1188,6 +1405,18 @@
                     }
                     wasOpen = open;
                 }).observe(backdrop, { attributes: true, attributeFilter: ['hidden'] });
+            }
+
+            // and the arrival itself. the token was taken out of the address bar
+            // by an inline script in the head before anything else ran, so by the
+            // time this fires the url already reads sentinelpay.org and nothing
+            // on the page has seen it.
+            //
+            // only the dialog does this. /auth has a card of its own and is not
+            // where the mail sends anybody.
+            if (backdrop && window.__SP_RESET_TOKEN) {
+                if (window.SentinelAuthModal) window.SentinelAuthModal.open('login');
+                startFromLink(window.__SP_RESET_TOKEN);
             }
 
             function rSay(msg) {

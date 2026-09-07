@@ -716,9 +716,16 @@ app.get('/reset-password', async (req, res) => {
         if (!token) return res.redirect(302, '/token-expired');
         const found = await accounts.readReset(token);
         if (!found) return res.redirect(302, '/token-expired');
+        // the homepage, with the dialog opening over it. the link used to land on
+        // a page of its own, which meant a second screen carrying the same card,
+        // the same panels and the same copy, kept in step by hand. the dialog is
+        // where everything else about an account already happens, so the mail
+        // sends people there and an inline script in index.html turns the token
+        // into an open panel and a clean address bar.
+        //
         // no-store rather than no-cache: the url holds the token, and no-cache
-        // still allows the browser to write it to disk
-        return sendPage(res, req, 'reset-password.html', 200, undefined, 'no-store, private');
+        // still allows the browser to write it to disk.
+        return sendPage(res, req, 'index.html', 200, undefined, 'no-store, private');
     } catch (err) {
         console.error('[reset page error]', err.message);
         return res.redirect(302, '/token-expired');
