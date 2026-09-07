@@ -544,9 +544,14 @@ function renderPage(file, req, forcedLang) {
         .replace('<body class="lp-body">', () => '<body class="lp-body">' + statusBanner() + stagingRibbon());
 }
 
-function sendPage(res, req, file, status, forcedLang) {
+// `cache` is for the one page whose url carries a secret. it is a parameter
+// rather than a header the route sets beforehand, because this function used to
+// overwrite whatever was already there, and reading the existing value instead
+// would have quietly changed the homepage too: it sets no-store on the geo path
+// and has been served no-cache ever since.
+function sendPage(res, req, file, status, forcedLang, cache) {
     res.status(status || 200)
-        .set('Cache-Control', 'no-cache')
+        .set('Cache-Control', cache || 'no-cache')
         .set('Vary', 'CF-IPCountry, User-Agent')
         .type('html')
         .send(renderPage(file, req, forcedLang));
@@ -700,14 +705,20 @@ app.get('/dashboard', async (req, res, next) => {
 // and is why the token is worth so little on its own: it lives an hour, it
 // works once, and using it ends every session the account had. The page also
 // takes it out of the address bar once it has read it.
-app.get('/reset-password', async (req, res, next) => {
-    res.set('Cache-Control', 'no-store, private');
+app.get('/reset-password', async (req, res) => {
+    // belt and braces on the query string. helmet already sends no-referrer for
+    // the site, and this page is the one where it actually matters, so it says
+    // so itself rather than depending on a default staying the default.
+    res.set('Referrer-Policy', 'no-referrer');
+    res.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
     try {
         const token = String(req.query.token || '');
         if (!token) return res.redirect(302, '/token-expired');
         const found = await accounts.readReset(token);
         if (!found) return res.redirect(302, '/token-expired');
-        return next();
+        // no-store rather than no-cache: the url holds the token, and no-cache
+        // still allows the browser to write it to disk
+        return sendPage(res, req, 'reset-password.html', 200, undefined, 'no-store, private');
     } catch (err) {
         console.error('[reset page error]', err.message);
         return res.redirect(302, '/token-expired');

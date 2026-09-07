@@ -33,14 +33,21 @@
     var head = document.getElementById('rp-h');
     var sub = document.getElementById('rp-p');
 
-    // the token, taken out of the address bar the moment it is read. it stays
-    // in this closure for the one request that spends it. leaving it in the url
-    // puts it in the history of a browser that may not be theirs, and in the
-    // referer of anything the page later loads.
+    // the token was taken out of the address bar by an inline script in the head,
+    // before anything else on the page ran. that ordering is the point: this file
+    // is deferred, and by the time a deferred script runs every third party
+    // snippet has already had its look at location.href. a reset token is not a
+    // thing to hand to somebody's analytics.
+    //
+    // the fallback is only for a page served without that script.
     var token = '';
     try {
-        token = new URLSearchParams(location.search).get('token') || '';
-        if (token && history.replaceState) history.replaceState(null, '', location.pathname);
+        token = window.__SP_RESET_TOKEN || '';
+        try { delete window.__SP_RESET_TOKEN; } catch (e2) { window.__SP_RESET_TOKEN = ''; }
+        if (!token) {
+            token = new URLSearchParams(location.search).get('token') || '';
+            if (token && history.replaceState) history.replaceState(null, '', location.pathname);
+        }
     } catch (e) { /* an old browser keeps the url; the token still works */ }
 
     function expired() { location.replace('/token-expired'); }
