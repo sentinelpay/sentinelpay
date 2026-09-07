@@ -3301,6 +3301,11 @@ html[data-mail-down] a[data-mail-subject] {
    needs a corner to measure from, and on /auth there is no dialog around it. */
 .sp-auth-panel, .sp-authm-panel { position: relative; }
 .sp-auth-stepback { right: auto; left: 0.7rem; }
+/* the display:flex above is an author rule and beats the browser's own
+   [hidden] { display: none }, so the arrow kept drawing on every panel while
+   its hidden attribute was set. everything else here toggles with `hidden`,
+   so the arrow does too, and this is what makes that work. */
+.sp-auth-stepback[hidden] { display: none; }
 .sp-auth-stepback svg { width: 17px; height: 17px; }
 .sp-auth-stepback:hover { color: #fff; background: rgba(255, 255, 255, 0.09); }
 

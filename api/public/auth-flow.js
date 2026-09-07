@@ -941,7 +941,10 @@
                         lHeads[k].hidden = name === 'login' ? (lHeadState ? lHeadState[k] : lHeads[k].hidden) : true;
                     }
                     if (name === 'login') lHeadState = null;
-                    backArrow.hidden = name === 'login';
+                    // only the panel that asks for the address. once the mail is
+                    // gone there is nothing to go back and change, and an arrow
+                    // there invites somebody to send a second one.
+                    backArrow.hidden = name !== 'reset';
                     loginCard.dataset.authStep = name === 'login' ? '' : name;
                 });
                 var into = name === 'login' ? form : (name === 'reset' ? reset : sent);
