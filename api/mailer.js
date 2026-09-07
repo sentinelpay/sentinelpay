@@ -57,6 +57,17 @@ const C = {
    installed the mail matches the site exactly; where they do not it falls to
    the system UI face, which is what the site falls to as well. the shape of the
    fallback chain is the part that has to be right, and it is the same chain. */
+// the four files corp.css loads, with the same ranges. latin carries the
+// ordinary alphabet; latin-ext carries č ć ž š đ, which is most croatian words.
+const LATIN = 'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD';
+const LATIN_EXT = 'U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF';
+const FACES = [
+    { family: "'Inter'", file: '/fonts/inter-latin.woff2', range: LATIN },
+    { family: "'Inter'", file: '/fonts/inter-latin-ext.woff2', range: LATIN_EXT },
+    { family: "'Plus Jakarta Sans'", file: '/fonts/jakarta-latin.woff2', range: LATIN },
+    { family: "'Plus Jakarta Sans'", file: '/fonts/jakarta-latin-ext.woff2', range: LATIN_EXT },
+];
+
 const FONT = "Inter,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Helvetica,Arial,sans-serif";
 const DISPLAY = "'Plus Jakarta Sans',Inter,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Helvetica,Arial,sans-serif";
 const LOGO = SITE + '/logo.png';
@@ -175,10 +186,13 @@ function button(cta) {
     if (!cta) return '';
     return '<tr><td style="padding:6px 36px 0;">' +
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">' +
-        '<tr><td align="center" bgcolor="' + C.text + '" style="border-radius:12px;">' +
-        '<a href="' + esc(cta.href) + '" style="display:block;padding:15px 24px;font-family:' + DISPLAY + ';' +
-        'font-size:14.5px;font-weight:700;letter-spacing:-0.006em;line-height:19px;color:#ffffff;text-decoration:none;' +
-        'border-radius:12px;text-align:center;">' +
+        // .lp-demo-submit: #0e2358, 10px corners, 700 at 0.85rem. it is full
+        // width in the dialog because sp-auth-submit makes it so, and full width
+        // here for the same reason: it is the only thing to press.
+        '<tr><td align="center" bgcolor="' + C.text + '" style="border-radius:10px;">' +
+        '<a href="' + esc(cta.href) + '" style="display:block;padding:14px 24px;font-family:' + DISPLAY + ';' +
+        'font-size:13.5px;font-weight:700;letter-spacing:-0.006em;line-height:19px;color:#ffffff;text-decoration:none;' +
+        'border-radius:10px;text-align:center;">' +
         esc(cta.label) + '</a>' +
         '</td></tr></table></td></tr>';
 }
@@ -195,19 +209,32 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, c
         '<meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light">' +
         // apple mail and a few others honour this; everyone else falls through the
         // stack to the system font, which is what the site uses anyway
-        // no webfont link. there was one here, to fonts.googleapis.com, which is
-        // the one host this company has written on its own website that it will
-        // not call: a german court has ruled that embedding google fonts without
-        // consent breaches the gdpr, and corp.css self hosts for exactly that
-        // reason. in an email it is worse than on a page, because the request
-        // fires when the message is opened and hands google the reader's ip and
-        // the fact that they read it. gmail and outlook strip it anyway, so it
-        // bought nothing and cost that.
+        // The site's own two faces, from the site's own origin, declared exactly
+        // as fonts.css declares them, unicode ranges and all. The croatian
+        // diacritics live in the -ext files, so both halves of each family have
+        // to be here or half a word renders in one face and half in another.
         //
-        // the stacks below are what does the work: where the reader has Inter
-        // installed the mail matches the site, and where they do not it falls to
-        // the same system face the site falls to.
-        '' +
+        // There was a link to fonts.googleapis.com here once. That host is the
+        // one this company has written on its own website that it will not call:
+        // a german court has ruled that embedding google fonts without consent
+        // breaches the gdpr, and corp.css self hosts for exactly that reason.
+        //
+        // Self hosting does not make the request free. An inbox that fetches a
+        // font tells us the message was opened, which is what a tracking pixel
+        // is, and some clients block remote content for that reason. The
+        // difference is that this one is ours: it is our server, our log, our
+        // retention, and no third party is handed anybody's address book by it.
+        //
+        // Gmail and outlook strip @font-face entirely, so this changes nothing
+        // there and the stacks below carry the mail. Apple Mail and iOS honour
+        // it, and that is where the message now looks exactly like the site.
+        '<style>' +
+        FACES.map((f) =>
+            '@font-face{font-family:' + f.family + ';font-style:normal;font-weight:300 800;' +
+            'font-display:swap;src:url(' + SITE + f.file + ') format(\'woff2\');' +
+            'unicode-range:' + f.range + ';}'
+        ).join('') +
+        '</style>' +
         '</head>' +
         '<body style="margin:0;padding:0;background:' + C.page + ';">' +
 
@@ -223,13 +250,11 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, c
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:' + C.page + ';">' +
         '<tr><td align="center" style="padding:40px 16px;">' +
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" ' +
-        'style="max-width:560px;background:' + C.card + ';border:1px solid ' + C.line + ';border-radius:18px;overflow:hidden;font-family:' + FONT + ';">' +
-
-        // the gradient hairline every card on the site carries. outlook drops the
-        // gradient and keeps the background colour, which is the cyan end of it,
-        // so it degrades to a plain accent line rather than to nothing.
-        '<tr><td style="height:3px;line-height:3px;font-size:0;background:' + C.cyan + ';' +
-        'background-image:linear-gradient(90deg,#00d5ff 0%,' + C.purple + ' 100%);">&nbsp;</td></tr>' +
+        // 26px and this shadow are the sign-in dialog's own, so the message and
+        // the panel it is about are recognisably the same object. outlook keeps
+        // the border and drops the rest, which is a plain white card and fine.
+        'style="max-width:560px;background:' + C.card + ';border:1px solid ' + C.line + ';border-radius:26px;overflow:hidden;' +
+        'box-shadow:0 24px 60px -34px rgba(14,35,88,0.3),0 2px 8px rgba(14,35,88,0.04);font-family:' + FONT + ';">' +
 
         // the mark on its own. no wordmark beside it: the logo is the signature,
         // and the name is in the sender line anyway.
@@ -243,8 +268,11 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, c
 
         '<tr><td style="padding:0 36px;">' +
         (eyebrow ? '<div style="font-size:11px;letter-spacing:0.11em;text-transform:uppercase;font-weight:700;color:' + C.cyan + ';">' + esc(eyebrow) + '</div>' : '') +
-        '<div style="margin-top:10px;font-family:' + DISPLAY + ';font-size:26px;line-height:33px;font-weight:800;letter-spacing:-0.02em;color:' + C.text + ';">' + esc(title) + '</div>' +
-        '<div style="margin-top:12px;font-size:15px;line-height:24px;color:' + C.muted + ';">' + esc(intro) + '</div>' +
+        // the dialog's own heading and sub, to the pixel: 1.55rem/1.18 and
+        // 0.9rem/1.55, which is 24.8/29 and 14.4/22 once the browser has done
+        // the arithmetic the email has to do itself
+        '<div style="margin-top:10px;font-family:' + DISPLAY + ';font-size:25px;line-height:29px;font-weight:800;letter-spacing:-0.02em;color:' + C.text + ';">' + esc(title) + '</div>' +
+        '<div style="margin-top:12px;font-size:14.5px;line-height:22px;color:' + C.muted + ';">' + esc(intro) + '</div>' +
         '</td></tr>' +
 
         '<tr><td style="height:26px;line-height:26px;font-size:0;">&nbsp;</td></tr>' +
@@ -296,6 +324,13 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, c
         esc(LEGAL.reg) +
         '</div>' +
         '</td></tr>' +
+
+        // the gradient edge, along the bottom, where the card on the site wears
+        // it. it used to be a bar across the top, which no card on the site has.
+        // outlook drops the gradient and keeps the background colour, which is
+        // the cyan end of it, so it degrades to a plain accent line.
+        '<tr><td style="height:3px;line-height:3px;font-size:0;background:' + C.cyan + ';' +
+        'background-image:linear-gradient(90deg,#00f0ff 0%,' + C.purple + ' 50%,#a020f0 100%);">&nbsp;</td></tr>' +
 
         '</table>' +
         '</td></tr></table></body></html>';
