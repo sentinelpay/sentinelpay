@@ -107,6 +107,10 @@
                 var err = new Error('http_' + r.status);
                 err.reason = data && data.error;
                 err.retryIn = data && data.retryIn;
+                // the reset endpoint says this when it refused because a link
+                // for that address is already in flight. it is a refusal the
+                // caller wants to treat as news rather than as a fault.
+                err.alreadySent = Boolean(data && data.alreadySent);
                 err.status = r.status;
                 throw err;
             });
@@ -117,7 +121,13 @@
     // as it explained it: "that code has expired" sends somebody to the resend
     // button, "could not send" sends them to support for no reason.
     function reason(err) {
-        if (err && err.reason && err.status && err.status < 500) return t(err.reason);
+        // 503 is included on purpose. it is not a crash, it is an answer we
+        // wrote: the database is down, or the mail provider refused. those say
+        // different things and send the reader somewhere different, and burying
+        // both under "could not reach us" is the panel guessing on the server's
+        // behalf. 500 stays generic, because a 500 is the one case where nobody
+        // decided what to say.
+        if (err && err.reason && err.status && (err.status < 500 || err.status === 503)) return t(err.reason);
         return t('Could not reach us just now. Please try again in a moment.');
     }
 
@@ -1127,11 +1137,19 @@
                     // goes on the panel, but the wait stands: a button that
                     // frees itself on failure is a button somebody can free by
                     // going offline.
+                    // the server refusing because one is already in flight is not
+                    // a failure to report: it is the countdown, said by the side
+                    // that actually knows
+                    if (failed && failed.alreadySent) {
+                        rememberAsk(sAddress, failed.retryIn || RESET_RESEND_WAIT);
+                        showResendState(sAddress, failed.retryIn || RESET_RESEND_WAIT);
+                        return;
+                    }
                     sSay(failed && failed.noToken
                         ? t(rts.fault() === 'script-blocked'
                             ? 'The security check could not load. An ad blocker or network filter may be blocking it.'
                             : 'The check below did not finish. Please try again in a moment.')
-                        : t('Could not reach us just now. Please try again in a moment.'));
+                        : reason(failed));
                 }).then(function () { rts.spend(); });
             });
 
@@ -1234,6 +1252,18 @@
                         rSay(t(rts.fault() === 'script-blocked'
                             ? 'The security check could not load. An ad blocker or network filter may be blocking it.'
                             : 'The check below did not finish. Please try again in a moment.'));
+                        return;
+                    }
+                    // refused because one went out a moment ago. a link really is
+                    // in that inbox, so the envelope is the truthful screen, with
+                    // the server's own number on the button.
+                    if (failed && failed.alreadySent) {
+                        sMail.textContent = address;
+                        sAddress = address;
+                        sSay('');
+                        rememberAsk(address, failed.retryIn || RESET_RESEND_WAIT);
+                        showResendState(address, failed.retryIn || RESET_RESEND_WAIT);
+                        lStep('sent');
                         return;
                     }
                     rSay(reason(failed));

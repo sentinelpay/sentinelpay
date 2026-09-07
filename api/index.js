@@ -1694,46 +1694,72 @@ app.post('/v1/auth/login', requireCloudflareOrigin, authLoginLimiter, async (req
 // and the timing does not give it away either, because the same work happens
 // either way: a row is written and a mail is sent in both cases.
 app.post('/v1/auth/forgot', requireCloudflareOrigin, authForgotLimiter, async (req, res) => {
-    // said once, and said no matter what happened. every early return below
-    // uses it, so there is no branch that answers differently.
+    // The one thing that has to stay uniform is whether the address has an
+    // account. That is the question this endpoint must never answer, and it
+    // never does: nothing on this path reads the users table, so a known and an
+    // unknown address take the same branches, do the same work and get the same
+    // reply.
     //
-    // resendIn is the policy, not this address's state: it is the same number
-    // every time, for an address that has one waiting and for one that has
-    // never been asked about. it tells the panel how long to hold the button
-    // down and tells a prober nothing.
-    const same = () => res.json({ ok: true, resendIn: accounts.RESET_RESEND_WAIT_S });
+    // Everything else is answered honestly, and that is a correction. Five
+    // branches used to reply "on its way" for a message that was never sent: a
+    // malformed address, a database that was down, a rate limit, a thrown error,
+    // and a send that failed after the reply had already gone. None of those
+    // depend on whether an account exists, so hiding them bought nothing and
+    // cost somebody sitting in front of an inbox waiting for a mail that was
+    // never coming.
+    const sent = () => res.json({ ok: true, resendIn: accounts.RESET_RESEND_WAIT_S });
     try {
         const b = req.body || {};
-        if (typeof b.company_url === 'string' && b.company_url.trim() !== '') return same();
+        // a bot is the one caller that is answered with a fiction, and it is
+        // told exactly what a person is told, which is the point of the trap
+        if (typeof b.company_url === 'string' && b.company_url.trim() !== '') return sent();
         if (!(await verifyTurnstile(b['cf-turnstile-response'] || b.turnstileToken, req.realIp))) {
-            // the one thing that is answered honestly: the challenge is in front
-            // of the person, not about the address, so telling them it failed
-            // reveals nothing and saves them staring at an inbox
             return res.status(400).json({ error: 'Verification failed, please try again' });
         }
 
         const email = String(b.email || '').trim().toLowerCase().slice(0, 160);
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return same();
-        if (!db.available()) return same();
+        // the shape of what was typed, not whether we know it
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            return res.status(400).json({ error: 'Please enter a valid email address.' });
+        }
+        if (!db.available()) {
+            return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
+        }
 
         const lang = ['hr', 'de', 'en'].includes(b.lang) ? b.lang : 'en';
         const started = await accounts.startReset(email, lang);
-        // too-many-sends and slow-down are answered like everything else. the
-        // person who really asked has a link in their inbox already, and the
-        // one who did not is being told nothing.
+
+        if (!started.ok && started.reason === 'rate') {
+            // a link for this address already went out, which is why this one
+            // did not. `alreadySent` lets the panel say the true thing: the mail
+            // is in the inbox, and here is when another can be asked for.
+            console.log('[auth] forgot: not sent (cooling, ' + started.retryIn + 's)');
+            res.set('Retry-After', String(started.retryIn));
+            return res.status(429).json({
+                error: 'A link is already on its way. Please check your inbox.',
+                retryIn: started.retryIn,
+                alreadySent: true,
+            });
+        }
         if (!started.ok) {
-            console.log('[auth] forgot: not sent (' + started.reason + ')');
-            return same();
+            console.error('[auth] forgot: could not start (' + started.reason + ')');
+            return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
         }
 
         const link = SITE_URL + '/reset-password?token=' + encodeURIComponent(started.token);
-        mailer.sendResetLink({ to: email, link, lang, minutes: started.expiresInMin })
-            .then(() => console.log('[auth] forgot: link sent'))
-            .catch((err) => console.error('[auth] forgot: could not send: ' + err.message));
-        return same();
+        // awaited, not fired and forgotten. the reply used to go out before the
+        // provider had been asked, so a refused send was reported as a delivery.
+        try {
+            await mailer.sendResetLink({ to: email, link, lang, minutes: started.expiresInMin });
+        } catch (mailErr) {
+            console.error('[auth] forgot: could not send: ' + mailErr.message);
+            return res.status(503).json({ error: 'Could not send the email just now. Please try again shortly.' });
+        }
+        console.log('[auth] forgot: link sent');
+        return sent();
     } catch (err) {
         console.error('[auth forgot error]', err.message);
-        return same();
+        return res.status(500).json({ error: 'Could not reach us just now. Please try again in a moment.' });
     }
 });
 

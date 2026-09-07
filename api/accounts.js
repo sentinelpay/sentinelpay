@@ -713,8 +713,28 @@ async function startReset(email, lang) {
             ]
         );
         // no row means the conflict was refused: too soon, or too many this
-        // hour. the caller answers the same either way, so they are one reason.
-        if (!wrote.rowCount) return { ok: false, reason: 'rate' };
+        // hour. read back how long that is, because the caller has to be able to
+        // say it: a screen that reports a link it did not send is worse than a
+        // screen that says "not yet".
+        //
+        // this reveals that somebody asked about this address recently. it does
+        // not reveal whether the address has an account, which is the thing that
+        // must stay uniform: nothing on this path reads the users table, and a
+        // known and an unknown address are refused identically.
+        if (!wrote.rowCount) {
+            const left = await db.query(
+                `SELECT
+                     GREATEST(0, CEIL(EXTRACT(EPOCH FROM (created_at + ($2 || ' seconds')::interval - now()))))::int AS cooldown,
+                     GREATEST(0, CEIL(EXTRACT(EPOCH FROM (created_at + interval '1 hour' - now()))))::int AS hour_left,
+                     sends
+                 FROM reset_tokens WHERE email_hash = $1`,
+                [emailHash, String(RESET_RESEND_WAIT_S)]
+            );
+            const row = left.rowCount ? left.rows[0] : null;
+            const retryIn = !row ? RESET_RESEND_WAIT_S
+                : (row.sends >= RESET_MAX_SENDS ? row.hour_left : row.cooldown);
+            return { ok: false, reason: 'rate', retryIn: Math.max(1, retryIn) };
+        }
     } catch (err) {
         console.error('[accounts] could not start a reset: ' + err.message);
         return { ok: false, reason: 'unavailable' };
