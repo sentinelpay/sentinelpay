@@ -1778,7 +1778,14 @@ app.post('/v1/auth/reset', requireCloudflareOrigin, authResetLimiter, async (req
             }
         }
 
-        const pwProblem = passwordProblem(password, found.email, firstName, lastName);
+        // an existing account is checked against the name already on it, not
+        // against the empty strings this request carries: otherwise the one
+        // door that hands out passwords is the one that does not mind you
+        // choosing your own name as yours.
+        const known = String(found.name || '').split(' ');
+        const pwProblem = found.hasAccount
+            ? passwordProblem(password, found.email, known[0] || '', known.slice(1).join(' '))
+            : passwordProblem(password, found.email, firstName, lastName);
         if (pwProblem) return res.status(400).json({ error: pwProblem });
 
         const out = await accounts.finishReset(token, password, {

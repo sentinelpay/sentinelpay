@@ -51,6 +51,51 @@
 
     function forgetPending() { live = null; }
 
+    // ---- reset links this browser has already asked for ----------------------
+    // closing the dialog and opening it again used to look like a way round the
+    // minute between links: the panel came back empty, the address went in
+    // again, and the envelope appeared as though a second mail had gone. it had
+    // not. the server refuses inside the minute and refuses atomically, and it
+    // does not touch the row it refuses, so the link already in the inbox keeps
+    // working. nothing was ever sent twice.
+    //
+    // but a screen that says "on its way" when nothing was sent is its own bug,
+    // and it is the one that makes somebody sit and wait. so the panel now
+    // remembers what this browser asked for and says the true thing.
+    //
+    // this is at module level because the dialog and the /auth card are two
+    // panels in front of one server: asking on one and then the other is still
+    // asking twice.
+    //
+    // in memory only, like the pending sign-up above and for the same reason: a
+    // reload starts clean and nothing is left on a shared machine. losing it
+    // costs nothing, because it was never the limit.
+    var RESET_MAX_ASKS = 3;    // the server's ceiling per address per hour
+    var resetAsks = Object.create(null);
+
+    function askKey(email) { return String(email || '').trim().toLowerCase(); }
+
+    function resetWait(email) {
+        var e = resetAsks[askKey(email)];
+        if (!e) return 0;
+        var left = Math.ceil((e.until - Date.now()) / 1000);
+        return left > 0 ? left : 0;
+    }
+
+    function resetSpent(email) {
+        var e = resetAsks[askKey(email)];
+        return Boolean(e && e.asks >= RESET_MAX_ASKS && Date.now() < e.hourEnds);
+    }
+
+    function rememberAsk(email, seconds) {
+        var k = askKey(email);
+        var e = resetAsks[k];
+        // the hour runs from the first ask, the same way the server's does
+        if (!e || Date.now() >= e.hourEnds) e = resetAsks[k] = { asks: 0, until: 0, hourEnds: Date.now() + 3600 * 1000 };
+        e.asks++;
+        e.until = Date.now() + (Number(seconds) || 60) * 1000;
+    }
+
     function post(url, body) {
         return fetch(url, {
             method: 'POST',
@@ -1031,8 +1076,26 @@
                 sTick = setInterval(paint, 1000);
             }
 
+            // what the resend button should say for this address right now: the
+            // ceiling first, then the minute. both are what this browser has
+            // already done, so neither says anything about the address itself.
+            function showResendState(address, seconds) {
+                if (resetSpent(address)) {
+                    clearInterval(sTick);
+                    sResend.disabled = true;
+                    sResend.textContent = t('Send a new link');
+                    sSay(t('That is as many links as we will send for now. Check your spam folder; you can ask again in an hour.'));
+                    return;
+                }
+                holdResendLink(seconds);
+            }
+
             sResend.addEventListener('click', function () {
                 if (sResend.disabled || !sAddress) return;
+                if (resetWait(sAddress) || resetSpent(sAddress)) {
+                    showResendState(sAddress, resetWait(sAddress) || RESET_RESEND_WAIT);
+                    return;
+                }
                 // held before the request rather than after it: a double click
                 // must not turn into two presses while the first is in flight
                 holdResendLink(RESET_RESEND_WAIT);
@@ -1051,8 +1114,9 @@
                     if (tok) payload['cf-turnstile-response'] = tok;
                     return post('/v1/auth/forgot', payload);
                 }).then(function (data) {
+                    rememberAsk(sAddress, (data && data.resendIn) || RESET_RESEND_WAIT);
                     // the server's number, not ours, if it sent one
-                    if (data && data.resendIn) holdResendLink(data.resendIn);
+                    showResendState(sAddress, (data && data.resendIn) || RESET_RESEND_WAIT);
                 }).catch(function (failed) {
                     // it answers ok to everything it is willing to answer, so a
                     // failure here is the network or the challenge. the message
@@ -1122,6 +1186,21 @@
                 }
 
                 rSay('');
+
+                // already asked for this one, and the minute is not up. the
+                // server would refuse and answer as though it had not, so the
+                // request is not made at all: the panel shows the envelope it
+                // already earned, with the time left on it.
+                var waiting = resetWait(address);
+                if (waiting || resetSpent(address)) {
+                    sMail.textContent = address;
+                    sAddress = address;
+                    sSay('');
+                    showResendState(address, waiting || RESET_RESEND_WAIT);
+                    lStep('sent');
+                    return;
+                }
+
                 rBusy = true;
                 rBtn.disabled = true;
                 var rLabel = rBtn.textContent;
@@ -1143,7 +1222,8 @@
                     sMail.textContent = address;
                     sAddress = address;
                     sSay('');
-                    holdResendLink((data && data.resendIn) || RESET_RESEND_WAIT);
+                    rememberAsk(address, (data && data.resendIn) || RESET_RESEND_WAIT);
+                    showResendState(address, (data && data.resendIn) || RESET_RESEND_WAIT);
                     lStep('sent');
                 }).catch(function (failed) {
                     if (failed && failed.noToken) {

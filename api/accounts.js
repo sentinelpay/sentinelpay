@@ -734,10 +734,16 @@ async function readReset(token) {
         );
         if (!res.rowCount) return null;
         const row = res.rows[0];
-        const user = await db.query('SELECT 1 FROM users WHERE email_hash = $1', [row.email_hash]);
+        const user = await db.query('SELECT name_enc FROM users WHERE email_hash = $1', [row.email_hash]);
         return {
             email: db.open('reset-email:' + row.email_hash, row.email_enc),
             hasAccount: user.rowCount > 0,
+            // for the password check only. the sign-up refuses a password made
+            // of your own name and this door has to refuse the same ones, but
+            // the name is not sent to the browser: whoever holds the token has
+            // proved they can read the mail, not that they should be handed the
+            // account holder's name before they have done anything.
+            name: user.rowCount ? db.open('signup-name:' + row.email_hash, user.rows[0].name_enc) : '',
             lang: row.lang || 'en',
         };
     } catch (err) {
