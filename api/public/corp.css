@@ -3761,6 +3761,24 @@ html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }
 /* the same line, carrying good news: a new code on its way is not a fault, and
    painting it red would be the panel shouting at somebody who did as asked */
 .sp-auth-verr.is-good { color: #0a7b52; }
+/* and the same line again carrying a rule rather than a fault: "that is as
+   many links as we will send for now". red would be an accusation and green
+   would be a lie, so it is neither. it gets a quiet box of its own because
+   run on under the sentence above it in the same grey it read as one long
+   paragraph, and the eye had no way to tell where the message began. */
+.sp-auth-verr.is-note {
+    margin: 1.2rem auto 0;
+    max-width: 20rem;
+    padding: 0.7rem 0.95rem;
+    border-radius: 12px;
+    background: #f6f8fb;
+    border: 1px solid rgba(14, 35, 88, 0.07);
+    font-size: 0.82rem;
+    line-height: 1.55;
+    color: rgba(14, 35, 88, 0.62);
+}
+/* the buttons come straight after it, so they do not need the full gap too */
+.sp-auth-done .sp-auth-verr.is-note + .sp-auth-vfoot { margin-top: 1.1rem; }
 /* the register form's own line, where a toast used to be */
 .sp-auth-ferr { margin: 0.1rem 0 0; }
 .sp-auth-verr[hidden] { display: none; }

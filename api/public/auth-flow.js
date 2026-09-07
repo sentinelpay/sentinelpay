@@ -1048,9 +1048,13 @@
             var sTick = null;
             var sAddress = '';
 
-            function sSay(msg) {
+            // `note` marks the line as a rule rather than a fault. the same
+            // element says both, and they should not look the same: one is the
+            // panel explaining itself, the other is something going wrong.
+            function sSay(msg, note) {
                 sErr.textContent = msg || '';
                 sErr.hidden = !msg;
+                sErr.classList.toggle('is-note', Boolean(msg && note));
                 if (msg) replay(sErr, 'sp-auth-enter');
             }
 
@@ -1084,7 +1088,7 @@
                     clearInterval(sTick);
                     sResend.disabled = true;
                     sResend.textContent = t('Send a new link');
-                    sSay(t('That is as many links as we will send for now. Check your spam folder; you can ask again in an hour.'));
+                    sSay(t('That is as many links as we will send for now. Check your spam folder; you can ask again in an hour.'), true);
                     return;
                 }
                 holdResendLink(seconds);
