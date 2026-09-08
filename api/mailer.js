@@ -78,6 +78,9 @@ const LOGO = SITE + '/logo.png';
 // the site's checklist marker, rendered once to a png at three times the size it
 // is used at, so it stays sharp on a retina screen
 const CHECK = SITE + '/mail-check.png';
+// the mark and the wordmark together, set in the real display face. see
+// tools/mail-lockup.js for why this one piece is a picture.
+const LOCKUP = SITE + '/mail-lockup.png';
 
 // The footer is the same in every message, so its copy lives here rather than in
 // each template. it follows the language of the message: an english row of links
@@ -296,7 +299,12 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, c
         '@media (prefers-color-scheme:dark){' +
         '.sp-page{background:#0a0c14!important;}' +
         '.sp-card{background:#101426!important;border-color:rgba(255,255,255,0.10)!important;}' +
-        '.sp-band{background:#151a30!important;background-image:linear-gradient(135deg,rgba(0,240,255,0.10) 0%,rgba(160,32,240,0.10) 100%)!important;}' +
+        // the band keeps its light tint in the dark. the lockup is a picture of
+        // navy letters and cannot recolour itself, and the alternative is
+        // shipping two of it and hiding one, which every client that drops
+        // display:none turns into both. a light masthead over a dark card is a
+        // deliberate look rather than a compromise, and it is one image.
+
         '.sp-title,.sp-strong{color:#ffffff!important;}' +
         '.sp-body,.sp-quiet{color:rgba(255,255,255,0.62)!important;}' +
         '.sp-note{background:#161b2e!important;border-color:rgba(255,255,255,0.09)!important;}' +
@@ -346,12 +354,21 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, c
         '<tr><td class="sp-band" align="center" bgcolor="' + C.tint + '" ' +
         'style="padding:34px 36px 30px;background-color:' + C.tint + ';' +
         'background-image:linear-gradient(135deg,rgba(0,240,255,0.13) 0%,rgba(123,108,255,0.10) 52%,rgba(160,32,240,0.10) 100%);">' +
+        // The mark and the name as one image, rendered from the real display
+        // face by tools/mail-lockup.js.
+        //
+        // Gmail strips @font-face and there is no way around it, so in gmail
+        // every word here is set in whatever the fallback lands on. That is fine
+        // for a sentence and not fine for the company's own name, which is why a
+        // wordmark is an image everywhere else on the internet too.
+        //
+        // Only this. A heading rendered to a picture cannot be translated,
+        // cannot reflow on a phone and vanishes when images are blocked, and a
+        // typeface is not worth any of those.
         '<a href="' + SITE + '" style="text-decoration:none;">' +
-        '<img src="' + LOGO + '" width="52" height="52" alt="Sentinelpay" ' +
-        'style="display:block;margin:0 auto;width:52px;height:52px;border:0;outline:none;text-decoration:none;">' +
+        '<img src="' + LOCKUP + '" width="190" height="80" alt="Sentinelpay" ' +
+        'style="display:block;margin:0 auto;width:190px;height:80px;border:0;outline:none;text-decoration:none;">' +
         '</a>' +
-        '<div class="sp-strong" style="margin-top:12px;font-family:' + DISPLAY + ';font-size:16px;line-height:20px;' +
-        'font-weight:800;letter-spacing:-0.006em;color:' + C.text + ';">Sentinelpay</div>' +
         '</td></tr>' +
 
         // the hairline the cards carry, here dividing the band from the message

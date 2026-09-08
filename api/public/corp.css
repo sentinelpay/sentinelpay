@@ -3851,10 +3851,17 @@ html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }
 
 /* the end of it: no form left, because there is nothing more to fill in */
 .sp-auth-done { text-align: center; padding: 0.6rem 0 0.2rem; }
+/* the same mark the panel before it wears. these two follow one another inside
+   one flow, and they were a rounded square with a gradient and a border, then a
+   flat circle: the envelope after asking for a link looked like it belonged to
+   a different screen than the lock on the panel that asked. one shape. */
 .sp-auth-done-mark {
     width: 46px; height: 46px; margin: 0 auto 1rem;
     display: flex; align-items: center; justify-content: center;
-    border-radius: 50%; background: rgba(0, 145, 200, 0.1); color: #0091c8;
+    border-radius: 14px;
+    color: #0091c8;
+    background: linear-gradient(160deg, rgba(0, 145, 200, 0.12), rgba(160, 32, 240, 0.08));
+    border: 1px solid rgba(0, 145, 200, 0.18);
 }
 .sp-auth-done-mark svg { width: 22px; height: 22px; }
 .sp-auth-done h3 {
