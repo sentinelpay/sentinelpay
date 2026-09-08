@@ -39,6 +39,10 @@ const C = {
     muted: '#6b7899',
     faint: '#94a0bd',
     cyan: '#0091c8',
+    // the eyebrow blue. corp.css sets it in one place, `html.theme-light
+    // .lp-eyebrow { color: #2563eb }`, and every small caps label on the site
+    // is that colour with a 3px bar of it in front.
+    accent: '#2563eb',
     purple: '#7b6cff',
     tint: '#f2f9fc',
     tintLine: '#cfe9f4',
@@ -130,9 +134,9 @@ function codeBlock(code) {
     if (!code) return '';
     return '<tr><td style="padding:4px 36px 26px;">' +
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" ' +
-        'style="background:' + C.tint + ';border:1px solid ' + C.tintLine + ';border-radius:14px;">' +
+        'class="sp-note" style="background:' + C.tint + ';border:1px solid ' + C.tintLine + ';border-radius:14px;">' +
         '<tr><td align="center" style="padding:22px 14px;">' +
-        '<div style="font-family:' + DISPLAY + ';font-size:38px;line-height:46px;font-weight:800;' +
+        '<div class="sp-title" style="font-family:' + DISPLAY + ';font-size:38px;line-height:46px;font-weight:800;' +
         'letter-spacing:0.24em;text-indent:0.24em;color:' + C.text + ';' +
         // tabular figures so the six digits sit on an even rhythm. most clients
         // ignore it and inter's default figures are even anyway, so it costs
@@ -219,7 +223,7 @@ function button(cta) {
 
 function divider(pad) {
     return '<tr><td style="padding:' + (pad || '28px 36px') + ';">' +
-        '<div style="height:1px;line-height:1px;font-size:0;background:' + C.line + ';">&nbsp;</div></td></tr>';
+        '<div class="sp-rule" style="height:1px;line-height:1px;font-size:0;background:' + C.line + ';">&nbsp;</div></td></tr>';
 }
 
 function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, code, meta, lang }) {
@@ -272,8 +276,40 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, c
             'unicode-range:' + f.range + ';}'
         ).join('') +
         '</style>' +
+
+        // Two things a message like this is expected to do now, and this one did
+        // neither.
+        //
+        // A phone is not a 560px card with 36px of padding on each side; that
+        // leaves 318px for a line of text on a 390px screen. And a client set to
+        // dark inverts a white card by itself, badly, unless the message says
+        // what it wants instead. Apple Mail, iOS and outlook.com read both of
+        // these; gmail's app reads the widths; word reads neither and keeps the
+        // light card it was already drawing, which is a correct answer.
+        '<style>' +
+        '@media only screen and (max-width:620px){' +
+        '.sp-pad{padding-left:22px!important;padding-right:22px!important;}' +
+        '.sp-band{padding-left:22px!important;padding-right:22px!important;padding-top:28px!important;padding-bottom:24px!important;}' +
+        '.sp-title{font-size:21px!important;line-height:26px!important;}' +
+        '.sp-card{border-radius:20px!important;}' +
+        '}' +
+        '@media (prefers-color-scheme:dark){' +
+        '.sp-page{background:#0a0c14!important;}' +
+        '.sp-card{background:#101426!important;border-color:rgba(255,255,255,0.10)!important;}' +
+        '.sp-band{background:#151a30!important;background-image:linear-gradient(135deg,rgba(0,240,255,0.10) 0%,rgba(160,32,240,0.10) 100%)!important;}' +
+        '.sp-title,.sp-strong{color:#ffffff!important;}' +
+        '.sp-body,.sp-quiet{color:rgba(255,255,255,0.62)!important;}' +
+        '.sp-note{background:#161b2e!important;border-color:rgba(255,255,255,0.09)!important;}' +
+        '.sp-rule{background:rgba(255,255,255,0.12)!important;}' +
+        '.sp-topline{border-top-color:rgba(255,255,255,0.10)!important;}' +
+        '.sp-quiet{color:rgba(255,255,255,0.42)!important;}' +
+        '.sp-quiet b,.sp-quiet span{color:rgba(255,255,255,0.62)!important;}' +
+        // a link that is #6b7899 on white is unreadable on #101426
+        '.sp-foot a{color:rgba(255,255,255,0.72)!important;}' +
+        '}' +
+        '</style>' +
         '</head>' +
-        '<body style="margin:0;padding:0;background:' + C.page + ';">' +
+        '<body class="sp-page" style="margin:0;padding:0;background:' + C.page + ';">' +
 
         // preheader: what the inbox list shows next to the subject, kept out of
         // the visible body
@@ -284,7 +320,7 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, c
         // that measures the old way, which is most of them, and the result is a
         // horizontal scrollbar under every message. the cell is inside the
         // table, so its padding takes room rather than adding it.
-        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:' + C.page + ';">' +
+        '<table role="presentation" class="sp-page" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:' + C.page + ';">' +
         '<tr><td align="center" style="padding:40px 16px;">' +
         // word does not read max-width, so there it is given a real width to
         // hold. everything else uses the max-width below and ignores this.
@@ -293,26 +329,50 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, c
         // 26px and this shadow are the sign-in dialog's own, so the message and
         // the panel it is about are recognisably the same object. outlook keeps
         // the border and drops the rest, which is a plain white card and fine.
-        'style="max-width:560px;background:' + C.card + ';border:1px solid ' + C.line + ';border-radius:26px;overflow:hidden;' +
+        'class="sp-card" style="max-width:560px;background:' + C.card + ';border:1px solid ' + C.line + ';border-radius:26px;overflow:hidden;' +
         'box-shadow:0 24px 60px -34px rgba(14,35,88,0.3),0 2px 8px rgba(14,35,88,0.04);font-family:' + FONT + ';">' +
 
-        // the mark on its own. no wordmark beside it: the logo is the signature,
-        // and the name is in the sender line anyway.
-        '<tr><td align="center" style="padding:32px 36px 0;">' +
+        // The masthead. A logo on white with a rule under it is what this was,
+        // and it read as a memo rather than as anything of ours.
+        //
+        // It is a band now, tinted with the brand's own gradient: the same cyan
+        // to purple the cards wear along their bottom edge, at the weight the
+        // site uses it for a background rather than for a line. Light, because
+        // the site is light: the footer is #f6f8fc and the hero is white, and a
+        // dark slab at the top of the message would belong to a different site.
+        //
+        // bgcolor carries the fallback. word paints the flat tint and skips the
+        // gradient, which is a tinted band rather than a broken one.
+        '<tr><td class="sp-band" align="center" bgcolor="' + C.tint + '" ' +
+        'style="padding:34px 36px 30px;background-color:' + C.tint + ';' +
+        'background-image:linear-gradient(135deg,rgba(0,240,255,0.13) 0%,rgba(123,108,255,0.10) 52%,rgba(160,32,240,0.10) 100%);">' +
         '<a href="' + SITE + '" style="text-decoration:none;">' +
-        '<img src="' + LOGO + '" width="44" height="44" alt="Sentinelpay" ' +
-        'style="display:inline-block;width:44px;height:44px;border:0;outline:none;text-decoration:none;">' +
-        '</a></td></tr>' +
+        '<img src="' + LOGO + '" width="52" height="52" alt="Sentinelpay" ' +
+        'style="display:block;margin:0 auto;width:52px;height:52px;border:0;outline:none;text-decoration:none;">' +
+        '</a>' +
+        '<div class="sp-strong" style="margin-top:12px;font-family:' + DISPLAY + ';font-size:16px;line-height:20px;' +
+        'font-weight:800;letter-spacing:-0.006em;color:' + C.text + ';">Sentinelpay</div>' +
+        '</td></tr>' +
 
-        divider('24px 36px 26px') +
+        // the hairline the cards carry, here dividing the band from the message
+        '<tr><td style="height:3px;line-height:3px;font-size:0;background:' + C.cyan + ';' +
+        'background-image:linear-gradient(90deg,#00f0ff 0%,' + C.purple + ' 50%,#a020f0 100%);">&nbsp;</td></tr>' +
 
-        '<tr><td style="padding:0 36px;">' +
-        (eyebrow ? '<div style="font-size:11px;letter-spacing:0.11em;text-transform:uppercase;font-weight:700;color:' + C.cyan + ';">' + esc(eyebrow) + '</div>' : '') +
+        '<tr><td class="sp-pad" style="padding:30px 36px 0;">' +
+        // the eyebrow the site uses, accent bar and all: 3px by 14px in #2563eb
+        // with 0.18em of tracking, set in the text face because the display face
+        // at this size and this tracking falls apart into separate letters.
+        (eyebrow ? '<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>' +
+            '<td width="3" bgcolor="' + C.accent + '" style="width:3px;height:14px;line-height:14px;font-size:0;' +
+            'background:' + C.accent + ';border-radius:2px;">&nbsp;</td>' +
+            '<td style="padding-left:9px;font-family:' + FONT + ';font-size:11px;line-height:14px;' +
+            'letter-spacing:0.18em;text-transform:uppercase;font-weight:700;color:' + C.accent + ';">' +
+            esc(eyebrow) + '</td></tr></table>' : '') +
         // the dialog's own heading and sub, to the pixel: 1.55rem/1.18 and
         // 0.9rem/1.55, which is 24.8/29 and 14.4/22 once the browser has done
         // the arithmetic the email has to do itself
-        '<div style="margin-top:10px;font-family:' + DISPLAY + ';font-size:25px;line-height:29px;font-weight:800;letter-spacing:-0.02em;color:' + C.text + ';">' + esc(title) + '</div>' +
-        '<div style="margin-top:12px;font-size:14.5px;line-height:22px;color:' + C.muted + ';">' + esc(intro) + '</div>' +
+        '<div class="sp-title" style="margin-top:14px;font-family:' + DISPLAY + ';font-size:25px;line-height:29px;font-weight:800;letter-spacing:-0.02em;color:' + C.text + ';">' + esc(title) + '</div>' +
+        '<div class="sp-body" style="margin-top:12px;font-size:14.5px;line-height:22px;color:' + C.muted + ';">' + esc(intro) + '</div>' +
         '</td></tr>' +
 
         '<tr><td style="height:26px;line-height:26px;font-size:0;">&nbsp;</td></tr>' +
@@ -335,7 +395,7 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, c
         (cta ? '<tr><td style="height:28px;line-height:28px;font-size:0;">&nbsp;</td></tr>' : '') +
 
         (footnote ? '<tr><td style="padding:0 36px;">' +
-            '<div style="padding:14px 16px;background:#f7f9fc;border:1px solid ' + C.lineSoft + ';border-radius:12px;' +
+            '<div class="sp-note" style="padding:14px 16px;background:#f7f9fc;border:1px solid ' + C.lineSoft + ';border-radius:12px;' +
             'font-size:12px;line-height:19px;color:' + C.muted + ';">' + esc(footnote) + '</div>' +
             '</td></tr><tr><td style="height:8px;line-height:8px;font-size:0;">&nbsp;</td></tr>' : '') +
 
@@ -343,8 +403,8 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, c
 
         // the footer, the way the site's is: a line of places to go, then the
         // quiet line nobody reads until they need it
-        '<tr><td align="center" style="padding:0 36px 30px;text-align:center;">' +
-        '<div style="font-size:12px;line-height:20px;color:' + C.faint + ';">' +
+        '<tr><td class="sp-foot sp-pad" align="center" style="padding:0 36px 30px;text-align:center;">' +
+        '<div class="sp-quiet" style="font-size:12px;line-height:20px;color:' + C.faint + ';">' +
         '<a href="' + SITE + '/faq" style="color:' + C.muted + ';text-decoration:none;">' + esc(f.questions) + '</a>' +
         '<span style="color:' + C.faint + ';"> &nbsp;·&nbsp; </span>' +
         '<a href="' + SITE + '/privacy-policy" style="color:' + C.muted + ';text-decoration:none;">' + esc(f.privacy) + '</a>' +
@@ -353,11 +413,11 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, c
         '<span style="color:' + C.faint + ';"> &nbsp;·&nbsp; </span>' +
         '<a href="https://blog.sentinelpay.org" style="color:' + C.muted + ';text-decoration:none;">' + esc(f.blog) + '</a>' +
         '</div>' +
-        '<div style="margin-top:14px;font-size:12px;line-height:19px;color:' + C.muted + ';">' +
+        '<div class="sp-body" style="margin-top:14px;font-size:12px;line-height:19px;color:' + C.muted + ';">' +
         esc(f.contact) + ' <a href="mailto:' + MAIL_TO + '" style="color:' + C.cyan + ';text-decoration:none;">' + MAIL_TO + '</a>' +
         '</div>' +
         // who is writing to you, in the sense a company register understands
-        '<div style="margin-top:18px;padding-top:16px;border-top:1px solid ' + C.lineSoft + ';' +
+        '<div class="sp-quiet sp-topline" style="margin-top:18px;padding-top:16px;border-top:1px solid ' + C.lineSoft + ';' +
         'font-size:11px;line-height:18px;color:' + C.faint + ';">' +
         '<span style="color:' + C.muted + ';font-weight:600;">' + esc(LEGAL.name) + '</span><br>' +
         esc(f.seat) + ': ' + esc(LEGAL.address) + '<br>' +
