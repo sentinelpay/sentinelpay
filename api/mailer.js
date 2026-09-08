@@ -184,7 +184,25 @@ function tickRow(b) {
 // the same edges as the note below it.
 function button(cta) {
     if (!cta) return '';
+    // twice, and only one of them is ever drawn.
+    //
+    // word cannot round a corner, so in outlook the button was a navy rectangle
+    // while every other client showed the dialog's own 10px one. the roundrect
+    // is a vector shape word does understand; arcsize is a percentage of the
+    // shorter side, and 10px of a 47px tall button is about 21%.
+    //
+    // 488 is 560 less the 36px of padding on each side, which is what the html
+    // button works out to everywhere the css is read.
     return '<tr><td style="padding:6px 36px 0;">' +
+        '<!--[if mso]>' +
+        '<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" ' +
+        'href="' + esc(cta.href) + '" style="height:47px;v-text-anchor:middle;width:488px;" ' +
+        'arcsize="21%" stroke="f" fillcolor="' + C.text + '">' +
+        '<w:anchorlock/>' +
+        '<center style="color:#ffffff;font-family:Arial,sans-serif;font-size:14px;font-weight:bold;">' +
+        esc(cta.label) + '</center>' +
+        '</v:roundrect><![endif]-->' +
+        '<!--[if !mso]><!-->' +
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">' +
         // .lp-demo-submit: #0e2358, 10px corners, 700 at 0.85rem. it is full
         // width in the dialog because sp-auth-submit makes it so, and full width
@@ -194,7 +212,9 @@ function button(cta) {
         'font-size:13.5px;font-weight:700;letter-spacing:-0.006em;line-height:19px;color:#ffffff;text-decoration:none;' +
         'border-radius:10px;text-align:center;">' +
         esc(cta.label) + '</a>' +
-        '</td></tr></table></td></tr>';
+        '</td></tr></table>' +
+        '<!--<![endif]-->' +
+        '</td></tr>';
 }
 
 function divider(pad) {
@@ -208,9 +228,22 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, c
     // message whatever the copy was, so gmail offered to translate croatian into
     // croatian, and a screen reader read it with english pronunciation. the
     // parameter was already here and simply was not used.
-    return '<!doctype html><html lang="' + esc(lang || 'en') + '"><head><meta charset="utf-8">' +
+    // the vml namespaces are what let outlook draw a rounded button. outlook on
+    // windows renders mail with word, not with a browser, and word has never
+    // heard of border-radius, box-shadow or max-width. without the conditional
+    // blocks further down this card is a square grey box stretched the full
+    // width of the window there, which is not what it looks like anywhere else.
+    return '<!doctype html><html lang="' + esc(lang || 'en') + '" ' +
+        'xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">' +
+        '<head><meta charset="utf-8">' +
         '<meta name="viewport" content="width=device-width,initial-scale=1">' +
         '<meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light">' +
+        // word ignores css line-height on a block that has none of its own and
+        // invents its own leading, which is what makes outlook mail look loose
+        // and uneven next to the same message in gmail
+        '<!--[if mso]><style>*{mso-line-height-rule:exactly;}</style>' +
+        '<xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch>' +
+        '</o:OfficeDocumentSettings></xml><![endif]-->' +
         // apple mail and a few others honour this; everyone else falls through the
         // stack to the system font, which is what the site uses anyway
         // The site's own two faces, from the site's own origin, declared exactly
@@ -253,6 +286,9 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, c
         // table, so its padding takes room rather than adding it.
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:' + C.page + ';">' +
         '<tr><td align="center" style="padding:40px 16px;">' +
+        // word does not read max-width, so there it is given a real width to
+        // hold. everything else uses the max-width below and ignores this.
+        '<!--[if mso]><table role="presentation" width="560" align="center" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->' +
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" ' +
         // 26px and this shadow are the sign-in dialog's own, so the message and
         // the panel it is about are recognisably the same object. outlook keeps
@@ -337,6 +373,7 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, c
         'background-image:linear-gradient(90deg,#00f0ff 0%,' + C.purple + ' 50%,#a020f0 100%);">&nbsp;</td></tr>' +
 
         '</table>' +
+        '<!--[if mso]></td></tr></table><![endif]-->' +
         '</td></tr></table></body></html>';
 }
 
