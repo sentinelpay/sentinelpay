@@ -728,9 +728,12 @@ const RESET_COPY = {
         subject: 'Reset your Sentinelpay password',
         eyebrow: 'Password reset',
         title: 'Set a new password',
-        intro: 'Somebody asked to set a new password for this address. Use the button below and choose one.',
+        // the two rules used to sit under the button as a pair of pills, which is
+        // where somebody looks after they have decided rather than before. they
+        // are in the sentence now, because "you have an hour and one go" is the
+        // thing worth knowing while you are still reading.
+        intro: (m) => 'Somebody asked for a new password on this address. The link below works once and stops working in ' + m + ' minutes.',
         label: 'Set a new password',
-        meta: (m) => ['Expires in ' + m + ' minutes', 'Works once'],
         footnote: 'If this was not you, ignore this email. Nothing has changed, and the link stops working on its own.',
         warning: 'We will never ask you for your password, by email, chat or phone.',
     },
@@ -738,9 +741,11 @@ const RESET_COPY = {
         subject: 'Postavite novu Sentinelpay lozinku',
         eyebrow: 'Nova lozinka',
         title: 'Postavite novu lozinku',
-        intro: 'Netko je zatražio novu lozinku za ovu adresu. Otvorite gumb ispod i izaberite je.',
+        // "otvorite gumb i izaberite je" was two mistakes in one line: a button
+        // is pressed rather than opened, and "je" was reaching back past two
+        // clauses to find the noun it belonged to.
+        intro: (m) => 'Netko je zatražio novu lozinku za ovu adresu. Poveznica ispod vrijedi ' + m + ' minuta i može se iskoristiti samo jednom.',
         label: 'Postavite novu lozinku',
-        meta: (m) => ['Istječe za ' + m + ' minuta', 'Vrijedi jednom'],
         footnote: 'Ako to niste bili vi, samo zanemarite ovaj mail. Ništa nije promijenjeno, a poveznica prestaje vrijediti sama od sebe.',
         warning: 'Nikada vas nećemo tražiti vašu lozinku, ni mailom, ni chatom, ni telefonom.',
     },
@@ -748,9 +753,8 @@ const RESET_COPY = {
         subject: 'Setzen Sie Ihr Sentinelpay-Passwort zurück',
         eyebrow: 'Passwort zurücksetzen',
         title: 'Neues Passwort setzen',
-        intro: 'Jemand hat für diese Adresse ein neues Passwort angefordert. Öffnen Sie die Schaltfläche unten und wählen Sie eines.',
+        intro: (m) => 'Jemand hat für diese Adresse ein neues Passwort angefordert. Der Link unten gilt ' + m + ' Minuten und kann nur einmal verwendet werden.',
         label: 'Neues Passwort setzen',
-        meta: (m) => ['Läuft in ' + m + ' Minuten ab', 'Gilt einmal'],
         footnote: 'Wenn Sie das nicht waren, ignorieren Sie diese E-Mail. Es hat sich nichts geändert, und der Link verfällt von selbst.',
         warning: 'Wir fragen Sie nie nach Ihrem Passwort, weder per E-Mail noch im Chat oder am Telefon.',
     },
@@ -764,9 +768,8 @@ function resetLinkMessage({ to, link, lang, minutes }) {
         subject: copy.subject,
         eyebrow: copy.eyebrow,
         title: copy.title,
-        intro: copy.intro,
+        intro: copy.intro(minutes),
         cta: { href: link, label: copy.label },
-        meta: copy.meta(minutes),
         footnote: copy.footnote + ' ' + copy.warning,
     };
 }
