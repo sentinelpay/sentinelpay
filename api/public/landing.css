@@ -3149,6 +3149,17 @@ html.theme-light .lp-role-tab.active {
 
    both layers move on transform only, and the pulses are `stroke-dashoffset`, so
    nothing here touches layout and nothing wakes the main thread. */
+/* the texture is held well back.
+
+   the lattice and the traced shield were carrying too much of the first screen:
+   at full strength the grid reads as a pattern rather than as depth, and the
+   outline reads as a drawing rather than as a shape somebody half notices. both
+   are still here, because between them they are the part of this page nobody
+   can copy without copying the logo, but they sit under the headline now rather
+   than beside it. the flows and the blooms do the visible work. */
+.sp-weave { opacity: 0.34; }
+.sp-shield { opacity: 0.4; }
+
 .sp-weave-a {
     animation: spWeaveA 44s linear infinite;
 }
