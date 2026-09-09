@@ -497,14 +497,19 @@
     };
     }
 
-    /* what gets one.
+    /* what gets one, and what stopped getting one.
 
-       the hero is the full picture. the bands get the same lattice at a third of
-       the exposure and half the steps, with no dark hole punched in the middle,
-       because there the copy sits on the left rather than dead centre and the
-       band's own gradient is already doing the work of holding it. */
-    var hero = document.querySelector('.lp-hero');
-    if (hero) mount(hero, {});
+       the hero does not. it had the full lattice: a moving net of lit lines
+       across the whole first screen, which is the most expensive thing on the
+       page and was competing with the sentence it sat behind. the css
+       underneath it was already the better picture, three soft ellipses and a
+       hexagon outline on #06070f, and that is what a visitor with webgl turned
+       off has been seeing all along. it reads calmer and lets the headline be
+       the loudest thing on the screen, which on a first screen it should be.
+
+       the bands keep theirs. they are a third of the exposure and half the
+       steps, they sit behind copy that is aligned left rather than centred, and
+       there the movement is the point rather than the competition. */
 
     /* every dark block gets depth, and no two get the same depth.
 
