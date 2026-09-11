@@ -5853,19 +5853,22 @@ html.theme-light .lp-role-panel.active,
     padding: 5rem 0 6rem;
     background: var(--sp-page, #f7f8fb);
 }
-/* the inset is a clip, not a margin, and that is the whole of the second fix.
+/* the inset is a margin again, and the clip it replaced is worth writing down
+   so it is not tried a third time.
 
-   as a margin it worked and it was wrong: changing the panel's width changes the
-   width of the column inside it, so the heading re-wrapped on every frame of the
-   scroll. words jumping between lines while you scroll is the most distracting
-   thing a page can do, and it was doing it for the whole length of the pass.
+   the first version used a margin and the heading re-wrapped on every frame,
+   because narrowing the panel narrows the column inside it. the fix was to clip
+   instead: same width always, only less of it visible. that removed the reflow
+   and introduced something worse. a clip moves the edge inward while the content
+   stays where it was, so the first letter of every line was cut off for the
+   whole of the entry. the copy sits sixty pixels from the panel edge and the
+   inset reaches a hundred and fifty, so the clip ate straight through it.
 
-   clipped, the panel is always the same width and the layout never moves. what
-   changes is how much of it you are allowed to see, so the page shows through at
-   the sides exactly as it did before and not one glyph reflows.
-
-   the shadow went with the margin. a shadow on a clipped box is clipped too, and
-   a black panel on a near white page does not need one. */
+   a margin cannot do that: the content moves with the box. the reflow it used to
+   cause is gone for a different reason, which is that the panel is now capped at
+   1460 rather than running the width of the window. at the tightest point of the
+   pass the copy column is still wider than the heading's own measure, so there
+   is nothing to re-wrap. that is measured rather than assumed. */
 .lp-proof-panel {
     position: relative;
     overflow: hidden;
@@ -5877,12 +5880,14 @@ html.theme-light .lp-role-panel.active,
        own edge on a wide screen: a picture in a box again. capping the panel
        instead means the wall still touches its edge and the page simply shows
        down both sides, which is what the reference does. */
-    width: min(100%, 1460px);
+    --sp-inset: calc((1 - var(--sp-open, 1)) * min(7vw, 120px));
+    /* the cap and the inset in one width, so the panel stays centred while it
+       narrows instead of sliding to one side */
+    width: min(calc(100% - 2 * var(--sp-inset)), 1460px);
     margin-inline: auto;
-    --sp-inset: calc((1 - var(--sp-open, 1)) * min(9vw, 150px));
-    clip-path: inset(0 var(--sp-inset) round clamp(16px, calc(32px - var(--sp-open, 1) * 8px), 32px));
+    border-radius: clamp(16px, calc(32px - var(--sp-open, 1) * 8px), 32px);
     background: #000000;
-    will-change: clip-path;
+    will-change: margin-inline;
 }
 /* a hairline of the brand along the top edge */
 .lp-proof-panel::before {
@@ -5994,6 +5999,29 @@ html.theme-light .lp-proof .lp-statsx-label {
     min-width: 0;
     background: #000000;
     border-left: 1px solid rgba(150, 190, 255, 0.10);
+    /* the tint below blends with what is inside the wall and nothing behind it */
+    isolation: isolate;
+}
+/* the whole wall painted in our two, and this is the part that took three tries.
+
+   masking the files was the obvious way and it is wrong for these particular
+   ones: most crypto logos are a symbol on a coloured disc, and a mask reads the
+   alpha channel, so every one of those came out as a solid filled circle. a
+   filter cannot fix it either, because a disc stays a disc whatever colour you
+   make it.
+
+   so the shapes keep their own luminance and only the colour is replaced. the
+   marks are desaturated and lifted, a gradient of ours is laid over the wall,
+   and the blend takes hue and saturation from the gradient and lightness from
+   the logo underneath. bitcoin stays a disc with a lighter symbol cut into it,
+   ethereum stays a diamond, and both are in our colours rather than in theirs. */
+.lp-proof-wall::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(135deg, #00f0ff 0%, #56b8ff 30%, #7b6cff 58%, #a020f0 100%);
+    mix-blend-mode: color;
 }
 /* the light behind the marks, so the wall is not a flat black rectangle */
 .lp-proof-wall::before {
@@ -6005,16 +6033,18 @@ html.theme-light .lp-proof .lp-statsx-label {
         radial-gradient(ellipse 70% 55% at 78% 22%, rgba(160, 32, 240, 0.22), transparent 64%),
         radial-gradient(ellipse 75% 60% at 18% 88%, rgba(0, 190, 220, 0.18), transparent 62%);
 }
+/* four across and seven down: twenty eight marks, and the column is taller than
+   it is wide, so the grid that fills it evenly is the narrow one. */
 .sp-wall {
     position: relative;
     height: 100%;
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     grid-auto-rows: minmax(0, 1fr);
     background-image:
         linear-gradient(to right, rgba(150, 190, 255, 0.085) 1px, transparent 1px),
         linear-gradient(to bottom, rgba(150, 190, 255, 0.085) 1px, transparent 1px);
-    background-size: 20% 16.6667%;
+    background-size: 25% 14.2857%;
 }
 .sp-wall-cell {
     display: grid;
@@ -6028,10 +6058,34 @@ html.theme-light .lp-proof .lp-statsx-label {
     color: #ffffff;
     background: rgba(255, 255, 255, 0.045);
 }
-.sp-wall-cell svg {
-    width: clamp(20px, 2vw, 30px);
-    height: clamp(20px, 2vw, 30px);
+/* the logo as a mask rather than as an image.
+
+   the files are the real ones, so they come in their own brand colours and in
+   viewboxes that run from 37 pixels square to 4091. masked, none of that
+   reaches the page: what is drawn is the shape, painted in the cell's own
+   colour, sized to fit whatever box the file was authored in. one rule handles
+   all twenty eight, and hover changes a colour rather than swapping a file. */
+.sp-wall-mark {
     display: block;
+    width: clamp(24px, 2.3vw, 34px);
+    height: clamp(24px, 2.3vw, 34px);
+    background: var(--m) center / contain no-repeat;
+    /* desaturated and lifted so the tint above has clean lightness to work with:
+       a logo that arrives already saturated fights the blend instead of taking
+       it */
+    /* the brightness is the setting that matters and it was too high at first.
+
+       a lot of these are a white symbol on a coloured disc. lift the disc far
+       enough and it clips to white, the symbol clips with it, and what is left
+       is a plain circle: bnb, dai and maker all went blank that way. at 1.12 the
+       disc sits below the symbol and the shape inside it survives. */
+    filter: grayscale(1) brightness(1.12) contrast(1.08);
+    opacity: 0.95;
+    transition: opacity 0.25s ease, filter 0.25s ease;
+}
+.sp-wall-cell:hover .sp-wall-mark {
+    filter: grayscale(1) brightness(1.35) contrast(1.1);
+    opacity: 1;
 }
 
 /* ---- the proof band on narrower screens ---------------------------------- */
@@ -6045,7 +6099,9 @@ html.theme-light .lp-proof .lp-statsx-label {
     .lp-proof-wall { border-left: 0; border-top: 1px solid rgba(150, 190, 255, 0.10); }
     /* six across and five down, because a wall five wide under a paragraph is
        taller than the paragraph it is under */
-    .sp-wall { grid-template-columns: repeat(6, minmax(0, 1fr)); background-size: 16.6667% 20%; }
+    /* seven across and four down: the wall is wider than it is tall under the
+       copy, so the grid turns with it */
+    .sp-wall { grid-template-columns: repeat(7, minmax(0, 1fr)); background-size: 14.2857% 25%; }
     .sp-wall-cell { aspect-ratio: 1; }
 }
 
@@ -6053,7 +6109,7 @@ html.theme-light .lp-proof .lp-statsx-label {
     .lp-proof { padding: 3.4rem 0 4rem; }
     /* the inset goes with the small screen: nine percent of a phone is twenty
        six pixels, which is not a margin, it is a gap */
-    .lp-proof-panel { --sp-inset: calc((1 - var(--sp-open, 1)) * 18px); }
+    .lp-proof-panel { --sp-inset: calc((1 - var(--sp-open, 1)) * 16px); }
     .lp-proof-copy { padding: 2.6rem 1.4rem 2.2rem; }
     html.theme-light .lp-proof .lp-statsx-heading {
         font-size: 1.32rem;
@@ -6063,6 +6119,6 @@ html.theme-light .lp-proof .lp-statsx-label {
     html.theme-light .lp-proof .lp-statsx-grid { gap: 1.6rem 1.4rem; }
     html.theme-light .lp-proof .lp-statsx-num { font-size: 1.85rem; }
     html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: none; }
-    .sp-wall { grid-template-columns: repeat(5, minmax(0, 1fr)); background-size: 20% 16.6667%; }
-    .sp-wall-cell svg { width: 22px; height: 22px; }
+    .sp-wall { grid-template-columns: repeat(4, minmax(0, 1fr)); background-size: 25% 14.2857%; }
+    .sp-wall-mark { width: 24px; height: 24px; }
 }
