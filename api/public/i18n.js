@@ -150,7 +150,7 @@
             "Password must be at least 12 characters": "Lozinka mora imati barem 12 znakova",
             "Please choose a password that is not your name or email": "Odaberite lozinku koja nije vaše ime ni email",
             "Please accept the terms of service to continue.": "Prihvatite uvjete korištenja da nastavite.",
-            "Could not reach us just now. Please try again in a moment.": "Trenutno ne možemo doći do nas. Pokušajte ponovno za koji trenutak.",
+            "Could not reach us just now. Please try again in a moment.": "Trenutno nismo dostupni. Pokušajte ponovno za koji trenutak.",
             "Signing in is not open yet. Create an account and we will email you the moment it is.": "Prijava još nije otvorena. Izradite račun i javit ćemo vam mailom čim bude.",
             "Your account is ready": "Vaš račun je spreman",
             "Your email is verified and the account is yours. We are finishing sign-in and will email this address the moment it opens.": "Vaša adresa je potvrđena i račun je vaš. Dovršavamo prijavu i javit ćemo se na ovu adresu čim bude otvorena.",

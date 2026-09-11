@@ -61,6 +61,11 @@ SKIP_SERVER = {
     'no database, so there is no row to delete',
 }
 
+# language codes. the scanner looks for strings a function returns, because that
+# is how the validation messages are written, and a function that answers "which
+# language is this" returns one of these. it is a tag, not a sentence.
+SKIP_LANG_CODE = re.compile(r'^(?:en|hr|de)$')
+
 
 def report(kind, path, strings):
     miss = []
@@ -72,6 +77,8 @@ def report(kind, path, strings):
         if kind == 'server' and s in SKIP_SERVER:
             continue
         if any(r.match(s) for r in SKIP_RE_LIST):
+            continue
+        if SKIP_LANG_CODE.match(s):
             continue
         if SKIP_RE.match(s) or not re.search(r'[a-zA-Z]{2}', s):
             continue

@@ -16,6 +16,43 @@
 (function () {
     var t = function (x) { return window.SentinelI18n ? window.SentinelI18n.t(x) : x; };
 
+    /* which language the reader is in, for the server to answer and to write mail
+       in.
+
+       this was called in four places in this file and defined in none of them.
+       every one of those calls threw a ReferenceError inside a promise chain,
+       where it became a rejection rather than a page error: nothing appeared in
+       the console, the catch treated it as a failed request, and the panel told
+       the reader we could not be reached. the forgot-password button never sent
+       a single request, in any language, for anybody, and it said so in a way
+       that pointed at the server.
+
+       the shape is the one demo-form.js and dashboard.js already use, and the
+       fallback is english rather than nothing, because the server validates this
+       against a list and a missing value would be a second failure a step
+       later. */
+    var lang = function () {
+        try {
+            if (window.SentinelI18n && typeof window.SentinelI18n.lang === 'function') {
+                return window.SentinelI18n.lang() || 'en';
+            }
+        } catch (e) { /* i18n not loaded: english is the file's own language */ }
+        return 'en';
+    };
+
+    /* the two resend windows, also taken out by the same edit.
+
+       both are used fifteen times between them and were declared nowhere, so the
+       code-verify resend and the reset resend threw the moment they were
+       reached, in the same silent way: a rejection inside a promise chain, shown
+       as a failed request.
+
+       they match the server, and it is the server's answer that counts: these
+       are only what the button counts down from before the first reply arrives.
+    */
+    var RESEND_WAIT = 60;
+    var RESET_RESEND_WAIT = 60;
+
     /* run something once the splash is actually gone.
 
        two versions of this were wrong in different ways and both are worth
@@ -162,6 +199,23 @@
                 if (r.ok) return data;
                 var err = new Error('http_' + r.status);
                 err.reason = data && data.error;
+                // whether the body is one of ours.
+                //
+                // every refusal we write carries `error`. a body without it is
+                // not from this application: a gateway timing out, an edge
+                // error page, a proxy that replaced the response. both end up
+                // showing the same one line to the reader, and that line then
+                // has to cover two completely different faults with nothing to
+                // tell them apart by. this is written to the console so the next
+                // report says which, instead of "there is some problem".
+                err.ours = Boolean(data && typeof data.error === 'string');
+                if (!r.ok) {
+                    try {
+                        console.error('[auth] ' + url + ' -> ' + r.status +
+                            (err.ours ? ' (our answer: ' + data.error + ')'
+                                      : ' (not our answer: the body carries no error field)'));
+                    } catch (e) {}
+                }
                 err.retryIn = data && data.retryIn;
                 // the reset endpoint says this when it refused because a link
                 // for that address is already in flight. it is a refusal the
@@ -170,6 +224,12 @@
                 err.status = r.status;
                 throw err;
             });
+        }, function (netErr) {
+            // the request never landed: dns, tls, offline, a tunnel cut. no
+            // status and no body, so it cannot be told apart from a 500 by the
+            // panel, only here.
+            try { console.error('[auth] ' + url + ' -> no response (' + (netErr && netErr.message) + ')'); } catch (e) {}
+            throw netErr;
         });
     }
 
@@ -1589,6 +1649,16 @@
                         lStep('sent');
                         return;
                     }
+                    // no status means the server never got to answer: either the
+                    // request did not leave the browser or nothing came back.
+                    // the panel is about to blame us for both, so the console
+                    // carries the difference.
+                    try {
+                        if (!(failed && failed.status)) {
+                            console.error('[auth] forgot: no answer to show (' +
+                                (failed && (failed.stack || failed.message)) + ')');
+                        }
+                    } catch (e) {}
                     rSay(reason(failed));
                 }).then(function () {
                     rBusy = false;
