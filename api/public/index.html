@@ -400,7 +400,7 @@
             border-color: rgba(255, 255, 255, 1);
         }
     </style>
-    <link rel="stylesheet" href="/corp.273.css">
+    <link rel="stylesheet" href="/corp.276.css">
     <noscript><style>
         /* scripting is off, so the loader is the final screen, not a stage on the
            way somewhere. stop the pulse so it reads as a message, not a hang. */
@@ -863,6 +863,15 @@
                     </div>
                 </div>
             </div>
+            <!-- the card and the proof beside it.
+
+                 the panel was already a two column grid, from when there was a
+                 checklist next to the card. the checklist went and the column
+                 stayed, so on a wide screen half the row was empty page. it is
+                 one column again and the split moved out here, where the thing
+                 in the right hand column is written once rather than eight
+                 times, one for each role. -->
+            <div class="lp-roles-split">
             <div class="lp-roles-panels" id="lp-roles-panels">
                 <div class="lp-role-panel active" data-role="fi">
                     <div class="lp-role-feature">
@@ -944,6 +953,21 @@
                         <div class="lp-role-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l7.5 3.2v5.3c0 4.7-3.2 7.9-7.5 9-4.3-1.1-7.5-4.3-7.5-9V5.7z"/><path d="M8.6 12l2.3 2.3 4.5-4.6"/></svg></div>
                     </div>
                 </div>
+            </div>
+
+            <!-- the right hand column.
+
+                 the shape is the one every serious b2b page uses under a
+                 section like this: a customer mark, a line of proof, and who it
+                 is from. what is written here is ours rather than somebody
+                 else's, because a sentence in quotation marks with a real
+                 person's name under it has to be a sentence that person
+                 actually said. -->
+            <figure class="lp-roles-proof">
+                <img class="lp-roles-proof-logo" src="/logos/elektromaterijal.png?v=2" alt="Elektromaterijal" loading="lazy" decoding="async">
+                <p class="lp-roles-proof-text">The teams already running on Sentinelpay are not banks with a floor of analysts. They are two or five people carrying the same obligations, and the product is shaped around that rather than around a compliance department that does not exist.</p>
+                <figcaption class="lp-roles-proof-by">Elektromaterijal, in production with Sentinelpay</figcaption>
+            </figure>
             </div>
         </div>
     </section>
@@ -1927,11 +1951,11 @@
     <script src="/auth-modal.16.js" defer></script>
     <script src="/auth-flow.26.js" defer></script>
     <script src="/auth-nav.4.js" defer></script>
-    <script src="/hero3d.16.js" defer></script>
+    <script src="/hero3d.17.js" defer></script>
     <script src="/flair.7.js" defer></script>
     <script src="/reveal.6.js" defer></script>
     <script src="/scroll.4.js" defer></script>
     <script src="/navlift.1.js" defer></script>
-    <script src="/i18n.93.js" defer></script>
+    <script src="/i18n.94.js" defer></script>
 </body>
 </html>

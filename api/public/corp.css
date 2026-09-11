@@ -1132,12 +1132,25 @@ html.theme-light .lp-role-aside li::before {
 }
 
 /* bolder brand highlight on "scale your" */
+/* the accent is the ink, not a box behind it.
+
+   it was a solid gradient slab with the page colour knocked out of the letters,
+   which is a highlighter: it reads as something marked up after the fact, and
+   next to the hero, where the accent line is the gradient itself, the two did
+   not look like the same brand. so the gradient moves into the type, the box
+   goes, and the padding with it, because a box is the only reason there was
+   any. slice rather than clone so a headline that wraps gets one gradient
+   across the whole phrase instead of restarting it on every line. */
 .lp-hl {
     background: linear-gradient(90deg, #00f0ff, #7b6cff, #a020f0) !important;
-    color: #06070f !important;
-    -webkit-text-fill-color: #06070f !important;
-    padding: 0.02em 0.16em !important;
-    border-radius: 6px !important;
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+    color: transparent !important;
+    -webkit-text-fill-color: transparent !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    box-decoration-break: slice !important;
+    -webkit-box-decoration-break: slice !important;
 }
 
 @media (max-width: 900px) {
@@ -5641,5 +5654,113 @@ html.theme-light .lp-hero .lp-hero-fx { display: none; }
             radial-gradient(ellipse 150% 42% at 8% 96%, rgba(0, 190, 220, 0.26), transparent 60%),
             radial-gradient(ellipse 150% 42% at 92% 92%, rgba(160, 32, 240, 0.26), transparent 60%),
             linear-gradient(180deg, #000000 0%, #000000 38%, #05060d 100%);
+    }
+}
+
+/* ============ the roles section: a black card and the proof beside it ======
+
+   two things were wrong here and they are the same thing twice. the card had
+   the moving line grid the bands above it have, and on a card that is four
+   lines of copy the lines ran diagonally through the reading; and the row it
+   sits in was a two column grid left over from a checklist that was deleted,
+   so on anything wider than about 1100px half of it was empty page.
+
+   so the card is black, the way the hero is black, and the empty column gets
+   the thing that belongs in it. */
+
+/* pure black, and nothing drawn on it. the canvas is gone from hero3d.js
+   rather than hidden here, so it is not built at all. */
+html.theme-light .lp-role-panel .lp-role-feature,
+html.theme-light .lp-role-panel.active .lp-role-feature {
+    background: #000000 !important;
+    border: 1px solid rgba(120, 180, 255, 0.13) !important;
+}
+
+/* the panel is one column again; the split moved up a level so the right hand
+   column is written once instead of once per role. */
+html.theme-light .lp-role-panel.active {
+    display: block !important;
+    grid-template-columns: none !important;
+}
+
+.lp-roles-split {
+    display: grid;
+    grid-template-columns: 1.12fr 0.88fr;
+    gap: 3.4rem;
+    align-items: center;
+}
+/* the panel sizes to its content on its own, so in a grid cell wider than the
+   card it sat shrunk and centred with a gap down each side. it fills its
+   column. */
+.lp-roles-split > .lp-roles-panels { min-width: 0; width: 100%; }
+
+.lp-roles-proof {
+    margin: 0;
+    min-width: 0;
+    padding: 0 0 0 0.4rem;
+}
+/* large, because it is the only mark on this half of the row and a small logo
+   in a lot of white reads as a footnote. greyscale at rest so it sits with the
+   type rather than competing with the card. */
+.lp-roles-proof-logo {
+    display: block;
+    height: 56px;
+    width: auto;
+    max-width: 220px;
+    object-fit: contain;
+    object-position: left center;
+    margin: 0 0 1.6rem;
+}
+.lp-roles-proof-text {
+    font-family: var(--sp-text);
+    font-size: 1.22rem;
+    line-height: 1.6;
+    letter-spacing: -0.011em;
+    color: #14213d;
+    margin: 0 0 1.3rem;
+    max-width: 46ch;
+}
+.lp-roles-proof-by {
+    font-family: var(--sp-text);
+    font-size: 0.86rem;
+    line-height: 1.5;
+    color: #5b6784;
+    letter-spacing: 0.005em;
+}
+
+/* under 1080 the two columns stop being two columns: the card needs the width
+   more than the quote does, so the quote goes under it with a rule above to say
+   it is a separate thought rather than the end of the card. */
+@media (max-width: 1080px) {
+    .lp-roles-split { grid-template-columns: 1fr; gap: 2.6rem; }
+    .lp-roles-proof {
+        padding: 2.4rem 0 0;
+        border-top: 1px solid rgba(14, 35, 88, 0.1);
+    }
+    .lp-roles-proof-text { font-size: 1.1rem; max-width: 60ch; }
+    .lp-roles-proof-logo { height: 46px; margin-bottom: 1.3rem; }
+}
+@media (max-width: 560px) {
+    .lp-roles-proof-text { font-size: 1rem; line-height: 1.58; }
+    .lp-roles-proof-logo { height: 38px; }
+}
+
+/* between 861 and 1080 the card used to be the narrow left half of the row, and
+   it was arranged for that: badge first, copy after it, everything centred. it
+   is the full width of the section here now, and at that width a centred column
+   of text with a disc beside it reads as a placeholder. same arrangement as the
+   desktop: copy on the left, badge on the right, ranged left. */
+@media (min-width: 861px) and (max-width: 1080px) {
+    html.theme-light .lp-role-panel.active .lp-role-feature {
+        text-align: left;
+    }
+    html.theme-light .lp-role-panel.active .lp-role-feature-body { order: 0; }
+    html.theme-light .lp-role-panel.active .lp-role-badge {
+        order: 1;
+        justify-self: center;
+    }
+    html.theme-light .lp-role-panel.active .lp-role-desc {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
     }
 }

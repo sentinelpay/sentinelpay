@@ -538,34 +538,11 @@
        on the page still sitting on a flat gradient. it is quieter again than a
        band, because a card this small is mostly copy and the grid is behind the
        reading rather than beside it. */
-    var panels = document.querySelectorAll('.lp-role-panel');
-    if (panels.length) {
-        function activeCard() {
-            var on = document.querySelector('.lp-role-panel.active .lp-role-feature');
-            return on || document.querySelector('.lp-role-feature');
-        }
-        var card = activeCard();
-        if (card) {
-            var moveCard = mount(card, {
-                kind: 'planes',
-                cls: 'sp-band-gl sp-card-gl',
-                scale: coarse ? 0.45 : 0.6,
-                speed: 1.3,
-                expo: 0.42
-            });
+    /* the role card has nothing mounted on it any more.
 
-            // the switcher toggles a class rather than firing an event, so this
-            // watches the attribute it toggles. one observer on the parent, not
-            // eight on the panels.
-            if (moveCard && window.MutationObserver && panels[0].parentNode) {
-                new MutationObserver(function () {
-                    moveCard(activeCard());
-                }).observe(panels[0].parentNode, {
-                    attributes: true,
-                    attributeFilter: ['class'],
-                    subtree: true
-                });
-            }
-        }
-    }
+       it had the same moving grid the bands above it have, and on a card that
+       is four lines of copy and one button the lines went diagonally through
+       the reading. the same decision as the hero: the panel is a colour, and
+       the copy is the only thing drawn on it. the mount is deleted rather than
+       hidden with css so the canvas and its frame loop are not built at all. */
 })();
