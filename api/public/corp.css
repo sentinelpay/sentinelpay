@@ -5951,18 +5951,27 @@ html.theme-light .lp-proof .lp-statsx-heading {
     margin: 0 0 2.8rem;
     max-width: 40ch;
 }
-/* the accent is a filled block with the panel colour knocked out of the letters,
-   the same mark the headings on the white part of the page wear. gradient type
-   was tried here and it is the quieter of the two in exactly the wrong place: a
-   heading two lines long on a black panel needs one thing with weight in it. */
+/* the accent is gradient type, and it is the hero's gradient rather than a
+   second one that nearly matches.
+
+   the block version belongs on the white half of the page, where a heading needs
+   weight to hold its own against a section of body copy. here the panel is
+   already black and already the loudest thing on the screen, so a filled slab on
+   top of it is one shout too many. the same treatment as the line it rhymes
+   with, on the other dark panel at the top of the page.
+
+   the descender fix comes with it: clipped text loses its tails to the box, so
+   the box is given the room and the space taken off again underneath. */
 html.theme-light .lp-proof .lp-statsx-hl {
-    background: linear-gradient(100deg, #00f0ff 8%, #7b6cff 52%, #a020f0 96%);
-    color: #05060d;
-    -webkit-text-fill-color: #05060d;
-    padding: 0.02em 0.16em;
-    border-radius: 6px;
-    box-decoration-break: clone;
-    -webkit-box-decoration-break: clone;
+    background: linear-gradient(92deg, #00f0ff 0%, #a675ff 62%, #c9a7ff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    padding: 0;
+    border-radius: 0;
+    padding-block-end: 0.12em;
+    margin-block-end: -0.12em;
 }
 
 /* two by two rather than four across: four thin columns beside a picture is a
