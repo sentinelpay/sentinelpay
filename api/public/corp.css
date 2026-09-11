@@ -5567,3 +5567,63 @@ html.theme-light .lp-hero .lp-hero-fx { display: none; }
 .sp-phone-glow {
     background: radial-gradient(ellipse at center, rgba(96, 128, 255, 0.16), transparent 70%);
 }
+
+/* ============ the first screen on a phone =============================
+   the desktop version reads because it has room. a 360 wide screen has none of
+   it, and what was happening there was:
+
+     the headline ran to four lines with "screened." alone on the third, which
+     is a word sitting by itself where a statement should be
+     the paragraph took four more
+     and by the time the buttons were done there were 186 pixels of device
+     showing, which is a curve and an island and nothing anybody would read as
+     a phone
+
+   so the type comes down, the gaps close, and the room that frees goes to the
+   device. the target is a headline that does not orphan a word and enough of
+   the phone on screen to be a phone. */
+@media (max-width: 560px) {
+    /* top anchored rather than centred.
+
+       the phone hangs out of the bottom of the section on a negative margin, so
+       centring measures a box that is shorter than what is drawn: the shorter
+       the box, the lower the centre, and on a tall phone that put ninety pixels
+       of nothing between the bar and the headline while the device below it was
+       cut off at the island. anchoring to the top spends that gap on the part
+       of the screen that has something in it. */
+    html.theme-light .lp-hero { padding-top: 6rem; justify-content: flex-start; }
+    .sp-hero-mid { gap: 1.15rem; }
+    .sp-hero-h1 { font-size: clamp(1.85rem, 8.4vw, 2.4rem); letter-spacing: -0.03em; }
+    .sp-hero-sub { font-size: 0.92rem; line-height: 1.55; max-width: 34ch; }
+    html.theme-light .lp-hero .sp-hero-ctas { margin-top: 1.25rem; }
+
+    /* the chevron was a filled box the height of the button with the label
+       beside it, which put a dark square in the middle of a centred row. at
+       this width it is a mark, not a control. */
+    html.theme-light .lp-hero .sp-hero-second-ico {
+        width: 20px; height: 20px;
+        background: none;
+        border: 0;
+    }
+
+    /* more of the device, and it starts sooner */
+    .sp-phone { width: min(272px, 72vw); margin-top: 1.1rem; }
+    .sp-phone-screen { min-height: 340px; }
+    .sp-phone-rail { border-radius: 46px; padding: 2.5px; }
+    .sp-phone-body { border-radius: 44px; padding: 7px; }
+    .sp-phone-screen { border-radius: 37px; }
+    .sp-phone-island { top: 17px; width: 74px; height: 22px; }
+    .sp-phone-btn-silent { top: 74px; height: 20px; }
+    .sp-phone-btn-up     { top: 108px; height: 40px; }
+    .sp-phone-btn-down   { top: 158px; height: 40px; }
+    .sp-phone-btn-power  { top: 120px; height: 58px; }
+
+    /* the colour was pooled in the bottom corners, which on a phone is below
+       the fold: the whole first screen was black and the brand never showed. */
+    html.theme-light .lp-hero {
+        background:
+            radial-gradient(ellipse 150% 42% at 8% 96%, rgba(0, 190, 220, 0.26), transparent 60%),
+            radial-gradient(ellipse 150% 42% at 92% 92%, rgba(160, 32, 240, 0.26), transparent 60%),
+            linear-gradient(180deg, #000000 0%, #000000 38%, #05060d 100%);
+    }
+}
