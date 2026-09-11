@@ -400,7 +400,7 @@
             border-color: rgba(255, 255, 255, 1);
         }
     </style>
-    <link rel="stylesheet" href="/corp.287.css">
+    <link rel="stylesheet" href="/corp.291.css">
     <noscript><style>
         /* scripting is off, so the loader is the final screen, not a stage on the
            way somewhere. stop the pulse so it reads as a message, not a hang. */
@@ -845,8 +845,6 @@
 
     <section class="lp-section lp-roles" id="who-its-for">
         <div class="lp-section-inner">
-            <div class="lp-roles-split">
-            <div class="lp-roles-main">
             <h2 class="lp-h2"><span class="lp-hl">One platform</span> for every team <br>that touches crypto risk</h2>
             <div class="lp-roles-selector">
                 <span class="lp-roles-selector-label">Sentinelpay for</span>
@@ -864,12 +862,9 @@
                     </div>
                 </div>
             </div>
-            <!-- the panel was already a two column grid, from when there was a
-                 checklist next to the card. the checklist went and the column
-                 stayed, so on a wide screen half the row was empty page. it is
-                 one column again and the split moved up to wrap the heading too,
-                 so the quote starts level with the heading rather than level
-                 with the card halfway down the section. -->
+            <!-- the eight cards are stacked in one grid cell rather than shown
+                 and hidden, so the section is always as tall as the longest of
+                 them and nothing below it moves when the role changes. -->
             <div class="lp-roles-panels" id="lp-roles-panels">
                 <div class="lp-role-panel active" data-role="fi">
                     <div class="lp-role-feature">
@@ -951,91 +946,6 @@
                         <div class="lp-role-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l7.5 3.2v5.3c0 4.7-3.2 7.9-7.5 9-4.3-1.1-7.5-4.3-7.5-9V5.7z"/><path d="M8.6 12l2.3 2.3 4.5-4.6"/></svg></div>
                     </div>
                 </div>
-            </div>
-
-            </div><!-- /.lp-roles-main -->
-
-            <!-- the right hand column, one panel per role.
-
-                 it was eight customer quotes for a while and it is not any more.
-                 a sentence in quotation marks with a person's name under it is
-                 that person saying it, and eight invented people at the real
-                 companies in our logo band would be eight testimonials nobody
-                 gave. what is here instead is ours and is true: the thing each
-                 kind of team actually gets, said in one line, with the mark of a
-                 company that is running on us underneath it. when a real quote
-                 arrives it goes straight in over the top of this.
-
-                 all eight sit in one grid cell, so the cell is as tall as the
-                 longest of them and nothing moves when the role changes. -->
-            <div class="lp-roles-proof">
-                <div class="lp-roles-claims">
-                    <div class="lp-roles-claim active" data-role="fi">
-                        <p class="lp-roles-claim-lead">The answer holds up in a committee room.</p>
-                        <p class="lp-roles-claim-body">One verdict per wallet across every desk, with the evidence attached to it. What you hand a regulator is the record, not a reconstruction.</p>
-                        <div class="lp-roles-claim-foot">
-                            <span class="lp-roles-claim-label">Already running on Sentinelpay</span>
-                            <img class="lp-roles-claim-logo" src="/logos/elektromaterijal.png?v=2" alt="Elektromaterijal" loading="lazy" decoding="async">
-                        </div>
-                    </div>
-                    <div class="lp-roles-claim" data-role="issuers">
-                        <p class="lp-roles-claim-lead">A tainted flow is tomorrow's headline.</p>
-                        <p class="lp-roles-claim-body">Exposure that touches your contracts is flagged as it lands, not in next week's report.</p>
-                        <div class="lp-roles-claim-foot">
-                            <span class="lp-roles-claim-label">Already running on Sentinelpay</span>
-                            <img class="lp-roles-claim-logo" src="/logos/racunalahr.png?v=2" alt="racunala.hr" loading="lazy" decoding="async">
-                        </div>
-                    </div>
-                    <div class="lp-roles-claim" data-role="cex">
-                        <p class="lp-roles-claim-lead">Screened before it credits.</p>
-                        <p class="lp-roles-claim-body">A deposit is scored the moment it arrives, and anything you hold is held for a reason you can put in front of the customer.</p>
-                        <div class="lp-roles-claim-foot">
-                            <span class="lp-roles-claim-label">Already running on Sentinelpay</span>
-                            <img class="lp-roles-claim-logo" src="/logos/traveler.png?v=2" alt="Traveler" loading="lazy" decoding="async">
-                        </div>
-                    </div>
-                    <div class="lp-roles-claim" data-role="psp">
-                        <p class="lp-roles-claim-lead">Every payout carries its reason.</p>
-                        <p class="lp-roles-claim-body">Merchant settlements clear or stop on evidence you can produce, so a dispute takes minutes instead of days.</p>
-                        <div class="lp-roles-claim-foot">
-                            <span class="lp-roles-claim-label">Already running on Sentinelpay</span>
-                            <img class="lp-roles-claim-logo" src="/logos/majicehr.png?v=2" alt="majice.hr" loading="lazy" decoding="async">
-                        </div>
-                    </div>
-                    <div class="lp-roles-claim" data-role="defi">
-                        <p class="lp-roles-claim-lead">No signup, no key, no custody.</p>
-                        <p class="lp-roles-claim-body">Pools are watched from the chain itself, the way an exchange watches its own deposits.</p>
-                        <div class="lp-roles-claim-foot">
-                            <span class="lp-roles-claim-label">Already running on Sentinelpay</span>
-                            <img class="lp-roles-claim-logo" src="/logos/futura.png?v=2" alt="Futura" loading="lazy" decoding="async">
-                        </div>
-                    </div>
-                    <div class="lp-roles-claim" data-role="network">
-                        <p class="lp-roles-claim-lead">Know it before it is published about you.</p>
-                        <p class="lp-roles-claim-body">Sanctioned exposure on your chain, surfaced on your side first.</p>
-                        <div class="lp-roles-claim-foot">
-                            <span class="lp-roles-claim-label">Already running on Sentinelpay</span>
-                            <img class="lp-roles-claim-logo" src="/logos/elektromaterijal.png?v=2" alt="Elektromaterijal" loading="lazy" decoding="async">
-                        </div>
-                    </div>
-                    <div class="lp-roles-claim" data-role="law">
-                        <p class="lp-roles-claim-lead">A score you can follow, hop by hop.</p>
-                        <p class="lp-roles-claim-body">The path that produced it travels with it, which is what turns an alert into evidence.</p>
-                        <div class="lp-roles-claim-foot">
-                            <span class="lp-roles-claim-label">Already running on Sentinelpay</span>
-                            <img class="lp-roles-claim-logo" src="/logos/racunalahr.png?v=2" alt="racunala.hr" loading="lazy" decoding="async">
-                        </div>
-                    </div>
-                    <div class="lp-roles-claim" data-role="reg">
-                        <p class="lp-roles-claim-lead">Ask how, and be shown.</p>
-                        <p class="lp-roles-claim-body">Supervised firms can produce the record behind a decision instead of a summary written afterwards.</p>
-                        <div class="lp-roles-claim-foot">
-                            <span class="lp-roles-claim-label">Already running on Sentinelpay</span>
-                            <img class="lp-roles-claim-logo" src="/logos/traveler.png?v=2" alt="Traveler" loading="lazy" decoding="async">
-                        </div>
-                    </div>
-                </div>
-            </div>
             </div>
         </div>
     </section>
@@ -1780,7 +1690,7 @@
                         // this only changes which one is visible: nothing is
                         // added to or taken out of the flow and nothing below
                         // the section moves.
-                        document.querySelectorAll('.lp-role-panel, .lp-roles-claim').forEach(function(p) {
+                        document.querySelectorAll('.lp-role-panel').forEach(function(p) {
                             p.classList.toggle('active', p.getAttribute('data-role') === role);
                         });
                         rolesDd.classList.remove('open');
@@ -2026,6 +1936,6 @@
     <script src="/reveal.6.js" defer></script>
     <script src="/scroll.4.js" defer></script>
     <script src="/navlift.1.js" defer></script>
-    <script src="/i18n.99.js" defer></script>
+    <script src="/i18n.100.js" defer></script>
 </body>
 </html>

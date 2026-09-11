@@ -5676,175 +5676,6 @@ html.theme-light .lp-role-panel.active {
     grid-template-columns: none !important;
 }
 
-/* the split wraps the heading too.
-
-   it used to start at the card, so the quote began halfway down the section
-   with a column of empty page above it. it wraps the heading now and stretches,
-   because the thing that made this row look unfinished was never where the
-   quote sat: it was that one side of it was a solid object and the other was
-   loose text with a lot of white above it. two panels the same height is a row.
-   one panel and a paragraph is a mistake. */
-.lp-roles-split {
-    display: grid;
-    grid-template-columns: 1.1fr 0.9fr;
-    gap: 3rem;
-    align-items: stretch;
-}
-.lp-roles-main { min-width: 0; display: flex; flex-direction: column; }
-/* the panel sizes to its content on its own, so in a grid cell wider than the
-   card it sat shrunk and centred with a gap down each side. it fills its
-   column, and the card inside it fills the height the row settles on. */
-.lp-roles-panels { min-width: 0; width: 100%; }
-
-/* ---- the panel beside the card ----------------------------------------- */
-
-/* the light twin of the black card: our three stops at a twentieth of their
-   strength on white, where the card is the same three at full strength on
-   black, so the two read as one object cut in half. */
-.lp-roles-proof {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    margin: 0;
-    min-width: 0;
-    padding: 2.9rem 3rem 2.6rem;
-    border-radius: 24px;
-    border: 1px solid rgba(14, 35, 88, 0.08);
-    background:
-        radial-gradient(ellipse 90% 60% at 100% 0%, rgba(160, 32, 240, 0.07), transparent 62%),
-        radial-gradient(ellipse 80% 55% at 0% 100%, rgba(0, 240, 255, 0.08), transparent 60%),
-        #ffffff;
-    box-shadow: 0 30px 60px -42px rgba(14, 35, 88, 0.45);
-    overflow: hidden;
-}
-/* the brand across the top edge rather than down the side: the line that makes
-   the panel look made rather than drawn, inside the radius because the corners
-   are the shape of the thing */
-.lp-roles-proof::after {
-    content: "";
-    position: absolute;
-    inset: 0 0 auto;
-    height: 3px;
-    background: linear-gradient(90deg, #00f0ff, #7b6cff 52%, #a020f0);
-}
-
-/* the lead is the line somebody remembers, so it is set like one: display
-   weight, tight tracking, and a short gradient bar above it standing in for the
-   quote mark a pull quote would have. the bar rather than a quote mark is the
-   honest version of the same gesture, because nothing in this panel is somebody
-   speaking yet. */
-.lp-roles-claim-lead {
-    position: relative;
-    font-family: var(--sp-text);
-    font-size: 1.58rem;
-    line-height: 1.24;
-    font-weight: 700;
-    letter-spacing: -0.03em;
-    color: #0b1c44;
-    margin: 0 0 0.95rem;
-    padding-top: 1.5rem;
-}
-.lp-roles-claim-lead::before {
-    content: "";
-    position: absolute;
-    left: 0; top: 0;
-    width: 44px; height: 4px;
-    border-radius: 4px;
-    background: linear-gradient(90deg, #00f0ff, #7b6cff 55%, #a020f0);
-}
-.lp-roles-claim-body {
-    font-family: var(--sp-text);
-    font-size: 1.04rem;
-    line-height: 1.66;
-    color: #445070;
-    margin: 0;
-    max-width: 40ch;
-}
-/* the mark of a company running on us. the rule above it fades out instead of
-   stopping, so it reads as the end of a thought and not the top of a second
-   box, and the label carries a lit dot because a line of grey capitals on its
-   own reads as a disclaimer. */
-.lp-roles-claim-foot {
-    margin-top: auto;
-    padding-top: 1.7rem;
-    border-top: 1px solid transparent;
-    border-image: linear-gradient(90deg, rgba(14, 35, 88, 0.18), rgba(14, 35, 88, 0)) 1;
-}
-.lp-roles-claim-label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-family: var(--sp-text);
-    font-size: 0.67rem;
-    letter-spacing: 0.13em;
-    text-transform: uppercase;
-    color: #7c88a3;
-    margin-bottom: 0.9rem;
-}
-.lp-roles-claim-label::before {
-    content: "";
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #00f0ff, #a020f0);
-    box-shadow: 0 0 0 3px rgba(0, 240, 255, 0.16);
-}
-.lp-roles-claim-logo {
-    display: block;
-    height: 34px;
-    width: auto;
-    max-width: 190px;
-    object-fit: contain;
-    object-position: left center;
-    filter: grayscale(1);
-    opacity: 0.7;
-    transition: filter 0.3s ease, opacity 0.3s ease;
-}
-/* the panel lifts a little under the pointer, the same gesture the cards on this
-   page already make, so it reads as part of the page rather than as a picture
-   printed on it */
-.lp-roles-proof {
-    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
-                box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.lp-roles-proof:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 38px 70px -44px rgba(14, 35, 88, 0.55);
-}
-.lp-roles-proof:hover .lp-roles-claim-logo { filter: none; opacity: 1; }
-@media (prefers-reduced-motion: reduce) {
-    .lp-roles-proof, .lp-roles-proof:hover { transform: none; transition: none; }
-}
-
-/* under 1080 the row is one column and the panel goes under the card, which is
-   the one place the two can still be the same width. */
-@media (max-width: 1080px) {
-    .lp-roles-split { grid-template-columns: 1fr; gap: 2rem; }
-    .lp-roles-proof { padding: 2.4rem 2.4rem 2.1rem; }
-}
-@media (max-width: 560px) {
-    .lp-roles-proof { padding: 1.9rem 1.6rem 1.7rem; border-radius: 18px; }
-    .lp-roles-claim-lead { font-size: 1.3rem; padding-top: 1.2rem; }
-    .lp-roles-claim-lead::before { width: 36px; height: 3px; }
-    .lp-roles-claim-body { font-size: 0.97rem; line-height: 1.62; max-width: none; }
-    .lp-roles-claim-foot { padding-top: 1.4rem; }
-    .lp-roles-claim-label { margin-bottom: 0.75rem; }
-    .lp-roles-claim-logo { height: 28px; }
-}
-
-/* the black card fills whatever height the row settles on, so the two panels end
-   level. it is three elements deep inside its column and each was sized by its
-   own content, so the column stretched and the card in it did not; the fixed
-   min-height is overridden because that is what stopped it growing. */
-@media (min-width: 1081px) {
-    .lp-roles-panels { height: 100%; }
-    html.theme-light .lp-role-panel.active { height: 100%; }
-    html.theme-light .lp-role-panel.active .lp-role-feature {
-        height: 100% !important;
-        min-height: 0 !important;
-    }
-}
-
 /* between 861 and 1080 the card used to be the narrow left half of the row, and
    it was arranged for that: badge first, copy after it, everything centred. it
    is the full width of the section here now, and at that width a centred column
@@ -5868,10 +5699,10 @@ html.theme-light .lp-role-panel.active {
 
 /* ============ the roles row does not resize when the role changes ==========
 
-   both halves of the row used to be shown and hidden: eight panels, one with
-   display block and seven with display none, and the same for the quote beside
-   it. the height of the section was therefore the height of whichever role was
-   selected, and picking a longer one pushed everything under it down the page.
+   the eight panels used to be shown and hidden: one with display block and seven
+   with display none. the height of the section was therefore the height of
+   whichever role was selected, and picking a longer one pushed everything under
+   it down the page.
 
    stacking is the fix and it needs no javascript and no measuring. all eight go
    in the same grid cell, so the cell is as tall as the tallest of them, always,
@@ -5883,14 +5714,6 @@ html.theme-light .lp-role-panel.active {
     display: block !important;
     /* the old entrance keyframe fought the transition below */
     animation: none !important;
-}
-
-.lp-roles-claims { display: grid; }
-.lp-roles-claim {
-    grid-area: 1 / 1;
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
 }
 
 /* ---- the switch --------------------------------------------------------- */
@@ -5906,8 +5729,7 @@ html.theme-light .lp-role-panel.active {
    reflows. visibility is stepped at the end of the outgoing transition rather
    than switched instantly, which is what keeps a hidden panel out of the tab
    order without cutting the fade off. */
-.lp-role-panel,
-.lp-roles-claim {
+.lp-role-panel {
     opacity: 0;
     transform: translateY(14px) scale(0.992);
     visibility: hidden;
@@ -5918,8 +5740,7 @@ html.theme-light .lp-role-panel.active {
         visibility 0s linear 0.26s;
 }
 html.theme-light .lp-role-panel.active,
-.lp-role-panel.active,
-.lp-roles-claim.active {
+.lp-role-panel.active {
     opacity: 1;
     transform: none;
     visibility: visible;
@@ -5929,17 +5750,35 @@ html.theme-light .lp-role-panel.active,
         transform 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.1s,
         visibility 0s linear 0s;
 }
-/* the panel on the left is the heavier object, so it moves less far and settles
-   a touch later: the two arriving on exactly the same curve looks mechanical */
-.lp-role-panel { transform: translateY(10px) scale(0.995); }
-.lp-role-panel.active { transition-delay: 0.14s, 0.14s, 0s; }
 
 @media (prefers-reduced-motion: reduce) {
     .lp-role-panel,
-    .lp-roles-claim,
-    .lp-role-panel.active,
-    .lp-roles-claim.active {
+    .lp-role-panel.active {
         transition: opacity 0.01s linear, visibility 0s linear;
         transform: none;
     }
+}
+
+/* the card without the panel that used to sit beside it.
+
+   it ran the full width of the section, which put the copy against the left edge
+   and the badge against the right with a third of the card empty between them.
+   the measure is what fixes it rather than the width: the paragraph gets a line
+   length somebody can read without losing their place, the badge column is wider
+   so the disc is not stranded, and the card stops short of the full section so
+   it sits under the heading rather than past it. */
+@media (min-width: 861px) {
+    /* html.theme-light is on the earlier max-width:none, so matching plain
+       .lp-roles-panels here loses on specificity rather than on order */
+    html.theme-light .lp-roles-panels {
+        max-width: 1000px;
+        /* the auto margins under it centre the card, and a centred card under a
+           heading ranged left reads as a mistake */
+        margin-left: 0;
+        margin-right: auto;
+    }
+    html.theme-light .lp-role-panel.active .lp-role-feature {
+        grid-template-columns: 1fr 300px !important;
+    }
+    html.theme-light .lp-role-feature .lp-role-desc { max-width: 54ch; }
 }
