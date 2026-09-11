@@ -5679,15 +5679,16 @@ html.theme-light .lp-role-panel.active {
 /* the split wraps the heading too.
 
    it used to start at the card, so the quote began halfway down the section
-   with a column of empty page above it. it starts at the heading now, which is
-   the only place a quote can start and look deliberate, and top aligned rather
-   than stretched so it holds that line in every language whatever length the
-   sentence runs to. */
+   with a column of empty page above it. it wraps the heading now, and sits at
+   the bottom of that column: its last line finishes level with the bottom of
+   the black card, which is the one edge in this row long enough to line
+   something up against. end aligned rather than stretched, so it keeps that
+   line in every language whatever length the sentence runs to. */
 .lp-roles-split {
     display: grid;
     grid-template-columns: 1.12fr 0.88fr;
     gap: 3.4rem;
-    align-items: start;
+    align-items: end;
 }
 .lp-roles-main { min-width: 0; }
 /* the panel sizes to its content on its own, so in a grid cell wider than the
@@ -5726,12 +5727,30 @@ html.theme-light .lp-role-panel.active {
 }
 .lp-roles-proof-text::before { content: "\201C"; }
 .lp-roles-proof-text::after  { content: "\201D"; }
-.lp-roles-proof-by {
+/* the mark and the attribution on one line. the logo is the size of two lines of
+   the type next to it: big enough to be the thing you see first in the row, not
+   so big it outweighs the sentence above it. */
+.lp-roles-proof-foot {
+    display: flex;
+    align-items: center;
+    gap: 0.95rem;
+    flex-wrap: wrap;
+}
+.lp-roles-proof-logo {
     display: block;
+    flex: none;
+    height: 30px;
+    width: auto;
+    max-width: 168px;
+    object-fit: contain;
+    object-position: left center;
+}
+.lp-roles-proof-by {
     font-family: var(--sp-text);
     font-size: 0.88rem;
     line-height: 1.5;
     color: #5b6784;
+    min-width: 0;
 }
 /* under 1080 the section is one column: heading, card, then the quote under it
    with air above rather than a rule, because there is no card edge left for a
@@ -5744,6 +5763,8 @@ html.theme-light .lp-role-panel.active {
 @media (max-width: 560px) {
     .lp-roles-proof-text { font-size: 1.08rem; line-height: 1.55; }
     .lp-roles-proof-by { font-size: 0.84rem; }
+    .lp-roles-proof-foot { gap: 0.75rem; }
+    .lp-roles-proof-logo { height: 26px; }
 }
 
 /* between 861 and 1080 the card used to be the narrow left half of the row, and
