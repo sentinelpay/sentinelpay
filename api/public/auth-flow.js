@@ -15,6 +15,51 @@
    simply displayed here. */
 (function () {
     var t = function (x) { return window.SentinelI18n ? window.SentinelI18n.t(x) : x; };
+
+    /* run something once the splash is out of the way.
+
+       the reset link lands on the home page, so the page it lands on is the one
+       with the loader over it. the dialog used to open the moment this file ran,
+       which is while the loader is still there: what you saw was the card
+       floating on a blurred grey nothing, and then the real page arriving behind
+       it a second later. the card was right, it was just early.
+
+       the loader takes its class first and is removed about six tenths of a
+       second later, so both are watched: the class through an observer on the
+       element, the removal through one on its parent. and a ceiling on the whole
+       thing, because a dialog that never opens because a splash screen never
+       finished is worse than one that opens over it. */
+    function afterLoader(go) {
+        var splash = document.getElementById('sp-loader');
+        if (!splash || splash.classList.contains('spl-done')) {
+            // a frame, so the modal is not opened inside the same task that
+            // painted the page underneath it
+            requestAnimationFrame(function () { requestAnimationFrame(go); });
+            return;
+        }
+        var done = false;
+        function fire() {
+            if (done) return;
+            done = true;
+            if (obs) obs.disconnect();
+            // the loader fades over 0.55s and is taken out of the dom a little
+            // after that. the dialog waits for the whole of it: opening while
+            // the splash is at a fifth of its opacity means the card's own blur
+            // has a ghost of the splash in it, which is the thing this was for.
+            setTimeout(go, 660);
+        }
+        var obs = null;
+        if (window.MutationObserver) {
+            obs = new MutationObserver(function () {
+                var el = document.getElementById('sp-loader');
+                if (!el || el.classList.contains('spl-done')) fire();
+            });
+            obs.observe(splash, { attributes: true, attributeFilter: ['class'] });
+            if (splash.parentNode) obs.observe(splash.parentNode, { childList: true });
+        }
+        window.addEventListener('load', function () { setTimeout(fire, 700); }, { once: true });
+        setTimeout(fire, 6000);
+    }
     function lang() {
         return (window.SentinelI18n && typeof window.SentinelI18n.lang === 'function'
             ? window.SentinelI18n.lang() : 'en') || 'en';
@@ -1417,8 +1462,12 @@
             // only the dialog does this. /auth has a card of its own and is not
             // where the mail sends anybody.
             if (backdrop && window.__SP_RESET_TOKEN) {
-                if (window.SentinelAuthModal) window.SentinelAuthModal.open('login');
-                startFromLink(window.__SP_RESET_TOKEN);
+                var linkToken = window.__SP_RESET_TOKEN;
+                afterLoader(function () {
+                    if (window.SentinelAuthModal) window.SentinelAuthModal.open('login');
+                    if (backdrop.classList) backdrop.classList.add('sp-authm-arrive');
+                    startFromLink(linkToken);
+                });
             }
 
             function rSay(msg) {

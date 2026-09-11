@@ -2436,7 +2436,26 @@ table.pp-table td { padding: 0.7rem 0.75rem; }}
 .sp-authm-backdrop.is-open .sp-authm {
     transition: opacity 0.26s ease, transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
 }
-.sp-authm-backdrop.is-open .sp-authm { transform: none; opacity: 1; }/* the demo card is a grid with a 3rem gap between its two columns of content.
+.sp-authm-backdrop.is-open .sp-authm { transform: none; opacity: 1; }
+
+/* the arrival from the mail link is slower than an arrival from a button.
+
+   pressing Log in is a thing you did, and the dialog answering fast is the
+   answer. following a link out of your inbox is not: the page loads, the splash
+   clears, and then a dialog has to introduce itself. the same movement, given
+   half again as long and a little further to travel, is the difference between
+   the card appearing and the card arriving. */
+.sp-authm-backdrop.sp-authm-arrive .sp-authm {
+    transform: translateY(18px) scale(0.975);
+    transition: opacity 0.42s ease, transform 0.52s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.sp-authm-backdrop.sp-authm-arrive.is-open .sp-authm { transform: none; }
+.sp-authm-backdrop.sp-authm-arrive { transition: opacity 0.38s ease; }
+
+@media (prefers-reduced-motion: reduce) {
+    .sp-authm-backdrop.sp-authm-arrive .sp-authm,
+    .sp-authm-backdrop.sp-authm-arrive { transition: none; transform: none; }
+}/* the demo card is a grid with a 3rem gap between its two columns of content.
    here the card holds one stack, so that gap turned into 48px of dead air under
    the tabs. the pieces carry their own spacing. */
 .sp-auth-panel,
