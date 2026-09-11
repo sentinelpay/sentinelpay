@@ -16,56 +16,67 @@
 (function () {
     var t = function (x) { return window.SentinelI18n ? window.SentinelI18n.t(x) : x; };
 
-    /* run something once the splash is out of the way.
+    /* run something once the splash is actually gone.
 
-       the reset link lands on the home page, so the page it lands on is the one
-       with the loader over it. the dialog used to open the moment this file ran,
-       which is while the loader is still there: what you saw was the card
-       floating on a blurred grey nothing, and then the real page arriving behind
-       it a second later. the card was right, it was just early.
+       two versions of this were wrong in different ways and both are worth
+       keeping written down.
 
-       the loader takes its class first and is removed about six tenths of a
-       second later, so both are watched: the class through an observer on the
-       element, the removal through one on its parent. and a ceiling on the whole
-       thing, because a dialog that never opens because a splash screen never
-       finished is worse than one that opens over it. */
+       the first counted. it watched for the class and then waited six hundred
+       and sixty milliseconds, because that is roughly how long the fade and the
+       removal take. that is a guess dressed as a fix: the two timers are
+       independent, so on a busy frame the wait finishes first and the dialog
+       opens over a splash that is still half there. rarer, and harder to
+       reproduce, which is worse than plainly broken.
+
+       the second asked once a frame. that is honest about the state but wrong
+       about where it runs: a request animation frame loop stops in a background
+       tab, so a link opened in one never got its dialog at all, and the ceiling
+       was inside the same loop, so nothing rescued it.
+
+       this asks the same question, only when something has happened that could
+       change the answer: the splash element changing class, anything leaving the
+       document, and the fade itself ending. all three keep running when the tab
+       is not in front. no number decides anything; the only one here is the
+       ceiling, because a dialog that never opens because a splash never finished
+       is worse than one that opens over it. */
     function afterLoader(go) {
-        var splash = document.getElementById('sp-loader');
-        if (!splash || splash.classList.contains('spl-done')) {
-            // a frame, so the modal is not opened inside the same task that
-            // painted the page underneath it
-            requestAnimationFrame(function () { requestAnimationFrame(go); });
-            return;
-        }
-        var done = false;
-        function fire() {
-            if (done) return;
-            done = true;
-            if (obs) obs.disconnect();
-            // the loader fades over 0.55s and is taken out of the dom a little
-            // after that. the dialog waits for the whole of it: opening while
-            // the splash is at a fifth of its opacity means the card's own blur
-            // has a ghost of the splash in it, which is the thing this was for.
-            setTimeout(go, 660);
-        }
+        var settled = false;
         var obs = null;
-        if (window.MutationObserver) {
-            obs = new MutationObserver(function () {
-                var el = document.getElementById('sp-loader');
-                if (!el || el.classList.contains('spl-done')) fire();
-            });
-            obs.observe(splash, { attributes: true, attributeFilter: ['class'] });
-            if (splash.parentNode) obs.observe(splash.parentNode, { childList: true });
+        var cap = null;
+        var splash = document.getElementById('sp-loader');
+
+        function gone() {
+            var el = document.getElementById('sp-loader');
+            if (!el) return true;
+            // still in the document: gone means faded out, not merely on its way
+            if (!el.classList.contains('spl-done')) return false;
+            return !(parseFloat(window.getComputedStyle(el).opacity) > 0.01);
         }
-        window.addEventListener('load', function () { setTimeout(fire, 700); }, { once: true });
-        setTimeout(fire, 6000);
+
+        function settle() {
+            if (settled) return;
+            settled = true;
+            if (obs) obs.disconnect();
+            if (cap) clearTimeout(cap);
+            if (splash) splash.removeEventListener('transitionend', look);
+            go();
+        }
+
+        function look() { if (!settled && gone()) settle(); }
+
+        if (window.MutationObserver) {
+            obs = new MutationObserver(look);
+            // the removal can happen anywhere under the root, the class only on
+            // the splash itself
+            obs.observe(document.documentElement, { childList: true, subtree: true });
+            if (splash) obs.observe(splash, { attributes: true, attributeFilter: ['class'] });
+        }
+        if (splash) splash.addEventListener('transitionend', look);
+        cap = setTimeout(settle, 8000);
+
+        // it may already be over by the time this file runs
+        look();
     }
-    function lang() {
-        return (window.SentinelI18n && typeof window.SentinelI18n.lang === 'function'
-            ? window.SentinelI18n.lang() : 'en') || 'en';
-    }
-    var RESEND_WAIT = 60; // matches the server; it is the server's answer that counts
-    var RESET_RESEND_WAIT = 60; // likewise, and the reset endpoint sends its own
 
     // ---- the sign-up that is already under way -------------------------------
     // a code lives for a quarter of an hour, and in that time somebody will close
