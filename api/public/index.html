@@ -400,7 +400,7 @@
             border-color: rgba(255, 255, 255, 1);
         }
     </style>
-    <link rel="stylesheet" href="/corp.291.css">
+    <link rel="stylesheet" href="/corp.292.css">
     <noscript><style>
         /* scripting is off, so the loader is the final screen, not a stage on the
            way somewhere. stop the pulse so it reads as a message, not a hang. */
@@ -1683,7 +1683,16 @@
                 rolesDdMenu.querySelectorAll('.lp-roles-dd-opt').forEach(function(opt) {
                     opt.addEventListener('click', function() {
                         var role = opt.getAttribute('data-role');
-                        if (rolesLabel) rolesLabel.innerHTML = opt.innerHTML;
+                        if (rolesLabel) {
+                            rolesLabel.innerHTML = opt.innerHTML;
+                            // restart the label animation on every pick, including
+                            // a repeat of the same one: removing the class and
+                            // reading a layout property forces the reflow that
+                            // makes the browser treat the next add as new.
+                            rolesDdBtn.classList.remove('is-swap');
+                            void rolesDdBtn.offsetWidth;
+                            rolesDdBtn.classList.add('is-swap');
+                        }
                         rolesDdMenu.querySelectorAll('.lp-roles-dd-opt').forEach(function(o) { o.classList.toggle('active', o === opt); });
                         // the card and the quote beside it are switched by the
                         // same click. both sets are stacked in one grid cell, so
