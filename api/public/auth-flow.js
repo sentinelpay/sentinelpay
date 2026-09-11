@@ -1475,8 +1475,27 @@
             if (backdrop && window.__SP_RESET_TOKEN) {
                 var linkToken = window.__SP_RESET_TOKEN;
                 afterLoader(function () {
+                    // the class goes on before the dialog is opened, not after.
+                    //
+                    // open() puts is-open on and the transition starts in that
+                    // same frame, so a class added on the next line only changes
+                    // a duration something is already using: the slower arrival
+                    // was written, shipped, and never once played.
+                    //
+                    // and it comes off when the arrival is over, so pressing
+                    // Log in later gets the quick one a press deserves.
+                    if (backdrop.classList) {
+                        backdrop.classList.add('sp-authm-arrive');
+                        var card = backdrop.querySelector('.sp-authm');
+                        if (card) {
+                            card.addEventListener('transitionend', function drop(ev) {
+                                if (ev.propertyName !== 'transform') return;
+                                card.removeEventListener('transitionend', drop);
+                                backdrop.classList.remove('sp-authm-arrive');
+                            });
+                        }
+                    }
                     if (window.SentinelAuthModal) window.SentinelAuthModal.open('login');
-                    if (backdrop.classList) backdrop.classList.add('sp-authm-arrive');
                     startFromLink(linkToken);
                 });
             }

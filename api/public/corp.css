@@ -2438,23 +2438,37 @@ table.pp-table td { padding: 0.7rem 0.75rem; }}
 }
 .sp-authm-backdrop.is-open .sp-authm { transform: none; opacity: 1; }
 
-/* the arrival from the mail link is slower than an arrival from a button.
+/* the arrival from the mail link is not the same event as a button press.
 
-   pressing Log in is a thing you did, and the dialog answering fast is the
-   answer. following a link out of your inbox is not: the page loads, the splash
-   clears, and then a dialog has to introduce itself. the same movement, given
-   half again as long and a little further to travel, is the difference between
-   the card appearing and the card arriving. */
+   pressing Log in is something you did, and the dialog answering in a sixth of a
+   second is the answer. following a link out of an inbox is not: the page loads,
+   the splash clears, and then a dialog has to introduce itself to somebody who
+   did not ask for one just now.
+
+   so it arrives in two beats rather than one. the dim and the blur come first
+   and settle the page down; the card follows a tenth of a second behind, once
+   there is something for it to sit on. that gap is the whole difference between
+   two things appearing at once and one thing arriving on top of another.
+
+   and there is no scale on it. a card that grows as it rises reads as a pop,
+   which is the vocabulary of a notification: it is one movement, straight up,
+   on the easing every other arrival on this site uses. the distance is a little
+   further than the quick version, because a slow move over a short distance
+   looks like hesitation. */
+.sp-authm-backdrop.sp-authm-arrive {
+    transition: opacity 0.32s ease;
+}
 .sp-authm-backdrop.sp-authm-arrive .sp-authm {
-    transform: translateY(18px) scale(0.975);
-    transition: opacity 0.42s ease, transform 0.52s cubic-bezier(0.16, 1, 0.3, 1);
+    transform: translateY(22px);
+    transition:
+        opacity 0.34s ease 0.1s,
+        transform 0.62s cubic-bezier(0.16, 1, 0.3, 1) 0.1s;
 }
 .sp-authm-backdrop.sp-authm-arrive.is-open .sp-authm { transform: none; }
-.sp-authm-backdrop.sp-authm-arrive { transition: opacity 0.38s ease; }
 
 @media (prefers-reduced-motion: reduce) {
-    .sp-authm-backdrop.sp-authm-arrive .sp-authm,
-    .sp-authm-backdrop.sp-authm-arrive { transition: none; transform: none; }
+    .sp-authm-backdrop.sp-authm-arrive,
+    .sp-authm-backdrop.sp-authm-arrive .sp-authm { transition: none; transform: none; }
 }/* the demo card is a grid with a 3rem gap between its two columns of content.
    here the card holds one stack, so that gap turned into 48px of dead air under
    the tabs. the pieces carry their own spacing. */
