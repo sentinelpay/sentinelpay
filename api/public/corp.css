@@ -4694,7 +4694,10 @@ html.theme-light .lp-role-feature .lp-role-desc { max-width: 54ch; }}
    page whose script never runs gets the panel open rather than pinched. */
 .lp-proof {
     padding: 5rem 0 6rem;
-    background: var(--sp-page, #f7f8fb);
+    /* no ground of its own. it was #f7f8fb while the page behind it is white,
+       which on a phone, where the panel runs edge to edge, showed up as a grey
+       band above and below it: a second rectangle nobody asked for. the page
+       shows through instead. */
 }/* the inset is a margin again, and the clip it replaced is worth writing down
    so it is not tried a third time.
 
@@ -5017,7 +5020,13 @@ html.theme-light .lp-proof .lp-statsx-grid { max-width: none; }
    edges it should be filling, in the corner of your eye, the whole way past.
    the panel is simply open here, and the radius stops depending on a number
    that no longer moves. the script stops writing that number too. */
-.lp-proof-panel { --sp-inset: 0px; border-radius: 20px; }
+/* square, and edge to edge.
+
+   a rounded card needs a margin to be a card: the corner has to have something
+   to be a corner against. with the inset gone the radius was rounding off the
+   screen's own edges, which reads as a bite taken out of the page rather than
+   as a card. it is a band here, the full width, straight top and bottom. */
+.lp-proof-panel { --sp-inset: 0px; border-radius: 0; }
 
 /* twelve marks, not twenty eight.
 
