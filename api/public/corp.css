@@ -5844,3 +5844,58 @@ html.theme-light .lp-role-panel.active {
     }
 }
 
+
+/* ============ the roles row does not resize when the role changes ==========
+
+   both halves of the row used to be shown and hidden: eight panels, one with
+   display block and seven with display none, and the same for the quote beside
+   it. the height of the section was therefore the height of whichever role was
+   selected, and picking a longer one pushed everything under it down the page.
+
+   stacking is the fix and it needs no javascript and no measuring. all eight go
+   in the same grid cell, so the cell is as tall as the tallest of them, always,
+   and the click only changes which one you can see. that also means it is right
+   in every language on its own: croatian and german pick their own tallest. */
+.lp-roles-panels { display: grid; }
+.lp-role-panel {
+    grid-area: 1 / 1;
+    display: block !important;
+    /* visibility rather than opacity alone: a hidden panel must also be out of
+       the tab order and unreadable to a screen reader */
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    animation: none !important;
+    transition: opacity 0.28s ease;
+}
+html.theme-light .lp-role-panel.active,
+.lp-role-panel.active {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.lp-roles-quotes { display: grid; }
+.lp-roles-quote {
+    grid-area: 1 / 1;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    min-width: 0;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.28s ease;
+}
+.lp-roles-quote.active {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+}
+/* the signature sits on the bottom edge of the shared cell, so it does not
+   wander up and down as the sentence above it changes length */
+.lp-roles-quote .lp-roles-proof-foot { margin-top: auto; }
+
+@media (prefers-reduced-motion: reduce) {
+    .lp-role-panel, .lp-roles-quote { transition: none; }
+}

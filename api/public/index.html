@@ -400,7 +400,7 @@
             border-color: rgba(255, 255, 255, 1);
         }
     </style>
-    <link rel="stylesheet" href="/corp.284.css">
+    <link rel="stylesheet" href="/corp.285.css">
     <noscript><style>
         /* scripting is off, so the loader is the final screen, not a stage on the
            way somewhere. stop the pulse so it reads as a message, not a hang. */
@@ -957,22 +957,54 @@
 
             <!-- the right hand column.
 
-                 the shape is a customer quote: words of praise, then who said
-                 them. the name and the title are a placeholder and are written
-                 so they read as one, because a sentence in quotation marks with
-                 a name under it is that person saying it. filling those two
-                 lines with an invented person at one of the real companies in
-                 the logo band would be putting words in that firm's mouth on a
-                 live page, so they say what they are until there is a real one.
-                 the company logo goes back beside the name at the same time. -->
-            <figure class="lp-roles-proof">
+                 one quote per role, switched by the same click that switches the
+                 card. they are stacked in one grid cell rather than shown and
+                 hidden, so the block is always as tall as the longest of the
+                 eight and nothing under it moves when the role changes.
+
+                 the names and the titles are placeholders and they are written
+                 so they read as ones. a sentence in quotation marks with a name
+                 under it is that person saying it, so filling eight of them in
+                 with invented people at the real companies in the logo band
+                 would be eight testimonials nobody gave. the company logo goes
+                 in beside the name at the same time a real quote does. -->
+            <div class="lp-roles-proof">
                 <span class="lp-roles-proof-mark" aria-hidden="true">&ldquo;</span>
-                <blockquote class="lp-roles-proof-text">We get the same answer on the same wallet every time, with the reasons written next to it. Our desks stopped arguing over screenshots and started working from one record, and that is what made the calls defensible.</blockquote>
-                <figcaption class="lp-roles-proof-foot">
-                    <img class="lp-roles-proof-logo" src="/logos/elektromaterijal.png?v=2" alt="Elektromaterijal" loading="lazy" decoding="async">
-                    <span class="lp-roles-proof-by">Full name, Head of compliance, company name</span>
-                </figcaption>
-            </figure>
+                <div class="lp-roles-quotes">
+                    <figure class="lp-roles-quote active" data-role="fi">
+                        <blockquote class="lp-roles-proof-text">We get the same answer on the same wallet every time, with the reasons written next to it. Our desks stopped arguing over screenshots and started working from one record.</blockquote>
+                        <figcaption class="lp-roles-proof-foot"><span class="lp-roles-proof-by">Full name, Head of compliance, company name</span></figcaption>
+                    </figure>
+                    <figure class="lp-roles-quote" data-role="issuers">
+                        <blockquote class="lp-roles-proof-text">We see a tainted flow touch our contracts the moment it happens, not in a report the following week. That is the difference between a statement and a headline.</blockquote>
+                        <figcaption class="lp-roles-proof-foot"><span class="lp-roles-proof-by">Full name, Head of risk, company name</span></figcaption>
+                    </figure>
+                    <figure class="lp-roles-quote" data-role="cex">
+                        <blockquote class="lp-roles-proof-text">Deposits are screened before they credit, and the ones we hold are held for a reason we can show the customer. Support stopped guessing.</blockquote>
+                        <figcaption class="lp-roles-proof-foot"><span class="lp-roles-proof-by">Full name, Compliance lead, company name</span></figcaption>
+                    </figure>
+                    <figure class="lp-roles-quote" data-role="psp">
+                        <blockquote class="lp-roles-proof-text">A merchant payout either clears or it does not, and now there is a record of why. The arguments that used to take days take minutes.</blockquote>
+                        <figcaption class="lp-roles-proof-foot"><span class="lp-roles-proof-by">Full name, Head of payments risk, company name</span></figcaption>
+                    </figure>
+                    <figure class="lp-roles-quote" data-role="defi">
+                        <blockquote class="lp-roles-proof-text">We watch our own pools the way an exchange watches deposits, without asking anyone to sign up or hand over a key.</blockquote>
+                        <figcaption class="lp-roles-proof-foot"><span class="lp-roles-proof-by">Full name, Protocol lead, company name</span></figcaption>
+                    </figure>
+                    <figure class="lp-roles-quote" data-role="network">
+                        <blockquote class="lp-roles-proof-text">We know which addresses on our chain are carrying sanctioned exposure before somebody else publishes it about us.</blockquote>
+                        <figcaption class="lp-roles-proof-foot"><span class="lp-roles-proof-by">Full name, Head of ecosystem, company name</span></figcaption>
+                    </figure>
+                    <figure class="lp-roles-quote" data-role="law">
+                        <blockquote class="lp-roles-proof-text">The path that produced a score comes with it, hop by hop. An analyst can follow it, and so can a court.</blockquote>
+                        <figcaption class="lp-roles-proof-foot"><span class="lp-roles-proof-by">Full name, Financial crime unit, agency name</span></figcaption>
+                    </figure>
+                    <figure class="lp-roles-quote" data-role="reg">
+                        <blockquote class="lp-roles-proof-text">We can ask a firm how it reached a decision and be shown the record, rather than a summary written afterwards.</blockquote>
+                        <figcaption class="lp-roles-proof-foot"><span class="lp-roles-proof-by">Full name, Supervision lead, authority name</span></figcaption>
+                    </figure>
+                </div>
+            </div>
             </div>
         </div>
     </section>
@@ -1712,7 +1744,12 @@
                         var role = opt.getAttribute('data-role');
                         if (rolesLabel) rolesLabel.innerHTML = opt.innerHTML;
                         rolesDdMenu.querySelectorAll('.lp-roles-dd-opt').forEach(function(o) { o.classList.toggle('active', o === opt); });
-                        document.querySelectorAll('.lp-role-panel').forEach(function(p) {
+                        // the card and the quote beside it are switched by the
+                        // same click. both sets are stacked in one grid cell, so
+                        // this only changes which one is visible: nothing is
+                        // added to or taken out of the flow and nothing below
+                        // the section moves.
+                        document.querySelectorAll('.lp-role-panel, .lp-roles-quote').forEach(function(p) {
                             p.classList.toggle('active', p.getAttribute('data-role') === role);
                         });
                         rolesDd.classList.remove('open');
@@ -1958,6 +1995,6 @@
     <script src="/reveal.6.js" defer></script>
     <script src="/scroll.4.js" defer></script>
     <script src="/navlift.1.js" defer></script>
-    <script src="/i18n.97.js" defer></script>
+    <script src="/i18n.98.js" defer></script>
 </body>
 </html>
