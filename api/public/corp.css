@@ -5718,76 +5718,40 @@ html.theme-light .lp-role-panel.active {
 
 /* ---- the switch --------------------------------------------------------- */
 
-/* the two cards are the same shape in the same place, so anything that shows
-   both of them at once shows a double image. the first version crossfaded and
-   slid both of them downward together, and at the halfway point there were two
-   headings, two paragraphs and two buttons on screen at half opacity each,
-   about four pixels apart. that is what made it look dirty rather than fast.
+/* a fade out and a fade in, and nothing else.
 
-   so nothing overlaps. the outgoing card fades out where it stands, without
-   moving, and only once it is gone does the incoming one begin: it waits out
-   the fade, then rises the last ten pixels and comes up to full. one thing is
-   moving at any instant, which is the whole of it.
+   there is no movement on either card. the only thing worth keeping from the
+   versions before this one is that the two do not overlap: the cards are the
+   same shape in the same place, so any moment where both are part visible is a
+   double image of the same layout. so the outgoing one fades out, and only when
+   it is gone does the incoming one fade in.
 
-   the transform on the outgoing card is stepped rather than eased, with a delay
-   the length of the fade, so it is put back at its start position after it is
-   already invisible instead of travelling there in view. visibility is stepped
-   on the same delay, which keeps a hidden card out of the tab order without
-   cutting the fade off. only opacity and transform move, so nothing reflows. */
+   visibility is stepped on the same delay as the fade rather than switched with
+   it, which keeps a hidden card out of the tab order without cutting the fade
+   short. opacity is the only property that changes, so nothing reflows. */
 .lp-role-panel {
     opacity: 0;
-    transform: translateY(10px);
     visibility: hidden;
     pointer-events: none;
     transition:
-        opacity 0.13s cubic-bezier(0.4, 0, 0.7, 1),
-        transform 0s linear 0.13s,
-        visibility 0s linear 0.13s;
+        opacity 0.16s ease,
+        visibility 0s linear 0.16s;
 }
 html.theme-light .lp-role-panel.active,
 .lp-role-panel.active {
     opacity: 1;
-    transform: none;
     visibility: visible;
     pointer-events: auto;
     transition:
-        opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1) 0.13s,
-        transform 0.44s cubic-bezier(0.16, 1, 0.3, 1) 0.13s,
-        visibility 0s linear 0.13s;
-}
-
-/* the disc comes up a fraction after the card does. it is the one object on the
-   card rather than a line of type, and giving it its own beat is what stops the
-   whole panel arriving as one flat sheet. */
-.lp-role-panel.active .lp-role-badge {
-    animation: spRoleBadgeIn 0.62s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
-}
-@keyframes spRoleBadgeIn {
-    from { opacity: 0; transform: scale(0.88); }
-    to   { opacity: 1; transform: none; }
-}
-
-/* the label in the pill. the text was replaced between one frame and the next
-   while the pill itself resized under it, which is the part that read as a jump:
-   the eye catches the width change and finds new words already there. a short
-   drop on the label gives the change somewhere to happen. */
-@keyframes spDdLabelIn {
-    from { opacity: 0; transform: translateY(-5px); }
-    to   { opacity: 1; transform: none; }
-}
-.lp-roles-dd-btn.is-swap .lp-roles-dd-label {
-    display: inline-block;
-    animation: spDdLabelIn 0.34s cubic-bezier(0.16, 1, 0.3, 1);
+        opacity 0.24s ease 0.16s,
+        visibility 0s linear 0.16s;
 }
 
 @media (prefers-reduced-motion: reduce) {
     .lp-role-panel,
     .lp-role-panel.active {
         transition: opacity 0.01s linear, visibility 0s linear;
-        transform: none;
     }
-    .lp-role-panel.active .lp-role-badge,
-    .lp-roles-dd-btn.is-swap .lp-roles-dd-label { animation: none; }
 }
 
 /* the card without the panel that used to sit beside it.
