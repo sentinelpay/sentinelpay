@@ -100,7 +100,10 @@
     }
 
     if (fine) {
-        var leaners = document.querySelectorAll('.lp-role-feature');
+        // the container rather than the eight panels stacked inside it: the card
+        // is drawn on the container, and one tracked element cannot disagree
+        // with itself about which way it is leaning.
+        var leaners = document.querySelectorAll('.lp-roles-panels');
         Array.prototype.forEach.call(leaners, function (el) { trackPointer(el, 'sp-lean-on'); });
 
         var lit = document.querySelectorAll('.lp-sol-card');

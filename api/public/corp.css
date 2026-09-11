@@ -4754,27 +4754,32 @@ html.theme-light .lp-nav {
    the perspective is on the card itself rather than on a wrapper, and the tilt
    is under three degrees. anything more and the text on the far edge visibly
    blurs, which is the difference between an object with weight and a gimmick. */
-.lp-role-feature {
-    transform: perspective(1100px)
-               rotateX(calc((0.5 - var(--sp-my, 0.5)) * 3.4deg))
-               rotateY(calc((var(--sp-mx, 0.5) - 0.5) * 4.2deg));
-    transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.5s ease;
-    transform-style: preserve-3d;
-    will-change: auto;
-}
-/* while the cursor is on it the transition is short, so it follows rather than
-   trails; the long one above is what lets it settle back when the cursor leaves */
-.lp-role-feature.sp-lean-on {
-    transition: transform 0.12s linear, box-shadow 0.5s ease;
-    box-shadow: 0 40px 80px -40px rgba(0, 0, 0, 0.75);
-}
-/* the light on it moves with the lean, which is what sells the tilt as a
-   surface catching a light rather than as a rectangle being rotated */
-.lp-role-feature::after {
+/* the role card does not tilt any more, and that is the fix rather than a
+   simplification.
+
+   the tilt was three and a half degrees of rotateX and four of rotateY on a card
+   a thousand pixels wide. the disc sits at the far right of it, which is the
+   part of a rotating rectangle that travels furthest, so a few degrees there is
+   a real number of pixels sideways.
+
+   that alone was fine. what was not fine is when it moved. you lean the card by
+   putting the pointer on it, then you take the pointer off it to reach the
+   picker above, and the card spends half a second settling back to flat. the
+   click lands inside that half second, so the copy fades while the disc under it
+   is still drifting right. it reads as the fade stuttering and it was never the
+   fade: it was a tilt finishing late.
+
+   it was also wrong twice over by now, because the black card is drawn on the
+   container: a transform on a panel tilted the type and left the card it was
+   written on standing still.
+
+   the light stays. it follows the cursor and it moves nothing, so it cannot
+   collide with the switch. */
+.lp-roles-panels::after {
     content: "";
     position: absolute;
     inset: 0;
-    border-radius: inherit;
+    border-radius: 22px;
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.35s ease;
@@ -4784,7 +4789,12 @@ html.theme-light .lp-nav {
         transparent 62%
     );
 }
-.lp-role-feature.sp-lean-on::after { opacity: 1; }
+.lp-roles-panels.sp-lean-on::after { opacity: 1; }
+.lp-roles-panels.sp-lean-on::before {
+    box-shadow: 0 40px 80px -40px rgba(0, 0, 0, 0.75);
+}
+.lp-roles-panels::before { transition: box-shadow 0.45s ease; }
+.lp-role-feature { transform: none; }
 
 /* nine tools: the card lights along the edge nearest the cursor.
 
@@ -4861,8 +4871,8 @@ html.theme-light .lp-nav {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .lp-role-feature { transform: none; }
-    .lp-role-feature::after, .lp-sol-card::before { display: none; }
+    .lp-roles-panels { transform: none; }
+    .lp-roles-panels::after, .lp-sol-card::before { display: none; }
     .lp-statsx::after, .lp-intel-banner::after { display: none; }
     .lp-intel-guide, .lp-intel-guide:hover { transform: none; }
 }
