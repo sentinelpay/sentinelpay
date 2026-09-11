@@ -5696,24 +5696,16 @@ html.theme-light .lp-role-panel.active {
    column, and the card inside it fills the height the row settles on. */
 .lp-roles-panels { min-width: 0; width: 100%; }
 
-/* ---- the quote --------------------------------------------------------- */
+/* ---- the panel beside the card ----------------------------------------- */
 
-/* the light twin of the black card.
-
-   the black one is our colour at full strength on a dark ground; this is the
-   same three stops at a twentieth of it on a white one, so the two read as one
-   object cut in half rather than as a card and some text beside it. everything
-   in it is aligned to a single left edge: the mark, the sentence, the rule, the
-   logo and the name all start on the same line down the panel.
-
-   the name and the title are a placeholder and they say so. a sentence in
-   quotation marks with a name under it is that person saying it, so filling
-   those two with an invented person at one of the real companies in the logo
-   band would be putting words in that firm's mouth on a live page. */
+/* the light twin of the black card: our three stops at a twentieth of their
+   strength on white, where the card is the same three at full strength on
+   black, so the two read as one object cut in half. */
 .lp-roles-proof {
     position: relative;
     display: flex;
     flex-direction: column;
+    justify-content: center;
     margin: 0;
     min-width: 0;
     padding: 2.9rem 3rem 2.6rem;
@@ -5725,16 +5717,10 @@ html.theme-light .lp-role-panel.active {
         #ffffff;
     box-shadow: 0 30px 60px -42px rgba(14, 35, 88, 0.45);
     overflow: hidden;
-    /* the panel is as tall as the heading and the card together, which is taller
-       than the quote needs. pushing the signature to the bottom edge left a hole
-       in the middle of it; centring the whole group puts the same air above and
-       below instead, and the block reads as one thing sitting in a panel rather
-       than as two things at opposite ends of one. */
-    justify-content: center;
 }
-/* the brand across the top edge rather than down the side: it is the line that
-   makes the panel look made rather than drawn, and it sits inside the radius
-   because the corners are the shape of the thing. */
+/* the brand across the top edge rather than down the side: the line that makes
+   the panel look made rather than drawn, inside the radius because the corners
+   are the shape of the thing */
 .lp-roles-proof::after {
     content: "";
     position: absolute;
@@ -5742,73 +5728,67 @@ html.theme-light .lp-role-panel.active {
     height: 3px;
     background: linear-gradient(90deg, #00f0ff, #7b6cff 52%, #a020f0);
 }
-/* the opening mark, large, in the brand, and set as a mark rather than as type:
-   it is the only ornament in the panel and it is what says quote before a word
-   is read. it does not take part in the line box, so the sentence under it is
-   not pushed around by it. */
-.lp-roles-proof-mark {
-    display: block;
-    font-family: Georgia, "Times New Roman", serif;
-    font-size: 5rem;
-    line-height: 1;
-    height: 2.1rem;
-    background: linear-gradient(120deg, #00f0ff, #7b6cff 55%, #a020f0);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    -webkit-text-fill-color: transparent;
-    user-select: none;
-}
-.lp-roles-proof-text {
+
+.lp-roles-claim-lead {
     font-family: var(--sp-text);
-    font-size: 1.26rem;
-    line-height: 1.58;
-    letter-spacing: -0.014em;
-    color: #14213d;
-    margin: 0 0 1.9rem;
+    font-size: 1.42rem;
+    line-height: 1.3;
+    font-weight: 650;
+    letter-spacing: -0.022em;
+    color: #0e2358;
+    margin: 0 0 0.85rem;
 }
-/* the rule fades out rather than stopping, so it reads as the end of the
-   sentence rather than as the top of a second box */
-.lp-roles-proof-foot {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    flex-wrap: wrap;
-    padding-top: 1.5rem;
+.lp-roles-claim-body {
+    font-family: var(--sp-text);
+    font-size: 1.02rem;
+    line-height: 1.62;
+    color: #47536e;
+    margin: 0;
+}
+/* the mark of a company that is running on us. small, greyed at rest and true
+   colour on hover, because it is a footnote to the claim rather than the claim
+   itself. the rule above it fades out instead of stopping, so it reads as the
+   end of a thought and not the top of a second box. */
+.lp-roles-claim-foot {
+    margin-top: auto;
+    padding-top: 1.6rem;
     border-top: 1px solid transparent;
     border-image: linear-gradient(90deg, rgba(14, 35, 88, 0.16), rgba(14, 35, 88, 0)) 1;
 }
-.lp-roles-proof-logo {
+.lp-roles-claim-label {
     display: block;
-    flex: none;
+    font-family: var(--sp-text);
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #8793ac;
+    margin-bottom: 0.75rem;
+}
+.lp-roles-claim-logo {
+    display: block;
     height: 30px;
     width: auto;
-    max-width: 168px;
+    max-width: 170px;
     object-fit: contain;
     object-position: left center;
+    filter: grayscale(1);
+    opacity: 0.72;
+    transition: filter 0.25s ease, opacity 0.25s ease;
 }
-.lp-roles-proof-by {
-    font-family: var(--sp-text);
-    font-size: 0.86rem;
-    line-height: 1.5;
-    color: #5b6784;
-    min-width: 0;
-}
+.lp-roles-proof:hover .lp-roles-claim-logo { filter: none; opacity: 1; }
 
 /* under 1080 the row is one column and the panel goes under the card, which is
    the one place the two can still be the same width. */
 @media (max-width: 1080px) {
     .lp-roles-split { grid-template-columns: 1fr; gap: 2rem; }
     .lp-roles-proof { padding: 2.4rem 2.4rem 2.1rem; }
-    .lp-roles-proof-text { font-size: 1.2rem; }
 }
 @media (max-width: 560px) {
     .lp-roles-proof { padding: 1.9rem 1.6rem 1.7rem; border-radius: 18px; }
-    .lp-roles-proof-mark { font-size: 4rem; height: 1.7rem; }
-    .lp-roles-proof-text { font-size: 1.08rem; line-height: 1.56; margin-bottom: 1.5rem; }
-    .lp-roles-proof-foot { gap: 0.8rem; padding-top: 1.2rem; }
-    .lp-roles-proof-logo { height: 26px; }
-    .lp-roles-proof-by { font-size: 0.82rem; }
+    .lp-roles-claim-lead { font-size: 1.24rem; }
+    .lp-roles-claim-body { font-size: 0.96rem; line-height: 1.6; }
+    .lp-roles-claim-foot { padding-top: 1.3rem; }
+    .lp-roles-claim-logo { height: 26px; }
 }
 
 /* the black card fills whatever height the row settles on, so the two panels end
@@ -5860,42 +5840,65 @@ html.theme-light .lp-role-panel.active {
 .lp-role-panel {
     grid-area: 1 / 1;
     display: block !important;
-    /* visibility rather than opacity alone: a hidden panel must also be out of
-       the tab order and unreadable to a screen reader */
-    visibility: hidden;
-    opacity: 0;
-    pointer-events: none;
+    /* the old entrance keyframe fought the transition below */
     animation: none !important;
-    transition: opacity 0.28s ease;
-}
-html.theme-light .lp-role-panel.active,
-.lp-role-panel.active {
-    visibility: visible;
-    opacity: 1;
-    pointer-events: auto;
 }
 
-.lp-roles-quotes { display: grid; }
-.lp-roles-quote {
+.lp-roles-claims { display: grid; }
+.lp-roles-claim {
     grid-area: 1 / 1;
     display: flex;
     flex-direction: column;
-    margin: 0;
     min-width: 0;
-    visibility: hidden;
+}
+
+/* ---- the switch --------------------------------------------------------- */
+
+/* both halves change on one click, and a crossfade alone reads as a flicker
+   because the two states are the same shape in the same place. so the outgoing
+   one leaves upward and the incoming one arrives from below, on the easing the
+   hero uses, and the incoming one starts a beat after the outgoing one has
+   begun to go: that short overlap is the whole difference between a swap and a
+   transition.
+
+   only opacity and transform move, so neither is a layout property and nothing
+   reflows. visibility is stepped at the end of the outgoing transition rather
+   than switched instantly, which is what keeps a hidden panel out of the tab
+   order without cutting the fade off. */
+.lp-role-panel,
+.lp-roles-claim {
     opacity: 0;
+    transform: translateY(14px) scale(0.992);
+    visibility: hidden;
     pointer-events: none;
-    transition: opacity 0.28s ease;
+    transition:
+        opacity 0.26s cubic-bezier(0.4, 0, 1, 1),
+        transform 0.26s cubic-bezier(0.4, 0, 1, 1),
+        visibility 0s linear 0.26s;
 }
-.lp-roles-quote.active {
-    visibility: visible;
+html.theme-light .lp-role-panel.active,
+.lp-role-panel.active,
+.lp-roles-claim.active {
     opacity: 1;
+    transform: none;
+    visibility: visible;
     pointer-events: auto;
+    transition:
+        opacity 0.44s cubic-bezier(0.16, 1, 0.3, 1) 0.1s,
+        transform 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.1s,
+        visibility 0s linear 0s;
 }
-/* the signature sits on the bottom edge of the shared cell, so it does not
-   wander up and down as the sentence above it changes length */
-.lp-roles-quote .lp-roles-proof-foot { margin-top: auto; }
+/* the panel on the left is the heavier object, so it moves less far and settles
+   a touch later: the two arriving on exactly the same curve looks mechanical */
+.lp-role-panel { transform: translateY(10px) scale(0.995); }
+.lp-role-panel.active { transition-delay: 0.14s, 0.14s, 0s; }
 
 @media (prefers-reduced-motion: reduce) {
-    .lp-role-panel, .lp-roles-quote { transition: none; }
+    .lp-role-panel,
+    .lp-roles-claim,
+    .lp-role-panel.active,
+    .lp-roles-claim.active {
+        transition: opacity 0.01s linear, visibility 0s linear;
+        transform: none;
+    }
 }
