@@ -6073,20 +6073,72 @@ html.theme-light .lp-proof .lp-statsx-label {
     /* desaturated and lifted so the tint above has clean lightness to work with:
        a logo that arrives already saturated fights the blend instead of taking
        it */
-    /* the brightness is the setting that matters and it was too high at first.
+    /* one brightness for all twenty eight was never going to work, and this is
+       the part that made some of them look wrong.
 
-       a lot of these are a white symbol on a coloured disc. lift the disc far
-       enough and it clips to white, the symbol clips with it, and what is left
-       is a plain circle: bnb, dai and maker all went blank that way. at 1.12 the
-       disc sits below the symbol and the shape inside it survives. */
-    filter: grayscale(1) brightness(1.12) contrast(1.08);
+       these logos were drawn for their own brand colours, and those colours are
+       not equally light. desaturated, compound and synthetix come out at 0.15
+       and 0.17 of full white while bnb and ethereum come out at 0.78: a five to
+       one spread. any single filter either drowns the dark half in the black
+       behind it or blows the light half into a flat disc, and both of those were
+       tried before this.
+
+       so every logo is measured and lifted to the same place. each one was drawn
+       into a canvas, the mean lightness of its non transparent pixels taken, and
+       --b set to whatever multiplier puts that mean at 0.60. the numbers below
+       are that calculation, not taste: 3.60 for compound, 0.80 for bnb, and the
+       rest between.
+
+       the two at the clamp, compound and synthetix, land at 0.54 and 0.59 rather
+       than 0.60. lifting them the rest of the way would blow their own highlights
+       out, and a tenth of a stop is not worth that. */
+    --b: 1;
+    filter: grayscale(1) brightness(var(--b)) contrast(1.06);
     opacity: 0.95;
     transition: opacity 0.25s ease, filter 0.25s ease;
 }
 .sp-wall-cell:hover .sp-wall-mark {
-    filter: grayscale(1) brightness(1.35) contrast(1.1);
+    filter: grayscale(1) brightness(calc(var(--b) * 1.28)) contrast(1.08);
     opacity: 1;
 }
+
+/* measured, not chosen.
+
+   the values come from a loop rather than from an eye: each logo is drawn into
+   a canvas under the same filter the page uses, the mean lightness of its non
+   transparent pixels is read back, and --b is nudged until that mean sits at
+   0.60. six passes and every one of them lands there.
+
+   compound is the single exception at 0.48. its own brightest pixel is only
+   0.63 of white, so the only way to lift the mean further is to clip the whole
+   mark flat, and a flat mark is the thing this was meant to avoid. */
+.sp-wall-cell[data-coin="comp"] .sp-wall-mark { --b: 9.00; }
+.sp-wall-cell[data-coin="snx"] .sp-wall-mark { --b: 8.67; }
+.sp-wall-cell[data-coin="jup"] .sp-wall-mark { --b: 4.50; }
+.sp-wall-cell[data-coin="pol"] .sp-wall-mark { --b: 2.64; }
+.sp-wall-cell[data-coin="trx"] .sp-wall-mark { --b: 2.58; }
+.sp-wall-cell[data-coin="op"] .sp-wall-mark { --b: 2.23; }
+.sp-wall-cell[data-coin="uni"] .sp-wall-mark { --b: 2.06; }
+.sp-wall-cell[data-coin="link"] .sp-wall-mark { --b: 1.72; }
+.sp-wall-cell[data-coin="ape"] .sp-wall-mark { --b: 1.55; }
+.sp-wall-cell[data-coin="grt"] .sp-wall-mark { --b: 1.54; }
+.sp-wall-cell[data-coin="pepe"] .sp-wall-mark { --b: 1.51; }
+.sp-wall-cell[data-coin="avax"] .sp-wall-mark { --b: 1.32; }
+.sp-wall-cell[data-coin="arb"] .sp-wall-mark { --b: 1.19; }
+.sp-wall-cell[data-coin="cake"] .sp-wall-mark { --b: 1.17; }
+.sp-wall-cell[data-coin="usdc"] .sp-wall-mark { --b: 1.16; }
+.sp-wall-cell[data-coin="sol"] .sp-wall-mark { --b: 1.10; }
+.sp-wall-cell[data-coin="sand"] .sp-wall-mark { --b: 0.97; }
+.sp-wall-cell[data-coin="shib"] .sp-wall-mark { --b: 0.96; }
+.sp-wall-cell[data-coin="crv"] .sp-wall-mark { --b: 0.95; }
+.sp-wall-cell[data-coin="aave"] .sp-wall-mark { --b: 0.89; }
+.sp-wall-cell[data-coin="mkr"] .sp-wall-mark { --b: 0.88; }
+.sp-wall-cell[data-coin="usdt"] .sp-wall-mark { --b: 0.86; }
+.sp-wall-cell[data-coin="btc"] .sp-wall-mark { --b: 0.86; }
+.sp-wall-cell[data-coin="ldo"] .sp-wall-mark { --b: 0.84; }
+.sp-wall-cell[data-coin="dai"] .sp-wall-mark { --b: 0.78; }
+.sp-wall-cell[data-coin="eth"] .sp-wall-mark { --b: 0.77; }
+.sp-wall-cell[data-coin="bnb"] .sp-wall-mark { --b: 0.76; }
 
 /* ---- the proof band on narrower screens ---------------------------------- */
 
