@@ -1059,7 +1059,7 @@ app.get('/v1/submissions', requireStaff('submissions json'), async (req, res) =>
 // somebody will follow by accident.
 app.post('/v1/forget', requireStaff('erase'), async (req, res) => {
     const email = String((req.body && req.body.email) || req.query.email || '').trim();
-    if (!email || email.length > 254) return res.status(400).json({ error: 'Email required' });
+    if (!email || email.length > 254) return res.status(400).json({ error: 'Please enter your email address.' });
     try {
         const removed = await db.forget(email);
         // an erasure request covers the account too, and anything half-made under
@@ -1277,7 +1277,7 @@ app.get('/v1/inbox', requireStaff('inbox'), (req, res) => {
 //     curl -H "x-admin-token: ..." "https://sentinelpay.org/v1/account-status?email=someone@example.com"
 app.get('/v1/account-status', requireStaff('account status'), async (req, res) => {
     const email = String(req.query.email || '').trim().toLowerCase();
-    if (!email || email.length > 254) return res.status(400).json({ error: 'Email required' });
+    if (!email || email.length > 254) return res.status(400).json({ error: 'Please enter your email address.' });
     try {
         res.set('Cache-Control', 'no-store, private');
         res.json(await accounts.inspect(email));
@@ -1432,8 +1432,8 @@ function reviewFlags(emailDomain, websiteHost) {
 // guess. Anything the person has already typed into the form is refused, because
 // "my email again" is the first thing anyone tries.
 function passwordProblem(password, email, firstName, lastName) {
-    if (typeof password !== 'string' || password.length < 12) return 'password must be at least 12 characters';
-    if (password.length > 200) return 'password must be at least 12 characters';
+    if (typeof password !== 'string' || password.length < 12) return 'Your password needs at least 12 characters.';
+    if (password.length > 200) return 'Your password needs at least 12 characters.';
     const low = password.toLowerCase();
     const local = String(email || '').split('@')[0].toLowerCase();
     const parts = [local, String(email || '').toLowerCase(), String(firstName || '').toLowerCase(), String(lastName || '').toLowerCase(), 'sentinelpay']
@@ -2064,9 +2064,9 @@ app.post('/v1/demo-request', requireCloudflareOrigin, demoRequestLimiter, async 
 });
 
 app.use((err, req, res, next) => {
-    if (err.type === 'entity.too.large') return res.status(413).json({ error: 'request body too large' });
-    if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'invalid request body' });
-    if (err.message === 'Not allowed by CORS') return res.status(403).json({ error: 'cors policy violation' });
+    if (err.type === 'entity.too.large') return res.status(413).json({ error: 'That is more than we can accept in one request.' });
+    if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'That request did not arrive in one piece. Please try again.' });
+    if (err.message === 'Not allowed by CORS') return res.status(403).json({ error: 'That request did not come from our site. Please reload the page and try again.' });
     console.error('[unhandled error]', err.message || err);
     if (!res.headersSent) return res.status(500).json({ error: 'internal server error' });
     next(err);

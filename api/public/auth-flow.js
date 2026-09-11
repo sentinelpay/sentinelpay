@@ -1059,10 +1059,6 @@
             pwHead.appendChild(pwSub);
             setpw.appendChild(pwHead);
 
-            var pwFor = el('p', 'sp-auth-for');
-            pwFor.hidden = true;
-            setpw.appendChild(pwFor);
-
             var pwNames = el('div', 'lp-demo-grid');
             pwNames.hidden = true;
             var pwFirst = field('sp-pw-first', 'First name', 'text', 'given-name', 'e.g. Alex');
@@ -1277,9 +1273,15 @@
                 setpw.hidden = false;
                 pwBtn.disabled = true;
                 post('/v1/auth/reset-check', { token: token }).then(function (out) {
+                    // the address is not printed here.
+                    //
+                    // whoever is on this panel arrived by opening a link sent to
+                    // that address, so telling them which address it was is
+                    // telling them something they already did. and this panel is
+                    // reachable by anyone holding the link, which includes
+                    // whoever is looking over a shoulder: a line that names an
+                    // account is a line worth not drawing for nothing.
                     makingAccount = !out.hasAccount;
-                    pwFor.textContent = t('For') + ' ' + out.email;
-                    pwFor.hidden = false;
                     if (makingAccount) {
                         // no account on this address yet, and finishing here makes
                         // one. it has to carry what the sign-up form asks for, or
