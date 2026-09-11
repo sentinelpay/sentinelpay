@@ -26,11 +26,6 @@ SKIP_EXACT = {
     # the companies in the logo strip. real names, the same in every language.
     'elektromaterijal', 'Elektromaterijal', 'racunala', 'Racunala',
     'traveler', 'Traveler', 'futura', 'Futura', 'majice', 'Majice',
-    # the assets in the hero device, and the sanctions programme beside them.
-    # proper nouns: bitcoin is bitcoin in croatian and in german, and CYBER2 is
-    # what the us treasury calls that programme in every language there is.
-    'Bitcoin', 'Ethereum', 'Tron', 'Tether', 'Solana', 'Litecoin', 'Monero',
-    'OFAC SDN · CYBER2',
 }
 SKIP_RE = re.compile(r'^[\W\d\s]*$')          # punctuation / numbers only
 # an invented wallet address in the hero illustration. it is data, not copy, and
