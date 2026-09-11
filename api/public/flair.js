@@ -182,6 +182,7 @@
         function scrollStep() {
             sraf = 0;
             var vh = window.innerHeight || 1;
+            var narrow = (window.innerWidth || 0) <= 720;
             var i, el, r;
             var driftP = [], railP = [], openP = [];
 
@@ -224,8 +225,13 @@
             for (i = 0; i < railList.length; i++) {
                 if (railP[i] !== null) railList[i].style.setProperty('--sp-prog', railP[i].toFixed(4));
             }
-            for (i = 0; i < openList.length; i++) {
-                if (openP[i] !== null) openList[i].style.setProperty('--sp-open', openP[i].toFixed(4));
+            // the panel does not open on a phone, so the number is not written
+            // there either: setting a custom property is a style recalculation
+            // on that element whether or not any rule reads it
+            if (!narrow) {
+                for (i = 0; i < openList.length; i++) {
+                    if (openP[i] !== null) openList[i].style.setProperty('--sp-open', openP[i].toFixed(4));
+                }
             }
         }
         function scrollQueue() {

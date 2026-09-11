@@ -5007,9 +5007,26 @@ html.theme-light .lp-proof .lp-statsx-grid { max-width: none; }
 .sp-wall-cell { aspect-ratio: 1; }}
 
 @media (max-width: 720px) {
-.lp-proof { padding: 3.4rem 0 4rem; }/* the inset goes with the small screen: nine percent of a phone is twenty
-       six pixels, which is not a margin, it is a gap */
-.lp-proof-panel { --sp-inset: calc((1 - var(--sp-open, 1)) * 16px); }
+.lp-proof { padding: 3.4rem 0 4rem; }
+
+/* no opening on a phone.
+
+   the gesture needs room down both sides to read as a gesture and a phone has
+   none: seven percent of 390px is twenty seven pixels, which is not a margin,
+   it is a gap. what it actually looked like was a slab twitching away from the
+   edges it should be filling, in the corner of your eye, the whole way past.
+   the panel is simply open here, and the radius stops depending on a number
+   that no longer moves. the script stops writing that number too. */
+.lp-proof-panel { --sp-inset: 0px; border-radius: 20px; }
+
+/* twelve marks, not twenty eight.
+
+   four across and seven down on a phone is a wall taller than the screen, and
+   a wall you have to scroll through has stopped being one picture. the first
+   twelve are the chains themselves, which is the claim this section is making;
+   the tokens that settle on top of them are the long tail, and the long tail is
+   what a desktop has the room for. */
+.sp-wall-cell:nth-child(n+13) { display: none; }
 .lp-proof-copy { padding: 2.6rem 1.4rem 2.2rem; }
 html.theme-light .lp-proof .lp-statsx-heading {
         font-size: 1.65rem;
@@ -5021,5 +5038,5 @@ html.theme-light .lp-proof .lp-statsx-heading {
 html.theme-light .lp-proof .lp-statsx-grid { gap: 1.6rem 1.4rem; }
 html.theme-light .lp-proof .lp-statsx-num { font-size: 1.85rem; }
 html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: none; }
-.sp-wall { grid-template-columns: repeat(4, minmax(0, 1fr)); background-size: 25% 14.2857%; }
-.sp-wall-mark { width: 24px; height: 24px; }}
+.sp-wall { grid-template-columns: repeat(4, minmax(0, 1fr)); background-size: 25% 33.3333%; }
+.sp-wall-mark { width: 26px; height: 26px; }}
