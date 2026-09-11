@@ -26,6 +26,15 @@ SKIP_EXACT = {
     # the companies in the logo strip. real names, the same in every language.
     'elektromaterijal', 'Elektromaterijal', 'racunala', 'Racunala',
     'traveler', 'Traveler', 'futura', 'Futura', 'majice', 'Majice',
+    # the thirty assets in the proof ring. the tooltip on each chip is the
+    # asset's name, and an asset's name is the same word in every language:
+    # nobody screens for 'Bitcoin' in english and something else in german.
+    'Aave', 'ApeCoin', 'Arbitrum', 'Avalanche', 'BNB', 'Bitcoin',
+    'Chainlink', 'Compound', 'Curve', 'Dai', 'Decentraland', 'ENS',
+    'Ethereum', 'Jupiter', 'Lido', 'Maker', 'Optimism', 'PancakeSwap',
+    'Pepe', 'Polygon', 'Shiba Inu', 'Solana', 'Synthetix', 'Tether',
+    'The Graph', 'The Sandbox', 'Tron', 'USD Coin', 'Uniswap',
+    'Wrapped Bitcoin',
 }
 SKIP_RE = re.compile(r'^[\W\d\s]*$')          # punctuation / numbers only
 # an invented wallet address in the hero illustration. it is data, not copy, and

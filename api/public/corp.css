@@ -5828,3 +5828,295 @@ html.theme-light .lp-role-panel.active,
     }
     html.theme-light .lp-role-feature .lp-role-desc { max-width: 54ch; }
 }
+
+/* ============================================================================
+   the proof band: a dark panel that opens as you scroll into it
+   ==========================================================================*/
+
+/* the gesture, and why it is this way round.
+
+   the hero starts full bleed and steps back into a card as you scroll away from
+   it. this panel does the reverse: it arrives as a card with page down both
+   sides and widens as it comes up the window, so the top and the bottom of the
+   page are the same move read in opposite directions. that is the whole reason
+   it is not simply a full width band.
+
+   --sp-open comes from flair.js: nought when the top of the panel is at the
+   bottom of the window, one by the time it is a quarter of the way up. the
+   fallback is 1 rather than 0, so a page whose script never runs gets the panel
+   open rather than a permanently pinched one. */
+.lp-proof {
+    padding: 5rem 0 6rem;
+    background: var(--sp-page, #f7f8fb);
+}
+.lp-proof-panel {
+    position: relative;
+    overflow: hidden;
+    /* the inset is the effect. 8vw closed, nothing open, with a floor in px so
+       it never eats the whole panel on a narrow window */
+    margin-inline: calc((1 - var(--sp-open, 1)) * min(8vw, 130px));
+    border-radius: clamp(18px, calc(34px - var(--sp-open, 1) * 6px), 34px);
+    background:
+        radial-gradient(ellipse 70% 90% at 92% 10%, rgba(160, 32, 240, 0.20), transparent 62%),
+        radial-gradient(ellipse 80% 70% at 4% 96%, rgba(0, 190, 220, 0.16), transparent 60%),
+        linear-gradient(160deg, #070912 0%, #05060d 55%, #07131a 100%);
+    box-shadow: 0 40px 90px -50px rgba(6, 10, 40, 0.75);
+    /* only the inset animates, and it animates because the number changes every
+       frame rather than because there is a transition on it: a transition here
+       would lag the scroll by its own duration */
+    will-change: margin-inline;
+}
+/* a hairline of the brand along the top edge, the same mark the role card wears */
+.lp-proof-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.55) 18%, rgba(160, 32, 240, 0.55) 82%, transparent);
+}
+.lp-proof-veil {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse 55% 60% at 78% 50%, rgba(80, 120, 255, 0.12), transparent 68%);
+}
+
+.lp-proof-grid {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1.02fr 0.98fr;
+    align-items: center;
+    gap: 3rem;
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 3.8rem clamp(2rem, 4vw, 4rem);
+}
+.lp-proof-copy { min-width: 0; }
+
+html.theme-light .lp-proof .lp-statsx-heading {
+    font-family: var(--sp-display, var(--sp-text));
+    font-size: clamp(1.5rem, 2.1vw, 2rem);
+    line-height: 1.3;
+    letter-spacing: -0.028em;
+    font-weight: 700;
+    color: #ffffff;
+    /* the sentence is long, so the measure is what decides whether this reads
+       as a headline or as a column of words. 20ch put it on six lines. */
+    margin: 0 0 2.6rem;
+    max-width: 30ch;
+}
+html.theme-light .lp-proof .lp-statsx-hl {
+    background: linear-gradient(100deg, #00f0ff 8%, #7b6cff 52%, #a020f0 96%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+}
+
+/* the numbers. two by two rather than four across, because four across next to
+   a ring this size makes a row of thin columns and nothing reads. */
+html.theme-light .lp-proof .lp-statsx-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2rem 2.4rem;
+    max-width: 30rem;
+    background: none;
+    border: 0;
+    padding: 0;
+}
+html.theme-light .lp-proof .lp-statsx-card {
+    background: none !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    text-align: left;
+}
+html.theme-light .lp-proof .lp-statsx-num {
+    font-family: var(--sp-display, var(--sp-text));
+    font-size: clamp(2rem, 3.4vw, 2.9rem);
+    line-height: 1;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    background: linear-gradient(120deg, #00f0ff, #7b6cff 58%, #a020f0);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.5rem;
+}
+html.theme-light .lp-proof .lp-statsx-label {
+    font-family: var(--sp-text);
+    font-size: 0.82rem;
+    line-height: 1.5;
+    color: rgba(226, 234, 255, 0.62);
+    max-width: 22ch;
+}
+
+/* ---- the ring of thirty ---------------------------------------------------
+
+   the shape is a constellation, not a grid: three orbits turning at different
+   speeds and in alternating directions, so the field never repeats a frame and
+   never reads as a carousel. the rings turn, the marks inside them do not: each
+   glyph runs the same animation reversed at the same duration, which cancels
+   the parent exactly and keeps every logo upright.
+
+   the marks are one colour. real brand colours here would be thirty different
+   hues fighting each other and our two, and the point of the picture is the
+   count, not any one coin. */
+.lp-proof-orbit {
+    position: relative;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.sp-orbit {
+    position: relative;
+    width: min(100%, 460px);
+    aspect-ratio: 1;
+}
+.sp-orbit-glow {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 62%; height: 62%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(96, 128, 255, 0.30), rgba(160, 32, 240, 0.10) 45%, transparent 70%);
+    filter: blur(26px);
+    pointer-events: none;
+}
+/* the tracks are drawn, not implied. without them the marks look scattered;
+   with them the whole thing reads as one instrument. */
+.sp-orbit-track {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    border: 1px solid rgba(150, 190, 255, 0.10);
+    pointer-events: none;
+}
+.sp-orbit-t1 { width: 88%; height: 88%; }
+.sp-orbit-t2 { width: 59%; height: 59%; border-color: rgba(150, 190, 255, 0.085); }
+.sp-orbit-t3 { width: 30%; height: 30%; border-color: rgba(150, 190, 255, 0.07); }
+
+.sp-orbit-ring {
+    position: absolute;
+    inset: 0;
+    animation: spOrbitTurn linear infinite;
+}
+.sp-orbit-r1 { animation-duration: 96s; }
+.sp-orbit-r2 { animation-duration: 74s; animation-direction: reverse; }
+.sp-orbit-r3 { animation-duration: 52s; }
+
+@keyframes spOrbitTurn {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+.sp-orbit-chip {
+    position: absolute;
+    left: var(--x); top: var(--y);
+    display: grid;
+    place-items: center;
+    width: 44px; height: 44px;
+    margin: -22px 0 0 -22px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.045);
+    border: 1px solid rgba(160, 200, 255, 0.14);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    backdrop-filter: blur(2px);
+}
+.sp-orbit-r2 .sp-orbit-chip { width: 40px; height: 40px; margin: -20px 0 0 -20px; }
+.sp-orbit-r3 .sp-orbit-chip { width: 36px; height: 36px; margin: -18px 0 0 -18px; }
+
+/* the counter-turn. same duration as its ring, opposite direction, so the mark
+   stays upright while the ring carries it round. */
+.sp-orbit-mark {
+    display: block;
+    width: 22px; height: 22px;
+    color: #b9d4ff;
+    animation: spOrbitTurn linear infinite;
+    animation-direction: reverse;
+}
+.sp-orbit-r1 .sp-orbit-mark { animation-duration: 96s; }
+.sp-orbit-r2 .sp-orbit-mark { animation-duration: 74s; animation-direction: normal; }
+.sp-orbit-r3 .sp-orbit-mark { animation-duration: 52s; width: 19px; height: 19px; }
+.sp-orbit-r2 .sp-orbit-mark { width: 20px; height: 20px; }
+.sp-orbit-mark svg { width: 100%; height: 100%; display: block; }
+
+/* the inner ring sits closest to the core, so it takes the most of its light */
+.sp-orbit-r3 .sp-orbit-mark { color: #d8e7ff; }
+.sp-orbit-r1 .sp-orbit-mark { color: #9fbdf0; }
+
+.sp-orbit-core {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    display: grid;
+    place-items: center;
+    width: 68px; height: 68px;
+    border-radius: 50%;
+    color: #061018;
+    background: linear-gradient(140deg, #00f0ff, #7b6cff 55%, #a020f0);
+    box-shadow: 0 12px 34px -8px rgba(123, 108, 255, 0.65);
+}
+.sp-orbit-core svg { width: 32px; height: 32px; }
+
+.lp-proof-orbit-note {
+    font-family: var(--sp-text);
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(200, 214, 245, 0.58);
+    margin: 1.1rem 0 0;
+    text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sp-orbit-ring, .sp-orbit-mark { animation: none; }
+}
+
+/* ---- the proof band on narrower screens ---------------------------------- */
+
+@media (max-width: 1080px) {
+    /* one column, ring under the copy. the ring is the illustration and an
+       illustration beside a paragraph at this width is two things fighting for
+       the same forty characters. */
+    .lp-proof-grid {
+        grid-template-columns: 1fr;
+        gap: 2.6rem;
+        padding: 3.2rem clamp(1.4rem, 4vw, 3rem);
+    }
+    html.theme-light .lp-proof .lp-statsx-heading { max-width: 34ch; }
+    html.theme-light .lp-proof .lp-statsx-grid { max-width: none; }
+    .sp-orbit { width: min(100%, 400px); }
+}
+
+@media (max-width: 720px) {
+    .lp-proof { padding: 3.4rem 0 4rem; }
+    /* the inset goes with the small screen. eight percent of a phone is
+       twenty six pixels, which is not a margin, it is a gap, and the panel ends
+       up a slab shrinking away from edges it should be filling. */
+    .lp-proof-panel { margin-inline: calc((1 - var(--sp-open, 1)) * 18px); }
+    .lp-proof-grid { padding: 2.6rem 1.4rem 2.4rem; gap: 2.2rem; }
+    html.theme-light .lp-proof .lp-statsx-heading {
+        font-size: 1.32rem;
+        line-height: 1.34;
+        margin-bottom: 2rem;
+    }
+    html.theme-light .lp-proof .lp-statsx-grid { gap: 1.6rem 1.4rem; }
+    html.theme-light .lp-proof .lp-statsx-num { font-size: 1.85rem; }
+    html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: none; }
+    .sp-orbit { width: min(100%, 330px); }
+    /* the chips shrink with the box, otherwise thirty of them on a three
+       hundred pixel circle overlap into a wreath */
+    .sp-orbit-chip { width: 34px; height: 34px; margin: -17px 0 0 -17px; }
+    .sp-orbit-r2 .sp-orbit-chip { width: 31px; height: 31px; margin: -15.5px 0 0 -15.5px; }
+    .sp-orbit-r3 .sp-orbit-chip { width: 28px; height: 28px; margin: -14px 0 0 -14px; }
+    .sp-orbit-mark { width: 17px; height: 17px; }
+    .sp-orbit-r2 .sp-orbit-mark { width: 16px; height: 16px; }
+    .sp-orbit-r3 .sp-orbit-mark { width: 14px; height: 14px; }
+    .sp-orbit-core { width: 52px; height: 52px; }
+    .sp-orbit-core svg { width: 25px; height: 25px; }
+    .lp-proof-orbit-note { font-size: 0.66rem; letter-spacing: 0.1em; }
+}

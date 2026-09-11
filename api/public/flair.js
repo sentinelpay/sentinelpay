@@ -151,8 +151,16 @@
        is a progress line doing its job rather than an effect fighting one. */
     var driftList = fine ? Array.prototype.slice.call(document.querySelectorAll('.lp-ins-featured')) : [];
     var railList = Array.prototype.slice.call(document.querySelectorAll('.lp-faq-list'));
+    /* the proof panel opens as it comes up the window. it is in this loop rather
+       than in its own listener for the same reason as the other two: it needs
+       the same rectangle read, and reading it twice a frame costs twice.
 
-    if (driftList.length || railList.length) {
+       it stays on a phone, unlike the drift. the drift is parallax and argues
+       with scroll momentum; this is a width that tracks position, which is the
+       same thing momentum is already doing, so they agree instead of fighting. */
+    var openList = Array.prototype.slice.call(document.querySelectorAll('.lp-proof-panel'));
+
+    if (driftList.length || railList.length || openList.length) {
         var sraf = 0;
 
         // -1 when the element's middle is at the bottom of the window, +1 at the
@@ -175,9 +183,19 @@
             sraf = 0;
             var vh = window.innerHeight || 1;
             var i, el, r;
-            var driftP = [], railP = [];
+            var driftP = [], railP = [], openP = [];
 
             for (i = 0; i < driftList.length; i++) driftP.push(through(driftList[i], vh));
+            for (i = 0; i < openList.length; i++) {
+                r = openList[i].getBoundingClientRect();
+                if (r.bottom < -240 || r.top > vh + 240) { openP.push(null); continue; }
+                // 0 when the top edge is at the bottom of the window, 1 by the
+                // time it has risen three quarters of a window above that, and
+                // it stays at 1 from there: the panel opens once and does not
+                // close again on its way out, because a band that pinches as it
+                // leaves reads as a glitch rather than as a gesture
+                openP.push(Math.min(1, Math.max(0, (vh - r.top) / (vh * 0.75))));
+            }
             for (i = 0; i < railList.length; i++) {
                 r = railList[i].getBoundingClientRect();
                 if (r.bottom < -240 || r.top > vh + 240) { railP.push(null); continue; }
@@ -194,6 +212,9 @@
             }
             for (i = 0; i < railList.length; i++) {
                 if (railP[i] !== null) railList[i].style.setProperty('--sp-prog', railP[i].toFixed(4));
+            }
+            for (i = 0; i < openList.length; i++) {
+                if (openP[i] !== null) openList[i].style.setProperty('--sp-open', openP[i].toFixed(4));
             }
         }
         function scrollQueue() {
