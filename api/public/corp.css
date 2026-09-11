@@ -4561,23 +4561,20 @@ html {
 html.theme-light .lp-hero {
     min-height: 100svh;
     padding: 7.5rem 1.5rem 6rem;
-    /* black, with our colour in it rather than over it.
+    /* a colour, and nothing drawn on it.
 
-       this was a flat #06070f from back when a webgl canvas was drawing
-       everything behind the words, so the ground only had to be dark and get
-       out of the way. the canvas is gone and this is the ground now.
+       everything that used to be visible here was a shape: a lattice, a traced
+       outline, three rings, flowing lines, four drifting orbs. on black each one
+       read as a thing rather than as depth, and together they were louder than
+       the sentence.
 
-       the reference is pure black and the phone is the whole screen. ours keeps
-       the cyan and the purple, because between them they are the only thing
-       here that says whose page this is, but at the weight of a tint: you find
-       them when you look rather than instead of the headline. the vignette is
-       first in the stack so it falls across the orbs underneath as well. */
+       so the ground is one gradient. black at the top where the nav sits, our
+       cyan and our purple low and wide at the bottom where the device stands,
+       and nothing else. it is the brand as light rather than as decoration. */
     background:
-        radial-gradient(ellipse 96% 82% at 50% 44%, transparent 38%, rgba(0, 0, 0, 0.7) 100%),
-        radial-gradient(ellipse 52% 36% at 50% 64%, rgba(96, 128, 255, 0.12), transparent 70%),
-        radial-gradient(ellipse 40% 48% at 4% 72%, rgba(0, 190, 220, 0.10), transparent 70%),
-        radial-gradient(ellipse 36% 44% at 96% 78%, rgba(160, 32, 240, 0.11), transparent 72%),
-        #000000;
+        radial-gradient(ellipse 120% 70% at 12% 108%, rgba(0, 190, 220, 0.20), transparent 62%),
+        radial-gradient(ellipse 120% 70% at 88% 104%, rgba(160, 32, 240, 0.22), transparent 62%),
+        linear-gradient(180deg, #000000 0%, #000000 42%, #05060d 100%);
 }
 html.theme-light .lp-hero .sp-hero-h1 { color: #ffffff; }
 /* the gradient on the second line has to survive the older rule that forces
@@ -5424,239 +5421,118 @@ h1, h2, h3, h4,
 }
 
 /* ============ the device on the first screen ============================
-   the reference is a phone held under a headline with a bank balance on it.
-   the shape is right and the content is not ours: a balance is what a bank has
-   to show, and on our first screen it would be somebody else's product.
+   drawn, not photographed. an image of a phone is a quarter of a megabyte and
+   is wrong the day the phone changes; this is four divs, it is sharp at any
+   size, and the screen inside it is a real element a film can go into later.
 
-   so the screen runs the thing we actually do. an address arrives, it goes
-   through the chains, and it comes back with a verdict carrying its own
-   evidence: which list, which programme, what date, and how old the list is.
-   that last line is the whole argument of this company in six words.
+   the proportions are the current one: corners at about a sixth of the width,
+   a bezel the same thickness the whole way round, and the island floating
+   inside the screen rather than cut out of the frame. the rail is what sells
+   it. a phone is a polished band of metal and the only thing that reads as
+   metal on a screen is a gradient that is bright along one edge and dark along
+   the other, so there are two shells: the rail catches the light, the body is
+   the black underneath it. */
 
-   built, not filmed. a video of this is megabytes, needs a poster frame and
-   sits behind the autoplay rules of every mobile browser. this is markup and a
-   handful of keyframes, it is sharp at any size, and it stops where somebody
-   has asked for less motion. */
-
-html.theme-light .lp-hero {
-    overflow: hidden;
-    padding-bottom: 0;
-}
+html.theme-light .lp-hero { overflow: hidden; padding-bottom: 0; }
 
 .sp-phone {
     position: relative;
     z-index: 1;
-    width: min(340px, 78vw);
-    margin: clamp(2.2rem, 5vh, 3.6rem) auto 0;
-    /* it runs off the bottom of the screen rather than sitting on it. a device
-       that ends inside the frame is a picture of a phone; one that leaves the
-       frame is a phone you are looking at, and it is what tells somebody there
-       is more page under this one. */
+    width: min(320px, 74vw);
+    margin: clamp(2rem, 4.5vh, 3.2rem) auto 0;
+    /* it runs off the bottom rather than sitting on it: a device that ends
+       inside the frame is a picture of a phone, one that leaves the frame is a
+       phone, and it is what says there is more page under this one. */
     margin-bottom: clamp(-14rem, -18vh, -9rem);
+    /* the whole thing arrives once, on load */
+    opacity: 0;
+    animation: spPhoneIn 1.15s cubic-bezier(0.16, 1, 0.3, 1) 0.35s forwards;
 }
 
 .sp-phone-glow {
     position: absolute;
-    left: 50%; top: 8%;
-    width: 150%; height: 70%;
+    left: 50%; top: 2%;
+    width: 190%; height: 80%;
     transform: translateX(-50%);
-    background: radial-gradient(ellipse at center, rgba(96, 128, 255, 0.22), transparent 68%);
-    filter: blur(18px);
+    background: radial-gradient(ellipse at center, rgba(96, 128, 255, 0.20), transparent 66%);
+    filter: blur(26px);
     pointer-events: none;
+    opacity: 0;
+    animation: spPhoneGlow 1.6s ease-out 0.75s forwards;
 }
 
+/* the polished edge */
+.sp-phone-rail {
+    position: relative;
+    border-radius: 54px;
+    padding: 3px;
+    background: linear-gradient(150deg,
+        #8d93a8 0%, #4a4f60 14%, #23262f 34%,
+        #6d7385 52%, #191b22 72%, #3d4150 88%, #7e8497 100%);
+    box-shadow: 0 44px 90px -34px rgba(0, 0, 0, 0.95);
+}
+/* the black band inside it */
 .sp-phone-body {
     position: relative;
-    border-radius: 38px;
-    padding: 10px;
-    background: linear-gradient(165deg, #2a2f42 0%, #11131d 38%, #05060c 100%);
-    box-shadow:
-        0 0 0 1px rgba(255, 255, 255, 0.07),
-        0 40px 90px -30px rgba(0, 0, 0, 0.9),
-        inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    border-radius: 51px;
+    padding: 9px;
+    background: #0b0c10;
 }
-.sp-phone-island {
-    position: absolute;
-    left: 50%; top: 20px;
-    width: 78px; height: 20px;
-    transform: translateX(-50%);
-    border-radius: 12px;
-    background: #05060c;
-    z-index: 2;
-}
+/* and the screen, dark and empty until there is a film to put in it */
 .sp-phone-screen {
     position: relative;
-    border-radius: 29px;
-    padding: 46px 16px 26px;
-    min-height: 380px;
-    background:
-        radial-gradient(ellipse 90% 45% at 50% 0%, rgba(96, 128, 255, 0.14), transparent 70%),
-        #070912;
-    font-family: var(--sp-text);
+    border-radius: 43px;
+    min-height: 430px;
+    background: #000000;
     overflow: hidden;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
-
-/* ---- what is on the screen ------------------------------------------- */
-
-.sp-scan-head { display: flex; align-items: center; gap: 0.5rem; }
-.sp-scan-dot {
-    width: 7px; height: 7px; border-radius: 50%;
-    background: #00f0ff;
-    box-shadow: 0 0 8px rgba(0, 240, 255, 0.8);
-    animation: spScanPulse 1.8s ease-in-out infinite;
-}
-.sp-scan-title {
-    font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase;
-    font-weight: 700; color: rgba(255, 255, 255, 0.5);
-}
-
-.sp-scan-addr {
-    margin-top: 0.95rem; padding: 0.85rem 0.9rem;
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    display: flex; flex-direction: column; gap: 0.3rem;
-}
-.sp-scan-addr-label {
-    font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.35);
-}
-.sp-scan-addr-val {
-    font-family: var(--sp-display);
-    font-size: 1rem; font-weight: 700; color: #ffffff;
-    letter-spacing: -0.01em;
-}
-
-/* the spin. one column sliding past a window, which is what reads as work
-   being done rather than as a spinner, which reads as waiting. */
-.sp-scan-reel {
-    position: relative;
-    margin-top: 1rem; height: 62px;
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    overflow: hidden;
-    animation: spScanReelBox 9s linear infinite;
-}
-.sp-scan-reel-track {
-    position: absolute; left: 0.9rem; top: 0;
-    display: flex; flex-direction: column;
-    animation: spScanReel 9s cubic-bezier(0.12, 0.7, 0.1, 1) infinite;
-}
-.sp-scan-reel-track span {
-    height: 62px; line-height: 62px;
-    font-family: var(--sp-display);
-    font-size: 1.02rem; font-weight: 700; color: rgba(255, 255, 255, 0.9);
-}
-.sp-scan-reel-label {
-    position: absolute; right: 0.9rem; top: 50%;
-    transform: translateY(-50%);
-    font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.3);
-}
-
-/* and the answer */
-.sp-scan-verdict {
+/* the island floats on the screen. cutting it out of the frame is what makes a
+   drawn phone look drawn: on the real one it is a hole in the picture. */
+.sp-phone-island {
     position: absolute;
-    left: 16px; right: 16px; top: 150px;
-    display: flex; align-items: center; gap: 0.7rem;
-    padding: 0.85rem 0.9rem;
+    left: 50%; top: 21px;
+    width: 88px; height: 26px;
+    transform: translateX(-50%);
     border-radius: 14px;
-    background: linear-gradient(135deg, rgba(255, 92, 92, 0.16), rgba(255, 92, 92, 0.06));
-    border: 1px solid rgba(255, 122, 122, 0.34);
-    opacity: 0;
-    animation: spScanVerdict 9s ease-out infinite;
-}
-.sp-scan-flag {
-    flex: 0 0 30px; height: 30px;
-    display: flex; align-items: center; justify-content: center;
-    border-radius: 9px;
-    background: rgba(255, 92, 92, 0.18);
-    color: #ff8b8b;
-}
-.sp-scan-flag svg { width: 16px; height: 16px; }
-.sp-scan-verdict-txt { display: flex; flex-direction: column; gap: 0.12rem; min-width: 0; }
-.sp-scan-verdict-h {
-    font-family: var(--sp-display);
-    font-size: 0.86rem; font-weight: 700; color: #ffffff; letter-spacing: -0.01em;
-}
-.sp-scan-verdict-s { font-size: 0.72rem; color: rgba(255, 255, 255, 0.52); }
-.sp-scan-chip {
-    margin-left: auto; flex-shrink: 0;
-    padding: 0.28rem 0.55rem;
-    border-radius: 7px;
-    background: rgba(255, 92, 92, 0.2);
-    font-size: 0.64rem; font-weight: 700; letter-spacing: 0.06em;
-    text-transform: uppercase; color: #ff9d9d;
+    background: #000000;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
-.sp-scan-meta {
+/* the four buttons, because a phone without them reads as a slab */
+.sp-phone-btn {
     position: absolute;
-    left: 16px; right: 16px; top: 224px;
-    display: flex; justify-content: space-between;
-    font-size: 0.66rem; color: rgba(255, 255, 255, 0.3);
-    opacity: 0;
-    animation: spScanMeta 9s ease-out infinite;
+    width: 2px;
+    border-radius: 2px;
+    background: linear-gradient(180deg, #6a7082, #2a2d36);
+}
+.sp-phone-btn-silent { left: -2px; top: 92px;  height: 26px; }
+.sp-phone-btn-up     { left: -2px; top: 134px; height: 50px; }
+.sp-phone-btn-down   { left: -2px; top: 196px; height: 50px; }
+.sp-phone-btn-power  { right: -2px; top: 150px; height: 72px; }
+
+/* ---- the arrival -------------------------------------------------------
+   the page settles, then the device rises into it and the screen lights.
+   one pass, no loop: a thing that keeps animating is a thing you stop reading
+   past. it is a transform and an opacity, so it runs on the compositor and
+   never touches layout. */
+@keyframes spPhoneIn {
+    from { opacity: 0; transform: translateY(46px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes spPhoneGlow {
+    from { opacity: 0; }
+    to   { opacity: 1; }
 }
 
-/* ---- the timeline ------------------------------------------------------
-   one nine second cycle, every element on the same clock so they cannot drift
-   apart. the reel runs for the first half and decelerates into its last name;
-   the verdict takes over for the second half; everything clears before the
-   loop comes round so the reset is never seen. */
-@keyframes spScanReel {
-    0%, 8%   { transform: translateY(0); }
-    46%      { transform: translateY(-434px); }
-    100%     { transform: translateY(-434px); }
-}
-@keyframes spScanReelBox {
-    0%, 48%  { opacity: 1; }
-    54%, 94% { opacity: 0; }
-    100%     { opacity: 0; }
-}
-@keyframes spScanVerdict {
-    0%, 50%  { opacity: 0; transform: translateY(10px); }
-    58%, 92% { opacity: 1; transform: translateY(0); }
-    97%,100% { opacity: 0; transform: translateY(0); }
-}
-@keyframes spScanMeta {
-    0%, 62%  { opacity: 0; }
-    70%, 92% { opacity: 1; }
-    97%,100% { opacity: 0; }
-}
-@keyframes spScanPulse {
-    0%, 100% { opacity: 1; }
-    50%      { opacity: 0.35; }
-}
-
-/* somebody who has asked for less motion gets the answer rather than the
-   performance: the reel is gone and the verdict is simply there. */
 @media (prefers-reduced-motion: reduce) {
-    .sp-scan-reel, .sp-scan-dot { animation: none; }
-    .sp-scan-reel { opacity: 0; }
-    .sp-scan-verdict, .sp-scan-meta { animation: none; opacity: 1; transform: none; }
+    .sp-phone, .sp-phone-glow { animation: none; opacity: 1; transform: none; }
 }
 
 @media (max-width: 720px) {
-    .sp-phone { width: min(300px, 80vw); }
-    .sp-phone-screen { min-height: 350px; padding: 50px 14px 22px; }
+    .sp-phone { width: min(290px, 76vw); }
+    .sp-phone-screen { min-height: 400px; }
 }
-
-/* the first screen now has a device on it, and a device needs room.
-
-   the copy was sized for a hero that was copy and nothing else: a 68 character
-   measure, eight and a half rem of air above it, five below. with a phone under
-   the buttons that pushed the screen of the phone, which is the part carrying
-   the argument, below the fold on a laptop. so the column narrows and the air
-   above it comes down, and what somebody sees without scrolling is the sentence,
-   the button and a verdict. */
-html.theme-light .lp-hero {
-    padding-top: clamp(5.5rem, 11vh, 7rem);
-}
-/* left at the measure it had. narrowing it to 54 characters made the
-   paragraph five lines instead of four, which cost more height than it saved:
-   this copy is three sentences long and no column width fixes that. */
-html.theme-light .lp-hero .sp-hero-ctas { margin-top: 1.7rem; }
 
 /* a laptop is not 900 tall.
 
@@ -5673,53 +5549,14 @@ html.theme-light .lp-hero .sp-hero-ctas { margin-top: 1.7rem; }
     html.theme-light .lp-hero .sp-hero-ctas { margin-top: 1.2rem; }
 }
 
-/* the first screen, simplified.
+/* the scene and the orbs are off on the first screen.
 
-   the reference has one white pill and a line of copy on black, and that is the
-   whole of it. what was here was a gradient button, a bordered second button
-   with an icon in a box, and four layers of texture behind them. each of those
-   was defensible on its own and together they were the loudest thing on the
-   page, which on a first screen should be the sentence.
-
-   so: one solid button, one plain link beside it, and the texture held down to
-   where it reads as depth rather than as pattern. */
-html.theme-light .lp-hero .sp-hero-cta {
-    background: #ffffff !important;
-    background-image: none !important;
-    color: #06070f !important;
-    border: 0 !important;
-    border-radius: 999px !important;
-    padding: 0.95rem 2rem !important;
-    box-shadow: none !important;
-}
-html.theme-light .lp-hero .sp-hero-cta:hover {
-    background: #e8ecf6 !important;
-    box-shadow: none !important;
-}
-
-/* the second one stops being a button. two buttons side by side ask somebody to
-   choose; a button and a link tell them which one is the answer. */
-html.theme-light .lp-hero .sp-hero-second {
-    background: none !important;
-    border: 0 !important;
-    padding: 0.95rem 0.5rem !important;
-    color: rgba(255, 255, 255, 0.62) !important;
-}
-html.theme-light .lp-hero .sp-hero-second:hover { color: #ffffff !important; }
-html.theme-light .lp-hero .sp-hero-second-ico {
-    background: none !important;
-    border: 0 !important;
-    width: auto !important;
-    height: auto !important;
-}
-
-/* and the scene goes quiet. it is a trace on black now rather than a drawing:
-   the lines and the blooms stay because they carry the colour, the lattice and
-   the traced outline go down to where the eye finds them only if it looks. */
-.sp-weave { opacity: 0.14; }
-.sp-shield { opacity: 0.18; }
-.sp-rings { opacity: 0.5; }
-.lp-fx-orb { opacity: 0.55; }
+   what was here was a lattice, a traced outline, three rings, four flowing
+   lines and four drifting orbs, and on black every one of them read as a thing
+   rather than as depth. the ground is a colour now and nothing is drawn on it.
+   the shapes are still in the markup and still used further down the page. */
+html.theme-light .lp-hero .sp-hero-scene,
+html.theme-light .lp-hero .lp-hero-fx { display: none; }
 
 /* the screen is dark and empty until there is a film to put in it */
 .sp-phone-screen {
