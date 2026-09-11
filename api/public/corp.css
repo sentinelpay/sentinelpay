@@ -5409,3 +5409,253 @@ h1, h2, h3, h4,
         transform: translateY(0) scale(1);
     }
 }
+
+/* ============ the device on the first screen ============================
+   the reference is a phone held under a headline with a bank balance on it.
+   the shape is right and the content is not ours: a balance is what a bank has
+   to show, and on our first screen it would be somebody else's product.
+
+   so the screen runs the thing we actually do. an address arrives, it goes
+   through the chains, and it comes back with a verdict carrying its own
+   evidence: which list, which programme, what date, and how old the list is.
+   that last line is the whole argument of this company in six words.
+
+   built, not filmed. a video of this is megabytes, needs a poster frame and
+   sits behind the autoplay rules of every mobile browser. this is markup and a
+   handful of keyframes, it is sharp at any size, and it stops where somebody
+   has asked for less motion. */
+
+html.theme-light .lp-hero {
+    overflow: hidden;
+    padding-bottom: 0;
+}
+
+.sp-phone {
+    position: relative;
+    z-index: 1;
+    width: min(340px, 78vw);
+    margin: clamp(2.2rem, 5vh, 3.6rem) auto 0;
+    /* it runs off the bottom of the screen rather than sitting on it. a device
+       that ends inside the frame is a picture of a phone; one that leaves the
+       frame is a phone you are looking at, and it is what tells somebody there
+       is more page under this one. */
+    margin-bottom: clamp(-14rem, -18vh, -9rem);
+}
+
+.sp-phone-glow {
+    position: absolute;
+    left: 50%; top: 8%;
+    width: 150%; height: 70%;
+    transform: translateX(-50%);
+    background: radial-gradient(ellipse at center, rgba(96, 128, 255, 0.22), transparent 68%);
+    filter: blur(18px);
+    pointer-events: none;
+}
+
+.sp-phone-body {
+    position: relative;
+    border-radius: 38px;
+    padding: 10px;
+    background: linear-gradient(165deg, #2a2f42 0%, #11131d 38%, #05060c 100%);
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.07),
+        0 40px 90px -30px rgba(0, 0, 0, 0.9),
+        inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+.sp-phone-island {
+    position: absolute;
+    left: 50%; top: 20px;
+    width: 78px; height: 20px;
+    transform: translateX(-50%);
+    border-radius: 12px;
+    background: #05060c;
+    z-index: 2;
+}
+.sp-phone-screen {
+    position: relative;
+    border-radius: 29px;
+    padding: 46px 16px 26px;
+    min-height: 380px;
+    background:
+        radial-gradient(ellipse 90% 45% at 50% 0%, rgba(96, 128, 255, 0.14), transparent 70%),
+        #070912;
+    font-family: var(--sp-text);
+    overflow: hidden;
+}
+
+/* ---- what is on the screen ------------------------------------------- */
+
+.sp-scan-head { display: flex; align-items: center; gap: 0.5rem; }
+.sp-scan-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #00f0ff;
+    box-shadow: 0 0 8px rgba(0, 240, 255, 0.8);
+    animation: spScanPulse 1.8s ease-in-out infinite;
+}
+.sp-scan-title {
+    font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase;
+    font-weight: 700; color: rgba(255, 255, 255, 0.5);
+}
+
+.sp-scan-addr {
+    margin-top: 0.95rem; padding: 0.85rem 0.9rem;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    display: flex; flex-direction: column; gap: 0.3rem;
+}
+.sp-scan-addr-label {
+    font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.35);
+}
+.sp-scan-addr-val {
+    font-family: var(--sp-display);
+    font-size: 1rem; font-weight: 700; color: #ffffff;
+    letter-spacing: -0.01em;
+}
+
+/* the spin. one column sliding past a window, which is what reads as work
+   being done rather than as a spinner, which reads as waiting. */
+.sp-scan-reel {
+    position: relative;
+    margin-top: 1rem; height: 62px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+    animation: spScanReelBox 9s linear infinite;
+}
+.sp-scan-reel-track {
+    position: absolute; left: 0.9rem; top: 0;
+    display: flex; flex-direction: column;
+    animation: spScanReel 9s cubic-bezier(0.12, 0.7, 0.1, 1) infinite;
+}
+.sp-scan-reel-track span {
+    height: 62px; line-height: 62px;
+    font-family: var(--sp-display);
+    font-size: 1.02rem; font-weight: 700; color: rgba(255, 255, 255, 0.9);
+}
+.sp-scan-reel-label {
+    position: absolute; right: 0.9rem; top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.3);
+}
+
+/* and the answer */
+.sp-scan-verdict {
+    position: absolute;
+    left: 16px; right: 16px; top: 150px;
+    display: flex; align-items: center; gap: 0.7rem;
+    padding: 0.85rem 0.9rem;
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(255, 92, 92, 0.16), rgba(255, 92, 92, 0.06));
+    border: 1px solid rgba(255, 122, 122, 0.34);
+    opacity: 0;
+    animation: spScanVerdict 9s ease-out infinite;
+}
+.sp-scan-flag {
+    flex: 0 0 30px; height: 30px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 9px;
+    background: rgba(255, 92, 92, 0.18);
+    color: #ff8b8b;
+}
+.sp-scan-flag svg { width: 16px; height: 16px; }
+.sp-scan-verdict-txt { display: flex; flex-direction: column; gap: 0.12rem; min-width: 0; }
+.sp-scan-verdict-h {
+    font-family: var(--sp-display);
+    font-size: 0.86rem; font-weight: 700; color: #ffffff; letter-spacing: -0.01em;
+}
+.sp-scan-verdict-s { font-size: 0.72rem; color: rgba(255, 255, 255, 0.52); }
+.sp-scan-chip {
+    margin-left: auto; flex-shrink: 0;
+    padding: 0.28rem 0.55rem;
+    border-radius: 7px;
+    background: rgba(255, 92, 92, 0.2);
+    font-size: 0.64rem; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: #ff9d9d;
+}
+
+.sp-scan-meta {
+    position: absolute;
+    left: 16px; right: 16px; top: 224px;
+    display: flex; justify-content: space-between;
+    font-size: 0.66rem; color: rgba(255, 255, 255, 0.3);
+    opacity: 0;
+    animation: spScanMeta 9s ease-out infinite;
+}
+
+/* ---- the timeline ------------------------------------------------------
+   one nine second cycle, every element on the same clock so they cannot drift
+   apart. the reel runs for the first half and decelerates into its last name;
+   the verdict takes over for the second half; everything clears before the
+   loop comes round so the reset is never seen. */
+@keyframes spScanReel {
+    0%, 8%   { transform: translateY(0); }
+    46%      { transform: translateY(-434px); }
+    100%     { transform: translateY(-434px); }
+}
+@keyframes spScanReelBox {
+    0%, 48%  { opacity: 1; }
+    54%, 94% { opacity: 0; }
+    100%     { opacity: 0; }
+}
+@keyframes spScanVerdict {
+    0%, 50%  { opacity: 0; transform: translateY(10px); }
+    58%, 92% { opacity: 1; transform: translateY(0); }
+    97%,100% { opacity: 0; transform: translateY(0); }
+}
+@keyframes spScanMeta {
+    0%, 62%  { opacity: 0; }
+    70%, 92% { opacity: 1; }
+    97%,100% { opacity: 0; }
+}
+@keyframes spScanPulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.35; }
+}
+
+/* somebody who has asked for less motion gets the answer rather than the
+   performance: the reel is gone and the verdict is simply there. */
+@media (prefers-reduced-motion: reduce) {
+    .sp-scan-reel, .sp-scan-dot { animation: none; }
+    .sp-scan-reel { opacity: 0; }
+    .sp-scan-verdict, .sp-scan-meta { animation: none; opacity: 1; transform: none; }
+}
+
+@media (max-width: 720px) {
+    .sp-phone { width: min(300px, 80vw); }
+    .sp-phone-screen { min-height: 350px; padding: 50px 14px 22px; }
+}
+
+/* the first screen now has a device on it, and a device needs room.
+
+   the copy was sized for a hero that was copy and nothing else: a 68 character
+   measure, eight and a half rem of air above it, five below. with a phone under
+   the buttons that pushed the screen of the phone, which is the part carrying
+   the argument, below the fold on a laptop. so the column narrows and the air
+   above it comes down, and what somebody sees without scrolling is the sentence,
+   the button and a verdict. */
+html.theme-light .lp-hero {
+    padding-top: clamp(5.5rem, 11vh, 7rem);
+}
+/* left at the measure it had. narrowing it to 54 characters made the
+   paragraph five lines instead of four, which cost more height than it saved:
+   this copy is three sentences long and no column width fixes that. */
+html.theme-light .lp-hero .sp-hero-ctas { margin-top: 1.7rem; }
+
+/* a laptop is not 900 tall.
+
+   at 768 the verdict card finished six pixels under the fold, which is the
+   worst possible amount: the device is there, the answer it exists to show is
+   not, and nothing on screen says there is anything else to see. the copy and
+   the air above it give the pixels back. */
+@media (min-width: 900px) and (max-height: 850px) {
+    /* the room comes from between the button and the device, not from above the
+       headline: the nav is fixed and overlays the top, so anything under about
+       five and a half rem puts the first line of the sentence behind it. */
+    html.theme-light .lp-hero { padding-top: 5.4rem; }
+    .sp-phone { margin-top: 0.5rem; }
+    html.theme-light .lp-hero .sp-hero-ctas { margin-top: 1.2rem; }
+}
