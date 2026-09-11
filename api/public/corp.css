@@ -5718,24 +5718,53 @@ html.theme-light .lp-role-panel.active {
 
 /* ---- the switch --------------------------------------------------------- */
 
-/* a fade out and a fade in, and nothing else.
+/* the card itself never changes, only what is written on it.
 
-   there is no movement on either card. the only thing worth keeping from the
-   versions before this one is that the two do not overlap: the cards are the
-   same shape in the same place, so any moment where both are part visible is a
-   double image of the same layout. so the outgoing one fades out, and only when
-   it is gone does the incoming one fade in.
+   a fade out followed by a fade in has a moment in the middle where neither
+   card is on screen, and because the card carries its own black panel, that
+   moment is a hole punched in the page. that blink is what reads as chopped. a
+   crossfade has the opposite fault: the two cards are the same shape in the
+   same place, so overlapping them puts two headings and two paragraphs on top
+   of each other.
 
-   visibility is stepped on the same delay as the fade rather than switched with
-   it, which keeps a hidden card out of the tab order without cutting the fade
-   short. opacity is the only property that changes, so nothing reflows. */
+   both faults come from the same thing, which is that the panel is part of what
+   is being swapped. so it is not any more. the black card is drawn once, on the
+   container, and stays there through the whole switch; the eight panels on top
+   of it carry only type and are transparent. nothing flashes because the panel
+   never leaves, and nothing doubles because the copy still goes out before the
+   next copy comes in.
+
+   visibility is stepped on the same delay as the fade, so a hidden panel is out
+   of the tab order without the fade being cut short. opacity is the only
+   property that moves. */
+.lp-roles-panels { position: relative; }
+.lp-roles-panels::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 22px;
+    background: #000000;
+    border: 1px solid rgba(120, 180, 255, 0.13);
+    box-shadow:
+        0 30px 70px -34px rgba(6, 10, 40, 0.9),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    pointer-events: none;
+}
+html.theme-light .lp-role-panel .lp-role-feature,
+html.theme-light .lp-role-panel.active .lp-role-feature {
+    background: none !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+}
 .lp-role-panel {
+    position: relative;
+    z-index: 1;
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
     transition:
-        opacity 0.16s ease,
-        visibility 0s linear 0.16s;
+        opacity 0.15s ease,
+        visibility 0s linear 0.15s;
 }
 html.theme-light .lp-role-panel.active,
 .lp-role-panel.active {
@@ -5743,8 +5772,8 @@ html.theme-light .lp-role-panel.active,
     visibility: visible;
     pointer-events: auto;
     transition:
-        opacity 0.24s ease 0.16s,
-        visibility 0s linear 0.16s;
+        opacity 0.26s ease 0.15s,
+        visibility 0s linear 0.15s;
 }
 
 @media (prefers-reduced-motion: reduce) {
