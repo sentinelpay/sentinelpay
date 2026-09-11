@@ -5679,28 +5679,40 @@ html.theme-light .lp-role-panel.active .lp-role-feature {
     border: 1px solid rgba(120, 180, 255, 0.13) !important;
 }
 
-/* the panel is one column again; the split moved up a level so the right hand
-   column is written once instead of once per role. */
+/* the panel is one column, and every panel is, not only the one wearing
+   .active: the outgoing panel keeps its shape all the way out. */
+html.theme-light .lp-role-panel,
 html.theme-light .lp-role-panel.active {
     display: block !important;
     grid-template-columns: none !important;
 }
 
-/* between 861 and 1080 the card used to be the narrow left half of the row, and
+/* every rule below describes how a card is arranged, so every one of them
+   matches .lp-role-panel and not .lp-role-panel.active.
+
+   that distinction is the whole of a bug that looked like a broken animation.
+   the outgoing panel loses .active the instant you click, so anything scoped to
+   .active stopped applying to it while it was still on screen at full opacity:
+   the card you were looking at re-arranged itself, badge jumping from the right
+   of the card to the left and the copy recentring, and then faded out from
+   there. the fade was never the problem. a card must look the same whether it
+   is coming, going or sitting still, and only its opacity may depend on which.
+
+   between 861 and 1080 the card used to be the narrow left half of the row, and
    it was arranged for that: badge first, copy after it, everything centred. it
    is the full width of the section here now, and at that width a centred column
    of text with a disc beside it reads as a placeholder. same arrangement as the
    desktop: copy on the left, badge on the right, ranged left. */
 @media (min-width: 861px) and (max-width: 1080px) {
-    html.theme-light .lp-role-panel.active .lp-role-feature {
+    html.theme-light .lp-role-panel .lp-role-feature {
         text-align: left;
     }
-    html.theme-light .lp-role-panel.active .lp-role-feature-body { order: 0; }
-    html.theme-light .lp-role-panel.active .lp-role-badge {
+    html.theme-light .lp-role-panel .lp-role-feature-body { order: 0; }
+    html.theme-light .lp-role-panel .lp-role-badge {
         order: 1;
         justify-self: center;
     }
-    html.theme-light .lp-role-panel.active .lp-role-desc {
+    html.theme-light .lp-role-panel .lp-role-desc {
         margin-left: 0 !important;
         margin-right: 0 !important;
     }
@@ -5811,7 +5823,7 @@ html.theme-light .lp-role-panel.active,
         margin-left: 0;
         margin-right: auto;
     }
-    html.theme-light .lp-role-panel.active .lp-role-feature {
+    html.theme-light .lp-role-panel .lp-role-feature {
         grid-template-columns: 1fr 300px !important;
     }
     html.theme-light .lp-role-feature .lp-role-desc { max-width: 54ch; }
