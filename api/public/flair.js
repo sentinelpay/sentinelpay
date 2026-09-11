@@ -189,12 +189,32 @@
             for (i = 0; i < openList.length; i++) {
                 r = openList[i].getBoundingClientRect();
                 if (r.bottom < -240 || r.top > vh + 240) { openP.push(null); continue; }
-                // 0 when the top edge is at the bottom of the window, 1 by the
-                // time it has risen three quarters of a window above that, and
-                // it stays at 1 from there: the panel opens once and does not
-                // close again on its way out, because a band that pinches as it
-                // leaves reads as a glitch rather than as a gesture
-                openP.push(Math.min(1, Math.max(0, (vh - r.top) / (vh * 0.75))));
+                // 0 when the top edge is at the bottom of the window, 1 when the
+                // bottom edge leaves the top of it. the first version used a
+                // fixed three quarters of a window, which finished the opening
+                // halfway through the pass and then sat there, and an effect
+                // that stops while you are still scrolling through it reads as
+                // one that gave up. this spreads it over the whole time the
+                // panel is on screen, whatever its height and whatever the
+                // window's, so the last pixel of movement lands on the last
+                // pixel of the panel.
+                //
+                // it does not close again on the way out. a band that pinches as
+                // it leaves is a glitch, not a gesture.
+                var run = vh + r.height;
+                var t = Math.min(1, Math.max(0, (vh - r.top) / (run || 1)));
+                // eased rather than linear, and the ease is the whole answer to
+                // a real conflict. the movement has to last the entire pass,
+                // otherwise it stops while you are still scrolling through it
+                // and reads as an effect that gave up. but the end of the pass
+                // is the panel leaving the top of the window, and a payoff you
+                // only reach after it has gone is not a payoff.
+                //
+                // so it runs the full length and spends it unevenly: most of
+                // the opening happens while the panel is arriving, it is all
+                // but open by the time it sits in the middle of the window, and
+                // the last few percent trail off while it leaves.
+                openP.push(1 - Math.pow(1 - t, 2.6));
             }
             for (i = 0; i < railList.length; i++) {
                 r = railList[i].getBoundingClientRect();
