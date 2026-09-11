@@ -5722,15 +5722,12 @@ html.theme-light .lp-role-panel.active {
     border-radius: 3px;
     background: linear-gradient(180deg, #00f0ff, #7b6cff, #a020f0);
 }
-.lp-roles-proof-mark {
-    display: block;
-    font-family: var(--sp-display, var(--sp-text));
-    font-size: 4.2rem;
-    line-height: 0.7;
-    height: 1.9rem;
-    color: rgba(37, 99, 235, 0.22);
-    user-select: none;
-}
+/* the quotation marks are the quotation marks, not an ornament above them.
+
+   it was a large decorative mark on its own line, and at any size that works as
+   an ornament it is a grey blob sitting in space above the first word. real
+   marks wrapped round the sentence are what a quote looks like, and they are in
+   css rather than in the text so the three translations stay clean. */
 .lp-roles-proof-text {
     font-family: var(--sp-text);
     font-size: 1.3rem;
@@ -5738,8 +5735,9 @@ html.theme-light .lp-role-panel.active {
     letter-spacing: -0.014em;
     color: #0e2358;
     margin: 0 0 1.5rem;
-    quotes: none;
 }
+.lp-roles-proof-text::before { content: "\201C"; }
+.lp-roles-proof-text::after  { content: "\201D"; }
 .lp-roles-proof-foot {
     display: flex;
     align-items: center;
@@ -5802,7 +5800,6 @@ html.theme-light .lp-role-panel.active {
 }
 @media (max-width: 560px) {
     .lp-roles-proof { padding: 1.8rem 1.5rem 1.6rem; border-radius: 16px; }
-    .lp-roles-proof-mark { font-size: 3.4rem; height: 1.5rem; }
     .lp-roles-proof-text { font-size: 1.05rem; line-height: 1.56; }
     .lp-roles-proof-users { gap: 0.75rem; }
     .lp-roles-proof-logo { height: 28px; }
