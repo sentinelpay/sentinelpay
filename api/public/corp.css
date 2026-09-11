@@ -6046,17 +6046,19 @@ html.theme-light .lp-proof .lp-statsx-label {
         linear-gradient(to bottom, rgba(150, 190, 255, 0.085) 1px, transparent 1px);
     background-size: 25% 14.2857%;
 }
+/* nothing happens under the pointer.
+
+   the cell used to lighten and the mark used to brighten on hover. it is a
+   picture, not a control: there is nothing behind a cell to click through to,
+   so a thing that reacts to the cursor is promising something it does not have.
+   and twenty eight cells that light up one at a time as you cross them is a
+   wall flickering under your mouse. */
 .sp-wall-cell {
     display: grid;
     place-items: center;
     min-height: 0;
     min-width: 0;
     color: #a8c6f5;
-    transition: color 0.25s ease, background-color 0.25s ease;
-}
-.sp-wall-cell:hover {
-    color: #ffffff;
-    background: rgba(255, 255, 255, 0.045);
 }
 /* the logo as a mask rather than as an image.
 
@@ -6095,11 +6097,6 @@ html.theme-light .lp-proof .lp-statsx-label {
     --b: 1;
     filter: grayscale(1) brightness(var(--b)) contrast(1.06);
     opacity: 0.95;
-    transition: opacity 0.25s ease, filter 0.25s ease;
-}
-.sp-wall-cell:hover .sp-wall-mark {
-    filter: grayscale(1) brightness(calc(var(--b) * 1.28)) contrast(1.08);
-    opacity: 1;
 }
 
 /* measured, not chosen.
