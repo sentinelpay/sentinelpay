@@ -5853,14 +5853,36 @@ html.theme-light .lp-role-panel.active,
     padding: 5rem 0 6rem;
     background: var(--sp-page, #f7f8fb);
 }
+/* the inset is a clip, not a margin, and that is the whole of the second fix.
+
+   as a margin it worked and it was wrong: changing the panel's width changes the
+   width of the column inside it, so the heading re-wrapped on every frame of the
+   scroll. words jumping between lines while you scroll is the most distracting
+   thing a page can do, and it was doing it for the whole length of the pass.
+
+   clipped, the panel is always the same width and the layout never moves. what
+   changes is how much of it you are allowed to see, so the page shows through at
+   the sides exactly as it did before and not one glyph reflows.
+
+   the shadow went with the margin. a shadow on a clipped box is clipped too, and
+   a black panel on a near white page does not need one. */
 .lp-proof-panel {
     position: relative;
     overflow: hidden;
-    margin-inline: calc((1 - var(--sp-open, 1)) * min(9vw, 150px));
-    border-radius: clamp(16px, calc(32px - var(--sp-open, 1) * 8px), 32px);
+    /* the panel is capped and centred, the way the reference's is, rather than
+       running the full width of the window.
+
+       the alternative was capping the grid inside a full width panel, and that
+       put two hundred pixels of empty black between the wall and the panel's
+       own edge on a wide screen: a picture in a box again. capping the panel
+       instead means the wall still touches its edge and the page simply shows
+       down both sides, which is what the reference does. */
+    width: min(100%, 1460px);
+    margin-inline: auto;
+    --sp-inset: calc((1 - var(--sp-open, 1)) * min(9vw, 150px));
+    clip-path: inset(0 var(--sp-inset) round clamp(16px, calc(32px - var(--sp-open, 1) * 8px), 32px));
     background: #000000;
-    box-shadow: 0 40px 90px -50px rgba(6, 10, 40, 0.8);
-    will-change: margin-inline;
+    will-change: clip-path;
 }
 /* a hairline of the brand along the top edge */
 .lp-proof-panel::before {
@@ -5880,16 +5902,24 @@ html.theme-light .lp-role-panel.active,
    that stops short of the edge is a picture in a box. the left padding does the
    centring instead, which keeps the heading on the same line as every other
    heading on the page however wide the window gets. */
+/* the grid is capped and centred rather than running the full width of the
+   window.
+
+   uncapped, the copy sat in the middle of a column six hundred pixels wider than
+   the words in it, with a lake of black between the last line and the wall. the
+   reference has page down both sides of its panel for the same reason: past a
+   point, more width is not more room, it is more distance between two things
+   that belong together. */
 .lp-proof-grid {
     position: relative;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 46%);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 44%);
     align-items: stretch;
 }
 .lp-proof-copy {
     min-width: 0;
     align-self: center;
-    padding: 4.2rem 3rem 4.2rem max(2rem, calc((100vw - 1240px) / 2 + 2rem));
+    padding: 4.4rem 3rem 4.4rem clamp(2rem, 3.6vw, 3.8rem);
 }
 
 html.theme-light .lp-proof .lp-statsx-heading {
@@ -5900,7 +5930,7 @@ html.theme-light .lp-proof .lp-statsx-heading {
     font-weight: 700;
     color: #ffffff;
     margin: 0 0 2.6rem;
-    max-width: 30ch;
+    max-width: 34ch;
 }
 html.theme-light .lp-proof .lp-statsx-hl {
     background: linear-gradient(100deg, #00f0ff 8%, #7b6cff 52%, #a020f0 96%);
@@ -5915,8 +5945,8 @@ html.theme-light .lp-proof .lp-statsx-hl {
 html.theme-light .lp-proof .lp-statsx-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 2rem 2.4rem;
-    max-width: 30rem;
+    gap: 2rem 2.6rem;
+    max-width: 34rem;
     background: none;
     border: 0;
     padding: 0;
@@ -6023,7 +6053,7 @@ html.theme-light .lp-proof .lp-statsx-label {
     .lp-proof { padding: 3.4rem 0 4rem; }
     /* the inset goes with the small screen: nine percent of a phone is twenty
        six pixels, which is not a margin, it is a gap */
-    .lp-proof-panel { margin-inline: calc((1 - var(--sp-open, 1)) * 18px); }
+    .lp-proof-panel { --sp-inset: calc((1 - var(--sp-open, 1)) * 18px); }
     .lp-proof-copy { padding: 2.6rem 1.4rem 2.2rem; }
     html.theme-light .lp-proof .lp-statsx-heading {
         font-size: 1.32rem;

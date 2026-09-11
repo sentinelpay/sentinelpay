@@ -189,32 +189,23 @@
             for (i = 0; i < openList.length; i++) {
                 r = openList[i].getBoundingClientRect();
                 if (r.bottom < -240 || r.top > vh + 240) { openP.push(null); continue; }
-                // 0 when the top edge is at the bottom of the window, 1 when the
-                // bottom edge leaves the top of it. the first version used a
-                // fixed three quarters of a window, which finished the opening
-                // halfway through the pass and then sat there, and an effect
-                // that stops while you are still scrolling through it reads as
-                // one that gave up. this spreads it over the whole time the
-                // panel is on screen, whatever its height and whatever the
-                // window's, so the last pixel of movement lands on the last
-                // pixel of the panel.
-                //
-                // it does not close again on the way out. a band that pinches as
-                // it leaves is a glitch, not a gesture.
-                var run = vh + r.height;
-                var t = Math.min(1, Math.max(0, (vh - r.top) / (run || 1)));
-                // eased rather than linear, and the ease is the whole answer to
-                // a real conflict. the movement has to last the entire pass,
-                // otherwise it stops while you are still scrolling through it
-                // and reads as an effect that gave up. but the end of the pass
-                // is the panel leaving the top of the window, and a payoff you
-                // only reach after it has gone is not a payoff.
-                //
-                // so it runs the full length and spends it unevenly: most of
-                // the opening happens while the panel is arriving, it is all
-                // but open by the time it sits in the middle of the window, and
-                // the last few percent trail off while it leaves.
-                openP.push(1 - Math.pow(1 - t, 2.6));
+                /* nought at both ends of the pass, one in the middle.
+
+                   it opened on the way in and stayed open, which meant half the
+                   time it was on screen nothing was happening. it is symmetric
+                   now: the page closes back in around it as it leaves, so the
+                   panel is a thing that passes rather than a thing that arrives.
+
+                   the number is the distance from the middle of the window to
+                   the middle of the panel, over the furthest that distance can
+                   be while any part of the panel is still visible. raised to a
+                   power below one it spends most of the pass near fully open and
+                   does the moving at the two ends, which is where it reads as a
+                   gesture rather than as a width being dragged. */
+                var mid = r.top + r.height * 0.5;
+                var reach = (vh + r.height) * 0.5;
+                var d = Math.min(1, Math.abs(mid - vh * 0.5) / (reach || 1));
+                openP.push(1 - Math.pow(d, 1.55));
             }
             for (i = 0; i < railList.length; i++) {
                 r = railList[i].getBoundingClientRect();
