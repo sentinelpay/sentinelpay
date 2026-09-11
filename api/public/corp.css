@@ -5676,168 +5676,75 @@ html.theme-light .lp-role-panel.active {
     grid-template-columns: none !important;
 }
 
-/* stretch, not center: the quote card is a card and it ends where the black
-   one ends. croatian and german run longer than english and used to make it
-   taller or shorter than its neighbour; now the two are the same height in
-   every language and the difference goes into the gap above the logo strip. */
+/* the split wraps the heading too.
+
+   it used to start at the card, so the quote began halfway down the section
+   with a column of empty page above it. it starts at the heading now, which is
+   the only place a quote can start and look deliberate, and top aligned rather
+   than stretched so it holds that line in every language whatever length the
+   sentence runs to. */
 .lp-roles-split {
     display: grid;
     grid-template-columns: 1.12fr 0.88fr;
     gap: 3.4rem;
-    align-items: stretch;
+    align-items: start;
 }
+.lp-roles-main { min-width: 0; }
 /* the panel sizes to its content on its own, so in a grid cell wider than the
    card it sat shrunk and centred with a gap down each side. it fills its
    column. */
-.lp-roles-split > .lp-roles-panels { min-width: 0; width: 100%; }
+.lp-roles-panels { min-width: 0; width: 100%; }
 
 /* the quote.
 
-   a line of grey text under a logo is a caption, not a quote, and a caption is
-   what the first version of this was. it is a card now: the mark, the sentence
-   at a size that says it is the sentence, a rule, and the signature under it.
+   no card, no rule, no disc. the reference is the one every compliance vendor
+   uses under a section like this and it is two elements: the sentence in
+   quotation marks, set large and dark, and a grey line under it saying who said
+   it. a box round it makes it a widget; the point of it is that it reads as
+   somebody talking, in the same white space as the rest of the page.
 
-   the mark is the typographic one rather than an svg, set large and cut back to
-   a tint, because at that size a solid quote mark is a shape competing with the
-   words next to it.
-
-   the signature is ours. a sentence in quotation marks with a name and a job
-   title under it is a person saying it, so the name has to belong to somebody
-   who said it; the names in the logo band are real companies. the markup is
-   shaped for a real quote so swapping one in is two lines. */
+   the name and the title are a placeholder and they say so. a sentence in
+   quotation marks with a name under it is that person saying it, so filling
+   those two with an invented person at one of the real companies in the logo
+   band would be putting words in that firm's mouth on a live page. */
 .lp-roles-proof {
-    position: relative;
-    /* a column, so the logo strip can be pushed to the bottom edge and the card
-       ends level with the black one next to it. that is the whole trick behind
-       it lining up in all three languages: nothing is positioned by guessing a
-       height, the quote takes what it needs and the space left over goes into
-       the gap above the logos. */
-    display: flex;
-    flex-direction: column;
     margin: 0;
     min-width: 0;
-    padding: 2.6rem 2.8rem 2.4rem;
-    border: 1px solid rgba(14, 35, 88, 0.09);
-    border-radius: 20px;
-    background:
-        linear-gradient(180deg, rgba(0, 240, 255, 0.045), rgba(160, 32, 240, 0.05)),
-        #ffffff;
-    box-shadow: 0 24px 50px -34px rgba(14, 35, 88, 0.34);
+    padding: 0;
 }
-/* the left edge carries the brand, which is the only colour the card needs */
-.lp-roles-proof::before {
-    content: "";
-    position: absolute;
-    left: 0; top: 1.6rem; bottom: 1.6rem;
-    width: 3px;
-    border-radius: 3px;
-    background: linear-gradient(180deg, #00f0ff, #7b6cff, #a020f0);
-}
-/* the quotation marks are the quotation marks, not an ornament above them.
-
-   it was a large decorative mark on its own line, and at any size that works as
-   an ornament it is a grey blob sitting in space above the first word. real
-   marks wrapped round the sentence are what a quote looks like, and they are in
-   css rather than in the text so the three translations stay clean. */
 .lp-roles-proof-text {
     font-family: var(--sp-text);
-    font-size: 1.3rem;
-    line-height: 1.55;
+    font-size: 1.32rem;
+    line-height: 1.52;
     letter-spacing: -0.014em;
-    color: #0e2358;
-    margin: 0 0 1.5rem;
+    color: #14213d;
+    margin: 0 0 1.4rem;
+    /* the marks are in css rather than in the text, so the three translations
+       stay clean. hanging, so the first letter of the sentence lines up with
+       every line under it instead of being pushed in by a quote mark. */
+    text-indent: -0.42em;
 }
 .lp-roles-proof-text::before { content: "\201C"; }
 .lp-roles-proof-text::after  { content: "\201D"; }
-.lp-roles-proof-foot {
-    display: flex;
-    align-items: center;
-    gap: 0.85rem;
-    padding-top: 1.25rem;
-    border-top: 1px solid rgba(14, 35, 88, 0.09);
-}
-/* an initial in a disc rather than a photograph. a quote with a face next to it
-   is the shape the eye is looking for here, and a letter is a face we are not
-   inventing. */
-.lp-roles-proof-avatar {
-    flex: none;
-    display: grid;
-    place-items: center;
-    width: 42px; height: 42px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #00f0ff, #7b6cff 55%, #a020f0);
-    color: #06070f;
-    font-family: var(--sp-text);
-    font-size: 1.05rem;
-    font-weight: 700;
-    line-height: 1;
-    letter-spacing: 0;
-    box-shadow: 0 6px 16px -6px rgba(123, 108, 255, 0.6);
-}
-.lp-roles-proof-by { display: block; min-width: 0; }
-.lp-roles-proof-name {
+.lp-roles-proof-by {
     display: block;
     font-family: var(--sp-text);
-    font-size: 0.95rem;
-    font-weight: 650;
-    color: #0e2358;
-    letter-spacing: -0.005em;
-}
-.lp-roles-proof-role {
-    display: block;
-    font-family: var(--sp-text);
-    font-size: 0.8rem;
-    line-height: 1.45;
+    font-size: 0.88rem;
+    line-height: 1.5;
     color: #5b6784;
-    margin-top: 0.12rem;
 }
-
-/* the logo, under its own label so it is read as who runs it rather than as who
-   said the sentence above */
-/* pushed to the bottom of the card by the auto margin, which is what levels it
-   with the card beside it whatever length the sentence runs to. */
-.lp-roles-proof-users {
-    display: flex;
-    align-items: center;
-    gap: 1.1rem;
-    flex-wrap: wrap;
-    margin-top: auto;
-    padding-top: 1.5rem;
-    border-top: 1px solid rgba(14, 35, 88, 0.09);
-}
-.lp-roles-proof-foot + .lp-roles-proof-users { margin-top: 1.5rem; }
-.lp-roles-proof-users-label {
-    font-family: var(--sp-text);
-    font-size: 0.7rem;
-    letter-spacing: 0.11em;
-    text-transform: uppercase;
-    color: #8793ac;
-    white-space: nowrap;
-}
-.lp-roles-proof-logo {
-    display: block;
-    height: 34px;
-    width: auto;
-    max-width: 190px;
-    object-fit: contain;
-    object-position: left center;
-}
-
-/* under 1080 the two columns stop being two columns: the card needs the width
-   more than the quote does, so the quote goes under it. */
+/* under 1080 the section is one column: heading, card, then the quote under it
+   with air above rather than a rule, because there is no card edge left for a
+   rule to belong to. */
 @media (max-width: 1080px) {
     .lp-roles-split { grid-template-columns: 1fr; gap: 2.4rem; }
-    .lp-roles-proof { padding: 2.2rem 2.4rem 2rem; }
-    .lp-roles-proof-text { font-size: 1.18rem; max-width: 60ch; }
+    .lp-roles-proof { padding-top: 0.4rem; }
+    .lp-roles-proof-text { font-size: 1.2rem; max-width: 62ch; }
 }
 @media (max-width: 560px) {
-    .lp-roles-proof { padding: 1.8rem 1.5rem 1.6rem; border-radius: 16px; }
-    .lp-roles-proof-avatar { width: 38px; height: 38px; font-size: 0.95rem; }
-    .lp-roles-proof-text { font-size: 1.05rem; line-height: 1.56; }
-    .lp-roles-proof-users { gap: 0.75rem; }
-    .lp-roles-proof-logo { height: 28px; }
+    .lp-roles-proof-text { font-size: 1.08rem; line-height: 1.55; }
+    .lp-roles-proof-by { font-size: 0.84rem; }
 }
-
 
 /* between 861 and 1080 the card used to be the narrow left half of the row, and
    it was arranged for that: badge first, copy after it, everything centred. it
@@ -5859,23 +5766,3 @@ html.theme-light .lp-role-panel.active {
     }
 }
 
-/* the two columns end level.
-
-   stretching the grid items was not enough on its own: the black card is three
-   elements deep inside its column (panels, panel, feature) and each of them was
-   sized by its own content, so the column stretched and the card inside it did
-   not. every level is told to fill, and the feature's fixed min-height is
-   overridden because it is what stopped it growing.
-
-   this is the part that makes the section hold in all three languages: german
-   runs about a fifth longer than english here and croatian sits between them,
-   and whichever is longest now sets the height of both cards instead of leaving
-   one of them short. */
-@media (min-width: 1081px) {
-    .lp-roles-split > .lp-roles-panels { height: 100%; }
-    html.theme-light .lp-role-panel.active { height: 100%; }
-    html.theme-light .lp-role-panel.active .lp-role-feature {
-        height: 100% !important;
-        min-height: 0 !important;
-    }
-}

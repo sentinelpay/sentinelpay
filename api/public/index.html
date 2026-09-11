@@ -400,7 +400,7 @@
             border-color: rgba(255, 255, 255, 1);
         }
     </style>
-    <link rel="stylesheet" href="/corp.276.css">
+    <link rel="stylesheet" href="/corp.281.css">
     <noscript><style>
         /* scripting is off, so the loader is the final screen, not a stage on the
            way somewhere. stop the pulse so it reads as a message, not a hang. */
@@ -845,6 +845,8 @@
 
     <section class="lp-section lp-roles" id="who-its-for">
         <div class="lp-section-inner">
+            <div class="lp-roles-split">
+            <div class="lp-roles-main">
             <h2 class="lp-h2"><span class="lp-hl">One platform</span> for every team <br>that touches crypto risk</h2>
             <div class="lp-roles-selector">
                 <span class="lp-roles-selector-label">Sentinelpay for</span>
@@ -862,15 +864,12 @@
                     </div>
                 </div>
             </div>
-            <!-- the card and the proof beside it.
-
-                 the panel was already a two column grid, from when there was a
+            <!-- the panel was already a two column grid, from when there was a
                  checklist next to the card. the checklist went and the column
                  stayed, so on a wide screen half the row was empty page. it is
-                 one column again and the split moved out here, where the thing
-                 in the right hand column is written once rather than eight
-                 times, one for each role. -->
-            <div class="lp-roles-split">
+                 one column again and the split moved up to wrap the heading too,
+                 so the quote starts level with the heading rather than level
+                 with the card halfway down the section. -->
             <div class="lp-roles-panels" id="lp-roles-panels">
                 <div class="lp-role-panel active" data-role="fi">
                     <div class="lp-role-feature">
@@ -954,30 +953,21 @@
                 </div>
             </div>
 
-            <!-- the right hand column: a quote, who said it, and who runs it.
+            </div><!-- /.lp-roles-main -->
 
-                 the person is ours. a sentence in quotation marks with a name
-                 and a job title under it is that person saying it, so inventing
-                 a compliance officer at one of the companies in the logo band
-                 would be putting words in a real firm's mouth on a live page.
-                 the founder saying why the product is shaped the way it is says
-                 the same thing and is true.
+            <!-- the right hand column.
 
-                 the markup is the customer-quote shape, so when there is a real
-                 one it is three lines: the sentence, -name, -role. -->
+                 the shape is a customer quote: words of praise, then who said
+                 them. the name and the title are a placeholder and are written
+                 so they read as one, because a sentence in quotation marks with
+                 a name under it is that person saying it. filling those two
+                 lines with an invented person at one of the real companies in
+                 the logo band would be putting words in that firm's mouth on a
+                 live page, so they say what they are until there is a real one.
+                 the company logo goes back beside the name at the same time. -->
             <figure class="lp-roles-proof">
-                <blockquote class="lp-roles-proof-text">A team of five carries the same obligations as a bank with a floor of analysts, and nobody was building for the five. So we did.</blockquote>
-                <figcaption class="lp-roles-proof-foot">
-                    <span class="lp-roles-proof-avatar" aria-hidden="true">C</span>
-                    <span class="lp-roles-proof-by">
-                        <span class="lp-roles-proof-name">Ceem</span>
-                        <span class="lp-roles-proof-role">Founder, Sentinelpay</span>
-                    </span>
-                </figcaption>
-                <div class="lp-roles-proof-users">
-                    <span class="lp-roles-proof-users-label">Already running on Sentinelpay</span>
-                    <img class="lp-roles-proof-logo" src="/logos/elektromaterijal.png?v=2" alt="Elektromaterijal" loading="lazy" decoding="async">
-                </div>
+                <blockquote class="lp-roles-proof-text">We get the same answer on the same wallet every time, with the reasons written next to it. Our desks stopped arguing over screenshots and started working from one record, and that is what made the calls defensible.</blockquote>
+                <figcaption class="lp-roles-proof-by">Full name, Head of compliance, company name</figcaption>
             </figure>
             </div>
         </div>
@@ -1964,6 +1954,6 @@
     <script src="/reveal.6.js" defer></script>
     <script src="/scroll.4.js" defer></script>
     <script src="/navlift.1.js" defer></script>
-    <script src="/i18n.94.js" defer></script>
+    <script src="/i18n.97.js" defer></script>
 </body>
 </html>
