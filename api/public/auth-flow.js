@@ -611,6 +611,21 @@
         vfoot.appendChild(backBtn);
         verify.appendChild(vfoot);
 
+        // the way back out of the code step, the same arrow the reset panel has.
+        // "Use a different email" in the footer says the same thing, but it is at
+        // the bottom and it is a sentence; the corner is where somebody who has
+        // decided they are in the wrong place already looks, because the cross
+        // taught them to. it belongs to the card rather than to the panel: one
+        // button, shown only while there is somewhere behind to go.
+        var stepBack = el('button', 'sp-auth-stepback');
+        stepBack.type = 'button';
+        stepBack.hidden = true;
+        stepBack.setAttribute('aria-label', t('Use a different email'));
+        stepBack.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
+            'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M15 5l-7 7 7 7"></path></svg>';
+        card.insertBefore(stepBack, card.firstChild);
+
         var done = el('div', 'sp-auth-done');
         done.hidden = true;
         var mark = el('div', 'sp-auth-done-mark');
@@ -650,6 +665,9 @@
                     heads[j].hidden = name === 'register' ? (headState ? headState[j] : heads[j].hidden) : true;
                 }
                 if (name === 'register') headState = null;
+                // only the code step has a way back. the account is made by the
+                // time 'done' is up, and 'register' is the beginning.
+                stepBack.hidden = name !== 'verify';
                 // the dialog reads this before it switches panels behind our back:
                 // reopening it mid sign-up must not put the empty form back
                 card.dataset.authStep = name;
@@ -754,7 +772,10 @@
             });
         });
 
-        backBtn.addEventListener('click', function () {
+        // the footer sentence and the corner arrow do the same thing, so they are
+        // the same thing: a second copy of this is a second place for the code
+        // timer to be left running.
+        function leaveVerify() {
             clearInterval(tick);
             clearTimeout(expiryTimer);
             forgetPending();
@@ -762,7 +783,9 @@
             showError('');
             step('register');
             if (emailInput) emailInput.focus();
-        });
+        }
+        backBtn.addEventListener('click', leaveVerify);
+        stepBack.addEventListener('click', leaveVerify);
 
         function showError(msg, kind) {
             vErr.textContent = msg || '';
