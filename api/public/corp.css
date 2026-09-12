@@ -488,13 +488,103 @@ html.theme-light .lp-mobile-menu {
    page where one of them changes. a bar and a sheet that meet edge to edge is
    one shape and needs no arithmetic. the pill is a scrolling state; a menu is
    not scrolling. */
-html.lp-scroll-lock .lp-nav {
-    left: 0 !important;
-    right: 0 !important;
-    top: 0 !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
+/* the bar is not flattened when the menu opens any more.
+
+   it used to be: left, right, top and radius all forced to zero, so a pill
+   snapped square in the same frame a black rectangle appeared under it. the
+   comment that used to live here argued that a bar and a sheet meeting edge to
+   edge is one shape and needs no arithmetic, which is true, and the arithmetic
+   is three numbers that now live on the root and are read by both. the bar keeps
+   its shape and the sheet takes the same one.
+
+   ---- the sheet is the bar unrolling ------------------------------------
+   it starts exactly on the bar's bottom edge, inset by the same amount, and
+   carries the bar's corner on its own bottom. then it unrolls downwards out of
+   it, so what you see is one object growing rather than a panel landing on top
+   of another.
+
+   the unroll is a clip, so nothing inside moves: animating height would relayout
+   every row on every frame, and the rows do their own arriving.
+
+   and it ends where its content ends. covering the whole screen left a third of
+   a phone as black nothing under the buttons, which is not a menu, it is a
+   takeover. it is a panel now, and on a screen too short for it the panel
+   scrolls. */
+.lp-mobile-menu {
+    left: calc(var(--sp-fold, 0) * var(--sp-nav-inset));
+    right: calc(var(--sp-fold, 0) * var(--sp-nav-inset));
+    top: calc(var(--sp-fold, 0) * var(--sp-nav-top) + var(--sp-nav-h));
+    bottom: auto;
+    max-height: calc(100dvh - (var(--sp-fold, 0) * var(--sp-nav-top)) - var(--sp-nav-h) - 14px);
+    border-top: 0;
+    border-radius: 0 0
+        calc(var(--sp-fold-radius, 0px) * var(--sp-nav-radius-scale))
+        calc(var(--sp-fold-radius, 0px) * var(--sp-nav-radius-scale));
+    box-shadow: 0 26px 60px -30px rgba(4, 6, 20, calc(0.55 + var(--sp-fold, 0) * 0.2));
+    /* revealed, not moved */
+    transform: none;
+    opacity: 1;
+    clip-path: inset(0 0 100% 0);
+    transition:
+        clip-path 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+        visibility 0s linear 0.4s;
 }
+.lp-mobile-menu.lp-mm-open {
+    opacity: 1;
+    transform: none;
+    clip-path: inset(0 0 0 0);
+    transition:
+        clip-path 0.46s cubic-bezier(0.22, 1, 0.36, 1),
+        visibility 0s linear 0s;
+}
+
+/* the rows arrive after the sheet has somewhere to put them.
+
+   a stagger is what stops a screen of links reading as a wall: the eye is given
+   them in order instead of all at once. one rule does every row, the step is set
+   per row as a custom property, and the whole list is in under a third of a
+   second so it never feels like waiting. */
+.lp-mobile-menu .lp-mobile-menu-inner > * {
+    opacity: 0;
+    transform: translateY(-8px);
+    transition:
+        opacity 0.24s ease,
+        transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.lp-mobile-menu.lp-mm-open .lp-mobile-menu-inner > * {
+    opacity: 1;
+    transform: none;
+    transition-delay: calc(0.08s + var(--sp-row, 0) * 0.03s);
+}
+.lp-mobile-menu .lp-mobile-menu-inner > *:nth-child(1) { --sp-row: 0; }
+.lp-mobile-menu .lp-mobile-menu-inner > *:nth-child(2) { --sp-row: 1; }
+.lp-mobile-menu .lp-mobile-menu-inner > *:nth-child(3) { --sp-row: 2; }
+.lp-mobile-menu .lp-mobile-menu-inner > *:nth-child(4) { --sp-row: 3; }
+.lp-mobile-menu .lp-mobile-menu-inner > *:nth-child(5) { --sp-row: 4; }
+.lp-mobile-menu .lp-mobile-menu-inner > *:nth-child(6) { --sp-row: 5; }
+.lp-mobile-menu .lp-mobile-menu-inner > *:nth-child(7) { --sp-row: 6; }
+.lp-mobile-menu .lp-mobile-menu-inner > *:nth-child(8) { --sp-row: 7; }
+
+/* the three lines become an x on the same curve as everything else */
+.lp-hamburger .lp-hb-line {
+    transition:
+        transform 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 0.2s ease,
+        background 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lp-mobile-menu,
+    .lp-mobile-menu.lp-mm-open,
+    .lp-mobile-menu .lp-mobile-menu-inner > *,
+    .lp-hamburger .lp-hb-line,
+    html.theme-light .lp-nav {
+        transition: none;
+    }
+    .lp-mobile-menu .lp-mobile-menu-inner > * { opacity: 1; transform: none; }
+    .lp-mobile-menu { clip-path: none; }
+}
+
 html.theme-light .lp-mobile-menu .lp-mobile-link,
 html.theme-light .lp-mobile-menu .lp-mm-acc-btn { color: rgba(255, 255, 255, 0.8) !important; }
 html.theme-light .lp-mobile-menu .lp-mobile-sub-link { color: rgba(255, 255, 255, 0.55) !important; }
@@ -3703,16 +3793,52 @@ html.theme-light .lp-hero {
 
    the inset is a custom property rather than a number, because 24px off each
    side of a phone is a tenth of the screen. */
+/* the three numbers that decide where the bar sits live on the root, not on the
+   bar, because the mobile sheet has to land exactly on its bottom edge and two
+   copies of a number are two numbers waiting to disagree. the bar reads them,
+   the sheet reads them, and there is one place to change them. */
+:root {
+    --sp-nav-inset: 24px;
+    --sp-nav-top: 12px;
+    --sp-nav-radius-scale: 1;
+    --sp-nav-h: 64px;
+}
 html.theme-light .lp-nav {
-    --sp-inset: 24px;
-    left: calc(var(--sp-fold, 0) * var(--sp-inset));
-    right: calc(var(--sp-fold, 0) * var(--sp-inset));
-    top: calc(var(--sp-fold, 0) * 12px);
-    border-radius: var(--sp-fold-radius, 0px);
+    left: calc(var(--sp-fold, 0) * var(--sp-nav-inset));
+    right: calc(var(--sp-fold, 0) * var(--sp-nav-inset));
+    top: calc(var(--sp-fold, 0) * var(--sp-nav-top));
+    border-radius: calc(var(--sp-fold-radius, 0px) * var(--sp-nav-radius-scale));
+    /* it used to snap from pill to square the instant the menu opened. it
+       glides now, and the sheet glides with it on the same curve. */
+    transition:
+        background 0.3s ease,
+        left 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+        right 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+        top 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+        border-radius 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 0.34s ease;
     /* the hairline under it is what makes it look attached, so it fades out as
        the bar lifts away */
     border-bottom-color: rgba(255, 255, 255, calc(0.08 * (1 - var(--sp-fold, 0))));
     box-shadow: 0 18px 44px -26px rgba(6, 10, 30, calc(var(--sp-fold, 0) * 0.5));
+}
+
+/* the join.
+
+   the bar keeps its shape when the menu opens, but not its bottom two corners:
+   a rounded bottom edge sitting on a square top edge leaves a notch at each
+   side, and two dark shapes with a notch between them read as one broken shape
+   rather than two joined ones. the bottom corners square off, the top two stay,
+   and the sheet carries the corner on its own bottom instead. the bar's own
+   transition animates it, so it is not a snap.
+
+   the hairline under the bar goes too. it is what makes the bar look attached to
+   the page, and while the sheet is hanging off it the thing it would draw a line
+   between is itself. */
+html.lp-scroll-lock .lp-nav {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-bottom-color: transparent;
 }
 @media (prefers-reduced-motion: reduce) {
 html.theme-light .lp-nav {
@@ -4183,10 +4309,10 @@ html.theme-light .lp-hero {
        rendering fault.
 
        what fills them is below. */
-html.theme-light .lp-nav {
-        --sp-inset: 10px;
-        top: calc(var(--sp-fold, 0) * 9px);
-        border-radius: calc(var(--sp-fold-radius, 0px) * 0.62);
+:root {
+        --sp-nav-inset: 10px;
+        --sp-nav-top: 9px;
+        --sp-nav-radius-scale: 0.62;
     }/* nothing above the bar, same as the desktop.
 
        this took four goes, so the shape of the mistake is worth keeping. the
