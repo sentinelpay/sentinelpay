@@ -506,35 +506,33 @@ html.theme-light .lp-mobile-menu {
    the unroll is a clip, so nothing inside moves: animating height would relayout
    every row on every frame, and the rows do their own arriving.
 
-   and it ends where its content ends. covering the whole screen left a third of
-   a phone as black nothing under the buttons, which is not a menu, it is a
-   takeover. it is a panel now, and on a screen too short for it the panel
-   scrolls. */
+   it takes the whole screen. the bar goes flush at the same time, on its own
+   transition, so the pill widens out to the edges as the black comes down
+   behind it and the two finish as one surface. */
 .lp-mobile-menu {
-    left: calc(var(--sp-fold, 0) * var(--sp-nav-inset));
-    right: calc(var(--sp-fold, 0) * var(--sp-nav-inset));
-    top: calc(var(--sp-fold, 0) * var(--sp-nav-top) + var(--sp-nav-h));
-    bottom: auto;
-    max-height: calc(100dvh - (var(--sp-fold, 0) * var(--sp-nav-top)) - var(--sp-nav-h) - 14px);
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    max-height: none;
+    padding-top: var(--sp-mm-top, var(--sp-nav-h));
     border-top: 0;
-    border-radius: 0 0
-        calc(var(--sp-fold-radius, 0px) * var(--sp-nav-radius-scale))
-        calc(var(--sp-fold-radius, 0px) * var(--sp-nav-radius-scale));
-    box-shadow: 0 26px 60px -30px rgba(4, 6, 20, calc(0.55 + var(--sp-fold, 0) * 0.2));
+    border-radius: 0;
+    box-shadow: none;
     /* revealed, not moved */
     transform: none;
     opacity: 1;
-    clip-path: inset(0 0 100% 0);
+    clip-path: inset(var(--sp-mm-top, var(--sp-nav-h)) 0 100% 0);
     transition:
-        clip-path 0.4s cubic-bezier(0.22, 1, 0.36, 1),
-        visibility 0s linear 0.4s;
+        clip-path 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+        visibility 0s linear 0.42s;
 }
 .lp-mobile-menu.lp-mm-open {
     opacity: 1;
     transform: none;
-    clip-path: inset(0 0 0 0);
+    clip-path: inset(var(--sp-mm-top, var(--sp-nav-h)) 0 0 0);
     transition:
-        clip-path 0.46s cubic-bezier(0.22, 1, 0.36, 1),
+        clip-path 0.48s cubic-bezier(0.22, 1, 0.36, 1),
         visibility 0s linear 0s;
 }
 
@@ -2248,7 +2246,7 @@ h2[tabindex="-1"] { scroll-margin-top: calc(64px + var(--sp-status-h) + 1.5rem);
    still bounded, at four lines, so nobody can take over the viewport. */
 .sp-status-text { min-width: 0; max-height: 5.4em; overflow: hidden; }/* a real button, sized like the nav's own, so it reads as something to press *//* everything fixed to the top moves down by the banner's height */
 html[data-status] .lp-nav { top: var(--sp-status-h); }
-html[data-status] .lp-mobile-menu { top: calc(64px + var(--sp-status-h)); }/* The bar is fixed, so it pushes nothing on its own. the nav moves down by its
+html[data-status] { --sp-mm-top: calc(var(--sp-nav-h) + var(--sp-status-h)); }/* The bar is fixed, so it pushes nothing on its own. the nav moves down by its
    height, which means every page's own top padding is now short by exactly that
    much and the first heading ends up behind the nav. one shift on the body
    covers every page at once, which is the point: a per-page list of selectors is
@@ -3836,8 +3834,11 @@ html.theme-light .lp-nav {
    the page, and while the sheet is hanging off it the thing it would draw a line
    between is itself. */
 html.lp-scroll-lock .lp-nav {
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
+    left: 0;
+    right: 0;
+    top: 0;
+    border-radius: 0;
+    box-shadow: none;
     border-bottom-color: transparent;
 }
 @media (prefers-reduced-motion: reduce) {
