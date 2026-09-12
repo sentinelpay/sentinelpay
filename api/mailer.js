@@ -145,16 +145,10 @@ function codeBlock(code) {
         '</td></tr></table></td></tr>';
 }
 
-// The facts about the code, under it, as a quiet line rather than as a bullet
-// with a tick. a tick means "done"; nothing here is done, these are the terms
-// the code comes with.
-function codeMeta(items) {
-    if (!items || !items.length) return '';
-    return '<tr><td align="center" style="padding:0 36px 28px;">' +
-        '<div style="font-size:12px;line-height:19px;color:' + C.muted + ';">' +
-        items.map(esc).join('<span style="color:' + C.faint + ';"> &nbsp;·&nbsp; </span>') +
-        '</div></td></tr>';
-}
+// There was a codeMeta() here: the expiry and the single use, set under the code
+// as a quiet centred line. Both facts are in the sentence above the code now, so
+// the line had nothing left to say and every template that could have used it
+// says it in words instead.
 
 // One line of a checklist. The site paints its marker by masking the brand
 // gradient into the shape of a stroked check, and neither a mask nor an svg
@@ -226,7 +220,7 @@ function divider(pad) {
         '<div class="sp-rule" style="height:1px;line-height:1px;font-size:0;background:' + C.line + ';">&nbsp;</div></td></tr>';
 }
 
-function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, code, meta, lang }) {
+function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, code, lang }) {
     const f = FOOTER[lang] || FOOTER.en;
     // the language the message is actually written in. this said "en" on every
     // message whatever the copy was, so gmail offered to translate croatian into
@@ -387,7 +381,6 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, c
 
         reviewBand(review) +
         codeBlock(code) +
-        codeMeta(meta) +
 
         (rows ? '<tr><td style="padding:0 36px 4px;">' +
             '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">' + rows + '</table>' +
@@ -447,11 +440,10 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, c
 
 // Plain-text alternative. Without it, spam filters mark an html-only mail down and
 // some clients render nothing at all.
-function textVersion({ title, intro, pairs, bullets, cta, footnote, review, code, meta, lang }) {
+function textVersion({ title, intro, pairs, bullets, cta, footnote, review, code, lang }) {
     const f = FOOTER[lang] || FOOTER.en;
     const lines = [title, '', intro, ''];
     if (code) lines.push(code, '');
-    if (meta && meta.length) lines.push(meta.join(' · '), '');
     if (review && review.length) {
         lines.push('Worth a look:');
         review.forEach((n) => lines.push('  - ' + n));
@@ -472,12 +464,12 @@ function textVersion({ title, intro, pairs, bullets, cta, footnote, review, code
 // preview and the real thing cannot drift: whatever you look at in the browser
 // is byte for byte what lands in the inbox.
 function compose(msg) {
-    const { subject, eyebrow, title, intro, pairs, bullets, cta, footnote, review, code, meta, lang } = msg;
+    const { subject, eyebrow, title, intro, pairs, bullets, cta, footnote, review, code, lang } = msg;
     const rows = (pairs || []).map(([k, v]) => row(k, v)).join('');
     return {
         subject: subject,
-        html: layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, code, meta, lang }),
-        text: textVersion({ title, intro, pairs, bullets, cta, footnote, review, code, meta, lang }),
+        html: layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, code, lang }),
+        text: textVersion({ title, intro, pairs, bullets, cta, footnote, review, code, lang }),
     };
 }
 
@@ -666,8 +658,11 @@ const SIGNUP_COPY = {
         subject: 'Your Sentinelpay code',
         eyebrow: 'Verify your email',
         title: 'Here is your code',
-        intro: 'Enter this to finish creating your Sentinelpay account.',
-        meta: (m) => ['Expires in ' + m + ' minutes', 'Single use'],
+        // the two terms used to sit under the code as a pair of pills. they are in
+        // the sentence now, for the same reason as in the reset mail: "one go and
+        // m minutes" is what you want to know while you are still reading, not
+        // after you have already typed it in.
+        intro: (m) => 'Enter this to finish creating your Sentinelpay account. It works once and stops working in ' + m + ' minutes.',
         footnote: 'If you did not try to create an account, ignore this email. Nothing has been created and nobody can use this code without it.',
         warning: 'We will never ask you for this code, by email, chat or phone.',
     },
@@ -675,8 +670,7 @@ const SIGNUP_COPY = {
         subject: 'Vaš Sentinelpay kod',
         eyebrow: 'Potvrdite svoj email',
         title: 'Evo vašeg koda',
-        intro: 'Unesite ga da dovršite izradu Sentinelpay računa.',
-        meta: (m) => ['Istječe za ' + m + ' minuta', 'Jednokratan'],
+        intro: (m) => 'Unesite ga da dovršite izradu Sentinelpay računa. Vrijedi ' + m + ' minuta i može se iskoristiti samo jednom.',
         footnote: 'Ako niste vi pokušali izraditi račun, samo zanemarite ovaj mail. Ništa nije izrađeno i bez njega nitko ne može iskoristiti ovaj kod.',
         warning: 'Nikada vas nećemo tražiti ovaj kod, ni mailom, ni chatom, ni telefonom.',
     },
@@ -684,8 +678,7 @@ const SIGNUP_COPY = {
         subject: 'Ihr Sentinelpay-Code',
         eyebrow: 'Bestätigen Sie Ihre E-Mail',
         title: 'Hier ist Ihr Code',
-        intro: 'Geben Sie ihn ein, um Ihr Sentinelpay-Konto fertig anzulegen.',
-        meta: (m) => ['Läuft in ' + m + ' Minuten ab', 'Einmalig'],
+        intro: (m) => 'Geben Sie ihn ein, um Ihr Sentinelpay-Konto fertig anzulegen. Er gilt ' + m + ' Minuten und kann nur einmal verwendet werden.',
         footnote: 'Wenn Sie kein Konto anlegen wollten, ignorieren Sie diese E-Mail. Es wurde nichts angelegt, und ohne sie kann niemand diesen Code verwenden.',
         warning: 'Wir fragen Sie nie nach diesem Code, weder per E-Mail noch im Chat oder am Telefon.',
     },
@@ -699,9 +692,8 @@ function signupCodeMessage({ to, code, lang, minutes }) {
         subject: copy.subject,
         eyebrow: copy.eyebrow,
         title: copy.title,
-        intro: copy.intro,
+        intro: copy.intro(minutes),
         code: code,
-        meta: copy.meta(minutes),
         footnote: copy.footnote + ' ' + copy.warning,
     };
 }
