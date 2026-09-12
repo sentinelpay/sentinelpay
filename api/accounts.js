@@ -29,6 +29,7 @@
 
 const crypto = require('crypto');
 const db = require('./db');
+const totp = require('./totp');
 
 const CODE_TTL_MIN = Math.min(Math.max(Number(process.env.SIGNUP_CODE_TTL_MIN || 15), 5), 60);
 const CODE_MAX_ATTEMPTS = 5;
@@ -169,6 +170,51 @@ CREATE INDEX IF NOT EXISTS audit_events_subject_idx ON audit_events (subject);
 -- fix is that finishing requires proving you are the browser that started:
 -- a random value in an httpOnly cookie, its hash here, checked at verify.
 ALTER TABLE signup_codes ADD COLUMN IF NOT EXISTS origin_hash text;
+
+-- Second factor.
+--
+-- The secret is sealed like every other personal field, because a copy of the
+-- users table must not be a copy of everybody's authenticator. totp_at is what
+-- says it is switched on: a secret with no date is one somebody started setting
+-- up and never confirmed, and it protects nothing until they have proved the
+-- app is actually showing the right codes.
+--
+-- totp_last is the last step number accepted. a code lives for thirty seconds
+-- and without this it can be used again inside that window by whoever read it
+-- over a shoulder.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_enc  text;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_at   timestamptz;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_last bigint;
+
+-- The way back in when the phone is gone. Hashed, single use, and using one is
+-- an event the audit trail keeps.
+CREATE TABLE IF NOT EXISTS recovery_codes (
+    user_id    bigint      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    code_hash  text        NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    used_at    timestamptz,
+    PRIMARY KEY (user_id, code_hash)
+);
+
+-- The half-signed-in state between a right password and a right code.
+--
+-- It is not a session: it cannot read anything, it lives five minutes, and it is
+-- spent the moment it becomes one. It is a row rather than a memory map because
+-- the instance that checks the code may not be the one that checked the
+-- password.
+CREATE TABLE IF NOT EXISTS totp_pending (
+    token_hash text        PRIMARY KEY,
+    user_id    bigint      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    expires_at timestamptz NOT NULL,
+    tries      integer     NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS totp_pending_expiry_idx ON totp_pending (expires_at);
+
+-- Was this session opened with a second factor. The staff pages ask for it, so
+-- a session that predates somebody switching 2fa on does not keep the old
+-- privileges until it expires.
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS mfa boolean NOT NULL DEFAULT false;
 
 -- Devices this account has signed in from before.
 --
@@ -530,14 +576,14 @@ function hashToken(token) {
         .digest('hex');
 }
 
-async function startSession(userId) {
+async function startSession(userId, { mfa = false } = {}) {
     if (!(await init())) return null;
     const token = crypto.randomBytes(32).toString('base64url');
     try {
         await db.query(
-            `INSERT INTO sessions (token_hash, user_id, expires_at)
-             VALUES ($1, $2, now() + ($3 || ' days')::interval)`,
-            [hashToken(token), userId, String(SESSION_MAX_DAYS)]
+            `INSERT INTO sessions (token_hash, user_id, expires_at, mfa)
+             VALUES ($1, $2, now() + ($3 || ' days')::interval, $4)`,
+            [hashToken(token), userId, String(SESSION_MAX_DAYS), Boolean(mfa)]
         );
         // oldest first, so the tab somebody is using now is never the one that
         // gets thrown out
@@ -561,7 +607,7 @@ async function readSession(token) {
     if (!(await init())) return null;
     try {
         const res = await db.query(
-            `SELECT s.token_hash, s.user_id, u.email_hash, u.email_enc, u.name_enc, u.lang, u.created_at
+            `SELECT s.token_hash, s.user_id, s.mfa, u.email_hash, u.email_enc, u.name_enc, u.lang, u.created_at, u.totp_at
                FROM sessions s JOIN users u ON u.id = s.user_id
               WHERE s.token_hash = $1
                 AND s.expires_at > now()
@@ -615,6 +661,13 @@ async function readSession(token) {
             name: db.open('signup-name:' + row.email_hash, row.name_enc),
             lang: row.lang || 'en',
             since: row.created_at,
+            // whether this session was opened with a second factor, and whether
+            // the account has one at all. the staff pages need both: a session
+            // opened before 2fa was switched on must not keep the privileges it
+            // had, and an account without 2fa cannot have them yet.
+            mfa: Boolean(row.mfa),
+            totpOn: Boolean(row.totp_at),
+            emailHash: row.email_hash,
         };
     } catch (err) {
         console.error('[accounts] session lookup failed: ' + err.message);
@@ -794,7 +847,7 @@ async function signIn(email, password) {
 
     let row = null;
     try {
-        const res = await db.query('SELECT id, email_hash, email_enc, name_enc, password_hash, lang FROM users WHERE email_hash = $1', [emailHash]);
+        const res = await db.query('SELECT id, email_hash, email_enc, name_enc, password_hash, lang, totp_at FROM users WHERE email_hash = $1', [emailHash]);
         row = res.rowCount ? res.rows[0] : null;
     } catch (err) {
         console.error('[accounts] sign-in lookup failed: ' + err.message);
@@ -815,6 +868,27 @@ async function signIn(email, password) {
         return { ok: false, reason: 'bad-credentials' };
     }
 
+    // the hash is brought up to the current cost while we have the password in
+    // hand. raising SCRYPT later is otherwise a change that only applies to
+    // accounts made after it, which is the opposite of what raising it is for.
+    if (!String(row.password_hash || '').startsWith('scrypt$' + SCRYPT.N + '$' + SCRYPT.r + '$' + SCRYPT.p + '$')) {
+        hashPassword(String(password || '')).then((fresh) =>
+            db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [fresh, row.id])
+        ).then(() => console.log('[accounts] rehashed a password at the current cost'))
+            .catch((err) => console.error('[accounts] could not rehash: ' + err.message));
+    }
+
+    // the password was right, and on an account with a second factor that is
+    // half of what is needed. no session yet: a row that lives five minutes and
+    // can do nothing but be exchanged for one.
+    if (row.totp_at) {
+        const pending = await startTotpPending(row.id);
+        if (!pending) return { ok: false, reason: 'unavailable' };
+        clearLoginFails(emailHash);
+        audit('login-password-ok', { actor: row.id, subject: emailHash, detail: 'second factor asked for' });
+        return { ok: false, reason: 'totp-required', pending };
+    }
+
     const session = await startSession(row.id);
     if (!session) return { ok: false, reason: 'unavailable' };
     clearLoginFails(emailHash);
@@ -831,6 +905,220 @@ async function signIn(email, password) {
         email: db.open('signup-email:' + row.email_hash, row.email_enc),
         lang: row.lang || 'en',
     };
+}
+
+// ---------------------------------------------------------------------------
+// the second factor
+// ---------------------------------------------------------------------------
+//
+// Switching it on is three steps and they are separate on purpose. Minting a
+// secret is not switching anything on; the account is only protected once the
+// person has proved their app is showing the right codes, because a secret that
+// was mistyped into an app is a lockout waiting for the next sign-in.
+
+async function startTotp(userId) {
+    if (!(await init())) return null;
+    const secret = totp.newSecret();
+    try {
+        // written with no date, which is what "started but not confirmed" means.
+        // starting again replaces it: somebody who lost the qr code halfway
+        // through should be able to begin again rather than be stuck with a
+        // secret no app has.
+        await db.query(
+            'UPDATE users SET totp_enc = $1, totp_at = NULL, totp_last = NULL WHERE id = $2',
+            [db.seal('totp:' + userId, secret), userId]
+        );
+    } catch (err) {
+        console.error('[accounts] could not start 2fa: ' + err.message);
+        return null;
+    }
+    audit('2fa-started', { actor: userId });
+    return secret;
+}
+
+// Confirms the app is showing the right codes, switches it on, and hands back
+// the recovery codes. They are shown once and stored only as hashes: a list of
+// working codes in the database is a second password list.
+async function confirmTotp(userId, code) {
+    if (!(await init())) return { ok: false, reason: 'unavailable' };
+    let row;
+    try {
+        const res = await db.query('SELECT totp_enc, totp_at FROM users WHERE id = $1', [userId]);
+        if (!res.rowCount || !res.rows[0].totp_enc) return { ok: false, reason: 'not-started' };
+        row = res.rows[0];
+    } catch (err) {
+        console.error('[accounts] could not read the 2fa secret: ' + err.message);
+        return { ok: false, reason: 'unavailable' };
+    }
+    if (row.totp_at) return { ok: false, reason: 'already-on' };
+
+    const secret = db.open('totp:' + userId, row.totp_enc);
+    if (!secret) return { ok: false, reason: 'unavailable' };
+    const step = totp.checkCode(secret, code);
+    if (step === null) return { ok: false, reason: 'bad-code' };
+
+    const codes = totp.newRecoveryCodes(10);
+    const client = await db.connect();
+    try {
+        await client.query('BEGIN');
+        await client.query('UPDATE users SET totp_at = now(), totp_last = $1 WHERE id = $2', [String(step), userId]);
+        await client.query('DELETE FROM recovery_codes WHERE user_id = $1', [userId]);
+        for (const c of codes) {
+            await client.query('INSERT INTO recovery_codes (user_id, code_hash) VALUES ($1, $2)',
+                [userId, hashRecovery(userId, c)]);
+        }
+        // the session doing this keeps working; every other one is asked to sign
+        // in again, and will now be asked for a code as well
+        await client.query('COMMIT');
+    } catch (err) {
+        try { await client.query('ROLLBACK'); } catch (rbErr) { /* gone */ }
+        console.error('[accounts] could not switch on 2fa: ' + err.message);
+        return { ok: false, reason: 'unavailable' };
+    } finally {
+        client.release();
+    }
+    audit('2fa-on', { actor: userId });
+    return { ok: true, codes };
+}
+
+// Off again, and it costs the password. Otherwise anybody who finds an unlocked
+// laptop can remove the thing that was protecting the account.
+async function disableTotp(userId, password) {
+    if (!(await init())) return { ok: false, reason: 'unavailable' };
+    try {
+        const res = await db.query('SELECT password_hash FROM users WHERE id = $1', [userId]);
+        if (!res.rowCount) return { ok: false, reason: 'unavailable' };
+        if (!(await verifyPassword(String(password || ''), res.rows[0].password_hash))) {
+            audit('2fa-off-refused', { actor: userId, detail: 'wrong password' });
+            return { ok: false, reason: 'bad-password' };
+        }
+        await db.query('UPDATE users SET totp_enc = NULL, totp_at = NULL, totp_last = NULL WHERE id = $1', [userId]);
+        await db.query('DELETE FROM recovery_codes WHERE user_id = $1', [userId]);
+    } catch (err) {
+        console.error('[accounts] could not switch off 2fa: ' + err.message);
+        return { ok: false, reason: 'unavailable' };
+    }
+    audit('2fa-off', { actor: userId });
+    return { ok: true };
+}
+
+function hashRecovery(userId, code) {
+    return crypto.createHmac('sha256', db.indexKey() || Buffer.alloc(32))
+        .update('recovery:' + userId + ':' + totp.normaliseRecovery(code), 'utf8')
+        .digest('hex');
+}
+
+// The half signed in state. Five minutes, and it is spent the moment it becomes
+// a session.
+async function startTotpPending(userId) {
+    const token = crypto.randomBytes(32).toString('base64url');
+    try {
+        await db.query(
+            "INSERT INTO totp_pending (token_hash, user_id, expires_at) VALUES ($1, $2, now() + interval '5 minutes')",
+            [hashToken(token), userId]
+        );
+    } catch (err) {
+        console.error('[accounts] could not hold a half finished sign-in: ' + err.message);
+        return null;
+    }
+    return token;
+}
+
+// Finishes a sign-in with a code, or with a recovery code. Returns a session or
+// a reason, and never says which of the two was wrong.
+async function finishTotp(pendingToken, code) {
+    if (!(await init())) return { ok: false, reason: 'unavailable' };
+    let row;
+    try {
+        const res = await db.query(
+            'SELECT p.token_hash, p.user_id, p.tries, u.totp_enc, u.totp_last, u.email_hash, u.email_enc, u.name_enc, u.lang' +
+            ' FROM totp_pending p JOIN users u ON u.id = p.user_id' +
+            ' WHERE p.token_hash = $1 AND p.expires_at > now()',
+            [hashToken(String(pendingToken || ''))]
+        );
+        if (!res.rowCount) return { ok: false, reason: 'expired' };
+        row = res.rows[0];
+    } catch (err) {
+        console.error('[accounts] could not read a half finished sign-in: ' + err.message);
+        return { ok: false, reason: 'unavailable' };
+    }
+
+    // six digits is a million answers and this row lives five minutes, but a
+    // script can still make a lot of guesses in five minutes
+    if (row.tries >= 6) {
+        await db.query('DELETE FROM totp_pending WHERE token_hash = $1', [row.token_hash]).catch(() => {});
+        audit('2fa-refused', { actor: row.user_id, detail: 'out of tries' });
+        return { ok: false, reason: 'too-many-attempts' };
+    }
+
+    const secret = db.open('totp:' + row.user_id, row.totp_enc);
+    const step = secret ? totp.checkCode(secret, code) : null;
+    let usedRecovery = false;
+
+    if (step !== null) {
+        // a code that has already been accepted is refused for the rest of its
+        // thirty seconds
+        if (row.totp_last !== null && String(row.totp_last) === String(step)) {
+            // the code is right and has already been spent. that is a different
+            // sentence from "wrong code": one means check what you typed, this
+            // one means wait half a minute. it happens honestly to somebody who
+            // switches 2fa on and signs in again inside the same thirty seconds.
+            audit('2fa-refused', { actor: row.user_id, detail: 'code reused' });
+            return { ok: false, reason: 'code-used' };
+        }
+        await db.query('UPDATE users SET totp_last = $1 WHERE id = $2', [String(step), row.user_id]).catch(() => {});
+    } else {
+        // not a code, so it may be one of the ten on the piece of paper
+        const spent = await db.query(
+            'UPDATE recovery_codes SET used_at = now() WHERE user_id = $1 AND code_hash = $2 AND used_at IS NULL RETURNING 1',
+            [row.user_id, hashRecovery(row.user_id, code)]
+        ).catch(() => ({ rowCount: 0 }));
+        if (!spent.rowCount) {
+            await db.query('UPDATE totp_pending SET tries = tries + 1 WHERE token_hash = $1', [row.token_hash]).catch(() => {});
+            audit('2fa-refused', { actor: row.user_id, detail: 'wrong code' });
+            return { ok: false, reason: 'bad-code' };
+        }
+        usedRecovery = true;
+    }
+
+    await db.query('DELETE FROM totp_pending WHERE token_hash = $1', [row.token_hash]).catch(() => {});
+    const session = await startSession(row.user_id, { mfa: true });
+    if (!session) return { ok: false, reason: 'unavailable' };
+    clearLoginFails(row.email_hash);
+    db.query('UPDATE users SET last_login_at = now() WHERE id = $1', [row.user_id]).catch(() => {});
+    audit(usedRecovery ? '2fa-recovery-used' : 'login', { actor: row.user_id, subject: row.email_hash });
+
+    let left = null;
+    if (usedRecovery) {
+        const rest = await db.query(
+            'SELECT count(*)::int AS n FROM recovery_codes WHERE user_id = $1 AND used_at IS NULL',
+            [row.user_id]
+        ).catch(() => null);
+        left = rest && rest.rowCount ? rest.rows[0].n : null;
+    }
+
+    return {
+        ok: true,
+        session,
+        userId: row.user_id,
+        name: db.open('signup-name:' + row.email_hash, row.name_enc),
+        email: db.open('signup-email:' + row.email_hash, row.email_enc),
+        lang: row.lang || 'en',
+        usedRecovery,
+        recoveryLeft: left,
+    };
+}
+
+// How many of the ten are left, for the page that says so.
+async function recoveryLeft(userId) {
+    if (!(await init())) return 0;
+    try {
+        const res = await db.query(
+            'SELECT count(*)::int AS n FROM recovery_codes WHERE user_id = $1 AND used_at IS NULL', [userId]);
+        return res.rows[0].n;
+    } catch (err) {
+        return 0;
+    }
 }
 
 // A real scrypt hash of a password nobody has, so the no-such-account path costs
@@ -881,6 +1169,7 @@ async function purge() {
     try {
         const stale = await db.query(
             "DELETE FROM login_fails WHERE last_at < now() - interval '7 days'");
+        await db.query("DELETE FROM totp_pending WHERE expires_at < now()");
         if (stale.rowCount) console.log('[accounts] swept ' + stale.rowCount + ' sign-in throttle row(s)');
         const old = await db.query(
             "DELETE FROM audit_events WHERE at < now() - ($1 || ' days')::interval",
@@ -1203,6 +1492,7 @@ function status() {
 module.exports = {
     startSignup, resendSignup, verifySignup, exists, inspect, purge, forget, status,
     audit, loginHold, recentAudit, noteDevice,
+    startTotp, confirmTotp, disableTotp, startTotpPending, finishTotp, recoveryLeft,
     startReset, readReset, finishReset, RESET_TTL_MIN, RESET_RESEND_WAIT_S,
     hashPassword, verifyPassword,
     signIn, startSession, readSession, endSession,

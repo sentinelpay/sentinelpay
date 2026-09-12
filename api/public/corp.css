@@ -3020,6 +3020,27 @@ html.sp-authm-open #sp-chat-btn { margin-right: var(--sp-sbw, 0px); }/* on a pho
     transition: border-color 0.16s ease, color 0.16s ease;
 }
 .sp-auth-linkbtn:hover { border-bottom-color: #0091c8; }
+
+/* the code field on the second factor panel.
+
+   one field rather than six boxes, because what goes in it is either six digits
+   from an app or a recovery code with a dash in it, and six boxes cannot hold
+   the second one. it is centred and spaced so a code is read back as a code. */
+.sp-auth-codefield { margin: 0 0 1rem; }
+.sp-auth-codefield input,
+html.theme-light .sp-auth-codefield input {
+    text-align: center;
+    font-size: 1.25rem;
+    letter-spacing: 0.28em;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+}
+.sp-auth-hint {
+    margin: 0;
+    font-size: 0.84rem;
+    line-height: 1.5;
+    color: rgba(14, 35, 88, 0.45);
+}
 .sp-auth-linkbtn[disabled] { color: rgba(14, 35, 88, 0.35); border-bottom-color: transparent; cursor: default; }/* the bot challenge, on every form that can send mail */
 .sp-auth-turnstile { display: flex; justify-content: center; min-height: 65px; }/* display:flex beats the user agent's [hidden] rule, so say it again */
 .sp-auth-turnstile[hidden] { display: none; }/* the eye that shows a password. it sits inside the field rather than beside
@@ -3597,6 +3618,25 @@ html { scroll-behavior: auto; }}
     border-bottom: 1px solid rgba(14, 35, 88, 0.07);
     font-size: 0.9rem;
 }
+/* the two-factor card.
+
+   a key and ten recovery codes are strings somebody has to read off a screen and
+   type into a phone, so they are set in a monospace face with room between the
+   characters: a lowercase l and a one are the same glyph in most sans faces and
+   the difference is a locked account. */
+.sp-dash-key {
+    margin: 0 0 0.9rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.95rem;
+    line-height: 1.9;
+    letter-spacing: 0.06em;
+    color: #0e2358;
+    word-break: break-all;
+}
+.sp-dash-card .sp-dash-row .lp-demo-field { flex: 1 1 auto; min-width: 0; margin: 0; }
+.sp-dash-err { color: #b3261e !important; }
+.sp-dash-good { color: #0f7b4f !important; }
+
 .sp-dash-row:first-child { padding-top: 0; }
 .sp-dash-row:last-child { padding-bottom: 0; border-bottom: 0; }
 .sp-dash-row span { color: rgba(14, 35, 88, 0.55); }

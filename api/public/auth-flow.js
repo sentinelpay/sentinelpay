@@ -1795,6 +1795,116 @@
 
         var lts = makeTurnstile(form, submitBtn);
 
+        // ---- the second factor -------------------------------------------------
+        // one more panel in the same card, shown when the password was right and
+        // the account has 2fa. it holds nothing of its own: the pending value it
+        // was handed is a five minute row on the server, and closing the dialog
+        // throws it away, which is the correct outcome for a sign-in somebody
+        // walked away from.
+        var lCard = form.closest('.lp-demo-card');
+        var lTabsEl = lCard ? lCard.querySelector('.sp-auth-tabs') : null;
+        var pendingTotp = '';
+
+        var totpPanel = el('form', 'sp-auth-form');
+        totpPanel.classList.add('sp-auth-verify');
+        totpPanel.setAttribute('novalidate', '');
+        totpPanel.hidden = true;
+
+        var tHead = el('div', 'sp-auth-vhead');
+        var tMark = el('div', 'sp-auth-vmark');
+        tMark.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
+            'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<rect x="4.5" y="2.5" width="15" height="19" rx="2.5"></rect>' +
+            '<path d="M10 18.5h4"></path></svg>';
+        tHead.appendChild(tMark);
+        tHead.appendChild(el('h3', null, 'Enter your code'));
+        tHead.appendChild(el('p', null, 'Open your authenticator app and type the six digit code it is showing.'));
+        totpPanel.appendChild(tHead);
+
+        var tField = el('div', 'lp-demo-field');
+        tField.classList.add('lp-demo-field-full', 'sp-auth-codefield');
+        var tInput = document.createElement('input');
+        tInput.type = 'text';
+        tInput.inputMode = 'numeric';
+        tInput.autocomplete = 'one-time-code';
+        tInput.maxLength = 11;
+        tInput.placeholder = '000000';
+        tInput.setAttribute('aria-label', t('Verification code'));
+        tField.appendChild(tInput);
+        totpPanel.appendChild(tField);
+
+        var tErr = el('p', 'sp-auth-verr');
+        tErr.hidden = true;
+        tErr.setAttribute('role', 'alert');
+        totpPanel.appendChild(tErr);
+
+        var tBtn = el('button', 'lp-demo-submit', 'Sign in');
+        tBtn.classList.add('sp-auth-submit');
+        tBtn.type = 'submit';
+        totpPanel.appendChild(tBtn);
+
+        var tFoot = el('div', 'sp-auth-vfoot');
+        var tNote = el('p', 'sp-auth-hint', 'Lost the phone? A recovery code works here too.');
+        tFoot.appendChild(tNote);
+        var tBack = el('button', 'sp-auth-linkbtn', 'Back to sign in');
+        tBack.type = 'button';
+        tFoot.appendChild(tBack);
+        totpPanel.appendChild(tFoot);
+
+        form.parentNode.insertBefore(totpPanel, form.nextSibling);
+
+        function tSay(msg) {
+            tErr.textContent = msg || '';
+            tErr.hidden = !msg;
+            if (msg) replay(tErr, 'sp-auth-enter');
+        }
+
+        function showTotp(on) {
+            glideOn(lCard || form, function () {
+                form.hidden = on;
+                totpPanel.hidden = !on;
+                if (lTabsEl) lTabsEl.hidden = on;
+            });
+            replay(on ? totpPanel : form, 'sp-auth-enter');
+            if (on) setTimeout(function () { tInput.focus(); }, 320);
+        }
+
+        tBack.addEventListener('click', function () {
+            pendingTotp = '';
+            tInput.value = '';
+            tSay('');
+            showTotp(false);
+        });
+
+        var tBusy = false;
+        totpPanel.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (tBusy) return;
+            var code = tInput.value.trim();
+            if (!code) { tSay(t('Please fill in every field.')); return; }
+            tSay('');
+            tBusy = true;
+            tBtn.disabled = true;
+            var tLabel = tBtn.textContent;
+            tBtn.textContent = t('Signing you in…');
+            post('/v1/auth/totp', { pending: pendingTotp, code: code }).then(function () {
+                location.replace('/dashboard');
+            }).catch(function (failed) {
+                tSay(reason(failed));
+                tBusy = false;
+                tBtn.disabled = false;
+                tBtn.textContent = tLabel;
+                tInput.value = '';
+                tInput.focus();
+                // the row is spent after too many wrong codes, and after it
+                // expires. both answers tell the person to sign in again, and
+                // this is what puts them back where they can.
+                if (failed && (failed.status === 429 || failed.status === 401 && !pendingTotp)) {
+                    setTimeout(function () { pendingTotp = ''; showTotp(false); }, 1800);
+                }
+            });
+        });
+
         var busy = false;
         form.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -1828,8 +1938,19 @@
                 }
                 if (tok) body['cf-turnstile-response'] = tok;
                 return post('/v1/auth/login', body);
-            }).then(function () {
+            }).then(function (out) {
                 lts.spend();
+                // half way: the password was right and the account has a second
+                // factor. no session exists yet.
+                if (out && out.totp) {
+                    pendingTotp = out.pending || '';
+                    busy = false;
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = label;
+                    if (passInput) passInput.value = '';
+                    showTotp(true);
+                    return;
+                }
                 // replace rather than assign: the back button should not come
                 // back to a sign-in form that is now signed in
                 location.replace('/dashboard');

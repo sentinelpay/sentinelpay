@@ -12,15 +12,13 @@
     <script>document.documentElement.classList.add('theme-light');</script>
     <script>if(history.scrollRestoration)history.scrollRestoration='manual';window.scrollTo(0,0);</script>
     <script>window.__TURNSTILE_SITEKEY='0x4AAAAAAD6yvLDIagSfULi7';</script>
-    <script>window.intercomSettings={api_base:'https://api-iam.intercom.io',app_id:'obn3omwl',hide_default_launcher:true,language_override:'en'};</script>
-    <script>(function(){var w=window;var ic=w.Intercom;if(typeof ic==="function"){ic('reattach_activator');ic('update',w.intercomSettings);}else{var d=document;var i=function(){i.c(arguments);};i.q=[];i.c=function(a){i.q.push(a);};w.Intercom=i;var l=function(){var s=d.createElement('script');s.type='text/javascript';s.async=true;s.src='https://widget.intercom.io/widget/obn3omwl';var x=d.getElementsByTagName('script')[0];x.parentNode.insertBefore(s,x);};if(document.readyState==='complete'){l();}else if(w.attachEvent){w.attachEvent('onload',l);}else{w.addEventListener('load',l,false);}}})()</script>
     <link rel="icon" type="image/svg+xml" href="/logo.svg">
     <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/fonts/jakarta-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="/fonts.1.css">
     <link rel="stylesheet" href="/style.26.css">
     <link rel="stylesheet" href="/landing.148.css">
-    <link rel="stylesheet" href="/corp.328.css">
+    <link rel="stylesheet" href="/corp.329.css">
     <style>
         /* page loader */
         #sp-loader{position:fixed;inset:0;z-index:99999;background:#050505;display:flex;align-items:center;justify-content:center;transition:opacity 0.55s ease;}
@@ -80,15 +78,15 @@
         @media (max-width: 1280px) { #auth-nav-container .lp-desktop-auth { display: none !important; } }
 
         /* floating live-chat button (same as homepage) */
-        #sp-chat-btn { position: fixed; bottom: 24px; right: 24px; width: 52px; height: 52px; border-radius: 50%; background: rgba(5,5,8,0.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(0,240,255,0.25); box-shadow: 0 0 20px rgba(0,240,255,0.1), 0 8px 32px rgba(0,0,0,0.5); cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 99998; transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease; color: #00f0ff; padding: 0; }
+        #sp-chat-btn { text-decoration: none; position: fixed; bottom: 24px; right: 24px; width: 52px; height: 52px; border-radius: 50%; background: rgba(5,5,8,0.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(0,240,255,0.25); box-shadow: 0 0 20px rgba(0,240,255,0.1), 0 8px 32px rgba(0,0,0,0.5); cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 99998; transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease; color: #00f0ff; padding: 0; }
         #sp-chat-btn:hover { border-color: rgba(0,240,255,0.55); box-shadow: 0 0 28px rgba(0,240,255,0.22), 0 8px 32px rgba(0,0,0,0.6); }
         #sp-chat-btn:active { transform: translateY(0) scale(0.95); }
         #sp-chat-btn .sp-chat-ico { position: absolute; inset: 0; margin: auto; width: 21px; height: 21px; transition: opacity 0.24s ease, transform 0.34s cubic-bezier(0.22, 1, 0.36, 1); }
         #sp-chat-btn .sp-chat-ico-close { opacity: 0; transform: rotate(-90deg) scale(0.5); }
         #sp-chat-btn.chat-open .sp-chat-ico-open { opacity: 0; transform: rotate(90deg) scale(0.5); }
         #sp-chat-btn.chat-open .sp-chat-ico-close { opacity: 1; transform: rotate(0) scale(1); }
-        /* we use our own #sp-chat-btn; never show intercom's default launcher */
-        .intercom-lightweight-app-launcher, .intercom-launcher-frame, .intercom-launcher { display: none !important; }
+        /* the chat widget is not loaded on this page at all; these rules went
+           with it. #sp-chat-btn is ours and opens a mail client. */
         #sp-chat-badge { position: absolute; top: 5px; right: 5px; width: 9px; height: 9px; border-radius: 50%; background: #00f0ff; box-shadow: 0 0 8px rgba(0,240,255,0.8); display: none; border: 1.5px solid rgba(5,5,8,1); pointer-events: none; }
         html.theme-light #sp-chat-btn { background: rgba(255,255,255,0.85); border-color: rgba(0,145,200,0.25); box-shadow: 0 0 20px rgba(0,145,200,0.08), 0 8px 32px rgba(0,0,0,0.08); color: var(--accent-light); }
         html.theme-light #sp-chat-btn:hover { border-color: rgba(0,145,200,0.45); box-shadow: 0 0 28px rgba(0,145,200,0.16), 0 8px 32px rgba(0,0,0,0.1); }
@@ -245,6 +243,41 @@
                 </div>
             </div>
 
+            <div class="lp-demo-card sp-auth-panel sp-dash-card" id="dash-2fa">
+                <h2 class="sp-dash-h2">Two-factor</h2>
+                <p class="sp-dash-p" id="dash-2fa-state">A code from an app on your phone, on top of your password. A stolen password on its own then opens nothing.</p>
+
+                <div class="sp-dash-links" id="dash-2fa-actions">
+                    <button type="button" class="sp-dash-link" id="dash-2fa-start">Turn it on</button>
+                    <button type="button" class="sp-dash-link" id="dash-2fa-off" hidden>Turn it off</button>
+                </div>
+
+                <div id="dash-2fa-setup" hidden>
+                    <p class="sp-dash-p">Add this key to your authenticator app, then type the code it shows to confirm.</p>
+                    <p class="sp-dash-key" id="dash-2fa-secret"></p>
+                    <p class="sp-dash-p"><a id="dash-2fa-link" href="#">Open it in the app on this phone</a></p>
+                    <div class="sp-dash-row">
+                        <span class="lp-demo-field lp-demo-field-full"><input id="dash-2fa-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" aria-label="Verification code"></span>
+                        <button type="button" class="sp-dash-link" id="dash-2fa-confirm">Confirm</button>
+                    </div>
+                </div>
+
+                <div id="dash-2fa-codes" hidden>
+                    <p class="sp-dash-p">Two-factor is on. Keep these recovery codes somewhere safe and away from your phone. Each one works once, and this is the only time they are shown.</p>
+                    <p class="sp-dash-key" id="dash-2fa-codelist"></p>
+                </div>
+
+                <div id="dash-2fa-offbox" hidden>
+                    <p class="sp-dash-p">Type your password to switch two-factor off.</p>
+                    <div class="sp-dash-row">
+                        <span class="lp-demo-field lp-demo-field-full"><input id="dash-2fa-pw" type="password" autocomplete="current-password" aria-label="Password"></span>
+                        <button type="button" class="sp-dash-link" id="dash-2fa-offgo">Switch it off</button>
+                    </div>
+                </div>
+
+                <p class="sp-dash-p sp-dash-err" id="dash-2fa-err" hidden role="alert"></p>
+            </div>
+
             <div class="lp-demo-card sp-auth-panel sp-dash-card sp-dash-staff" id="dash-staff" hidden>
                 <h2 class="sp-dash-h2">Staff</h2>
                 <p class="sp-dash-p">You are signed in as staff, so these open without a token. Every visit is written to the log with your address on it.</p>
@@ -277,35 +310,23 @@
         </div>
     </main>
 
-    <button id="sp-chat-btn" aria-label="Open live chat">
-        <svg class="sp-chat-ico sp-chat-ico-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        <svg class="sp-chat-ico sp-chat-ico-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-        <span id="sp-chat-badge"></span>
-    </button>
-    <script>
-        (function(){
-            var btn = document.getElementById('sp-chat-btn');
-            function setOpen(o){ if (btn) btn.classList.toggle('chat-open', o); }
-            function openChat(){ if (window.Intercom) window.Intercom('show'); }
-            if (window.Intercom) {
-                window.Intercom('onUnreadCountChange', function(count){ var b=document.getElementById('sp-chat-badge'); if(b) b.style.display = count>0 ? 'block' : 'none'; });
-                window.Intercom('onShow', function(){ setOpen(true); });
-                window.Intercom('onHide', function(){ setOpen(false); });
-            }
-            if (btn) btn.addEventListener('click', function(){ if (!window.Intercom) return; if (btn.classList.contains('chat-open')) window.Intercom('hide'); else window.Intercom('show'); });
-            var oc = document.getElementById('pp-open-chat'); if (oc) oc.addEventListener('click', function(e){ e.preventDefault(); openChat(); });
-            var lc = document.getElementById('lp-mm-livechat');
-            if (lc) lc.addEventListener('click', function(e){
-                e.preventDefault();
-                var menu = document.getElementById('lp-mobile-menu'); var hb = document.getElementById('lp-hamburger');
-                if (menu) menu.classList.remove('lp-mm-open'); if (hb) hb.classList.remove('lp-hb-open');
-                document.documentElement.classList.remove('lp-scroll-lock');
-                setTimeout(openChat, 220);
-            });
-        })();
-    </script>
+    <!-- no third party script on a signed-in page.
+
+         the chat widget is somebody else's javascript, and on a page behind a
+         sign-in it runs with the same origin as the session: it can read what is
+         on screen and make requests as the person signed in. that is a fair
+         trade on the public pages, where there is nothing to read and a visitor
+         with a question is worth more than the risk. it is not a fair trade
+         here, where the page knows who you are and links to the leads.
+
+         so the dashboard asks people to write instead, and the chat stays where
+         it earns its keep. -->
+    <a id="sp-chat-btn" href="mailto:support@sentinelpay.org" aria-label="Email support">
+        <svg class="sp-chat-ico sp-chat-ico-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="19" height="15" rx="2.5"></rect><polyline points="3 6.5 12 13 21 6.5"></polyline></svg>
+    </a>
+
     <script src="/toast.2.js" defer></script>
-    <script src="/dashboard.3.js" defer></script>
+    <script src="/dashboard.4.js" defer></script>
     <script>/* the splash must clear whether or not the load event ever arrives. it waits
    for every subresource including third party scripts, and one slow embed is
    then a site nobody can see: the safety net below only ever started counting
@@ -313,6 +334,6 @@
    most likely to hang. this arms at dom ready instead and load simply gets
    there first when it can. */(function(){var fired0=false;var run=function(){if(fired0)return;fired0=true;window.scrollTo(0,0);var l=document.getElementById('sp-loader');if(!l)return;var finish=function(){l.classList.add('spl-done');setTimeout(function(){l.remove();},620);};/* the load event does not wait for lazy images, and nearly every image on the site is lazy, so the loader used to clear while the first screen was still filling in. wait for the ones that will actually be visible: an image further down has not started loading yet and never would, so waiting for all of them would hold the loader open for ever. */var pending=[],im,r,i;for(i=0;i<document.images.length;i++){im=document.images[i];r=im.getBoundingClientRect();if(r.bottom<0||r.top>window.innerHeight*1.2)continue;if(im.complete&&im.naturalWidth>0)continue;pending.push(im);}if(!pending.length){finish();return;}var left=pending.length,fired=false;var one=function(){if(--left<=0&&!fired){fired=true;finish();}};pending.forEach(function(x){x.addEventListener('load',one,{once:true});x.addEventListener('error',one,{once:true});});/* a slow or broken image must never trap anybody behind the loader */setTimeout(function(){if(!fired){fired=true;finish();}},2500);};window.addEventListener('load',run);if(document.readyState!=='loading')setTimeout(run,3500);else document.addEventListener('DOMContentLoaded',function(){setTimeout(run,3500);});})();</script>
     <script src="/auth-nav.4.js" defer></script>
-    <script src="/i18n.107.js" defer></script>
+    <script src="/i18n.108.js" defer></script>
 </body>
 </html>

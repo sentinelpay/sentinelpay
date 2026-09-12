@@ -11,6 +11,7 @@ const submissions = require('./submissions-log');
 const db = require('./db');
 const accounts = require('./accounts');
 const breached = require('./breached');
+const totp = require('./totp');
 const { PostgresStore, ipKey, startSweep: startRateSweep } = require('./rate-store');
 
 const app = express();
@@ -196,6 +197,10 @@ app.use(helmet({
             'worker-src': ["'self'", 'blob:']
         }
     },
+    // the csp says frame-ancestors 'none'; this is the same answer for anything
+    // that reads the older header, and the two disagreeing is how somebody ends
+    // up trusting the weaker one
+    frameguard: { action: 'deny' },
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: 'cross-origin' },
     // a window this page opened, and a window that opened this page, cannot
@@ -263,6 +268,42 @@ app.use(cors((req, callback) => {
     if (allowedOrigins.indexOf(origin) !== -1) return callback(null, Object.assign({ origin: true }, options));
     callback(new Error('Not allowed by CORS'));
 }));
+
+// ---------------------------------------------------------------------------
+// where the request says it came from
+// ---------------------------------------------------------------------------
+//
+// The session cookie is SameSite=Lax and the body parser only reads
+// application/json, which together already mean a form on somebody else's site
+// cannot make a request here that this server will both read and authenticate.
+// This is the second lock on the same door, and it is here because the first one
+// is a browser default: a browser that gets SameSite wrong, an old one, or a
+// future change in how Lax is interpreted should not be the only thing standing
+// between a stranger's page and an endpoint that changes an account.
+//
+// Sec-Fetch-Site is sent by every current browser and cannot be set by script.
+// When it says the request came from another site, it is refused. When it is
+// absent, the Origin header is checked instead, and when that is absent too the
+// request is allowed: curl and a mobile app send neither, and neither carries a
+// cookie a browser attached on their behalf, so there is no cross-site request
+// to forge.
+app.use((req, res, next) => {
+    if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
+
+    const fetchSite = String(req.get('sec-fetch-site') || '').toLowerCase();
+    if (fetchSite) {
+        if (fetchSite === 'same-origin' || fetchSite === 'same-site' || fetchSite === 'none') return next();
+        console.warn('[origin] refused a ' + req.method + ' from ' + fetchSite + ' to ' + req.path);
+        return res.status(403).json({ error: 'That request did not come from our site. Please reload the page and try again.' });
+    }
+
+    const origin = req.get('origin');
+    if (!origin) return next();
+    if (sameSite(origin, req.headers.host)) return next();
+    if (allowedOrigins.includes(origin)) return next();
+    console.warn('[origin] refused a ' + req.method + ' from ' + origin + ' to ' + req.path);
+    return res.status(403).json({ error: 'That request did not come from our site. Please reload the page and try again.' });
+});
 
 app.use(express.json({ limit: '10kb' }));
 
@@ -1089,6 +1130,12 @@ function adminOk(req) {
 // off it takes effect on their next request rather than after a migration. It
 // is checked against the address on the session, which the account proved by
 // email before it existed.
+// 2fa on the staff pages can be turned off, and the switch exists for exactly
+// one reason: the first person to set it up needs to be able to reach the pages
+// while doing so, and a mistake here otherwise means nobody can read the inbox
+// until a deploy. It defaults to on.
+const STAFF_REQUIRE_2FA = String(process.env.STAFF_REQUIRE_2FA || 'true').trim().toLowerCase() !== 'false';
+
 function staffList() {
     return String(process.env.STAFF_EMAILS || '')
         .split(',')
@@ -1096,20 +1143,35 @@ function staffList() {
         .filter(Boolean);
 }
 
+// Staff means three things, not one: the address is on the list, the account has
+// a second factor, and this session was opened with it.
+//
+// The last one matters more than it looks. Without it, somebody who was already
+// signed in when 2fa was switched on keeps the old privileges for as long as
+// their session lasts, which is a month, and the person who switched it on
+// believes it took effect immediately.
+//
+// A staff address without 2fa is not refused silently: `reason` says which of
+// the three failed, so the page can say "set it up" instead of pretending the
+// admin pages do not exist.
 async function staffOf(req) {
     const list = staffList();
     if (!list.length) return null;
     const me = await currentUser(req);
     if (!me || !me.email) return null;
-    return list.includes(String(me.email).toLowerCase()) ? me : null;
+    if (!list.includes(String(me.email).toLowerCase())) return null;
+    if (STAFF_REQUIRE_2FA && !me.totpOn) return { ...me, blocked: 'no-2fa' };
+    if (STAFF_REQUIRE_2FA && !me.mfa) return { ...me, blocked: 'session-without-2fa' };
+    return me;
 }
 
 // Answers with who it was, so the caller can both allow the request and say in
 // the log whose it was. `null` means no.
 async function whoIsAsking(req) {
     const me = await staffOf(req);
-    if (me) return { kind: 'staff', who: me.email, name: me.name };
+    if (me && !me.blocked) return { kind: 'staff', who: me.email, name: me.name };
     if (adminOk(req)) return { kind: 'token', who: 'admin token' };
+    if (me && me.blocked) return { kind: 'blocked', who: me.email, why: me.blocked };
     return null;
 }
 
@@ -1118,6 +1180,30 @@ async function whoIsAsking(req) {
 function requireStaff(action) {
     return async (req, res, next) => {
         const asking = await whoIsAsking(req);
+        // a staff address that has not set up a second factor yet, or is on a
+        // session that was opened before it did. this is the one case that is
+        // answered rather than hidden: the person is who they say they are, and
+        // telling them nothing is here would send them looking for a bug.
+        if (asking && asking.kind === 'blocked') {
+            accounts.audit('staff-access-refused', {
+                actor: 'staff:' + asking.who, ip: ipKey(req.realIp), detail: asking.why + ' -> ' + action,
+            });
+            res.set('Cache-Control', 'no-store, private');
+            return res.status(403).type('html').send(
+                '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+                '<title>two-factor required</title>' +
+                '<body style="margin:0;padding:48px 20px;background:#f4f6fa;color:#0e2358;' +
+                'font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Inter,sans-serif;">' +
+                '<div style="max-width:520px;margin:0 auto;">' +
+                '<h1 style="font-size:20px;font-weight:800;margin:0 0 10px;">Two-factor is required here</h1>' +
+                '<p style="margin:0 0 14px;line-height:1.6;color:rgba(14,35,88,0.7);font-size:14px;">' +
+                (asking.why === 'no-2fa'
+                    ? 'This address is on the staff list, but the account has no second factor yet. The staff pages read other people\'s personal data, so a password on its own is not enough to open them.'
+                    : 'This session was opened before the second factor was switched on. Sign out and back in, and you will be asked for a code.') +
+                '</p>' +
+                '<p style="margin:0;font-size:14px;"><a href="/dashboard" style="color:#1c4ed8;">Go to the dashboard</a></p>' +
+                '</div></body>');
+        }
         if (!asking) return sendPage(res, req, '404.html', 404);
         req.staff = asking;
         // the point of the whole exercise: looking at somebody's details is an
@@ -1950,6 +2036,13 @@ app.post('/v1/auth/login', requireCloudflareOrigin, authLoginLimiter, async (req
                 retryIn: out.retryIn,
             });
         }
+        if (out.reason === 'totp-required') {
+            // the password was right and that is now half of it. the pending
+            // value is a five minute row, not a session: it can be exchanged for
+            // one and can do nothing else.
+            console.log('[auth] login: password ok, asking for the code');
+            return res.json({ ok: true, totp: true, pending: out.pending });
+        }
         if (out.reason === 'bad-credentials') {
             console.log('[auth] login: refused');
             return res.status(401).json({ error: 'That email and password do not match an account.' });
@@ -2147,6 +2240,106 @@ app.post('/v1/auth/reset', requireCloudflareOrigin, authResetLimiter, async (req
     }
 });
 
+// ---------------------------------------------------------------------------
+// the second factor
+// ---------------------------------------------------------------------------
+//
+// Four endpoints: finish a sign-in with a code, start setting one up, confirm
+// it, and switch it off. The first is public, because the person using it is
+// half signed in by definition. The other three need a session, because they
+// change an account that somebody is already inside.
+const authTotpLimiter = rateLimit({
+    handler: limitHandler,
+    windowMs: 15 * 60 * 1000,
+    // enough for a person setting it up (a start and a few confirms) plus a
+    // couple of sign-ins, and for a small office behind one address doing the
+    // same on the same afternoon. the real wall against guessing is the six
+    // tries on the pending row itself, which follows the sign-in rather than
+    // the network it came from.
+    max: 40,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => `auth_totp:${ipKey(req.realIp)}`,
+    store: new PostgresStore(),
+    message: { error: 'Too many attempts, please try again later' }
+});
+
+app.post('/v1/auth/totp', requireCloudflareOrigin, authTotpLimiter, async (req, res) => {
+    try {
+        const b = req.body || {};
+        const out = await accounts.finishTotp(String(b.pending || ''), String(b.code || ''));
+        if (out.reason === 'expired') {
+            return res.status(401).json({ error: 'That took too long. Please sign in again.' });
+        }
+        if (out.reason === 'too-many-attempts') {
+            return res.status(429).json({ error: 'Too many wrong codes. Please sign in again.' });
+        }
+        if (out.reason === 'code-used') {
+            return res.status(401).json({ error: 'That code has already been used. Wait for the next one in your app.' });
+        }
+        if (out.reason === 'bad-code') {
+            return res.status(401).json({ error: 'That code is not right. Check your app and try again.' });
+        }
+        if (!out.ok) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
+
+        setSessionCookie(res, out.session.token, out.session.maxAgeSeconds);
+        res.json({ ok: true, name: out.name, usedRecovery: out.usedRecovery, recoveryLeft: out.recoveryLeft });
+
+        tellAboutNewDevice(req, out).catch((err) =>
+            console.error('[auth] new-device notice failed: ' + err.message));
+    } catch (err) {
+        console.error('[auth totp error]', err.message);
+        res.status(500).json({ error: 'Could not sign you in right now. Please try again shortly.' });
+    }
+});
+
+// Everything below changes the account of whoever is signed in.
+async function requireSession(req, res) {
+    const me = await currentUser(req);
+    if (!me) { res.status(401).json({ error: 'Please sign in first.' }); return null; }
+    return me;
+}
+
+app.post('/v1/account/totp/start', requireCloudflareOrigin, authTotpLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    if (me.totpOn) return res.status(409).json({ error: 'Two-factor is already on for this account.' });
+    const secret = await accounts.startTotp(me.userId);
+    if (!secret) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
+    // the secret is shown once, here, and never again. it is in the reply rather
+    // than on a page because the page is the same document the rest of the
+    // dashboard is, and this is the one value on it that must not be cached.
+    res.set('Cache-Control', 'no-store, private');
+    res.json({
+        ok: true,
+        secret,
+        // grouped, because this gets typed into a phone by a person
+        grouped: secret.replace(/(.{4})/g, '$1 ').trim(),
+        url: totp.otpauthUrl(secret, me.email || 'sentinelpay', 'Sentinelpay'),
+    });
+});
+
+app.post('/v1/account/totp/confirm', requireCloudflareOrigin, authTotpLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const out = await accounts.confirmTotp(me.userId, String((req.body || {}).code || ''));
+    if (out.reason === 'not-started') return res.status(400).json({ error: 'Start the setup again, then enter a code from the app.' });
+    if (out.reason === 'already-on') return res.status(409).json({ error: 'Two-factor is already on for this account.' });
+    if (out.reason === 'bad-code') return res.status(400).json({ error: 'That code is not right. Check your app and try again.' });
+    if (!out.ok) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
+    res.set('Cache-Control', 'no-store, private');
+    res.json({ ok: true, codes: out.codes });
+});
+
+app.post('/v1/account/totp/off', requireCloudflareOrigin, authTotpLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const out = await accounts.disableTotp(me.userId, String((req.body || {}).password || ''));
+    if (out.reason === 'bad-password') return res.status(401).json({ error: 'That password is not right.' });
+    if (!out.ok) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
+    res.json({ ok: true });
+});
+
 // Signing out. The row goes, so the token is dead everywhere and not merely
 // forgotten by this browser.
 app.post('/v1/auth/logout', requireCloudflareOrigin, async (req, res) => {
@@ -2183,7 +2376,17 @@ app.get('/v1/auth/me', authMeLimiter, async (req, res) => {
         // the dashboard shows the staff panel from this, and nothing more than
         // the panel depends on it: every page behind it checks for itself.
         const staff = staffList().includes(String(me.email || '').toLowerCase());
-        res.json({ signedIn: true, name: me.name, email: me.email, since: me.since, staff });
+        res.json({
+            signedIn: true, name: me.name, email: me.email, since: me.since, staff,
+            // the dashboard draws the two-factor card from these: whether the
+            // account has one, and whether this session was opened with it.
+            totp: Boolean(me.totpOn),
+            mfa: Boolean(me.mfa),
+            // and how many recovery codes are left, so "two left" can be said
+            // out loud rather than discovered on the day they run out
+            recoveryLeft: me.totpOn ? await accounts.recoveryLeft(me.userId) : 0,
+            staffNeeds2fa: staff && STAFF_REQUIRE_2FA && !me.totpOn,
+        });
     } catch (err) {
         console.error('[auth me error]', err.message);
         res.json({ signedIn: false });
