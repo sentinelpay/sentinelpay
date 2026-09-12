@@ -1,0 +1,21 @@
+# Nobody was watching the dependencies. The one advisory this repository has had
+# so far was found by running npm audit by hand, months after it was published.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /api
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    # patches and minors together, because eight dependencies producing eight
+    # pull requests a week is how a team learns to ignore them
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    labels: [dependencies]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

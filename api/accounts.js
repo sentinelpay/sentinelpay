@@ -1121,6 +1121,130 @@ async function recoveryLeft(userId) {
     }
 }
 
+// ---------------------------------------------------------------------------
+// what somebody can do to their own account
+// ---------------------------------------------------------------------------
+//
+// Three things, and all three used to need an email or a person: change the
+// password, see where you are signed in and end those sessions, and delete the
+// account. Not having them is a security problem rather than a missing feature.
+// Somebody who thinks their password has been seen has, until now, had to ask
+// for a reset link and hope; and the right to erasure was a message to us.
+
+async function changePassword(userId, current, next) {
+    if (!(await init())) return { ok: false, reason: 'unavailable' };
+    let row;
+    try {
+        const res = await db.query('SELECT password_hash, email_hash, email_enc, lang FROM users WHERE id = $1', [userId]);
+        if (!res.rowCount) return { ok: false, reason: 'unavailable' };
+        row = res.rows[0];
+    } catch (err) {
+        console.error('[accounts] could not read the account: ' + err.message);
+        return { ok: false, reason: 'unavailable' };
+    }
+    // the current one, always. a session left open on a shared machine must not
+    // be enough to take the account away from its owner.
+    if (!(await verifyPassword(String(current || ''), row.password_hash))) {
+        audit('password-change-refused', { actor: userId, detail: 'wrong current password' });
+        return { ok: false, reason: 'bad-password' };
+    }
+
+    const fresh = await hashPassword(next);
+    try {
+        await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [fresh, userId]);
+        // and every reset link for this address, which is a second way in that
+        // the person changing their password almost certainly wants closed
+        await db.query('DELETE FROM reset_tokens WHERE email_hash = $1', [row.email_hash]);
+    } catch (err) {
+        console.error('[accounts] could not change the password: ' + err.message);
+        return { ok: false, reason: 'unavailable' };
+    }
+    audit('password-changed', { actor: userId, subject: row.email_hash, detail: 'by the owner' });
+    return {
+        ok: true,
+        email: db.open('signup-email:' + row.email_hash, row.email_enc),
+        lang: row.lang || 'en',
+    };
+}
+
+// Where this account is signed in. No user agent strings: what is kept is when
+// it started, when it was last used, and whether it was opened with a second
+// factor, which is enough to recognise one you do not remember.
+async function listSessions(userId, currentToken) {
+    if (!(await init())) return [];
+    try {
+        const res = await db.query(
+            `SELECT token_hash, created_at, last_seen_at, mfa, expires_at
+               FROM sessions WHERE user_id = $1 AND expires_at > now()
+              ORDER BY last_seen_at DESC`,
+            [userId]
+        );
+        const mine = currentToken ? hashToken(currentToken) : '';
+        return res.rows.map((r) => ({
+            startedAt: r.created_at,
+            lastSeenAt: r.last_seen_at,
+            expiresAt: r.expires_at,
+            mfa: Boolean(r.mfa),
+            current: r.token_hash === mine,
+        }));
+    } catch (err) {
+        console.error('[accounts] could not list sessions: ' + err.message);
+        return [];
+    }
+}
+
+// Everything except the one asking. "sign out everywhere" that also signs you
+// out of the page you pressed it on is a button nobody presses twice.
+async function revokeOtherSessions(userId, currentToken) {
+    if (!(await init())) return 0;
+    try {
+        const res = await db.query(
+            'DELETE FROM sessions WHERE user_id = $1 AND token_hash <> $2',
+            [userId, currentToken ? hashToken(currentToken) : '']
+        );
+        audit('sessions-revoked', { actor: userId, detail: res.rowCount + ' ended' });
+        return res.rowCount;
+    } catch (err) {
+        console.error('[accounts] could not end the other sessions: ' + err.message);
+        return 0;
+    }
+}
+
+// Erasure, done by the person rather than asked for. The password is required
+// for the same reason it is required to switch off 2fa.
+async function deleteAccount(userId, password) {
+    if (!(await init())) return { ok: false, reason: 'unavailable' };
+    let row;
+    try {
+        const res = await db.query('SELECT password_hash, email_hash, email_enc FROM users WHERE id = $1', [userId]);
+        if (!res.rowCount) return { ok: false, reason: 'unavailable' };
+        row = res.rows[0];
+    } catch (err) {
+        return { ok: false, reason: 'unavailable' };
+    }
+    if (!(await verifyPassword(String(password || ''), row.password_hash))) {
+        audit('account-delete-refused', { actor: userId, detail: 'wrong password' });
+        return { ok: false, reason: 'bad-password' };
+    }
+    const email = db.open('signup-email:' + row.email_hash, row.email_enc);
+    try {
+        // sessions, devices, recovery codes and half finished sign-ins go with
+        // the row: every one of them is `on delete cascade` against users.
+        await db.query('DELETE FROM users WHERE id = $1', [userId]);
+        await db.query('DELETE FROM reset_tokens WHERE email_hash = $1', [row.email_hash]);
+        await db.query('DELETE FROM signup_codes WHERE email_hash = $1', [row.email_hash]);
+        await db.query('DELETE FROM login_fails WHERE email_hash = $1', [row.email_hash]);
+    } catch (err) {
+        console.error('[accounts] could not delete the account: ' + err.message);
+        return { ok: false, reason: 'unavailable' };
+    }
+    // the audit row stays, and it names nobody: the subject is the blind index,
+    // which is what lets us answer "was this account deleted and when" without
+    // keeping the address of somebody who asked us to forget it.
+    audit('account-deleted', { actor: userId, subject: row.email_hash });
+    return { ok: true, email };
+}
+
 // A real scrypt hash of a password nobody has, so the no-such-account path costs
 // the same as the wrong-password one.
 const DUMMY_HASH = 'scrypt$32768$8$1$' +
@@ -1493,6 +1617,7 @@ module.exports = {
     startSignup, resendSignup, verifySignup, exists, inspect, purge, forget, status,
     audit, loginHold, recentAudit, noteDevice,
     startTotp, confirmTotp, disableTotp, startTotpPending, finishTotp, recoveryLeft,
+    changePassword, listSessions, revokeOtherSessions, deleteAccount,
     startReset, readReset, finishReset, RESET_TTL_MIN, RESET_RESEND_WAIT_S,
     hashPassword, verifyPassword,
     signIn, startSession, readSession, endSession,

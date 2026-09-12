@@ -2340,6 +2340,77 @@ app.post('/v1/account/totp/off', requireCloudflareOrigin, authTotpLimiter, async
     res.json({ ok: true });
 });
 
+// ---------------------------------------------------------------------------
+// what somebody can do to their own account
+// ---------------------------------------------------------------------------
+const accountLimiter = rateLimit({
+    handler: limitHandler,
+    windowMs: 60 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => `account:${ipKey(req.realIp)}`,
+    store: new PostgresStore(),
+    message: { error: 'Too many attempts, please try again later' }
+});
+
+app.post('/v1/account/password', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const b = req.body || {};
+    const next = typeof b.next === 'string' ? b.next : '';
+    const known = String(me.name || '').split(' ');
+    const problem = passwordProblem(next, me.email, known[0] || '', known.slice(1).join(' '));
+    if (problem) return res.status(400).json({ error: problem });
+    if (await breached.isBreached(next)) {
+        return res.status(400).json({ error: 'That password has appeared in a data breach. Please choose a different one.' });
+    }
+
+    const out = await accounts.changePassword(me.userId, String(b.current || ''), next);
+    if (out.reason === 'bad-password') return res.status(401).json({ error: 'That password is not right.' });
+    if (!out.ok) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
+
+    // every other browser goes. changing a password because somebody else may
+    // have it and leaving their session open is the whole thing half done.
+    const ended = await accounts.revokeOtherSessions(me.userId, readSessionCookie(req));
+    res.json({ ok: true, otherSessionsEnded: ended });
+
+    if (out.email) {
+        mailer.sendPasswordChanged({
+            to: out.email,
+            lang: out.lang || 'en',
+            when: whenFor(out.lang),
+            ip: ipKey(req.realIp),
+            country: req.headers['cf-ipcountry'] || '',
+        }).catch((err) => console.error('[account] password-changed notice failed: ' + err.message));
+    }
+});
+
+app.get('/v1/account/sessions', async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    res.set('Cache-Control', 'no-store, private');
+    res.json({ ok: true, sessions: await accounts.listSessions(me.userId, readSessionCookie(req)) });
+});
+
+app.post('/v1/account/sessions/revoke', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const ended = await accounts.revokeOtherSessions(me.userId, readSessionCookie(req));
+    res.json({ ok: true, ended });
+});
+
+app.post('/v1/account/delete', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const out = await accounts.deleteAccount(me.userId, String((req.body || {}).password || ''));
+    if (out.reason === 'bad-password') return res.status(401).json({ error: 'That password is not right.' });
+    if (!out.ok) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
+    clearSessionCookie(res);
+    console.log('[account] deleted at the owner\'s request');
+    res.json({ ok: true });
+});
+
 // Signing out. The row goes, so the token is dead everywhere and not merely
 // forgotten by this browser.
 app.post('/v1/auth/logout', requireCloudflareOrigin, async (req, res) => {
@@ -2624,6 +2695,14 @@ function securityPosture() {
             ok: db.status().encrypted,
             grave: true,
             says: db.status().encrypted ? 'SUBMISSIONS_KEY is set' : 'SUBMISSIONS_KEY is NOT set: names and addresses are being stored in the clear',
+        },
+        {
+            key: 'key rotation',
+            ok: true,
+            grave: false,
+            says: db.rotating()
+                ? 'SUBMISSIONS_KEY_PREVIOUS is set: rows written under the old key can still be read. run tools/rotate-key.js --write, then remove it'
+                : 'one key in use, nothing half rotated',
         },
         {
             key: 'accounts store',

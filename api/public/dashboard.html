@@ -243,6 +243,28 @@
                 </div>
             </div>
 
+            <div class="lp-demo-card sp-auth-panel sp-dash-card" id="dash-pw">
+                <h2 class="sp-dash-h2">Password</h2>
+                <p class="sp-dash-p">Changing it signs out every other browser this account is open in.</p>
+                <div class="sp-dash-row">
+                    <span class="lp-demo-field lp-demo-field-full"><input id="dash-pw-current" type="password" autocomplete="current-password" placeholder="Current password" aria-label="Current password"></span>
+                </div>
+                <div class="sp-dash-row">
+                    <span class="lp-demo-field lp-demo-field-full"><input id="dash-pw-next" type="password" autocomplete="new-password" placeholder="New password, at least 12 characters" aria-label="New password"></span>
+                    <button type="button" class="sp-dash-link" id="dash-pw-go">Change it</button>
+                </div>
+                <p class="sp-dash-p sp-dash-err" id="dash-pw-err" hidden role="alert"></p>
+            </div>
+
+            <div class="lp-demo-card sp-auth-panel sp-dash-card" id="dash-sessions">
+                <h2 class="sp-dash-h2">Where you are signed in</h2>
+                <p class="sp-dash-p" id="dash-sessions-list">Loading…</p>
+                <div class="sp-dash-links">
+                    <button type="button" class="sp-dash-link" id="dash-sessions-revoke">Sign out everywhere else</button>
+                </div>
+                <p class="sp-dash-p sp-dash-err" id="dash-sessions-err" hidden role="alert"></p>
+            </div>
+
             <div class="lp-demo-card sp-auth-panel sp-dash-card" id="dash-2fa">
                 <h2 class="sp-dash-h2">Two-factor</h2>
                 <p class="sp-dash-p" id="dash-2fa-state">A code from an app on your phone, on top of your password. A stolen password on its own then opens nothing.</p>
@@ -291,6 +313,16 @@
                 </div>
             </div>
 
+            <div class="lp-demo-card sp-auth-panel sp-dash-card" id="dash-delete">
+                <h2 class="sp-dash-h2">Delete this account</h2>
+                <p class="sp-dash-p">Everything we hold under this address goes: the account, the sessions, the sign-in history and anything you sent us through a form. It cannot be undone and we cannot get it back for you.</p>
+                <div class="sp-dash-row">
+                    <span class="lp-demo-field lp-demo-field-full"><input id="dash-del-pw" type="password" autocomplete="current-password" placeholder="Your password" aria-label="Password"></span>
+                    <button type="button" class="sp-dash-link" id="dash-del-go">Delete it</button>
+                </div>
+                <p class="sp-dash-p sp-dash-err" id="dash-del-err" hidden role="alert"></p>
+            </div>
+
             <div class="lp-demo-card sp-auth-panel sp-dash-card sp-dash-next">
                 <h2 class="sp-dash-h2">What happens next</h2>
                 <p class="sp-dash-p">The checks themselves are not open yet. We are building them, and this account is what you will use to reach them. You do not need to do anything: we will write to this address the day it opens.</p>
@@ -326,7 +358,7 @@
     </a>
 
     <script src="/toast.2.js" defer></script>
-    <script src="/dashboard.4.js" defer></script>
+    <script src="/dashboard.5.js" defer></script>
     <script>/* the splash must clear whether or not the load event ever arrives. it waits
    for every subresource including third party scripts, and one slow embed is
    then a site nobody can see: the safety net below only ever started counting
@@ -334,6 +366,6 @@
    most likely to hang. this arms at dom ready instead and load simply gets
    there first when it can. */(function(){var fired0=false;var run=function(){if(fired0)return;fired0=true;window.scrollTo(0,0);var l=document.getElementById('sp-loader');if(!l)return;var finish=function(){l.classList.add('spl-done');setTimeout(function(){l.remove();},620);};/* the load event does not wait for lazy images, and nearly every image on the site is lazy, so the loader used to clear while the first screen was still filling in. wait for the ones that will actually be visible: an image further down has not started loading yet and never would, so waiting for all of them would hold the loader open for ever. */var pending=[],im,r,i;for(i=0;i<document.images.length;i++){im=document.images[i];r=im.getBoundingClientRect();if(r.bottom<0||r.top>window.innerHeight*1.2)continue;if(im.complete&&im.naturalWidth>0)continue;pending.push(im);}if(!pending.length){finish();return;}var left=pending.length,fired=false;var one=function(){if(--left<=0&&!fired){fired=true;finish();}};pending.forEach(function(x){x.addEventListener('load',one,{once:true});x.addEventListener('error',one,{once:true});});/* a slow or broken image must never trap anybody behind the loader */setTimeout(function(){if(!fired){fired=true;finish();}},2500);};window.addEventListener('load',run);if(document.readyState!=='loading')setTimeout(run,3500);else document.addEventListener('DOMContentLoaded',function(){setTimeout(run,3500);});})();</script>
     <script src="/auth-nav.4.js" defer></script>
-    <script src="/i18n.108.js" defer></script>
+    <script src="/i18n.109.js" defer></script>
 </body>
 </html>

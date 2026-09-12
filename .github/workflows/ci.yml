@@ -1,0 +1,84 @@
+name: ci
+
+# Every push and every pull request. The point of this file is that nobody has
+# to remember to run anything: the checks that caught real breakages in this
+# repository run themselves, against a real postgres, before anything is merged.
+
+on:
+  push:
+    branches: [main, staging, 'claude/**']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: sentinelpay_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+
+      # ci, not install: the tree that is tested is the tree in the lockfile,
+      # which is the tree the image builds from
+      - name: install
+        working-directory: api
+        run: npm ci
+
+      - name: syntax
+        run: |
+          for f in api/*.js api/public/*.js tools/*.js; do node --check "$f"; done
+
+      - name: tests
+        working-directory: api
+        env:
+          DATABASE_URL: postgresql://postgres:test@localhost:5432/sentinelpay_test
+          # a throwaway key: the tests seal and open with it and nothing outlives
+          # the job
+          SUBMISSIONS_KEY: c2VudGluZWxwYXktY2ktdGVzdC1rZXktMzJieXRlcyE=
+          BREACH_CHECK: 'false'
+        run: npm test
+
+      - name: dependencies with known holes
+        working-directory: api
+        run: npm audit --omit=dev --audit-level=moderate
+
+      - name: every string a visitor can see is translated
+        run: |
+          node tools/i18n-keys.js /tmp/keys.json
+          python3 tools/i18n-audit.py /tmp/keys.json | tee /tmp/i18n.txt
+          grep -q 'MISSING TOTAL: 0' /tmp/i18n.txt
+
+      - name: the server boots
+        working-directory: api
+        env:
+          DATABASE_URL: postgresql://postgres:test@localhost:5432/sentinelpay_test
+          SUBMISSIONS_KEY: c2VudGluZWxwYXktY2ktdGVzdC1rZXktMzJieXRlcyE=
+          PORT: '3999'
+        run: |
+          node index.js & echo $! > /tmp/pid
+          for i in $(seq 1 20); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3999/en/ || true)
+            [ "$code" = "200" ] && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:3999/en/ > /dev/null
+          curl -sf http://127.0.0.1:3999/.well-known/security.txt > /dev/null
+          kill "$(cat /tmp/pid)"

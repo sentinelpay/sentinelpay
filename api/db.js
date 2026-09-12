@@ -118,6 +118,19 @@ function readKey(name) {
 }
 
 const DATA_KEY = readKey('SUBMISSIONS_KEY');
+// The key before this one, kept only so a rotation does not have to be
+// instantaneous.
+//
+// Rotating without it means: stop the site, re-encrypt every row, start again,
+// and hope nothing was written in between. With it, the new key is put in
+// SUBMISSIONS_KEY, the old one moves to SUBMISSIONS_KEY_PREVIOUS, and the
+// server reads rows written under either while writing only under the new one.
+// A sweep then rewrites the old rows in the background and the previous key can
+// be dropped whenever that has finished.
+//
+// It is a decryption key only. Nothing is ever written under it, so leaving it
+// set does not keep the old key in use, it only keeps old rows readable.
+const DATA_KEY_PREVIOUS = readKey('SUBMISSIONS_KEY_PREVIOUS');
 // A separate key for the blind index. Sharing one key between encryption and
 // the lookup hash would let anyone holding the index confirm guesses against
 // the ciphertext.
@@ -134,15 +147,29 @@ function encrypt(plain, aad) {
     return Buffer.concat([Buffer.from([1]), nonce, cipher.getAuthTag(), body]).toString('base64');
 }
 
-function decrypt(blob, aad) {
-    const buf = Buffer.from(blob, 'base64');
-    if (buf.length < 29 || buf[0] !== 1) throw new Error('unrecognised ciphertext');
+function decryptWith(key, buf, aad) {
     const nonce = buf.subarray(1, 13);
     const tag = buf.subarray(13, 29);
-    const decipher = crypto.createDecipheriv('aes-256-gcm', DATA_KEY, nonce, { authTagLength: 16 });
+    const decipher = crypto.createDecipheriv('aes-256-gcm', key, nonce, { authTagLength: 16 });
     decipher.setAAD(Buffer.from(aad, 'utf8'));
     decipher.setAuthTag(tag);
     return Buffer.concat([decipher.update(buf.subarray(29)), decipher.final()]).toString('utf8');
+}
+
+// The current key, then the previous one if there is any. There is no key id in
+// the ciphertext on purpose: an id would have to be written by a version of this
+// file that does not exist yet for rows that already exist, so it would not help
+// the rotation it was meant for. Gcm authenticates, so the wrong key does not
+// decrypt to rubbish, it throws, and trying two keys is two hmac checks.
+function decrypt(blob, aad) {
+    const buf = Buffer.from(blob, 'base64');
+    if (buf.length < 29 || buf[0] !== 1) throw new Error('unrecognised ciphertext');
+    try {
+        return decryptWith(DATA_KEY, buf, aad);
+    } catch (err) {
+        if (!DATA_KEY_PREVIOUS) throw err;
+        return decryptWith(DATA_KEY_PREVIOUS, buf, aad);
+    }
 }
 
 // Keyed hash of the lowercased address. Lets us count how often someone has
@@ -408,6 +435,9 @@ function open(aad, blob) {
 module.exports = {
     insert, recent, count, remove, purge, forget, startRetention, status,
     available: () => Boolean(pool),
+    // for tests and scripts: without this the pool keeps the process alive
+    close: () => (pool ? pool.end() : Promise.resolve()),
+    rotating: () => Boolean(DATA_KEY_PREVIOUS),
     query, connect, seal, open, blindIndex,
     indexKey: () => INDEX_KEY,
     encrypted: () => ENCRYPTED,
