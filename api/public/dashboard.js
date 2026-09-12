@@ -118,6 +118,10 @@
                 startBtn.disabled = true;
                 post('/v1/account/totp/start').then(function (out) {
                     startBtn.disabled = false;
+                    // the button that started this has nothing left to do, and
+                    // leaving it there invites a second press that would mint a
+                    // second secret and orphan the one now in somebody's app
+                    startBtn.hidden = true;
                     if (setup) setup.hidden = false;
                     var secretEl = document.getElementById('dash-2fa-secret');
                     if (secretEl) secretEl.textContent = out.grouped || out.secret;
