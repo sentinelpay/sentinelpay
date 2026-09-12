@@ -53,10 +53,57 @@ function currentFile(when) {
     return path.join(LOG_DIR, 'submissions-' + stamp + '.jsonl');
 }
 
+// What actually goes on the line.
+//
+// This file is written when the database is not there, and it used to be written
+// in the clear: a name, an address, an ip and a user agent, plain json, on a disk
+// with default permissions. Everything the database holds is encrypted, and the
+// copy that exists precisely when the database is missing was the one copy that
+// was not, which made the encryption a statement about the good days only.
+//
+// So the same seal is used here. What stays readable is what a sweep and an
+// erasure need: when it arrived, its reference, its kind and outcome, the
+// country, the review flags, and the blind index of the address. None of those
+// name anybody. Everything else is one sealed blob, opened by the same key the
+// database rows use.
+function fileLine(entry) {
+    if (!db.encrypted()) return JSON.stringify(entry);
+    const envelope = {
+        ts: entry.ts,
+        ref: entry.ref,
+        kind: entry.kind,
+        outcome: entry.outcome,
+        country: entry.country || null,
+        flags: entry.flags || [],
+        email_hash: entry.email ? db.blindIndex(entry.email) : null,
+        enc: db.seal('file-entry:' + entry.ref, JSON.stringify(entry)),
+    };
+    return JSON.stringify(envelope);
+}
+
+// The other direction. A line written before this existed is plain json and is
+// read as it always was, so the two shapes live side by side for as long as the
+// retention window keeps the older ones.
+function readLine(line) {
+    const row = JSON.parse(line);
+    if (!row || !row.enc) return row;
+    const opened = db.open('file-entry:' + row.ref, row.enc);
+    if (!opened) return row; // no key here: the envelope is all there is
+    try {
+        return Object.assign({}, row, JSON.parse(opened), { email_hash: row.email_hash });
+    } catch (err) {
+        return row;
+    }
+}
+
 function writeFile(entry, when) {
     if (!ensureDir()) return;
+    const file = currentFile(when);
     try {
-        fs.appendFileSync(currentFile(when), JSON.stringify(entry) + '\n');
+        fs.appendFileSync(file, fileLine(entry) + '\n', { mode: 0o600 });
+        // appendFileSync only applies the mode when it creates the file, and a
+        // file created before this line existed keeps whatever it had
+        try { fs.chmodSync(file, 0o600); } catch (chmodErr) { /* not ours to chmod */ }
     } catch (err) {
         console.error('[submissions] write failed: ' + err.message);
     }
@@ -186,8 +233,10 @@ function forgetInFiles(email) {
         }
         const keep = lines.filter((line) => {
             try {
-                const row = JSON.parse(line);
-                if (String(row.email || '').trim().toLowerCase() === target) { removed++; return false; }
+                const row = readLine(line);
+                const hash = db.blindIndex(target);
+                if (String(row.email || '').trim().toLowerCase() === target ||
+                    (hash && row.email_hash === hash)) { removed++; return false; }
                 return true;
             } catch (err) {
                 return true; // a torn line names nobody we can match
@@ -269,7 +318,7 @@ function fromFiles(limit, kind, flaggedOnly) {
         }
         for (let i = lines.length - 1; i >= 0 && out.length < max; i--) {
             try {
-                const row = JSON.parse(lines[i]);
+                const row = readLine(lines[i]);
                 if (kind && row.kind !== kind) continue;
                 if (flaggedOnly && !(row.flags && row.flags.length)) continue;
                 out.push(row);

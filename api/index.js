@@ -10,6 +10,8 @@ const mailer = require('./mailer');
 const submissions = require('./submissions-log');
 const db = require('./db');
 const accounts = require('./accounts');
+const breached = require('./breached');
+const { PostgresStore, ipKey, startSweep: startRateSweep } = require('./rate-store');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -195,7 +197,10 @@ app.use(helmet({
     },
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: 'cross-origin' },
-    crossOriginOpenerPolicy: false,
+    // a window this page opened, and a window that opened this page, cannot
+    // reach into it. allow-popups rather than plain same-origin because the chat
+    // widget opens its own windows and they have to keep working.
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
     hsts: { maxAge: 63072000, includeSubDomains: true, preload: true }
 }));
 
@@ -568,7 +573,7 @@ app.use(rateLimit({
     max: 300,
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => `all:${req.realIp}`,
+    keyGenerator: (req) => `all:${ipKey(req.realIp)}`,
     message: { error: 'Too many requests, please slow down' }
 }));
 
@@ -586,6 +591,42 @@ if (IS_STAGING) {
         res.type('text/plain').send('User-agent: *\nDisallow: /\n');
     });
 }
+
+// ---------------------------------------------------------------------------
+// where to send a security report
+// ---------------------------------------------------------------------------
+//
+// RFC 9116. It exists so that somebody who finds a hole in this site has an
+// obvious place to send it instead of guessing at an address, giving up, or
+// putting it on twitter. For a company that sells security, not having one is a
+// statement in itself.
+//
+// The expiry is a year out, computed rather than written down, because a stale
+// security.txt is worse than none: it says the contact was true once.
+app.get(['/.well-known/security.txt', '/security.txt'], (req, res) => {
+    const year = new Date();
+    year.setUTCFullYear(year.getUTCFullYear() + 1);
+    res.type('text/plain; charset=utf-8');
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.send([
+        '# Found something wrong with this site? Please tell us.',
+        '# We will answer, we will not send lawyers, and we will credit you if you want it.',
+        '',
+        'Contact: mailto:security@sentinelpay.org',
+        'Contact: https://sentinelpay.org/book-a-demo',
+        'Expires: ' + year.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+        'Preferred-Languages: en, hr, de',
+        'Canonical: https://sentinelpay.org/.well-known/security.txt',
+        '',
+        '# In scope: sentinelpay.org and its subdomains, and the accounts api under /v1.',
+        '# Out of scope: reports from automated scanners with no working proof,',
+        '# rate limits, missing headers with no exploit, and anything requiring',
+        '# physical access or a compromised device.',
+        '# Please do not run load tests, and please do not touch other people\'s accounts:',
+        '# ask us for a test account instead.',
+        '',
+    ].join('\n'));
+});
 
 // Subdomain routing, served by this same service via Host header (no extra service):
 //  - blog.* -> the blog page (public/blog.html)
@@ -806,7 +847,8 @@ const demoRequestLimiter = rateLimit({
     max: 5,
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => `demo_request:${req.realIp}`,
+    keyGenerator: (req) => `demo_request:${ipKey(req.realIp)}`,
+    store: new PostgresStore(),
     message: { error: 'Too many requests, please try again later' }
 });
 
@@ -817,7 +859,8 @@ const trialRequestLimiter = rateLimit({
     max: 3,
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => `trial_request:${req.realIp}`,
+    keyGenerator: (req) => `trial_request:${ipKey(req.realIp)}`,
+    store: new PostgresStore(),
     message: { error: 'Too many requests, please try again later' }
 });
 
@@ -854,13 +897,28 @@ function limitHandler(req, res, next, options) {
 // Secure is off when there is no https, which is only ever the case on a
 // developer's own machine. Otherwise the browser would refuse to store it and
 // signing in would appear to do nothing.
-const SESSION_COOKIE = 'sp_session';
 const COOKIE_SECURE = process.env.NODE_ENV === 'production';
+// The __Host- prefix is a promise the browser enforces rather than a name: it
+// refuses to store the cookie unless it is Secure, has no Domain, and is pathed
+// at the root. That closes cookie fixing from a subdomain, which nothing else
+// here can: a script on any sibling of sentinelpay.org could otherwise set a
+// session cookie for the whole site.
+//
+// It needs Secure, and Secure needs https, which a developer's own machine does
+// not have, so the plain name is used there. The old name is still read for as
+// long as sessions opened under it can live, so nobody is signed out by a
+// rename: written under the new name, accepted under either.
+const SESSION_COOKIE = COOKIE_SECURE ? '__Host-sp_session' : 'sp_session';
+const SESSION_COOKIE_OLD = 'sp_session';
 
 function readCookie(req, name) {
     const raw = String(req.headers.cookie || '');
-    const m = raw.match(new RegExp('(?:^|;\\s*)' + name + '=([^;]*)'));
+    const m = raw.match(new RegExp('(?:^|;\\s*)' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '=([^;]*)'));
     return m ? decodeURIComponent(m[1]) : '';
+}
+
+function readSessionCookie(req) {
+    return readCookie(req, SESSION_COOKIE) || readCookie(req, SESSION_COOKIE_OLD);
 }
 
 function setSessionCookie(res, token, maxAgeSeconds) {
@@ -869,12 +927,41 @@ function setSessionCookie(res, token, maxAgeSeconds) {
         secure: COOKIE_SECURE,
         sameSite: 'lax',
         path: '/',
+        // the hard stop, not the idle window. the session also dies after a week
+        // of not being used, and the cookie cannot know that: it is not renewed
+        // per request, so pinning it to the idle window would sign out somebody
+        // who has been here every day. a cookie that outlives its session costs
+        // one refused request; the other way round costs a sign-in a week.
         maxAge: maxAgeSeconds * 1000,
     });
 }
 
 function clearSessionCookie(res) {
-    res.clearCookie(SESSION_COOKIE, {
+    const opts = { httpOnly: true, secure: COOKIE_SECURE, sameSite: 'lax', path: '/' };
+    res.clearCookie(SESSION_COOKIE, opts);
+    if (SESSION_COOKIE !== SESSION_COOKIE_OLD) res.clearCookie(SESSION_COOKIE_OLD, opts);
+}
+
+// The browser that started a sign-up.
+//
+// Short lived, httpOnly, and it holds a random value whose hash is on the
+// pending row. Verify will not finish a sign-up without it, which is what stops
+// somebody starting a sign-up on an address that is not theirs and letting the
+// owner's code finish it into an account with the starter's password.
+const SIGNUP_COOKIE = COOKIE_SECURE ? '__Host-sp_signup' : 'sp_signup';
+
+function setSignupCookie(res, value, seconds) {
+    res.cookie(SIGNUP_COOKIE, value, {
+        httpOnly: true,
+        secure: COOKIE_SECURE,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: seconds * 1000,
+    });
+}
+
+function clearSignupCookie(res) {
+    res.clearCookie(SIGNUP_COOKIE, {
         httpOnly: true, secure: COOKIE_SECURE, sameSite: 'lax', path: '/',
     });
 }
@@ -883,7 +970,7 @@ function clearSessionCookie(res) {
 // than by a global middleware: a database round trip on every request for a
 // static page is a cost with nothing to show for it.
 async function currentUser(req) {
-    const token = readCookie(req, SESSION_COOKIE);
+    const token = readSessionCookie(req);
     if (!token) return null;
     return accounts.readSession(token);
 }
@@ -894,7 +981,8 @@ const authRegisterLimiter = rateLimit({
     max: 5,
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => `auth_register:${req.realIp}`,
+    keyGenerator: (req) => `auth_register:${ipKey(req.realIp)}`,
+    store: new PostgresStore(),
     message: { error: 'Too many attempts, please try again later' }
 });
 // Guessing is the attack here, and a six digit code has a million answers. Twenty
@@ -905,7 +993,8 @@ const authVerifyLimiter = rateLimit({
     max: 20,
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => `auth_verify:${req.realIp}`,
+    keyGenerator: (req) => `auth_verify:${ipKey(req.realIp)}`,
+    store: new PostgresStore(),
     message: { error: 'Too many attempts, please try again later' }
 });
 // Signing in is where a leaked password list gets tried. Ten an hour per ip is
@@ -917,7 +1006,8 @@ const authLoginLimiter = rateLimit({
     max: 10,
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => `auth_login:${req.realIp}`,
+    keyGenerator: (req) => `auth_login:${ipKey(req.realIp)}`,
+    store: new PostgresStore(),
     message: { error: 'Too many attempts, please try again later' }
 });
 // A resend button is a button that sends mail to somebody else's inbox on demand.
@@ -927,7 +1017,8 @@ const authResendLimiter = rateLimit({
     max: 5,
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => `auth_resend:${req.realIp}`,
+    keyGenerator: (req) => `auth_resend:${ipKey(req.realIp)}`,
+    store: new PostgresStore(),
     message: { error: 'Too many attempts, please try again later' }
 });
 // Asking for a reset link posts mail to an address the sender chooses, which is
@@ -940,7 +1031,8 @@ const authForgotLimiter = rateLimit({
     max: 5,
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => `auth_forgot:${req.realIp}`,
+    keyGenerator: (req) => `auth_forgot:${ipKey(req.realIp)}`,
+    store: new PostgresStore(),
     message: { error: 'Too many attempts, please try again later' }
 });
 // Setting the password from a link. The token is 32 random bytes, so guessing
@@ -951,7 +1043,8 @@ const authResetLimiter = rateLimit({
     max: 20,
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => `auth_reset:${req.realIp}`,
+    keyGenerator: (req) => `auth_reset:${ipKey(req.realIp)}`,
+    store: new PostgresStore(),
     message: { error: 'Too many attempts, please try again later' }
 });
 
@@ -967,7 +1060,11 @@ const authResetLimiter = rateLimit({
 function adminOk(req) {
     const adminToken = process.env.ADMIN_TOKEN || '';
     if (!adminToken) return false;
-    const provided = String(req.get('x-admin-token') || req.query.token || '');
+    // header only. ?token= used to work as well, and a query string is written
+    // to every access log, proxy log and browser history it passes through: the
+    // one credential that bypasses accounts entirely should not be the one
+    // thing sitting in a log line.
+    const provided = String(req.get('x-admin-token') || '');
     return crypto.timingSafeEqual(sha256(provided), sha256(adminToken));
 }
 
@@ -1023,9 +1120,19 @@ function requireStaff(action) {
         if (!asking) return sendPage(res, req, '404.html', 404);
         req.staff = asking;
         // the point of the whole exercise: looking at somebody's details is an
-        // event, and events have a name on them
+        // event, and events have a name on them.
+        //
+        // the line to stdout stays, because it is what you watch while something
+        // is going wrong. the row is what answers the question three months
+        // later, which is when it is actually asked.
         console.log('[staff] ' + asking.kind + ' ' + asking.who + ' -> ' + action +
             (req.query.ref ? ' ref=' + String(req.query.ref).slice(0, 32) : ''));
+        accounts.audit('staff-access', {
+            actor: asking.kind + ':' + asking.who,
+            subject: req.query.ref ? String(req.query.ref).slice(0, 120) : null,
+            ip: ipKey(req.realIp),
+            detail: action,
+        });
         return next();
     };
 }
@@ -1101,9 +1208,10 @@ function escapeHtml(v) {
 app.get('/v1/mail-preview', requireStaff('mail preview'), (req, res) => {
     const name = String(req.query.t || '');
     const lang = String(req.query.lang || 'en');
-    const token = String(req.get('x-admin-token') || req.query.token || '');
-    const link = (t, l) => '/v1/mail-preview?t=' + encodeURIComponent(t) + '&lang=' + l +
-        (req.query.token ? '&token=' + encodeURIComponent(token) : '');
+    // the links carry no credential. the admin token is a header now, and a
+    // signed-in staff member does not need one at all: the session is what
+    // opened this page and it is what follows the link.
+    const link = (t, l) => '/v1/mail-preview?t=' + encodeURIComponent(t) + '&lang=' + l;
 
     res.set('Cache-Control', 'no-store, private');
     // script-src 'self' is here for one reason: cloudflare rewrites every email
@@ -1268,6 +1376,56 @@ app.get('/v1/inbox', requireStaff('inbox'), (req, res) => {
         '<div id="rows"></div>' +
         '<div id="pager"></div>' +
         '</div><script src="/inbox.js?v=1"></script></body>');
+});
+
+// The audit trail, read back.
+//
+// Everything security-shaped writes a row: sign-ins, refusals, resets, sign-ups,
+// and every time somebody with a staff account opened a lead. This is where that
+// is read, because a trail nobody can read is a trail nobody checks.
+//
+// No names and no addresses on this page. The subject column is a blind index,
+// which is the same thing every other table here is keyed by: enough to follow
+// one account through a week, and nothing at all on its own.
+app.get('/v1/audit', requireStaff('audit trail'), async (req, res) => {
+    res.set('Cache-Control', 'no-store, private');
+    res.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
+    res.set('Referrer-Policy', 'no-referrer');
+    const rows = await accounts.recentAudit({
+        limit: Number(req.query.limit) || 200,
+        kind: String(req.query.kind || ''),
+        subject: String(req.query.subject || ''),
+    });
+    if (String(req.query.format || '') === 'json') return res.json({ rows });
+
+    res.set('Content-Security-Policy',
+        "default-src 'none'; style-src 'unsafe-inline'; style-src-attr 'unsafe-inline'; form-action 'none'");
+    const cell = (v) => '<td style="padding:6px 12px 6px 0;white-space:nowrap;">' + escapeHtml(v == null ? '' : String(v)) + '</td>';
+    const body = rows.map((r) =>
+        '<tr>' +
+        cell(new Date(r.at).toISOString().replace('T', ' ').slice(0, 19)) +
+        cell(r.kind) +
+        cell(r.actor) +
+        cell(r.subject ? String(r.subject).slice(0, 12) : '') +
+        cell(r.ip) +
+        cell(r.detail) +
+        '</tr>').join('');
+    res.type('html').send(
+        '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+        '<meta name="robots" content="noindex,nofollow"><title>audit</title>' +
+        '<body style="margin:0;padding:32px 18px 64px;background:#f4f6fa;' +
+        'font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Inter,sans-serif;color:#0e2358;">' +
+        '<div style="max-width:1100px;margin:0 auto;">' +
+        '<h1 style="font-size:20px;font-weight:800;margin:0 0 4px;">audit</h1>' +
+        '<p style="margin:0 0 18px;color:rgba(14,35,88,0.6);font-size:13px;">' +
+        'sign-ins, refusals, resets and every staff look at a lead. ' + rows.length + ' event(s), newest first. ' +
+        'the subject column is a blind index, not an address. add ?format=json for the raw rows.</p>' +
+        '<table style="border-collapse:collapse;font-size:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">' +
+        '<tr style="text-align:left;color:#94a0bd;">' +
+        ['when (utc)', 'kind', 'actor', 'subject', 'network', 'detail']
+            .map((h) => '<th style="padding:0 12px 8px 0;font-weight:600;">' + h + '</th>').join('') +
+        '</tr>' + body + '</table>' +
+        '</div></body>');
 });
 
 // What the account store knows about one address. Same token gate, same 404 when
@@ -1468,6 +1626,12 @@ app.post('/v1/auth/register', requireCloudflareOrigin, authRegisterLimiter, asyn
         }
         const pwProblem = passwordProblem(password, email, firstName, lastName);
         if (pwProblem) return res.status(400).json({ error: pwProblem });
+        // and then the one rule that is not about shape: has this password
+        // already been in a breach. it is checked without the password leaving
+        // this process, and a check that cannot run lets the sign-up through.
+        if (await breached.isBreached(password)) {
+            return res.status(400).json({ error: 'That password has appeared in a data breach. Please choose a different one.' });
+        }
 
         if (!db.available()) {
             return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
@@ -1531,6 +1695,10 @@ app.post('/v1/auth/register', requireCloudflareOrigin, authRegisterLimiter, asyn
         // mailer on the line above this one, which is the thread to pull on when
         // somebody says the code never arrived.
         console.log('[auth] register: code sent, flags: ' + (flags.join(',') || 'none'));
+        // the proof that this browser is the one that started it. it outlives
+        // the code by a minute so that a code entered on the last second still
+        // has something to be checked against.
+        if (started.origin) setSignupCookie(res, started.origin, (started.expiresInMin + 1) * 60);
         res.json({ ok: true, next: 'verify', expiresInMin: started.expiresInMin });
     } catch (err) {
         console.error('[auth register error]', err.message);
@@ -1576,7 +1744,15 @@ app.post('/v1/auth/verify', requireCloudflareOrigin, authVerifyLimiter, async (r
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Invalid submission' });
         if (!db.available()) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
 
-        const out = await accounts.verifySignup(email, code);
+        const out = await accounts.verifySignup(email, code, readCookie(req, SIGNUP_COOKIE));
+        if (out.reason === 'bad-origin') {
+            // not a wrong code: a right code in the wrong browser. that is either
+            // somebody who started the sign-up somewhere else, or somebody
+            // finishing a sign-up they did not start, and the answer is the same
+            // either way: start again here.
+            console.log('[auth] verify: refused, the code was entered in a browser that did not start this sign-up');
+            return res.status(400).json({ error: 'Please start the sign-up again in this browser, and we will send a new code.' });
+        }
         if (out.reason === 'expired') {
             return res.status(400).json({ error: 'That code has expired. Ask for a new one.' });
         }
@@ -1611,6 +1787,7 @@ app.post('/v1/auth/verify', requireCloudflareOrigin, authVerifyLimiter, async (r
 
         // signed in from here. the panel that follows is a real signed-in state
         // rather than a promise to email them when one exists.
+        clearSignupCookie(res);
         if (out.session) setSessionCookie(res, out.session.token, out.session.maxAgeSeconds);
         else console.error('[auth] the account was made but no session could be opened');
 
@@ -1663,9 +1840,57 @@ function notifyInternally({ kind, ref, country, lang, flags, subject, eyebrow, t
     });
 }
 
+// ---------------------------------------------------------------------------
+// "somebody signed in"
+// ---------------------------------------------------------------------------
+//
+// Sent the first time an account is used from a given browser, and not again.
+// A notice on every sign-in is a notice nobody reads, and the one that matters
+// is the one that arrives on a morning you were not signing in anywhere.
+//
+// What identifies the browser is a keyed hash of what it says about itself plus
+// the network it came from, computed in accounts.js. The strings themselves are
+// not kept.
+function whenFor(lang) {
+    try {
+        return new Intl.DateTimeFormat(lang === 'hr' ? 'hr-HR' : (lang === 'de' ? 'de-DE' : 'en-GB'), {
+            dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC',
+        }).format(new Date()) + ' (UTC)';
+    } catch (err) {
+        return new Date().toISOString().replace('T', ' ').slice(0, 16) + ' (UTC)';
+    }
+}
+
+async function tellAboutNewDevice(req, out) {
+    if (!out || !out.userId || !out.email) return;
+    const fresh = await accounts.noteDevice(out.userId, [
+        String(req.get('user-agent') || ''),
+        String(req.get('accept-language') || ''),
+        ipKey(req.realIp),
+    ]);
+    accounts.audit('login', {
+        actor: out.userId,
+        ip: ipKey(req.realIp),
+        detail: fresh ? 'new device' : 'known device',
+    });
+    if (!fresh) return;
+    await mailer.sendNewSignIn({
+        to: out.email,
+        lang: out.lang || 'en',
+        when: whenFor(out.lang),
+        ip: ipKey(req.realIp),
+        country: req.headers['cf-ipcountry'] || '',
+    });
+}
+
 app.post('/v1/auth/login', requireCloudflareOrigin, authLoginLimiter, async (req, res) => {
     try {
         const b = req.body || {};
+        // the sign-in form was the last door without this. every other one has
+        // had it for months, and this is the door a password list is tried on.
+        if (!(await verifyTurnstile(b['cf-turnstile-response'] || b.turnstileToken, req.realIp))) {
+            return res.status(400).json({ error: 'Verification failed, please try again' });
+        }
         const email = String(b.email || '').trim().toLowerCase().slice(0, 160);
         const password = typeof b.password === 'string' ? b.password : '';
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !password) {
@@ -1676,6 +1901,17 @@ app.post('/v1/auth/login', requireCloudflareOrigin, authLoginLimiter, async (req
         }
 
         const out = await accounts.signIn(email, password);
+        if (out.reason === 'too-many-attempts') {
+            // the address has earned a wait. the same answer, and the same wait,
+            // whether or not there is an account behind it: a throttle that only
+            // slowed down real accounts would answer the question the rest of
+            // this endpoint refuses to.
+            console.log('[auth] login: throttled');
+            return res.status(429).json({
+                error: 'Too many sign-in attempts. Please wait a moment and try again.',
+                retryIn: out.retryIn,
+            });
+        }
         if (out.reason === 'bad-credentials') {
             console.log('[auth] login: refused');
             return res.status(401).json({ error: 'That email and password do not match an account.' });
@@ -1685,6 +1921,12 @@ app.post('/v1/auth/login', requireCloudflareOrigin, authLoginLimiter, async (req
         console.log('[auth] login: signed in');
         setSessionCookie(res, out.session.token, out.session.maxAgeSeconds);
         res.json({ ok: true, name: out.name });
+
+        // and then, after the answer has gone: was this a browser this account
+        // has used before, and if not, tell the owner. none of it is allowed to
+        // hold up the sign-in or to fail it.
+        tellAboutNewDevice(req, out).catch((err) =>
+            console.error('[auth] new-device notice failed: ' + err.message));
     } catch (err) {
         console.error('[auth login error]', err.message);
         res.status(500).json({ error: 'Could not sign you in right now. Please try again shortly.' });
@@ -1829,6 +2071,9 @@ app.post('/v1/auth/reset', requireCloudflareOrigin, authResetLimiter, async (req
             ? passwordProblem(password, found.email, known[0] || '', known.slice(1).join(' '))
             : passwordProblem(password, found.email, firstName, lastName);
         if (pwProblem) return res.status(400).json({ error: pwProblem });
+        if (await breached.isBreached(password)) {
+            return res.status(400).json({ error: 'That password has appeared in a data breach. Please choose a different one.' });
+        }
 
         const out = await accounts.finishReset(token, password, {
             name: found.hasAccount ? '' : `${firstName} ${lastName}`,
@@ -1841,7 +2086,23 @@ app.post('/v1/auth/reset', requireCloudflareOrigin, authResetLimiter, async (req
 
         console.log('[auth] reset: ' + (out.created ? 'account created' : 'password changed') + ', other sessions ended');
         if (out.session) setSessionCookie(res, out.session.token, out.session.maxAgeSeconds);
+        // a half-finished sign-up on the same address is over: the account
+        // exists now, and its cookie would only be a stale proof of nothing
+        clearSignupCookie(res);
         res.json({ ok: true, created: out.created });
+
+        // and the owner is told, after the answer has gone. not for the person
+        // who just did it, who knows: for the one who did not, because this mail
+        // is the only thing that reaches them while it still matters.
+        if (!out.created && out.email) {
+            mailer.sendPasswordChanged({
+                to: out.email,
+                lang: out.lang || 'en',
+                when: whenFor(out.lang),
+                ip: ipKey(req.realIp),
+                country: req.headers['cf-ipcountry'] || '',
+            }).catch((err) => console.error('[auth] password-changed notice failed: ' + err.message));
+        }
     } catch (err) {
         console.error('[auth reset error]', err.message);
         res.status(500).json({ error: 'Could not reach us just now. Please try again in a moment.' });
@@ -1852,7 +2113,7 @@ app.post('/v1/auth/reset', requireCloudflareOrigin, authResetLimiter, async (req
 // forgotten by this browser.
 app.post('/v1/auth/logout', requireCloudflareOrigin, async (req, res) => {
     try {
-        await accounts.endSession(readCookie(req, SESSION_COOKIE));
+        await accounts.endSession(readSessionCookie(req));
     } catch (err) {
         console.error('[auth logout error]', err.message);
     }
@@ -1863,7 +2124,20 @@ app.post('/v1/auth/logout', requireCloudflareOrigin, async (req, res) => {
 // Who is signed in. The navigation asks this on every page so it can show the
 // right thing, so it answers 200 with `signedIn: false` rather than 401: not
 // being signed in is an ordinary answer here, not a failure.
-app.get('/v1/auth/me', async (req, res) => {
+// Every page asks this, so it is generous. It is here at all because it is the
+// one unauthenticated endpoint that reaches the database on every call, and a
+// script asking it in a loop is free traffic that costs us a query each time.
+const authMeLimiter = rateLimit({
+    handler: limitHandler,
+    windowMs: 60 * 1000,
+    max: 120,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => `auth_me:${ipKey(req.realIp)}`,
+    message: { error: 'Too many requests, please slow down' }
+});
+
+app.get('/v1/auth/me', authMeLimiter, async (req, res) => {
     res.set('Cache-Control', 'no-store, private');
     try {
         const me = await currentUser(req);
@@ -2105,6 +2379,8 @@ app.listen(PORT, () => {
             console.error('[db] SUBMISSIONS_KEY is not set: personal data will be stored unencrypted');
         }
         db.startRetention();
+        // spent rate-limit windows go with everything else that expires
+        startRateSweep();
         // unfinished sign-ups expire with everything else
         setTimeout(() => { accounts.purge(); }, 45000).unref();
         setInterval(() => { accounts.purge(); }, 6 * 60 * 60 * 1000).unref();

@@ -758,6 +758,114 @@ function resetLinkMessage({ to, link, lang, minutes }) {
 }
 async function sendResetLink(opts) { return send(resetLinkMessage(opts)); }
 
+// ---------------------------------------------------------------------------
+// the two notices nobody asks for
+// ---------------------------------------------------------------------------
+//
+// A password that changed, and a sign-in from somewhere new. Neither is
+// something the owner asked us to send, and that is the point: if they did not
+// do it, this mail is the only way they find out while it still matters. Both
+// say what happened, when, and from roughly where, and both end in the same
+// place: here is what to do if this was not you.
+//
+// No link to press. A security notice that asks you to click something is a
+// template for the phishing mail that imitates it, so these say "go to the site
+// and change your password" and let the reader find their own way there.
+const CHANGED_COPY = {
+    en: {
+        subject: 'Your Sentinelpay password was changed',
+        eyebrow: 'Security',
+        title: 'Your password was changed',
+        intro: (w) => 'This happened on ' + w + '. Every other device that was signed in has been signed out.',
+        footnote: 'If this was you, there is nothing to do. If it was not, ask for a new password straight away and write to us: whoever did this no longer has a way in, but we should look at how they got one.',
+    },
+    hr: {
+        subject: 'Vaša Sentinelpay lozinka je promijenjena',
+        eyebrow: 'Sigurnost',
+        title: 'Lozinka je promijenjena',
+        intro: (w) => 'Dogodilo se ' + w + '. Svi ostali uređaji na kojima ste bili prijavljeni su odjavljeni.',
+        footnote: 'Ako ste to bili vi, ne treba ništa raditi. Ako nisu, odmah zatražite novu lozinku i pišite nam: onaj ko je to napravio više nema pristup, ali želimo vidjeti kako ga je dobio.',
+    },
+    de: {
+        subject: 'Ihr Sentinelpay-Passwort wurde geändert',
+        eyebrow: 'Sicherheit',
+        title: 'Ihr Passwort wurde geändert',
+        intro: (w) => 'Das war am ' + w + '. Alle anderen angemeldeten Geräte wurden abgemeldet.',
+        footnote: 'Waren Sie das, ist nichts zu tun. Waren Sie es nicht, fordern Sie sofort ein neues Passwort an und schreiben Sie uns: der Zugang ist bereits weg, aber wir wollen wissen, wie er entstanden ist.',
+    },
+};
+
+function passwordChangedMessage({ to, lang, when, ip, country }) {
+    const copy = CHANGED_COPY[lang] || CHANGED_COPY.en;
+    const label = (LABELS[lang] || LABELS.en);
+    return {
+        to: to,
+        lang: lang,
+        subject: copy.subject,
+        eyebrow: copy.eyebrow,
+        title: copy.title,
+        intro: copy.intro(when),
+        pairs: [
+            [label.when, when],
+            [label.where, country || label.unknown],
+            [label.address, ip || label.unknown],
+        ],
+        footnote: copy.footnote,
+    };
+}
+
+const SIGNIN_COPY = {
+    en: {
+        subject: 'A new sign-in to your Sentinelpay account',
+        eyebrow: 'Security',
+        title: 'Somebody signed in',
+        intro: (w) => 'A device that had not signed in before did so on ' + w + '.',
+        footnote: 'If this was you, there is nothing to do. If it was not, change your password now: that signs out every device, including the one this is about.',
+    },
+    hr: {
+        subject: 'Nova prijava na vaš Sentinelpay račun',
+        eyebrow: 'Sigurnost',
+        title: 'Netko se prijavio',
+        intro: (w) => 'Uređaj s kojeg se dosad nije prijavljivalo prijavio se ' + w + '.',
+        footnote: 'Ako ste to bili vi, ne treba ništa raditi. Ako nisu, promijenite lozinku sada: time se odjavljuju svi uređaji, uključujući ovaj.',
+    },
+    de: {
+        subject: 'Eine neue Anmeldung bei Ihrem Sentinelpay-Konto',
+        eyebrow: 'Sicherheit',
+        title: 'Jemand hat sich angemeldet',
+        intro: (w) => 'Ein Gerät, das sich vorher nie angemeldet hatte, hat es am ' + w + ' getan.',
+        footnote: 'Waren Sie das, ist nichts zu tun. Waren Sie es nicht, ändern Sie jetzt Ihr Passwort: das meldet jedes Gerät ab, auch dieses.',
+    },
+};
+
+const LABELS = {
+    en: { when: 'When', where: 'Country', address: 'Network address', unknown: 'not recorded' },
+    hr: { when: 'Kada', where: 'Zemlja', address: 'Mrežna adresa', unknown: 'nije zabilježeno' },
+    de: { when: 'Wann', where: 'Land', address: 'Netzwerkadresse', unknown: 'nicht erfasst' },
+};
+
+function newSignInMessage({ to, lang, when, ip, country }) {
+    const copy = SIGNIN_COPY[lang] || SIGNIN_COPY.en;
+    const label = (LABELS[lang] || LABELS.en);
+    return {
+        to: to,
+        lang: lang,
+        subject: copy.subject,
+        eyebrow: copy.eyebrow,
+        title: copy.title,
+        intro: copy.intro(when),
+        pairs: [
+            [label.when, when],
+            [label.where, country || label.unknown],
+            [label.address, ip || label.unknown],
+        ],
+        footnote: copy.footnote,
+    };
+}
+
+async function sendPasswordChanged(opts) { return send(passwordChangedMessage(opts)); }
+async function sendNewSignIn(opts) { return send(newSignInMessage(opts)); }
+
 // There was a message here for "this address already has an account". It went
 // out instead of a code, so that the form could answer identically either way
 // and give nothing away. The form now says so itself, which means the person
@@ -780,6 +888,12 @@ const PREVIEWS = {
     'reset-link': (lang) => resetLinkMessage({
         to: 'ana@primjer.hr', lang, minutes: 60,
         link: SITE + '/reset-password?token=example-token-not-a-real-one',
+    }),
+    'password-changed': (lang) => passwordChangedMessage({
+        to: 'ana@primjer.hr', lang, when: '12.09.2026. 14:20 (UTC)', ip: '198.51.100.24', country: 'HR',
+    }),
+    'new-sign-in': (lang) => newSignInMessage({
+        to: 'ana@primjer.hr', lang, when: '12.09.2026. 14:20 (UTC)', ip: '198.51.100.24', country: 'HR',
     }),
     // the two that go to us rather than to a customer. these are written where
     // they are sent, so the sample here mirrors them rather than sharing code:
@@ -820,4 +934,5 @@ function render(name, lang) {
 module.exports = {
     send, compose, sendTrialWelcome, sendSignupCode, sendResetLink,
     render, previewNames, isConfigured, domainStatus, MAIL_FROM, MAIL_TO,
+    sendPasswordChanged, sendNewSignIn,
 };

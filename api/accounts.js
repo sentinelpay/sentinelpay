@@ -54,6 +54,9 @@ const SESSION_IDLE_DAYS = Math.min(Math.max(Number(process.env.SESSION_IDLE_DAYS
 // One person, one browser, a handful of tabs. A number this high is not a limit
 // on anybody real; it is a ceiling on a script that signs in in a loop.
 const SESSIONS_PER_USER = 20;
+// How long the audit trail is kept. Long enough that an incident in march can be
+// looked at in june, bounded because the rows carry ip addresses.
+const AUDIT_RETENTION_DAYS = Math.min(Math.max(Number(process.env.AUDIT_RETENTION_DAYS || 400), 30), 3650);
 
 // ---------------------------------------------------------------------------
 // schema
@@ -113,6 +116,73 @@ CREATE TABLE IF NOT EXISTS reset_tokens (
     lang          text
 );
 CREATE INDEX IF NOT EXISTS reset_tokens_expiry_idx ON reset_tokens (expires_at);
+
+-- Consecutive failed sign-ins, per address.
+--
+-- The ip limit in index.js is the wall in front of one machine working through a
+-- password list. It is not a wall in front of a thousand machines working
+-- through the same list against one address, and that is what credential
+-- stuffing is: the attacker has the passwords already and needs one attempt from
+-- each of a great many addresses. This follows the address instead, so the
+-- hundredth attempt is slow no matter where it came from.
+--
+-- keyed on the blind index, which exists for any address whether or not there is
+-- an account behind it. That is on purpose: a throttle that only applies to real
+-- accounts answers "does this address have an account" by how fast it refuses.
+CREATE TABLE IF NOT EXISTS login_fails (
+    email_hash    text        PRIMARY KEY,
+    fails         integer     NOT NULL DEFAULT 0,
+    first_at      timestamptz NOT NULL DEFAULT now(),
+    last_at       timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS login_fails_last_idx ON login_fails (last_at);
+
+-- What happened, kept where it can be read back.
+--
+-- Everything security-shaped used to go to stdout and nowhere else. That is a
+-- log store with somebody else's retention on it, no query, and no answer to
+-- "who opened this lead in March", which is exactly the question an aml product
+-- has to be able to answer about itself.
+--
+-- No names and no addresses: the actor is a user id or a staff label, the subject is a
+-- blind index or a reference. the row says what was done and by whom, and the
+-- thing it was done to is looked up through the same index everything else uses,
+-- so an erasure request does not leave the audit trail pointing at a person.
+CREATE TABLE IF NOT EXISTS audit_events (
+    id            bigserial   PRIMARY KEY,
+    at            timestamptz NOT NULL DEFAULT now(),
+    kind          text        NOT NULL,
+    actor         text,
+    subject       text,
+    ip            text,
+    detail        text
+);
+CREATE INDEX IF NOT EXISTS audit_events_at_idx      ON audit_events (at DESC);
+CREATE INDEX IF NOT EXISTS audit_events_kind_idx    ON audit_events (kind, at DESC);
+CREATE INDEX IF NOT EXISTS audit_events_subject_idx ON audit_events (subject);
+
+-- Which browser started a sign-up.
+--
+-- The pending row carries the password of whoever started it, so a sign-up
+-- started for somebody else's address and finished by that somebody else makes
+-- an account with the starter's password in it. That is a pre-hijack, and the
+-- fix is that finishing requires proving you are the browser that started:
+-- a random value in an httpOnly cookie, its hash here, checked at verify.
+ALTER TABLE signup_codes ADD COLUMN IF NOT EXISTS origin_hash text;
+
+-- Devices this account has signed in from before.
+--
+-- Only so that "somebody signed in" can be sent the first time and not on every
+-- ordinary morning. What is stored is a keyed hash of the browser it came from,
+-- never the browser string itself: the point is recognising a return, not
+-- building a fingerprint we could hand to anybody.
+CREATE TABLE IF NOT EXISTS known_devices (
+    user_id     bigint      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    device_hash text        NOT NULL,
+    first_at    timestamptz NOT NULL DEFAULT now(),
+    last_at     timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, device_hash)
+);
 
 -- One row per address, and that is what makes the cooldown safe. Asking again
 -- replaces the row rather than adding one, so the whole of "have they waited,
@@ -259,9 +329,13 @@ async function startSignup({ email, name, password, lang, flags }) {
 
     const code = newCode();
     const passwordHash = await hashPassword(password);
+    // the browser that started this. the caller puts it in an httpOnly cookie and
+    // verify will not finish a sign-up without it, so a sign-up started for
+    // somebody else's address cannot be finished by that somebody else.
+    const origin = crypto.randomBytes(32).toString('base64url');
     await db.query(
-        `INSERT INTO signup_codes (email_hash, expires_at, code_hash, email_enc, name_enc, password_hash, lang, flags)
-         VALUES ($1, now() + ($2 || ' minutes')::interval, $3, $4, $5, $6, $7, $8)
+        `INSERT INTO signup_codes (email_hash, expires_at, code_hash, email_enc, name_enc, password_hash, lang, flags, origin_hash)
+         VALUES ($1, now() + ($2 || ' minutes')::interval, $3, $4, $5, $6, $7, $8, $9)
          ON CONFLICT (email_hash) DO UPDATE SET
              created_at    = now(),
              expires_at    = now() + ($2 || ' minutes')::interval,
@@ -274,7 +348,8 @@ async function startSignup({ email, name, password, lang, flags }) {
              name_enc      = EXCLUDED.name_enc,
              password_hash = EXCLUDED.password_hash,
              lang          = EXCLUDED.lang,
-             flags         = EXCLUDED.flags`,
+             flags         = EXCLUDED.flags,
+             origin_hash   = EXCLUDED.origin_hash`,
         [
             emailHash, String(CODE_TTL_MIN), hashCode(code, emailHash),
             db.seal('signup-email:' + emailHash, email),
@@ -282,9 +357,11 @@ async function startSignup({ email, name, password, lang, flags }) {
             passwordHash,
             lang || 'en',
             (flags || []).join(',').slice(0, 200),
+            hashToken(origin),
         ]
     );
-    return { ok: true, code, expiresInMin: CODE_TTL_MIN };
+    audit('signup-started', { subject: emailHash });
+    return { ok: true, code, expiresInMin: CODE_TTL_MIN, origin };
 }
 
 // Sends the same code again, without touching the code itself: a resend that
@@ -329,7 +406,7 @@ async function resendSignup(email) {
 // wrong guess costs an attempt whether or not there was ever a pending row, and
 // the answer is the same either way: telling a stranger which addresses have a
 // sign-up in progress is telling them which addresses exist.
-async function verifySignup(email, code) {
+async function verifySignup(email, code, origin) {
     if (!(await init())) return { ok: false, reason: 'unavailable' };
     const emailHash = db.blindIndex(email);
     if (!emailHash) return { ok: false, reason: 'unavailable' };
@@ -344,6 +421,24 @@ async function verifySignup(email, code) {
         return { ok: false, reason: 'expired' };
     }
     if (row.attempts >= CODE_MAX_ATTEMPTS) return { ok: false, reason: 'too-many-attempts' };
+
+    // the browser that started this sign-up, or nobody.
+    //
+    // this is what stops a pre-hijack: the pending row holds the password of
+    // whoever started it, so without this check somebody could start a sign-up
+    // on an address that is not theirs, let the owner receive the code, and end
+    // up with an account on that address whose password they chose. a wrong
+    // origin does not burn a guess, because the guess is not what is wrong.
+    //
+    // rows written before this column existed have no origin and are let
+    // through: the alternative is every sign-up in flight at deploy time
+    // breaking, and they expire within the quarter of an hour anyway.
+    if (row.origin_hash) {
+        if (!origin || !sameHash(row.origin_hash, hashToken(String(origin)))) {
+            audit('signup-origin-refused', { subject: emailHash });
+            return { ok: false, reason: 'bad-origin' };
+        }
+    }
 
     if (!sameHash(row.code_hash, hashCode(String(code), emailHash))) {
         const bumped = await db.query(
@@ -392,6 +487,7 @@ async function verifySignup(email, code) {
     // signed in on the spot. they have just proved the address is theirs, which
     // is a stronger check than the password they are about to be asked for, so
     // asking for it again here would be ceremony rather than security.
+    audit('signup-finished', { actor: userId, subject: emailHash });
     const session = userId === null ? null : await startSession(userId);
     if (userId !== null) {
         db.query('UPDATE users SET last_login_at = now() WHERE id = $1', [userId])
@@ -539,14 +635,166 @@ async function endSession(token) {
 // password that is wrong, and it takes about as long either way, because the
 // difference between the two is exactly what somebody testing a leaked password
 // list is looking for.
+// ---------------------------------------------------------------------------
+// devices
+// ---------------------------------------------------------------------------
+//
+// A keyed hash of whatever the browser says about itself, so a return can be
+// recognised without the browser string being kept. Keyed with the same index
+// key everything else uses, so a copy of the table proves nothing on its own.
+function deviceHash(parts) {
+    return crypto.createHmac('sha256', db.indexKey() || Buffer.alloc(32))
+        .update('device:' + (parts || []).join('|'), 'utf8')
+        .digest('hex');
+}
+
+// Records the device and answers whether it is new to this account. Fails open
+// on the safe side: an error answers "known", because the cost of getting that
+// wrong is a missing notice, and the cost of the other answer is a mail every
+// morning that teaches people to ignore these.
+async function noteDevice(userId, parts) {
+    if (!userId) return false;
+    const hash = deviceHash(parts);
+    try {
+        const res = await db.query(
+            `INSERT INTO known_devices (user_id, device_hash) VALUES ($1, $2)
+             ON CONFLICT (user_id, device_hash) DO UPDATE SET last_at = now()
+             RETURNING (known_devices.first_at = known_devices.last_at) AS fresh`,
+            [userId, hash]
+        );
+        return Boolean(res.rowCount && res.rows[0].fresh);
+    } catch (err) {
+        console.error('[accounts] could not record the device: ' + err.message);
+        return false;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// the audit trail
+// ---------------------------------------------------------------------------
+//
+// Fire and forget, always. An event that cannot be written must never fail the
+// thing it was describing: a sign-in that works but was not recorded is a gap in
+// a log, a sign-in refused because the log was full is an outage.
+function audit(kind, { actor, subject, ip, detail } = {}) {
+    if (!db.available()) return;
+    init().then((ok) => {
+        if (!ok) return;
+        return db.query(
+            'INSERT INTO audit_events (kind, actor, subject, ip, detail) VALUES ($1, $2, $3, $4, $5)',
+            [
+                String(kind).slice(0, 48),
+                actor === undefined || actor === null ? null : String(actor).slice(0, 120),
+                subject === undefined || subject === null ? null : String(subject).slice(0, 120),
+                ip ? String(ip).slice(0, 64) : null,
+                detail === undefined || detail === null ? null : String(detail).slice(0, 400),
+            ]
+        );
+    }).catch((err) => console.error('[accounts] could not write an audit event: ' + err.message));
+}
+
+// The trail, newest first, for the staff page. Nothing here needs decrypting:
+// the subject is a blind index, so a row says what happened to which account
+// without saying whose it is.
+async function recentAudit({ limit = 100, kind = '', subject = '' } = {}) {
+    if (!(await init())) return [];
+    const max = Math.min(Math.max(Number(limit) || 100, 1), 500);
+    const where = [];
+    const args = [];
+    if (kind) { args.push(String(kind).slice(0, 48)); where.push('kind = $' + args.length); }
+    if (subject) { args.push(String(subject).slice(0, 120)); where.push('subject = $' + args.length); }
+    args.push(max);
+    try {
+        const res = await db.query(
+            'SELECT at, kind, actor, subject, ip, detail FROM audit_events' +
+            (where.length ? ' WHERE ' + where.join(' AND ') : '') +
+            ' ORDER BY at DESC LIMIT $' + args.length,
+            args
+        );
+        return res.rows;
+    } catch (err) {
+        console.error('[accounts] could not read the audit trail: ' + err.message);
+        return [];
+    }
+}
+
+// ---------------------------------------------------------------------------
+// the sign-in throttle
+// ---------------------------------------------------------------------------
+//
+// Five wrong passwords are a person who has forgotten which one they used. From
+// there every further one costs twice the wait of the last, up to half an hour,
+// and the count clears on the first success or after an hour of being left
+// alone. The wait is the same whether or not the address has an account.
+const LOGIN_FREE_TRIES = 5;
+const LOGIN_BASE_WAIT_S = 30;
+const LOGIN_MAX_WAIT_S = 30 * 60;
+const LOGIN_FORGET_H = 1;
+
+function loginWaitFor(fails) {
+    if (fails <= LOGIN_FREE_TRIES) return 0;
+    const steps = Math.min(fails - LOGIN_FREE_TRIES - 1, 20);
+    return Math.min(LOGIN_BASE_WAIT_S * Math.pow(2, steps), LOGIN_MAX_WAIT_S);
+}
+
+// How long this address still has to wait, in seconds. 0 means go ahead.
+async function loginHold(emailHash) {
+    if (!emailHash) return 0;
+    try {
+        const res = await db.query(
+            `SELECT fails, last_at FROM login_fails
+              WHERE email_hash = $1 AND last_at > now() - ($2 || ' hours')::interval`,
+            [emailHash, String(LOGIN_FORGET_H)]
+        );
+        if (!res.rowCount) return 0;
+        const wait = loginWaitFor(res.rows[0].fails);
+        if (!wait) return 0;
+        const since = (Date.now() - new Date(res.rows[0].last_at).getTime()) / 1000;
+        return since >= wait ? 0 : Math.ceil(wait - since);
+    } catch (err) {
+        // a throttle that cannot read its own table must not lock everybody out
+        console.error('[accounts] could not read the sign-in throttle: ' + err.message);
+        return 0;
+    }
+}
+
+async function noteLoginFail(emailHash) {
+    if (!emailHash) return;
+    try {
+        await db.query(
+            `INSERT INTO login_fails (email_hash, fails) VALUES ($1, 1)
+             ON CONFLICT (email_hash) DO UPDATE SET
+                 fails = CASE WHEN login_fails.last_at > now() - ($2 || ' hours')::interval
+                              THEN login_fails.fails + 1 ELSE 1 END,
+                 first_at = CASE WHEN login_fails.last_at > now() - ($2 || ' hours')::interval
+                                 THEN login_fails.first_at ELSE now() END,
+                 last_at = now()`,
+            [emailHash, String(LOGIN_FORGET_H)]
+        );
+    } catch (err) {
+        console.error('[accounts] could not record a failed sign-in: ' + err.message);
+    }
+}
+
+function clearLoginFails(emailHash) {
+    if (!emailHash) return;
+    db.query('DELETE FROM login_fails WHERE email_hash = $1', [emailHash])
+        .catch((err) => console.error('[accounts] could not clear the sign-in throttle: ' + err.message));
+}
+
 async function signIn(email, password) {
     if (!(await init())) return { ok: false, reason: 'unavailable' };
     const emailHash = db.blindIndex(email);
     if (!emailHash) return { ok: false, reason: 'unavailable' };
 
+    // the wait this address has earned, before any password work is done: the
+    // point of a throttle is that the expensive part is not reached
+    const hold = await loginHold(emailHash);
+    if (hold > 0) return { ok: false, reason: 'too-many-attempts', retryIn: hold };
+
     let row = null;
     try {
-        const res = await db.query('SELECT id, email_hash, name_enc, password_hash FROM users WHERE email_hash = $1', [emailHash]);
+        const res = await db.query('SELECT id, email_hash, email_enc, name_enc, password_hash, lang FROM users WHERE email_hash = $1', [emailHash]);
         row = res.rowCount ? res.rows[0] : null;
     } catch (err) {
         console.error('[accounts] sign-in lookup failed: ' + err.message);
@@ -557,17 +805,32 @@ async function signIn(email, password) {
     // the reply does not come back noticeably sooner than a wrong password does
     if (!row) {
         await verifyPassword(String(password || ''), DUMMY_HASH);
+        await noteLoginFail(emailHash);
+        audit('login-refused', { subject: emailHash, detail: 'no account' });
         return { ok: false, reason: 'bad-credentials' };
     }
     if (!(await verifyPassword(String(password || ''), row.password_hash))) {
+        await noteLoginFail(emailHash);
+        audit('login-refused', { actor: row.id, subject: emailHash, detail: 'wrong password' });
         return { ok: false, reason: 'bad-credentials' };
     }
 
     const session = await startSession(row.id);
     if (!session) return { ok: false, reason: 'unavailable' };
+    clearLoginFails(emailHash);
     db.query('UPDATE users SET last_login_at = now() WHERE id = $1', [row.id])
         .catch((err) => console.error('[accounts] could not record the sign-in: ' + err.message));
-    return { ok: true, session, name: db.open('signup-name:' + row.email_hash, row.name_enc) };
+    audit('login', { actor: row.id, subject: emailHash });
+    return {
+        ok: true,
+        session,
+        userId: row.id,
+        name: db.open('signup-name:' + row.email_hash, row.name_enc),
+        // for the "somebody signed in" notice. the caller mails it; this is the
+        // one place that can read the address at all.
+        email: db.open('signup-email:' + row.email_hash, row.email_enc),
+        lang: row.lang || 'en',
+    };
 }
 
 // A real scrypt hash of a password nobody has, so the no-such-account path costs
@@ -609,6 +872,25 @@ async function purge() {
     } catch (err) {
         console.error('[accounts] account retention failed: ' + err.message);
     }
+    // Spent throttle counters, and the audit trail past its own retention.
+    //
+    // The trail is kept far longer than anything else here, because the question
+    // it answers is asked late: an incident in march is looked at in june. Long
+    // is not forever, though, and it holds ip addresses, so it has a limit like
+    // everything else.
+    try {
+        const stale = await db.query(
+            "DELETE FROM login_fails WHERE last_at < now() - interval '7 days'");
+        if (stale.rowCount) console.log('[accounts] swept ' + stale.rowCount + ' sign-in throttle row(s)');
+        const old = await db.query(
+            "DELETE FROM audit_events WHERE at < now() - ($1 || ' days')::interval",
+            [String(AUDIT_RETENTION_DAYS)]
+        );
+        if (old.rowCount) console.log('[accounts] swept ' + old.rowCount + ' audit event(s) past ' + AUDIT_RETENTION_DAYS + ' days');
+    } catch (err) {
+        console.error('[accounts] throttle and audit sweep failed: ' + err.message);
+    }
+
     // Sessions past their hard stop or their idle window. They would be refused
     // anyway; this stops the table growing without limit.
     try {
@@ -767,6 +1049,7 @@ async function startReset(email, lang) {
         console.error('[accounts] could not start a reset: ' + err.message);
         return { ok: false, reason: 'unavailable' };
     }
+    audit('reset-requested', { subject: emailHash });
     return { ok: true, token, expiresInMin: RESET_TTL_MIN };
 }
 
@@ -812,6 +1095,9 @@ async function finishReset(token, password, { name, flags } = {}) {
     const client = await db.connect();
     let userId = null;
     let made = false;
+    let emailHash = '';
+    let resetEmail = '';
+    let resetLang = 'en';
     try {
         await client.query('BEGIN');
         // spent first, and inside the transaction: two clicks arriving together
@@ -822,6 +1108,9 @@ async function finishReset(token, password, { name, flags } = {}) {
         );
         if (!spent.rowCount) { await client.query('ROLLBACK'); return { ok: false, reason: 'bad-token' }; }
         const row = spent.rows[0];
+        emailHash = row.email_hash;
+        resetLang = row.lang || 'en';
+        resetEmail = db.open('reset-email:' + row.email_hash, row.email_enc);
 
         const found = await client.query('SELECT id FROM users WHERE email_hash = $1 FOR UPDATE', [row.email_hash]);
         if (found.rowCount) {
@@ -881,7 +1170,8 @@ async function finishReset(token, password, { name, flags } = {}) {
     db.query('UPDATE users SET last_login_at = now() WHERE id = $1', [userId])
         .catch((err) => console.error('[accounts] could not record the sign-in: ' + err.message));
 
-    return { ok: true, created: made, session };
+    audit(made ? 'account-created-by-reset' : 'password-changed', { actor: userId, subject: emailHash });
+    return { ok: true, created: made, session, email: resetEmail, lang: resetLang };
 }
 
 // Erasure: an account and anything half-made under the same address.
@@ -912,6 +1202,7 @@ function status() {
 
 module.exports = {
     startSignup, resendSignup, verifySignup, exists, inspect, purge, forget, status,
+    audit, loginHold, recentAudit, noteDevice,
     startReset, readReset, finishReset, RESET_TTL_MIN, RESET_RESEND_WAIT_S,
     hashPassword, verifyPassword,
     signIn, startSession, readSession, endSession,

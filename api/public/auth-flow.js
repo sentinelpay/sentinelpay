@@ -1793,6 +1793,8 @@
             if (msg) replay(err, 'sp-auth-enter');
         }
 
+        var lts = makeTurnstile(form, submitBtn);
+
         var busy = false;
         form.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -1814,12 +1816,32 @@
             var label = submitBtn.textContent;
             submitBtn.textContent = t('Signing you in…');
 
-            post('/v1/auth/login', { email: email, password: password }).then(function () {
+            // the same check the sign-up form has had all along. this is the
+            // door a stolen password list is tried on, so it is the door that
+            // most needed something in front of it.
+            lts.freshToken().then(function (tok) {
+                var body = { email: email, password: password };
+                if (lts.on && !tok) {
+                    var missing = new Error('no_token');
+                    missing.noToken = true;
+                    throw missing;
+                }
+                if (tok) body['cf-turnstile-response'] = tok;
+                return post('/v1/auth/login', body);
+            }).then(function () {
+                lts.spend();
                 // replace rather than assign: the back button should not come
                 // back to a sign-in form that is now signed in
                 location.replace('/dashboard');
             }).catch(function (failed) {
-                say(reason(failed));
+                lts.spend();
+                if (failed && failed.noToken) {
+                    say(t(lts.fault() === 'script-blocked'
+                        ? 'The security check could not load. An ad blocker or network filter may be blocking it.'
+                        : 'The security check did not finish. Please try again.'));
+                } else {
+                    say(reason(failed));
+                }
                 busy = false;
                 submitBtn.disabled = false;
                 submitBtn.textContent = label;
