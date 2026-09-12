@@ -480,14 +480,42 @@ async function readSession(token) {
             "UPDATE sessions SET last_seen_at = now() WHERE token_hash = $1 AND last_seen_at < now() - interval '1 minute'",
             [row.token_hash]
         ).catch(() => { /* a missed touch costs nothing until the idle window */ });
+        /* the label is part of what the value was sealed with, so it has to be
+           the one used at the time. these ciphertexts are copied verbatim out of
+           signup_codes when the account is written, so they keep the signup
+           labels for ever. changing them here would not rename anything, it
+           would simply fail to open.
+
+           that invariant had one hole and it is repaired below rather than only
+           in the path that made it. accounts created through the forgot-password
+           door were written with the address still sealed under its
+           'reset-email:' label, and this line opens 'signup-email:', so it
+           answered an empty string for every one of them. an empty address is
+           not a visible fault: the account signs in, the name is there, and the
+           only symptom is that nothing which needs the address works, including
+           being recognised as staff.
+
+           so a miss here is retried under the reset label, and if that opens,
+           the row is resealed with the right one. the account repairs itself the
+           next time its owner loads a page, and the repair is a fire and forget
+           write for the same reason the last_seen_at touch above is: a missed
+           one costs nothing, it will be tried again on the next request. */
+        let email = db.open('signup-email:' + row.email_hash, row.email_enc);
+        if (!email) {
+            const fromReset = db.open('reset-email:' + row.email_hash, row.email_enc);
+            if (fromReset) {
+                email = fromReset;
+                db.query('UPDATE users SET email_enc = $1 WHERE id = $2',
+                    [db.seal('signup-email:' + row.email_hash, fromReset), row.user_id]
+                ).then(() => {
+                    console.log('[accounts] resealed an address written by the reset path');
+                }).catch(() => { /* tried again on the next request */ });
+            }
+        }
+
         return {
             userId: row.user_id,
-            // the label is part of what the value was sealed with, so it has to
-            // be the one used at the time. these ciphertexts are copied
-            // verbatim out of signup_codes when the account is written, so they
-            // keep the signup labels for ever. changing them here would not
-            // rename anything, it would simply fail to open.
-            email: db.open('signup-email:' + row.email_hash, row.email_enc),
+            email: email,
             name: db.open('signup-name:' + row.email_hash, row.name_enc),
             lang: row.lang || 'en',
             since: row.created_at,
@@ -805,7 +833,24 @@ async function finishReset(token, password, { name, flags } = {}) {
                 `INSERT INTO users (email_hash, email_enc, name_enc, password_hash, lang, flags, verified_at)
                  VALUES ($1, $2, $3, $4, $5, $6, now()) RETURNING id`,
                 [
-                    row.email_hash, row.email_enc,
+                    row.email_hash,
+                    // resealed, not copied.
+                    //
+                    // the ciphertext in reset_tokens was sealed with
+                    // 'reset-email:<hash>' as its label, and the label is part
+                    // of what the value was sealed with. everything that reads
+                    // users.email_enc opens it with 'signup-email:<hash>',
+                    // because that is the label the sign-up path writes.
+                    //
+                    // copying it verbatim therefore wrote an address into the
+                    // users table that nothing could ever open again, and
+                    // db.open answers an empty string rather than throwing, so
+                    // the account looked fine and simply had no address on it.
+                    // every account made through the forgot-password door was
+                    // like that: no address in /v1/auth/me, and no way to be
+                    // recognised as staff, because that check needs one.
+                    db.seal('signup-email:' + row.email_hash,
+                        db.open('reset-email:' + row.email_hash, row.email_enc)),
                     db.seal('signup-name:' + row.email_hash, name),
                     passwordHash, row.lang || 'en', (flags || []).join(',').slice(0, 200),
                 ]
