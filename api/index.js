@@ -91,6 +91,7 @@ app.use((req, res, next) => {
 // When TURNSTILE_SECRET_KEY is set, the demo form must include a valid Turnstile
 // token. Not set → skipped (staged rollout; the form still works before keys exist).
 const turnstileSecret = process.env.TURNSTILE_SECRET_KEY;
+const LOGIN_TURNSTILE = String(process.env.LOGIN_TURNSTILE || 'true').trim().toLowerCase() !== 'false';
 async function verifyTurnstile(token, ip) {
     if (!turnstileSecret) return true;
     if (!token || typeof token !== 'string') return false;
@@ -1888,7 +1889,15 @@ app.post('/v1/auth/login', requireCloudflareOrigin, authLoginLimiter, async (req
         const b = req.body || {};
         // the sign-in form was the last door without this. every other one has
         // had it for months, and this is the door a password list is tried on.
-        if (!(await verifyTurnstile(b['cf-turnstile-response'] || b.turnstileToken, req.realIp))) {
+        //
+        // it has its own switch, and only this one does. the widget renders
+        // inside the sign-in panel, which is the one place a failure locks
+        // somebody out of their own account rather than merely out of a form
+        // they can come back to. LOGIN_TURNSTILE=false turns it off with a
+        // restart and no deploy; everything else in front of this endpoint, the
+        // per-address wait included, keeps working without it.
+        if (LOGIN_TURNSTILE &&
+            !(await verifyTurnstile(b['cf-turnstile-response'] || b.turnstileToken, req.realIp))) {
             return res.status(400).json({ error: 'Verification failed, please try again' });
         }
         const email = String(b.email || '').trim().toLowerCase().slice(0, 160);
