@@ -29,9 +29,24 @@ WORKDIR /app
 # build. this way the install layer is reused until the dependencies themselves
 # actually change.
 COPY api/package.json api/package-lock.json ./api/
-RUN cd api && npm install --omit=dev
+# ci, not install.
+#
+# `npm install` is allowed to resolve something other than what the lockfile
+# says and to rewrite the lockfile while it does it, which means the image can
+# end up with a dependency tree nobody reviewed. `npm ci` installs exactly the
+# tree in the lockfile or fails, so what runs in production is what was audited
+# in the pull request.
+RUN cd api && npm ci --omit=dev
 
 COPY . .
+
+# not root.
+#
+# node:22-slim runs as root unless told otherwise, so until now a hole in any
+# dependency was a hole with root in the container. the node user ships with the
+# image; the app only ever reads its own files and writes to the temp directory,
+# so it needs nothing that root was providing.
+USER node
 
 EXPOSE 8080
 

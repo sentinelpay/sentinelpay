@@ -1379,6 +1379,35 @@ app.get('/v1/inbox', requireStaff('inbox'), (req, res) => {
         '</div><script src="/inbox.js?v=1"></script></body>');
 });
 
+// The same list, for whoever is signed in as staff. No values, only whether a
+// thing is on: the point is to be able to answer "is production actually
+// configured the way we think" without reading somebody's dashboard over their
+// shoulder.
+app.get('/v1/security-status', requireStaff('security status'), (req, res) => {
+    res.set('Cache-Control', 'no-store, private');
+    res.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
+    const checks = securityPosture().map((c) => ({ check: c.key, ok: c.ok, serious: c.grave, detail: c.says }));
+    if (String(req.query.format || '') === 'json') return res.json({ ok: checks.every((c) => c.ok), checks });
+    res.set('Content-Security-Policy',
+        "default-src 'none'; style-src 'unsafe-inline'; style-src-attr 'unsafe-inline'; form-action 'none'");
+    res.type('html').send(
+        '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+        '<meta name="robots" content="noindex,nofollow"><title>security status</title>' +
+        '<body style="margin:0;padding:32px 18px 64px;background:#f4f6fa;' +
+        'font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Inter,sans-serif;color:#0e2358;">' +
+        '<div style="max-width:760px;margin:0 auto;">' +
+        '<h1 style="font-size:20px;font-weight:800;margin:0 0 4px;">security status</h1>' +
+        '<p style="margin:0 0 18px;color:rgba(14,35,88,0.6);font-size:13px;">' +
+        'what this deploy is actually running with. no values, only whether something is on.</p>' +
+        checks.map((c) =>
+            '<div style="padding:10px 0;border-bottom:1px solid rgba(14,35,88,0.08);">' +
+            '<span style="font-weight:700;color:' + (c.ok ? '#0f7b4f' : (c.serious ? '#b3261e' : '#8a6d00')) + ';">' +
+            (c.ok ? 'ok' : (c.serious ? 'SERIOUS' : 'note')) + '</span> ' +
+            '<b>' + escapeHtml(c.check) + '</b><br>' +
+            '<span style="font-size:13px;color:rgba(14,35,88,0.65);">' + escapeHtml(c.detail) + '</span></div>').join('') +
+        '</div></body>');
+});
+
 // The audit trail, read back.
 //
 // Everything security-shaped writes a row: sign-ins, refusals, resets, sign-ups,
@@ -2367,8 +2396,127 @@ process.on('uncaughtException', (err) => {
     process.exit(1);
 });
 
+// ---------------------------------------------------------------------------
+// what this deploy is actually running with
+// ---------------------------------------------------------------------------
+//
+// Every protection in this file is one environment variable away from not
+// existing, and the failure is silent in the worst possible way: without
+// SUBMISSIONS_KEY the personal data is written in the clear and everything else
+// behaves exactly as it does when it is not. A line in a boot log nobody reads
+// is not a control.
+//
+// So the posture is computed in one place, printed loudly at boot, and readable
+// at /v1/security-status by whoever is signed in as staff. STRICT_BOOT=true
+// turns the serious ones into a refusal to start, which is what you want once
+// you have confirmed the environment is right: a site that is down is a bad
+// afternoon, a site quietly storing names and addresses unencrypted is a
+// breach with a date on it.
+function securityPosture() {
+    const on = (v) => Boolean(v && String(v).trim());
+    const adminToken = process.env.ADMIN_TOKEN || '';
+    const checks = [
+        {
+            key: 'personal data encrypted at rest',
+            ok: db.status().encrypted,
+            grave: true,
+            says: db.status().encrypted ? 'SUBMISSIONS_KEY is set' : 'SUBMISSIONS_KEY is NOT set: names and addresses are being stored in the clear',
+        },
+        {
+            key: 'accounts store',
+            ok: db.status().configured,
+            grave: true,
+            says: db.status().configured ? 'DATABASE_URL is set' : 'DATABASE_URL is NOT set: there are no accounts, and leads go to a file a redeploy wipes',
+        },
+        {
+            key: 'bot check on the public forms',
+            ok: on(process.env.TURNSTILE_SECRET_KEY),
+            grave: true,
+            says: on(process.env.TURNSTILE_SECRET_KEY)
+                ? 'TURNSTILE_SECRET_KEY is set' + (LOGIN_TURNSTILE ? ', sign-in included' : ', but LOGIN_TURNSTILE=false so sign-in is exempt')
+                : 'TURNSTILE_SECRET_KEY is NOT set: every form is open to a script',
+        },
+        {
+            key: 'origin lockdown',
+            ok: on(process.env.CF_ORIGIN_SECRET),
+            grave: false,
+            says: !on(process.env.CF_ORIGIN_SECRET)
+                ? 'CF_ORIGIN_SECRET is not set: the railway origin can be reached directly, around cloudflare'
+                : (String(process.env.CF_ORIGIN_STRICT || '').toLowerCase() === 'true'
+                    ? 'set, and strict: the whole site requires the cloudflare header'
+                    : 'set for the form endpoints; CF_ORIGIN_STRICT=true closes the rest'),
+        },
+        {
+            key: 'cross origin list',
+            ok: on(process.env.ALLOWED_ORIGINS),
+            grave: false,
+            says: on(process.env.ALLOWED_ORIGINS) ? 'ALLOWED_ORIGINS is set' : 'ALLOWED_ORIGINS is not set (same-site requests still pass)',
+        },
+        {
+            key: 'outbound mail',
+            ok: mailer.isConfigured(),
+            grave: false,
+            says: mailer.isConfigured() ? 'configured' : 'RESEND_API_KEY is not set: codes, links and security notices cannot be sent',
+        },
+        {
+            key: 'breach check on passwords',
+            ok: breached.enabled(),
+            grave: false,
+            says: breached.enabled() ? 'on' : 'off (BREACH_CHECK=false)',
+        },
+        {
+            key: 'staff by account',
+            ok: on(process.env.STAFF_EMAILS),
+            grave: false,
+            says: on(process.env.STAFF_EMAILS)
+                ? String(process.env.STAFF_EMAILS).split(',').filter(Boolean).length + ' address(es) on the staff list'
+                : 'STAFF_EMAILS is empty: the admin token is the only way in',
+        },
+        {
+            key: 'admin token',
+            ok: !adminToken || adminToken.length >= 24,
+            grave: false,
+            says: !adminToken ? 'not set (staff accounts only)'
+                : (adminToken.length >= 24 ? 'set, long enough' : 'set but only ' + adminToken.length + ' characters: make it 32 or more'),
+        },
+        {
+            key: 'content security policy',
+            ok: cspStrict,
+            grave: false,
+            says: cspStrict ? 'strict, inline scripts by hash' : "relaxed: CSP_STRICT=false allows 'unsafe-inline'",
+        },
+        {
+            key: 'secure cookies',
+            ok: COOKIE_SECURE,
+            grave: true,
+            says: COOKIE_SECURE ? 'production: __Host- prefix and Secure' : 'NODE_ENV is not production, so the session cookie is not Secure',
+        },
+    ];
+    return checks;
+}
+
+function reportPosture() {
+    const checks = securityPosture();
+    const bad = checks.filter((c) => !c.ok);
+    const graveBad = bad.filter((c) => c.grave);
+    if (!bad.length) {
+        console.log('[security] every check passed');
+    } else {
+        for (const c of bad) {
+            console[c.grave ? 'error' : 'warn']('[security] ' + (c.grave ? 'SERIOUS: ' : 'note: ') + c.key + ' - ' + c.says);
+        }
+    }
+    const strict = String(process.env.STRICT_BOOT || '').trim().toLowerCase() === 'true';
+    if (strict && graveBad.length && isProduction) {
+        console.error('[security] STRICT_BOOT is on and ' + graveBad.length +
+            ' serious check(s) failed. Refusing to start rather than running like this.');
+        process.exit(1);
+    }
+}
+
 app.listen(PORT, () => {
     console.log(`[sentinelpay-web] server active on port ${PORT}`);
+    reportPosture();
     if (mailer.isConfigured()) {
         console.log(`[mail] ready, ${mailer.MAIL_FROM} -> ${mailer.MAIL_TO}`);
     } else {
