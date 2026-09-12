@@ -1407,43 +1407,47 @@
             var makingAccount = false;
             var pwBusy = false;
 
-            function startFromLink(token) {
+            // which of the two this panel is. the address is not printed either
+            // way.
+            //
+            // whoever is on this panel arrived by opening a link sent to that
+            // address, so telling them which address it was is telling them
+            // something they already did. and this panel is reachable by anyone
+            // holding the link, which includes whoever is looking over a
+            // shoulder: a line that names an account is a line worth not drawing
+            // for nothing.
+            function dressAsSignup() {
+                // no account on this address yet, and finishing here makes one.
+                // it has to carry what the sign-up form asks for, or it is an
+                // account with nobody's name on it and no record of the terms.
+                makingAccount = true;
+                pwNames.hidden = false;
+                pwConsent.hidden = false;
+                pwTitle.textContent = t('Create your account');
+                pwSub.textContent = t('This address has no account yet. Choose a password and it is yours; the link you clicked is the proof the address is.');
+                pwBtn.textContent = t('Create account');
+            }
+
+            function focusFirstField() {
+                var coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+                if (!coarse) (makingAccount ? pwFirst.input : pwOne.input).focus({ preventScroll: true });
+            }
+
+            // the panel is shown once, already wearing the right copy.
+            //
+            // it used to open as "Set a new password" and change its own mind
+            // half a second later, when the answer landed: somebody with no
+            // account read a heading about a password of theirs, watched two name
+            // fields and a tick push the card taller, and only then got the
+            // screen meant for them. the question is asked the moment the file
+            // runs, in parallel with the splash, and the splash is the slower of
+            // the two almost every time, so the answer is in hand before there is
+            // anything on screen to correct.
+            function showFromLink(out) {
+                if (out && !out.hasAccount) dressAsSignup();
                 lStep('setpw');
                 setpw.hidden = false;
-                pwBtn.disabled = true;
-                post('/v1/auth/reset-check', { token: token }).then(function (out) {
-                    // the address is not printed here.
-                    //
-                    // whoever is on this panel arrived by opening a link sent to
-                    // that address, so telling them which address it was is
-                    // telling them something they already did. and this panel is
-                    // reachable by anyone holding the link, which includes
-                    // whoever is looking over a shoulder: a line that names an
-                    // account is a line worth not drawing for nothing.
-                    makingAccount = !out.hasAccount;
-                    if (makingAccount) {
-                        // no account on this address yet, and finishing here makes
-                        // one. it has to carry what the sign-up form asks for, or
-                        // it is an account with nobody's name on it and no record
-                        // of the terms.
-                        pwNames.hidden = false;
-                        pwConsent.hidden = false;
-                        pwTitle.textContent = t('Create your account');
-                        pwSub.textContent = t('This address has no account yet. Choose a password and it is yours; the link you clicked is the proof the address is.');
-                        pwBtn.textContent = t('Create account');
-                    }
-                    pwBtn.disabled = false;
-                    glideOn(loginCard, function () {});
-                    var coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-                    if (!coarse) (makingAccount ? pwFirst.input : pwOne.input).focus({ preventScroll: true });
-                }).catch(function (failed) {
-                    // 410 is the link being gone. anything else is us being
-                    // unreachable, and sending somebody to "expired" for a
-                    // network blip would tell them to ask for a link they have.
-                    if (failed && failed.status === 410) { expired(); return; }
-                    pwBtn.disabled = false;
-                    pwSay(t('Could not reach us just now. Please try again in a moment.'));
-                });
+                focusFirstField();
             }
 
             pwTick.addEventListener('change', function () {
@@ -1557,7 +1561,58 @@
             // where the mail sends anybody.
             if (backdrop && window.__SP_RESET_TOKEN) {
                 var linkToken = window.__SP_RESET_TOKEN;
+
+                // asked now, not when the dialog opens. the splash and this
+                // request run against each other and the dialog waits for both,
+                // so the panel is painted right the first time it is painted.
+                var answer = null;
+                var failure = null;
+                var answered = false;
+                var loaderDone = false;
+                var shown = false;
+                var late = null;
+
+                function tell() {
+                    if (shown || !answered || !loaderDone) return;
+                    shown = true;
+                    clearTimeout(late);
+                    // the link is spent or past its hour. there is no panel worth
+                    // opening for that, so the page goes where it says so.
+                    if (failure && failure.status === 410) { expired(); return; }
+                    arrive();
+                    if (window.SentinelAuthModal) window.SentinelAuthModal.open('login');
+                    showFromLink(answer);
+                    // us being unreachable rather than the link being gone. the
+                    // panel is open on the reset copy, which is the safe half of
+                    // the guess: it asks for a password and nothing else, and the
+                    // server decides what happens with it.
+                    if (failure) pwSay(t('Could not reach us just now. Please try again in a moment.'));
+                }
+
+                post('/v1/auth/reset-check', { token: linkToken }).then(function (out) {
+                    answer = out; answered = true; tell();
+                }, function (err) {
+                    failure = err || {}; answered = true; tell();
+                });
+
                 afterLoader(function () {
+                    loaderDone = true;
+                    // a check that is still in the air two seconds after the
+                    // splash has gone has kept somebody in front of a page with
+                    // nothing on it, which is worse than the panel arriving on the
+                    // reset copy. so it opens, and the answer is applied if it
+                    // ever lands.
+                    if (!answered) {
+                        late = setTimeout(function () {
+                            if (shown) return;
+                            answered = true;
+                            tell();
+                        }, 2000);
+                    }
+                    tell();
+                });
+
+                function arrive() {
                     // the class goes on before the dialog is opened, not after.
                     //
                     // open() puts is-open on and the transition starts in that
@@ -1578,9 +1633,7 @@
                             });
                         }
                     }
-                    if (window.SentinelAuthModal) window.SentinelAuthModal.open('login');
-                    startFromLink(linkToken);
-                });
+                }
             }
 
             function rSay(msg) {
