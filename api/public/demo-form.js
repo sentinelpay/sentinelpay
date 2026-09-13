@@ -15,8 +15,6 @@
             var nameRe = /^[a-zA-ZÀ-ɏ'’.\- ]+$/;
             var letterRe = /[a-zA-ZÀ-ɏ]/;
             var alnumRe = /[a-zA-Z0-9À-ɏ]/;
-            // two pages share this form engine. the markup, validation and custom
-            // selects are identical; only the step contents and destination differ.
             var CONFIG = {
                 demo: {
                     endpoint: '/v1/demo-request',
@@ -33,18 +31,8 @@
             };
             var cfg = CONFIG[form.getAttribute('data-form')] || CONFIG.demo;
             var heads = cfg.heads;
-            // i18n translates the page once on load, so anything this script writes
-            // afterwards (validation messages, button labels, toasts) has to look the
-            // string up itself or it comes back in english on a translated page.
             var t = function (x) { return window.SentinelI18n ? window.SentinelI18n.t(x) : x; };
-            // we publicly refuse gambling operators, so the form says so the moment it
-            // is picked rather than letting someone fill four steps and be rejected by
-            // the server. the server checks it too; this is the courteous half.
             var gamblingRe = /gambling|igaming|casino|betting|sportsbook|wager/i;
-            // The browser needs no list of providers. The rule is the same for every
-            // address, whoever it is with: the site has to be on the same domain.
-            // The lists live on the server and only decide how a submission is
-            // tagged once it is in, which is not a question the form has to answer.
             var domainRe = /^([a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/i;
             var headEl = document.getElementById('lp-demo-formhead');
             function setError(input, msg) {
@@ -100,7 +88,6 @@
                         if (!v) return t('Please pick an expected volume');
                         return '';
                     case 'message':
-                        // optional: skip it entirely, or write as little as you like
                         if (!v) return '';
                         if (v.length > 250) return t('Keep it under 250 characters');
                         return '';
@@ -141,8 +128,6 @@
                     }
                 }
                 if (i === total - 1) {
-                    // every tickbox in the final step is a declaration we rely on, so
-                    // all of them must be ticked, not just the contact consent
                     stepEl.querySelectorAll('.lp-demo-consent input[type="checkbox"]').forEach(function(cb) {
                         var wrap = cb.closest('.lp-demo-consent');
                         if (!cb.checked) { ok = false; wrap.classList.add('lp-demo-consent-err'); }
@@ -152,7 +137,6 @@
                 return ok;
             }
             function render() {
-                // any open dropdown belongs to the outgoing step, so close them all
                 form.querySelectorAll('.lp-demo-select-menu:not([hidden])').forEach(function(m) {
                     m.hidden = true;
                     var w = m.closest('.lp-demo-select');
@@ -202,38 +186,24 @@
                 var menu = wrap.querySelector('.lp-demo-select-menu');
                 var val = wrap.querySelector('.lp-demo-select-val');
                 var place = function() {
-                    // clear last time's inline height before measuring, otherwise each
-                    // open reads back the cap it set and the menu ratchets shut
                     menu.style.maxHeight = '';
                     var r = btn.getBoundingClientRect();
                     var pad = 8;
-                    // the visual viewport, not window.innerHeight. on ios innerHeight
-                    // counts the strip behind the collapsing toolbar and does not shrink
-                    // when the keyboard is up, so a menu measured against it opens into
-                    // space the visitor cannot see. vv.offsetTop is how far the page is
-                    // pushed up when the keyboard pans it.
                     var vv = window.visualViewport;
                     var vw = vv ? vv.width : document.documentElement.clientWidth;
                     var vh = vv ? vv.height : window.innerHeight;
                     var vTop = vv ? vv.offsetTop : 0;
 
-                    // the menu tracks its button, but never wider than the screen and
-                    // never past either edge
                     var w = Math.min(r.width, vw - pad * 2);
                     menu.style.width = w + 'px';
                     menu.style.left = Math.max(pad, Math.min(r.left, vw - w - pad)) + 'px';
 
-                    // the CSS cap is the most it may ever be; a vh value on mobile
                     var capPx = parseFloat(getComputedStyle(menu).maxHeight) || 200;
                     var want = Math.min(menu.scrollHeight, capPx);
-                    // the visible band, in the same coordinates the button rect uses
                     var top = vTop, bottom = vTop + vh;
                     var below = bottom - r.bottom - pad;
                     var above = r.top - top - pad;
 
-                    // open on whichever side has the room. if neither has enough, take
-                    // the bigger side and shorten the menu to fit: it scrolls, which is
-                    // recoverable, where running off the bottom of the screen is not.
                     var up = below < want && above > below;
                     var room = Math.max(up ? above : below, 120);
                     var h = Math.min(want, room);
@@ -269,14 +239,11 @@
                     search.addEventListener('click', function(e) { e.stopPropagation(); });
                 }
                 window.addEventListener('resize', function() { if (!menu.hidden) place(); });
-                // the keyboard opening and the toolbar collapsing both change the
-                // visible band without firing a window resize on ios
                 if (window.visualViewport) {
                     window.visualViewport.addEventListener('resize', function() { if (!menu.hidden) place(); });
                     window.visualViewport.addEventListener('scroll', function() { if (!menu.hidden) place(); });
                 }
                 window.addEventListener('scroll', function(e) {
-                    // page scrolls: keep the fixed-position menu glued to its button
                     if (!menu.hidden && !(e.target instanceof Node && menu.contains(e.target))) place();
                 }, true);
                 btn.addEventListener('click', function(e) { e.stopPropagation(); var willOpen = menu.hidden; closeAllSelects(wrap); open(willOpen); });
@@ -296,26 +263,6 @@
                 document.addEventListener('click', function(e) { if (!wrap.contains(e.target)) open(false); });
             });
 
-            /* "not sure yet" and the rest cannot both be true.
-               ------------------------------------------------------------
-               ticking it clears everything else, and ticking anything else
-               clears it. someone who has picked four products is not unsure,
-               and a submission that says both tells us nothing.
-
-               which box is the exclusive one comes from `data-exclusive` in
-               the markup rather than from matching its value against a string.
-               it used to compare against 'Not sure yet' while the markup said
-               value="not sure yet", so the two never matched and none of this
-               ran: the case had drifted apart in a pass over the site's
-               capitalisation, and a comparison against display text is a thing
-               that will drift again. an attribute is not copy and nothing
-               rewrites it.
-
-               the values themselves now read the way the labels do, because
-               they are not internal codes: they are what lands in the
-               notification email, and "transaction screening, api & data
-               feeds" was arriving in lower case in a mail whose every other
-               line had been fixed. */
             form.querySelectorAll('input[name="solutions"]').forEach(function(cb) {
                 cb.addEventListener('change', function() {
                     if (cb.checked) {
@@ -334,7 +281,6 @@
                     }
                 });
             });
-
             var msgArea = form.querySelector('textarea[name="message"]');
             var msgCount = document.getElementById('lp-demo-msg-count');
             if (msgArea) {
@@ -348,7 +294,6 @@
                 });
                 autoGrow();
             }
-
             var validatedNames = ['firstName','lastName','jobTitle','company','website','email','message'];
             form.querySelectorAll('input[name], select[name], textarea[name]').forEach(function(inp) {
                 if (validatedNames.indexOf(inp.name) === -1) return;
@@ -358,12 +303,6 @@
                     if (field && field.classList.contains('lp-demo-invalid')) setError(inp, fieldError(inp));
                 });
             });
-            // The website rule is the only one that reads a second field: it has to
-            // agree with the work email. That makes it go stale in one direction.
-            // Editing the email after the website has already passed leaves the
-            // website green on an answer that is no longer true, and the mismatch is
-            // then caught by the server, which reaches the visitor as a toast after
-            // they have pressed send. Re-judge the website whenever the email moves.
             var emailField = form.querySelector('input[name="email"]');
             var siteField = form.querySelector('input[name="website"]');
             if (emailField && siteField) {
@@ -371,22 +310,16 @@
                     if (!siteField.value.trim()) return;
                     setError(siteField, fieldError(siteField));
                 };
-                // on blur, because marking the website wrong while someone is still
-                // halfway through typing their address would be noise
                 emailField.addEventListener('blur', recheckSite);
-                // while typing, only to take the red away again the moment the email
-                // is corrected. the same rule the other fields already follow.
                 emailField.addEventListener('input', function() {
                     var f = siteField.closest('.lp-demo-field');
                     if (f && f.classList.contains('lp-demo-invalid')) recheckSite();
                 });
             }
-
             var consentInp = form.querySelector('input[name="consent"]');
             if (consentInp) consentInp.addEventListener('change', function() {
                 if (consentInp.checked) consentInp.closest('.lp-demo-consent').classList.remove('lp-demo-consent-err');
             });
-
             nextBtn.addEventListener('click', function() {
                 if (!validateStep(cur)) return;
                 if (cur < total - 1) { cur++; render(); }
@@ -394,28 +327,19 @@
             backBtn.addEventListener('click', function() {
                 if (cur > 0) { cur--; render(); }
             });
-
-            // A single-input form submits on enter, and this form has one <form> across
-            // four steps, so enter on step 1 fired the real submit: it validated only the
-            // step you were on and posted a half-empty request, once per press. Enter now
-            // means "next" until the last step, where it means submit.
             form.addEventListener('keydown', function(e) {
                 if (e.key !== 'Enter' || e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) return;
                 var el = e.target;
                 var tag = el && el.tagName;
-                if (tag === 'TEXTAREA') return;                 // enter is a newline there
-                if (tag === 'BUTTON' || tag === 'A') return;     // let the control do its job
+                if (tag === 'TEXTAREA') return;
+                if (tag === 'BUTTON' || tag === 'A') return;
                 if (cur < total - 1) {
                     e.preventDefault();
                     if (validateStep(cur)) { cur++; render(); }
                     return;
                 }
-                // last step: only let it through once the declarations are ticked, and
-                // never while a send is already in flight
                 if (submitBtn.disabled) { e.preventDefault(); }
             });
-
-            // Cloudflare Turnstile — activates only when window.__TURNSTILE_SITEKEY is set.
             var turnstileToken = '';
             var turnstileEnabled = false;
             (function initTurnstile() {
@@ -427,7 +351,6 @@
                     if (!window.turnstile) return;
                     window.turnstile.render(holder, {
                         sitekey: siteKey,
-                        // the cards are white now: a dark widget on one read as a hole
                         theme: 'light',
                         callback: function(t) { turnstileToken = t; },
                         'expired-callback': function() { turnstileToken = ''; },
@@ -443,19 +366,10 @@
                     document.head.appendChild(s);
                 }
             })();
-
-            // --- outage guard ---------------------------------------------
-            // when the server says it cannot receive submissions, the form says so
-            // and stops, rather than taking someone through four steps and failing
-            // at the end. the attribute is set server-side from STATUS_BLOCKS_MAIL.
             var mailDown = document.documentElement.hasAttribute('data-mail-down');
             if (mailDown) {
                 submitBtn.disabled = true;
                 submitBtn.setAttribute('aria-disabled', 'true');
-                // the fold pages own exactly one viewport and are tuned to the pixel,
-                // so an extra paragraph inside the card pushes the logo strip out of
-                // frame. there the banner at the top of the same viewport is the
-                // explanation, and the dead button is the signal.
                 if (!form.closest('.bad-form-card')) {
                     var warn = document.createElement('p');
                     warn.className = 'lp-demo-mail-down';
@@ -464,7 +378,6 @@
                     if (actions && actions.parentNode) actions.parentNode.insertBefore(warn, actions);
                 }
             }
-
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
                 if (mailDown) return;
@@ -478,7 +391,6 @@
                 data.solutions = Array.prototype.map.call(form.querySelectorAll('input[name="solutions"]:checked'), function(c) { return c.value; });
                 form.querySelectorAll('.lp-demo-consent input[type="checkbox"]').forEach(function(cb) { data[cb.name] = !!cb.checked; });
                 if (turnstileToken) data['cf-turnstile-response'] = turnstileToken;
-                // the confirmation email is written in whatever language the visitor is reading
                 data.lang = (window.SentinelI18n && typeof window.SentinelI18n.lang === 'function' ? window.SentinelI18n.lang() : 'en') || 'en';
                 submitBtn.disabled = true;
                 submitBtn.textContent = t('Sending…');
@@ -488,25 +400,15 @@
                     body: JSON.stringify(data)
                 }).then(function(r) {
                     if (r.ok) return r.json().catch(function(){ return {}; });
-                    // the server says exactly what is wrong: a domain that does not
-                    // match, a free mailbox, too many attempts. showing "sending is
-                    // not working" instead sends people to support over something
-                    // they could fix in the field in front of them.
                     return r.json().catch(function(){ return {}; }).then(function(body) {
-                        // not user-facing copy: a status code, so the translation audit does not flag it
                         var err = new Error('http_' + r.status);
                         err.reason = body && body.error;
                         err.status = r.status;
                         throw err;
                     });
                 }).then(function() {
-                    // clear the way for the success panel. on the fold pages the card
-                    // must not change size, so the form keeps its space and the panel
-                    // is laid over it. elsewhere the card is free to collapse.
                     var fold = form.closest('.bad-form-card');
                     if (fold) {
-                        // the pane stays in the layout, only invisible, so the card
-                        // keeps its height and nothing below it shifts
                         form.classList.add('is-sent');
                     } else {
                         form.style.display = 'none';
@@ -526,8 +428,6 @@
                     submitBtn.textContent = t(cfg.submitLabel);
                     turnstileToken = '';
                     if (turnstileEnabled && window.turnstile) { try { window.turnstile.reset(); } catch (e) {} }
-                    // only a 500 or a dead connection is actually "sending is broken".
-                    // everything else is something the visitor can act on.
                     var msg = (err && err.reason && err.status && err.status < 500)
                         ? t(err.reason)
                         : t('Could not send right now. Please email support@sentinelpay.org');

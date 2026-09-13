@@ -1,23 +1,5 @@
 'use strict';
 
-// Where the rate limits actually keep their counters.
-//
-// express-rate-limit's default store is a map in the process, which has two
-// holes that matter here. Every deploy empties it, so an attacker working
-// through a password list only has to wait for the next push; and if this ever
-// runs as two instances, every limit silently doubles because each instance
-// counts its own half.
-//
-// So the counters that protect an account live in postgres, where both problems
-// go away: one shared count, and it survives a restart. The coarse ceiling on
-// every page and asset does not use this, on purpose. That one runs on every
-// image and font on the site, and a database round trip per request would cost
-// more than the thing it is defending against.
-//
-// Without a database this falls back to counting in memory, which is what the
-// library would have done anyway. A missing database must not mean a missing
-// limit.
-
 const db = require('./db');
 
 const SCHEMA = `
@@ -43,8 +25,6 @@ function init() {
     return ready;
 }
 
-// Spent windows, swept on a timer rather than on every write: the row is
-// harmless once its window is over, it is simply in the way.
 function startSweep() {
     const run = () => {
         if (!db.available()) return;
@@ -66,8 +46,6 @@ class PostgresStore {
         this.windowMs = options.windowMs;
     }
 
-    // the fallback, used when there is no database or a query failed. same
-    // shape, same answers, one process.
     _memory(key, delta) {
         const now = Date.now();
         let row = this.memory.get(key);
@@ -76,7 +54,6 @@ class PostgresStore {
             this.memory.set(key, row);
         }
         row.totalHits = Math.max(0, row.totalHits + delta);
-        // a map that only ever grows is a leak with a schedule
         if (this.memory.size > 20000) {
             for (const [k, v] of this.memory) {
                 if (v.resetTime.getTime() <= now) this.memory.delete(k);
@@ -88,9 +65,6 @@ class PostgresStore {
     async increment(key) {
         if (!(await init())) return this._memory(key, 1);
         try {
-            // one statement does the whole thing: start a window if there is
-            // none or the last one is over, otherwise add to it. two requests
-            // arriving together cannot both see an empty counter.
             const res = await db.query(
                 `INSERT INTO rate_hits (key, hits, reset_at)
                  VALUES ($1, 1, now() + ($2 || ' milliseconds')::interval)
@@ -133,22 +107,12 @@ class PostgresStore {
     }
 }
 
-// One address, as a limit key.
-//
-// An ipv4 address is one machine. An ipv6 address is not: the smallest thing
-// anybody is given is a /64, and many providers hand out a /56 or shorter, so
-// keying on the full address gives one attacker more buckets than there are
-// grains of sand. The network is the unit that costs money to obtain, so the
-// network is what is counted.
 function ipKey(ip) {
     const raw = String(ip || 'unknown');
     if (!raw.includes(':')) return raw;
-    // ::ffff:1.2.3.4 is an ipv4 address wearing an ipv6 hat
     const mapped = raw.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
     if (mapped) return mapped[1];
     const groups = raw.split('%')[0].split(':');
-    // expand the :: shorthand only as far as the first four groups, which is all
-    // a /64 needs
     const idx = raw.indexOf('::');
     if (idx !== -1) {
         const head = raw.slice(0, idx).split(':').filter(Boolean);

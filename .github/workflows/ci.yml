@@ -1,12 +1,8 @@
 name: ci
 
-# Every push and every pull request. The point of this file is that nobody has
-# to remember to run anything: the checks that caught real breakages in this
-# repository run themselves, against a real postgres, before anything is merged.
-
 on:
   push:
-    branches: [main, staging, 'claude/**']
+    branches: [main, staging, 'work/**']
   pull_request:
   workflow_dispatch:
 
@@ -36,8 +32,6 @@ jobs:
           cache: npm
           cache-dependency-path: api/package-lock.json
 
-      # ci, not install: the tree that is tested is the tree in the lockfile,
-      # which is the tree the image builds from
       - name: install
         working-directory: api
         run: npm ci
@@ -50,8 +44,6 @@ jobs:
         working-directory: api
         env:
           DATABASE_URL: postgresql://postgres:test@localhost:5432/sentinelpay_test
-          # a throwaway key: the tests seal and open with it and nothing outlives
-          # the job
           SUBMISSIONS_KEY: c2VudGluZWxwYXktY2ktdGVzdC1rZXktMzJieXRlcyE=
           BREACH_CHECK: 'false'
         run: npm test

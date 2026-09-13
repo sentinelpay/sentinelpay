@@ -4,9 +4,6 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-// One place for outbound mail. Everything the site sends goes through here so the
-// sender, the styling and the failure behaviour stay identical across endpoints.
-
 const MAIL_FROM = process.env.MAIL_FROM || 'sentinelpay <noreply@sentinelpay.org>';
 const MAIL_TO = process.env.MAIL_TO || 'support@sentinelpay.org';
 const SITE = 'https://sentinelpay.org';
@@ -19,17 +16,6 @@ function esc(s) {
     return String(s).replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
 }
 
-// Email clients strip <style> blocks, ignore custom properties and mostly ignore
-// flexbox, so the site's look is rebuilt here with tables and inline styles only.
-//
-// The palette is the site's, which is light: white card on a pale ground, navy
-// text, one cyan accent, and the cyan to purple hairline the cards carry. it was
-// dark until now, from back when the site was, and a dark email from a white
-// site reads as coming from somewhere else.
-//
-// Every colour is a solid hex rather than rgba. Outlook drops rgba entirely and
-// renders the element with no colour at all, which is how a border becomes a
-// black line and muted text becomes unreadable.
 const C = {
     page: '#f4f6fa',
     card: '#ffffff',
@@ -39,30 +25,12 @@ const C = {
     muted: '#6b7899',
     faint: '#94a0bd',
     cyan: '#0091c8',
-    // the eyebrow blue. corp.css sets it in one place, `html.theme-light
-    // .lp-eyebrow { color: #2563eb }`, and every small caps label on the site
-    // is that colour with a 3px bar of it in front.
     accent: '#2563eb',
     purple: '#7b6cff',
     tint: '#f2f9fc',
     tintLine: '#cfe9f4',
 };
 
-/* the same two faces the site runs, in the order it runs them.
-   ------------------------------------------------------------------------
-   Inter for everything anybody reads, Plus Jakarta Sans for the headline, the
-   code and the button, which is exactly the split in corp.css: headings, big
-   numbers and buttons get the display face and body copy does not.
-
-   named rather than loaded. an inbox is not a browser: @font-face is stripped
-   by outlook and gmail's web client among others, and a webfont request from an
-   email is a tracking pixel as far as several of them are concerned. so these
-   are stacks, not downloads. where the reader happens to have the face
-   installed the mail matches the site exactly; where they do not it falls to
-   the system UI face, which is what the site falls to as well. the shape of the
-   fallback chain is the part that has to be right, and it is the same chain. */
-// the four files corp.css loads, with the same ranges. latin carries the
-// ordinary alphabet; latin-ext carries č ć ž š đ, which is most croatian words.
 const LATIN = 'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD';
 const LATIN_EXT = 'U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF';
 const FACES = [
@@ -71,28 +39,16 @@ const FACES = [
     { family: "'Plus Jakarta Sans'", file: '/fonts/jakarta-latin.woff2', range: LATIN },
     { family: "'Plus Jakarta Sans'", file: '/fonts/jakarta-latin-ext.woff2', range: LATIN_EXT },
 ];
-
 const FONT = "Inter,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Helvetica,Arial,sans-serif";
 const DISPLAY = "'Plus Jakarta Sans',Inter,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Helvetica,Arial,sans-serif";
 const LOGO = SITE + '/logo.png';
-// the site's checklist marker, rendered once to a png at three times the size it
-// is used at, so it stays sharp on a retina screen
 const CHECK = SITE + '/mail-check.png';
 
-// The footer is the same in every message, so its copy lives here rather than in
-// each template. it follows the language of the message: an english row of links
-// under a croatian letter is the seam people notice first.
-// The legal identity of the sender. In the eu a commercial email carries the
-// company's registered name, its seat and its registration numbers, and for a
-// company that sells compliance this is the first thing a careful reader looks
-// for. Placeholders until the d.o.o. is registered; set them without a code
-// change once it is.
 const LEGAL = {
     name: process.env.COMPANY_LEGAL_NAME || 'Sentinelpay d.o.o. (in registration)',
     address: process.env.COMPANY_ADDRESS || 'Ulica i kućni broj, 10000 Zagreb, Croatia',
     reg: process.env.COMPANY_REG || 'OIB 00000000000 · MBS 000000000',
 };
-
 const FOOTER = {
     en: { questions: 'Questions', privacy: 'Privacy', terms: 'Terms', blog: 'Blog',
           contact: 'Need a hand? Write to', seat: 'Registered office' },
@@ -101,7 +57,6 @@ const FOOTER = {
     de: { questions: 'Fragen', privacy: 'Datenschutz', terms: 'Bedingungen', blog: 'Blog',
           contact: 'Brauchen Sie Hilfe? Schreiben Sie an', seat: 'Sitz' },
 };
-
 function row(label, value) {
     if (!value) return '';
     return '<tr>' +
@@ -109,10 +64,6 @@ function row(label, value) {
         '<td style="padding:12px 0;vertical-align:top;font-size:14px;line-height:21px;color:' + C.text + ';font-weight:500;border-bottom:1px solid ' + C.lineSoft + ';">' + esc(value) + '</td>' +
         '</tr>';
 }
-
-// An amber band above everything else, the same colour the site's incident
-// banner uses. It exists so a submission that needs a person to look at it
-// cannot be skimmed past: the reasons are spelled out in words, not codes.
 function reviewBand(notes) {
     if (!notes || !notes.length) return '';
     return '<tr><td style="padding:0 36px 24px;">' +
@@ -125,11 +76,6 @@ function reviewBand(notes) {
         ).join('') +
         '</td></tr></table></td></tr>';
 }
-
-// The six digit code, big enough to read off a phone at arm's length and spaced
-// so it is not mistaken for a number. Rendered as text rather than an image: an
-// image is blocked by default in most inboxes, and a code nobody can see is no
-// code at all.
 function codeBlock(code) {
     if (!code) return '';
     return '<tr><td style="padding:4px 36px 26px;">' +
@@ -138,31 +84,13 @@ function codeBlock(code) {
         '<tr><td align="center" style="padding:22px 14px;">' +
         '<div class="sp-title" style="font-family:' + DISPLAY + ';font-size:38px;line-height:46px;font-weight:800;' +
         'letter-spacing:0.24em;text-indent:0.24em;color:' + C.text + ';' +
-        // tabular figures so the six digits sit on an even rhythm. most clients
-        // ignore it and inter's default figures are even anyway, so it costs
-        // nothing where it is not honoured.
         'font-variant-numeric:tabular-nums;font-feature-settings:\'tnum\';">' + esc(code) + '</div>' +
         '</td></tr></table></td></tr>';
 }
 
-// There was a codeMeta() here: the expiry and the single use, set under the code
-// as a quiet centred line. Both facts are in the sentence above the code now, so
-// the line had nothing left to say and every template that could have used it
-// says it in words instead.
-
-// One line of a checklist. The site paints its marker by masking the brand
-// gradient into the shape of a stroked check, and neither a mask nor an svg
-// survives an inbox, so the same thing is baked into a small png. it is the
-// site's own path and its own gradient, at three times the size it is drawn.
-//
-// The alt text is the check character on purpose. a client that blocks images
-// blocks this one too, and then the marker is a tick rather than an empty box.
-// so the good case is the site's exact marker and the bad case is what the
-// email had before, which is the right way round.
 function tickRow(b) {
     return '<tr>' +
-        // measured rather than guessed: at 9px the tick sat a pixel and a half above
-        // the middle of the first line of text next to it
+
         '<td width="16" style="padding:11px 14px 0 0;vertical-align:top;font-family:' + FONT + ';' +
         'font-size:15px;line-height:16px;font-weight:400;color:' + C.cyan + ';">' +
         '<img src="' + CHECK + '" width="16" height="16" alt="&#10003;" ' +
@@ -171,26 +99,9 @@ function tickRow(b) {
         '<td style="padding:7px 0;font-size:15px;line-height:23px;color:' + C.text + ';">' + esc(b) + '</td>' +
         '</tr>';
 }
-
-// A button that survives outlook: a table with a background colour and padding,
-// rather than a styled anchor, which outlook renders as plain blue text.
-//
-// It spans the column rather than sitting as a pill in the middle of it.
-// everything else in the card starts and ends on the same two edges, and a small
-// centred element was the only thing breaking that line, so it read as floating
-// rather than as the next step. full width keeps the centred label and gives it
-// the same edges as the note below it.
 function button(cta) {
     if (!cta) return '';
-    // twice, and only one of them is ever drawn.
-    //
-    // word cannot round a corner, so in outlook the button was a navy rectangle
-    // while every other client showed the dialog's own 10px one. the roundrect
-    // is a vector shape word does understand; arcsize is a percentage of the
-    // shorter side, and 10px of a 47px tall button is about 21%.
-    //
-    // 488 is 560 less the 36px of padding on each side, which is what the html
-    // button works out to everywhere the css is read.
+
     return '<tr><td style="padding:6px 36px 0;">' +
         '<!--[if mso]>' +
         '<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" ' +
@@ -202,9 +113,6 @@ function button(cta) {
         '</v:roundrect><![endif]-->' +
         '<!--[if !mso]><!-->' +
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">' +
-        // .lp-demo-submit: #0e2358, 10px corners, 700 at 0.85rem. it is full
-        // width in the dialog because sp-auth-submit makes it so, and full width
-        // here for the same reason: it is the only thing to press.
         '<tr><td align="center" bgcolor="' + C.text + '" style="border-radius:10px;">' +
         '<a href="' + esc(cta.href) + '" style="display:block;padding:14px 24px;font-family:' + DISPLAY + ';' +
         'font-size:13.5px;font-weight:700;letter-spacing:-0.006em;line-height:19px;color:#ffffff;text-decoration:none;' +
@@ -214,55 +122,21 @@ function button(cta) {
         '<!--<![endif]-->' +
         '</td></tr>';
 }
-
 function divider(pad) {
     return '<tr><td style="padding:' + (pad || '28px 36px') + ';">' +
         '<div class="sp-rule" style="height:1px;line-height:1px;font-size:0;background:' + C.line + ';">&nbsp;</div></td></tr>';
 }
-
 function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, code, lang }) {
     const f = FOOTER[lang] || FOOTER.en;
-    // the language the message is actually written in. this said "en" on every
-    // message whatever the copy was, so gmail offered to translate croatian into
-    // croatian, and a screen reader read it with english pronunciation. the
-    // parameter was already here and simply was not used.
-    // the vml namespaces are what let outlook draw a rounded button. outlook on
-    // windows renders mail with word, not with a browser, and word has never
-    // heard of border-radius, box-shadow or max-width. without the conditional
-    // blocks further down this card is a square grey box stretched the full
-    // width of the window there, which is not what it looks like anywhere else.
+
     return '<!doctype html><html lang="' + esc(lang || 'en') + '" ' +
         'xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">' +
         '<head><meta charset="utf-8">' +
         '<meta name="viewport" content="width=device-width,initial-scale=1">' +
         '<meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light">' +
-        // word ignores css line-height on a block that has none of its own and
-        // invents its own leading, which is what makes outlook mail look loose
-        // and uneven next to the same message in gmail
         '<!--[if mso]><style>*{mso-line-height-rule:exactly;}</style>' +
         '<xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch>' +
         '</o:OfficeDocumentSettings></xml><![endif]-->' +
-        // apple mail and a few others honour this; everyone else falls through the
-        // stack to the system font, which is what the site uses anyway
-        // The site's own two faces, from the site's own origin, declared exactly
-        // as fonts.css declares them, unicode ranges and all. The croatian
-        // diacritics live in the -ext files, so both halves of each family have
-        // to be here or half a word renders in one face and half in another.
-        //
-        // There was a link to fonts.googleapis.com here once. That host is the
-        // one this company has written on its own website that it will not call:
-        // a german court has ruled that embedding google fonts without consent
-        // breaches the gdpr, and corp.css self hosts for exactly that reason.
-        //
-        // Self hosting does not make the request free. An inbox that fetches a
-        // font tells us the message was opened, which is what a tracking pixel
-        // is, and some clients block remote content for that reason. The
-        // difference is that this one is ours: it is our server, our log, our
-        // retention, and no third party is handed anybody's address book by it.
-        //
-        // Gmail and outlook strip @font-face entirely, so this changes nothing
-        // there and the stacks below carry the mail. Apple Mail and iOS honour
-        // it, and that is where the message now looks exactly like the site.
         '<style>' +
         FACES.map((f) =>
             '@font-face{font-family:' + f.family + ';font-style:normal;font-weight:300 800;' +
@@ -270,16 +144,6 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, c
             'unicode-range:' + f.range + ';}'
         ).join('') +
         '</style>' +
-
-        // Two things a message like this is expected to do now, and this one did
-        // neither.
-        //
-        // A phone is not a 560px card with 36px of padding on each side; that
-        // leaves 318px for a line of text on a 390px screen. And a client set to
-        // dark inverts a white card by itself, badly, unless the message says
-        // what it wants instead. Apple Mail, iOS and outlook.com read both of
-        // these; gmail's app reads the widths; word reads neither and keeps the
-        // light card it was already drawing, which is a correct answer.
         '<style>' +
         '@media only screen and (max-width:620px){' +
         '.sp-pad{padding-left:22px!important;padding-right:22px!important;}' +
@@ -290,11 +154,6 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, c
         '@media (prefers-color-scheme:dark){' +
         '.sp-page{background:#0a0c14!important;}' +
         '.sp-card{background:#101426!important;border-color:rgba(255,255,255,0.10)!important;}' +
-        // the band keeps its light tint in the dark. the mark is a neon gradient
-        // drawn to sit on either, so it does not need the band to follow the
-        // card, and a light masthead over a dark one reads as a masthead rather
-        // than as a panel that forgot to change.
-
         '.sp-title,.sp-strong{color:#ffffff!important;}' +
         '.sp-body,.sp-quiet{color:rgba(255,255,255,0.62)!important;}' +
         '.sp-note{background:#161b2e!important;border-color:rgba(255,255,255,0.09)!important;}' +
@@ -302,108 +161,59 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, c
         '.sp-topline{border-top-color:rgba(255,255,255,0.10)!important;}' +
         '.sp-quiet{color:rgba(255,255,255,0.42)!important;}' +
         '.sp-quiet b,.sp-quiet span{color:rgba(255,255,255,0.62)!important;}' +
-        // a link that is #6b7899 on white is unreadable on #101426
         '.sp-foot a{color:rgba(255,255,255,0.72)!important;}' +
         '}' +
         '</style>' +
         '</head>' +
         '<body class="sp-page" style="margin:0;padding:0;background:' + C.page + ';">' +
-
-        // preheader: what the inbox list shows next to the subject, kept out of
-        // the visible body
         '<div style="display:none;max-height:0;overflow:hidden;opacity:0;">' + esc(intro) + '</div>' +
-
-        // the padding belongs to the cell, not to the table. a table that is
-        // width="100%" and also padded is 100% plus its padding wide in a client
-        // that measures the old way, which is most of them, and the result is a
-        // horizontal scrollbar under every message. the cell is inside the
-        // table, so its padding takes room rather than adding it.
         '<table role="presentation" class="sp-page" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:' + C.page + ';">' +
         '<tr><td align="center" style="padding:40px 16px;">' +
-        // word does not read max-width, so there it is given a real width to
-        // hold. everything else uses the max-width below and ignores this.
+
         '<!--[if mso]><table role="presentation" width="560" align="center" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->' +
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" ' +
-        // 26px and this shadow are the sign-in dialog's own, so the message and
-        // the panel it is about are recognisably the same object. outlook keeps
-        // the border and drops the rest, which is a plain white card and fine.
+
         'class="sp-card" style="max-width:560px;background:' + C.card + ';border:1px solid ' + C.line + ';border-radius:26px;overflow:hidden;' +
         'box-shadow:0 24px 60px -34px rgba(14,35,88,0.3),0 2px 8px rgba(14,35,88,0.04);font-family:' + FONT + ';">' +
-
-        // The masthead. A logo on white with a rule under it is what this was,
-        // and it read as a memo rather than as anything of ours.
-        //
-        // It is a band now, tinted with the brand's own gradient: the same cyan
-        // to purple the cards wear along their bottom edge, at the weight the
-        // site uses it for a background rather than for a line. Light, because
-        // the site is light: the footer is #f6f8fc and the hero is white, and a
-        // dark slab at the top of the message would belong to a different site.
-        //
-        // bgcolor carries the fallback. word paints the flat tint and skips the
-        // gradient, which is a tinted band rather than a broken one.
         '<tr><td class="sp-band" align="center" bgcolor="' + C.tint + '" ' +
         'style="padding:34px 36px 30px;background-color:' + C.tint + ';' +
         'background-image:linear-gradient(135deg,rgba(0,240,255,0.13) 0%,rgba(123,108,255,0.10) 52%,rgba(160,32,240,0.10) 100%);">' +
-        // The mark on its own. No wordmark under it: the name is in the sender
-        // line, in the subject and in the footer, and saying it a fourth time
-        // directly beneath the logo of it was the masthead repeating itself.
-        //
-        // 240px served at 52 is 4.6x, so it stays sharp on any screen without a
-        // second file for retina.
         '<a href="' + SITE + '" style="text-decoration:none;">' +
         '<img src="' + LOGO + '" width="52" height="52" alt="Sentinelpay" ' +
         'style="display:block;margin:0 auto;width:52px;height:52px;border:0;outline:none;text-decoration:none;">' +
         '</a>' +
         '</td></tr>' +
-
-        // the hairline the cards carry, here dividing the band from the message
         '<tr><td style="height:3px;line-height:3px;font-size:0;background:' + C.cyan + ';' +
         'background-image:linear-gradient(90deg,#00f0ff 0%,' + C.purple + ' 50%,#a020f0 100%);">&nbsp;</td></tr>' +
-
         '<tr><td class="sp-pad" style="padding:30px 36px 0;">' +
-        // the eyebrow the site uses, accent bar and all: 3px by 14px in #2563eb
-        // with 0.18em of tracking, set in the text face because the display face
-        // at this size and this tracking falls apart into separate letters.
         (eyebrow ? '<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>' +
             '<td width="3" bgcolor="' + C.accent + '" style="width:3px;height:14px;line-height:14px;font-size:0;' +
             'background:' + C.accent + ';border-radius:2px;">&nbsp;</td>' +
             '<td style="padding-left:9px;font-family:' + FONT + ';font-size:11px;line-height:14px;' +
             'letter-spacing:0.18em;text-transform:uppercase;font-weight:700;color:' + C.accent + ';">' +
             esc(eyebrow) + '</td></tr></table>' : '') +
-        // the dialog's own heading and sub, to the pixel: 1.55rem/1.18 and
-        // 0.9rem/1.55, which is 24.8/29 and 14.4/22 once the browser has done
-        // the arithmetic the email has to do itself
+
         '<div class="sp-title" style="margin-top:14px;font-family:' + DISPLAY + ';font-size:25px;line-height:29px;font-weight:800;letter-spacing:-0.02em;color:' + C.text + ';">' + esc(title) + '</div>' +
         '<div class="sp-body" style="margin-top:12px;font-size:14.5px;line-height:22px;color:' + C.muted + ';">' + esc(intro) + '</div>' +
         '</td></tr>' +
-
         '<tr><td style="height:26px;line-height:26px;font-size:0;">&nbsp;</td></tr>' +
-
         reviewBand(review) +
         codeBlock(code) +
-
         (rows ? '<tr><td style="padding:0 36px 4px;">' +
             '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">' + rows + '</table>' +
             '</td></tr><tr><td style="height:22px;line-height:22px;font-size:0;">&nbsp;</td></tr>' : '') +
-
-        // checklist, the same cyan tick the trial page uses
         (bullets && bullets.length ? '<tr><td style="padding:0 36px;">' +
             '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">' +
             bullets.map(tickRow).join('') +
             '</table></td></tr><tr><td style="height:26px;line-height:26px;font-size:0;">&nbsp;</td></tr>' : '') +
-
         button(cta) +
         (cta ? '<tr><td style="height:28px;line-height:28px;font-size:0;">&nbsp;</td></tr>' : '') +
-
         (footnote ? '<tr><td style="padding:0 36px;">' +
             '<div class="sp-note" style="padding:14px 16px;background:#f7f9fc;border:1px solid ' + C.lineSoft + ';border-radius:12px;' +
             'font-size:12px;line-height:19px;color:' + C.muted + ';">' + esc(footnote) + '</div>' +
             '</td></tr><tr><td style="height:8px;line-height:8px;font-size:0;">&nbsp;</td></tr>' : '') +
-
         divider('24px 36px') +
 
-        // the footer, the way the site's is: a line of places to go, then the
-        // quiet line nobody reads until they need it
         '<tr><td class="sp-foot sp-pad" align="center" style="padding:0 36px 30px;text-align:center;">' +
         '<div class="sp-quiet" style="font-size:12px;line-height:20px;color:' + C.faint + ';">' +
         '<a href="' + SITE + '/faq" style="color:' + C.muted + ';text-decoration:none;">' + esc(f.questions) + '</a>' +
@@ -417,7 +227,6 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, c
         '<div class="sp-body" style="margin-top:14px;font-size:12px;line-height:19px;color:' + C.muted + ';">' +
         esc(f.contact) + ' <a href="mailto:' + MAIL_TO + '" style="color:' + C.cyan + ';text-decoration:none;">' + MAIL_TO + '</a>' +
         '</div>' +
-        // who is writing to you, in the sense a company register understands
         '<div class="sp-quiet sp-topline" style="margin-top:18px;padding-top:16px;border-top:1px solid ' + C.lineSoft + ';' +
         'font-size:11px;line-height:18px;color:' + C.faint + ';">' +
         '<span style="color:' + C.muted + ';font-weight:600;">' + esc(LEGAL.name) + '</span><br>' +
@@ -425,21 +234,13 @@ function layout({ eyebrow, title, intro, rows, bullets, cta, footnote, review, c
         esc(LEGAL.reg) +
         '</div>' +
         '</td></tr>' +
-
-        // the gradient edge, along the bottom, where the card on the site wears
-        // it. it used to be a bar across the top, which no card on the site has.
-        // outlook drops the gradient and keeps the background colour, which is
-        // the cyan end of it, so it degrades to a plain accent line.
         '<tr><td style="height:3px;line-height:3px;font-size:0;background:' + C.cyan + ';' +
         'background-image:linear-gradient(90deg,#00f0ff 0%,' + C.purple + ' 50%,#a020f0 100%);">&nbsp;</td></tr>' +
-
         '</table>' +
         '<!--[if mso]></td></tr></table><![endif]-->' +
         '</td></tr></table></body></html>';
 }
 
-// Plain-text alternative. Without it, spam filters mark an html-only mail down and
-// some clients render nothing at all.
 function textVersion({ title, intro, pairs, bullets, cta, footnote, review, code, lang }) {
     const f = FOOTER[lang] || FOOTER.en;
     const lines = [title, '', intro, ''];
@@ -457,12 +258,6 @@ function textVersion({ title, intro, pairs, bullets, cta, footnote, review, code
     lines.push('', SITE, LEGAL.name, f.seat + ': ' + LEGAL.address, LEGAL.reg);
     return lines.join('\n');
 }
-
-// Sends, or throws. It never resolves quietly when nothing was sent: an endpoint
-// that answers "ok" while the inbox stays empty is the worst possible outcome.
-// The finished message, without sending it. Pulled out of send() so that the
-// preview and the real thing cannot drift: whatever you look at in the browser
-// is byte for byte what lands in the inbox.
 function compose(msg) {
     const { subject, eyebrow, title, intro, pairs, bullets, cta, footnote, review, code, lang } = msg;
     const rows = (pairs || []).map(([k, v]) => row(k, v)).join('');
@@ -472,11 +267,6 @@ function compose(msg) {
         text: textVersion({ title, intro, pairs, bullets, cta, footnote, review, code, lang }),
     };
 }
-
-// What the provider thinks of the domain we send as. "verified" means the dkim
-// and spf records are in dns and it has checked them; anything else means the
-// mail is either refused outright or delivered into a spam folder, and neither
-// of those looks any different from here to a person waiting for a code.
 async function domainStatus() {
     if (!isConfigured()) return 'no api key, so nothing to ask';
     const sender = (MAIL_FROM.match(/<([^>]+)>/) || [null, MAIL_FROM])[1];
@@ -486,9 +276,6 @@ async function domainStatus() {
         const list = await new Resend(process.env.RESEND_API_KEY).domains.list();
         if (list && list.error) {
             const name = String(list.error.name || '');
-            // a key made with "sending access" can send perfectly well and still
-            // not be allowed to read the domain list. reported as it is, so a
-            // permission answer is not mistaken for a broken domain.
             if (name === 'restricted_api_key') {
                 return 'the key may send but may not read the domain list, so this check cannot run. '
                     + 'that is a permission on the key, not a problem with the domain.';
@@ -499,7 +286,6 @@ async function domainStatus() {
             }
             return 'could not ask the provider: ' + (list.error.message || name || 'unknown error');
         }
-        // the sdk has moved this between data and data.data across versions
         const rows = (list && list.data && (list.data.data || list.data)) || [];
         if (!Array.isArray(rows)) return 'unexpected answer from the provider';
         const mine = rows.find((d) => String(d.name || '').toLowerCase() === domain);
@@ -518,14 +304,10 @@ async function domainStatus() {
         return 'could not ask the provider: ' + err.message;
     }
 }
-
 async function send(msg) {
     const { to, subject, replyTo } = msg;
     const { html, text } = compose(msg);
-
     if (!isConfigured()) {
-        // in production a missing key is a hard failure: the form must not claim
-        // success. locally there is no key by design, so write a preview instead.
         if (process.env.NODE_ENV === 'production') {
             const err = new Error('RESEND_API_KEY is not set, so no mail was sent');
             err.code = 'MAIL_NOT_CONFIGURED';
@@ -536,12 +318,8 @@ async function send(msg) {
         console.log('[mail preview] ' + subject + ' -> ' + file);
         return { preview: file };
     }
-
     const { Resend } = require('resend');
     const resend = new Resend(process.env.RESEND_API_KEY);
-    // the field is reply_to on the v3 sdk, not replyTo. spelled the other way it
-    // is simply an unknown property: no error, and every reply to a lead
-    // notification went to noreply@ instead of to the person who wrote in.
     const payload = {
         from: MAIL_FROM,
         to: to || MAIL_TO,
@@ -549,16 +327,8 @@ async function send(msg) {
         html: html,
         text: text,
     };
-    // where a reply should land. an internal notice sets this to the person who
-    // wrote in; everything else falls back to the support mailbox rather than to
-    // noreply@. two reasons: the footer already tells people to write there, and
-    // a sender that accepts replies is one of the things spam filters count in
-    // your favour. an address that can only shout is treated as one that only
-    // shouts.
     payload.reply_to = replyTo || MAIL_TO;
     const result = await resend.emails.send(payload);
-
-    // the sdk reports api errors in the payload rather than by rejecting
     if (result && result.error) {
         const err = new Error(result.error.message || 'resend rejected the message');
         err.code = 'MAIL_REJECTED';
@@ -566,18 +336,10 @@ async function send(msg) {
         console.error('[mail] rejected: ' + JSON.stringify(result.error));
         throw err;
     }
-    // the provider's own id for the message. without it, "the email never
-    // arrived" cannot be told apart from "we never sent it", and neither can be
-    // looked up in the provider's dashboard.
     const id = result && result.data && result.data.id;
     console.log('[mail] sent "' + subject + '" id=' + (id || 'no id returned'));
     return result;
 }
-
-
-// The message the person who signed up receives. It is the only mail a customer
-// ever gets from us, so it carries the copy in the language they were reading the
-// site in, and nothing else.
 const TRIAL_COPY = {
     en: {
         subject: 'Your Sentinelpay trial is ready',
@@ -625,9 +387,6 @@ const TRIAL_COPY = {
         footnote: 'Sie erhalten diese E-Mail, weil mit dieser Adresse eine Testphase auf sentinelpay.org gestartet wurde. Waren Sie das nicht, ignorieren Sie die E-Mail einfach.',
     },
 };
-
-// The trial app does not exist yet. Until TRIAL_APP_URL is set the mail says so
-// plainly rather than shipping a button that leads nowhere.
 function trialWelcomeMessage({ to, lang }) {
     const copy = TRIAL_COPY[lang] || TRIAL_COPY.en;
     const appUrl = process.env.TRIAL_APP_URL || '';
@@ -639,29 +398,17 @@ function trialWelcomeMessage({ to, lang }) {
         title: copy.title,
         intro: copy.intro,
         bullets: copy.bullets,
-        // there is a way in either way. until the trial app exists it is the
-        // account, which is where the trial will live, rather than a sentence
-        // promising a link that has never been sent.
         cta: { href: appUrl || (SITE + '/auth'), label: copy.ctaLabel },
         footnote: (appUrl ? '' : copy.viaAccount + ' ') + copy.footnote,
     };
 }
 async function sendTrialWelcome(opts) { return send(trialWelcomeMessage(opts)); }
-
-// The verification code, and the message that goes out instead when the address
-// already has an account. Both exist so that registering tells the person at the
-// address what happened, and tells whoever typed it in the form nothing at all:
-// the form's answer is identical either way, so it cannot be used to find out
-// who has an account here.
 const SIGNUP_COPY = {
     en: {
         subject: 'Your Sentinelpay code',
         eyebrow: 'Verify your email',
         title: 'Here is your code',
-        // the two terms used to sit under the code as a pair of pills. they are in
-        // the sentence now, for the same reason as in the reset mail: "one go and
-        // m minutes" is what you want to know while you are still reading, not
-        // after you have already typed it in.
+
         intro: (m) => 'Enter this to finish creating your Sentinelpay account. It works once and stops working in ' + m + ' minutes.',
         footnote: 'If you did not try to create an account, ignore this email. Nothing has been created and nobody can use this code without it.',
         warning: 'We will never ask you for this code, by email, chat or phone.',
@@ -683,7 +430,6 @@ const SIGNUP_COPY = {
         warning: 'Wir fragen Sie nie nach diesem Code, weder per E-Mail noch im Chat oder am Telefon.',
     },
 };
-
 function signupCodeMessage({ to, code, lang, minutes }) {
     const copy = SIGNUP_COPY[lang] || SIGNUP_COPY.en;
     return {
@@ -698,23 +444,11 @@ function signupCodeMessage({ to, code, lang, minutes }) {
     };
 }
 async function sendSignupCode(opts) { return send(signupCodeMessage(opts)); }
-
-// The forgotten password. This one goes to any address that asks, whether or
-// not there is an account behind it, because the panel answers the same either
-// way and this endpoint must not become a way of asking who has an account.
-//
-// So the copy cannot promise an account either. It says what the link does, not
-// whose it is, and the footnote is written for the person who did not ask: no
-// account of theirs is involved, and ignoring the mail leaves nothing changed.
 const RESET_COPY = {
     en: {
         subject: 'Reset your Sentinelpay password',
         eyebrow: 'Password reset',
         title: 'Set a new password',
-        // the two rules used to sit under the button as a pair of pills, which is
-        // where somebody looks after they have decided rather than before. they
-        // are in the sentence now, because "you have an hour and one go" is the
-        // thing worth knowing while you are still reading.
         intro: (m) => 'Somebody asked for a new password on this address. The link below works once and stops working in ' + m + ' minutes.',
         label: 'Set a new password',
         footnote: 'If this was not you, ignore this email. Nothing has changed, and the link stops working on its own.',
@@ -724,9 +458,6 @@ const RESET_COPY = {
         subject: 'Postavite novu Sentinelpay lozinku',
         eyebrow: 'Nova lozinka',
         title: 'Postavite novu lozinku',
-        // "otvorite gumb i izaberite je" was two mistakes in one line: a button
-        // is pressed rather than opened, and "je" was reaching back past two
-        // clauses to find the noun it belonged to.
         intro: (m) => 'Netko je zatražio novu lozinku za ovu adresu. Poveznica ispod vrijedi ' + m + ' minuta i može se iskoristiti samo jednom.',
         label: 'Postavite novu lozinku',
         footnote: 'Ako to niste bili vi, samo zanemarite ovaj mail. Ništa nije promijenjeno, a poveznica prestaje vrijediti sama od sebe.',
@@ -742,7 +473,6 @@ const RESET_COPY = {
         warning: 'Wir fragen Sie nie nach Ihrem Passwort, weder per E-Mail noch im Chat oder am Telefon.',
     },
 };
-
 function resetLinkMessage({ to, link, lang, minutes }) {
     const copy = RESET_COPY[lang] || RESET_COPY.en;
     return {
@@ -758,19 +488,6 @@ function resetLinkMessage({ to, link, lang, minutes }) {
 }
 async function sendResetLink(opts) { return send(resetLinkMessage(opts)); }
 
-// ---------------------------------------------------------------------------
-// the two notices nobody asks for
-// ---------------------------------------------------------------------------
-//
-// A password that changed, and a sign-in from somewhere new. Neither is
-// something the owner asked us to send, and that is the point: if they did not
-// do it, this mail is the only way they find out while it still matters. Both
-// say what happened, when, and from roughly where, and both end in the same
-// place: here is what to do if this was not you.
-//
-// No link to press. A security notice that asks you to click something is a
-// template for the phishing mail that imitates it, so these say "go to the site
-// and change your password" and let the reader find their own way there.
 const CHANGED_COPY = {
     en: {
         subject: 'Your Sentinelpay password was changed',
@@ -794,7 +511,6 @@ const CHANGED_COPY = {
         footnote: 'Waren Sie das, ist nichts zu tun. Waren Sie es nicht, fordern Sie sofort ein neues Passwort an und schreiben Sie uns: der Zugang ist bereits weg, aber wir wollen wissen, wie er entstanden ist.',
     },
 };
-
 function passwordChangedMessage({ to, lang, when, ip, country }) {
     const copy = CHANGED_COPY[lang] || CHANGED_COPY.en;
     const label = (LABELS[lang] || LABELS.en);
@@ -813,7 +529,6 @@ function passwordChangedMessage({ to, lang, when, ip, country }) {
         footnote: copy.footnote,
     };
 }
-
 const SIGNIN_COPY = {
     en: {
         subject: 'A new sign-in to your Sentinelpay account',
@@ -837,13 +552,11 @@ const SIGNIN_COPY = {
         footnote: 'Waren Sie das, ist nichts zu tun. Waren Sie es nicht, ändern Sie jetzt Ihr Passwort: das meldet jedes Gerät ab, auch dieses.',
     },
 };
-
 const LABELS = {
     en: { when: 'When', where: 'Country', address: 'Network address', unknown: 'not recorded' },
     hr: { when: 'Kada', where: 'Zemlja', address: 'Mrežna adresa', unknown: 'nije zabilježeno' },
     de: { when: 'Wann', where: 'Land', address: 'Netzwerkadresse', unknown: 'nicht erfasst' },
 };
-
 function newSignInMessage({ to, lang, when, ip, country }) {
     const copy = SIGNIN_COPY[lang] || SIGNIN_COPY.en;
     const label = (LABELS[lang] || LABELS.en);
@@ -862,25 +575,8 @@ function newSignInMessage({ to, lang, when, ip, country }) {
         footnote: copy.footnote,
     };
 }
-
 async function sendPasswordChanged(opts) { return send(passwordChangedMessage(opts)); }
 async function sendNewSignIn(opts) { return send(newSignInMessage(opts)); }
-
-// There was a message here for "this address already has an account". It went
-// out instead of a code, so that the form could answer identically either way
-// and give nothing away. The form now says so itself, which means the person
-// reading it is not waiting on a code that was never sent, and nobody is mailed
-// about a sign-up they did not attempt. With no caller left, the template goes
-// too: an unreachable one is a thing somebody wires back up by mistake.
-
-// ---------------------------------------------------------------------------
-// previews
-// ---------------------------------------------------------------------------
-//
-// Every message the site sends, built with sample values and handed back rather
-// than sent. Editing a template and reloading a page beats editing a template
-// and posting a form to find out what it looks like, and because the preview
-// runs through compose() it cannot show something the inbox will not.
 
 const PREVIEWS = {
     'signup-code': (lang) => signupCodeMessage({ to: 'ana@primjer.hr', code: '481902', lang, minutes: 15 }),
@@ -895,10 +591,6 @@ const PREVIEWS = {
     'new-sign-in': (lang) => newSignInMessage({
         to: 'ana@primjer.hr', lang, when: '12.09.2026. 14:20 (UTC)', ip: '198.51.100.24', country: 'HR',
     }),
-    // the two that go to us rather than to a customer. these are written where
-    // they are sent, so the sample here mirrors them rather than sharing code:
-    // if the endpoint changes and this does not, the preview is stale, and the
-    // note below says so out loud.
     'trial-notice': () => ({
         subject: 'Review: new trial sign-up: Ana Anić @ Primjer d.o.o.',
         eyebrow: 'Free trial',
@@ -921,16 +613,13 @@ const PREVIEWS = {
         pairs: [['Name', 'Ana Anić'], ['Email', 'ana@primjer.hr'], ['Language', 'hr']],
     }),
 };
-
 function previewNames() { return Object.keys(PREVIEWS); }
-
 function render(name, lang) {
     const make = PREVIEWS[name];
     if (!make) return null;
     const msg = make(['hr', 'de', 'en'].includes(lang) ? lang : 'en');
     return Object.assign({ name: name, lang: lang }, compose(msg));
 }
-
 module.exports = {
     send, compose, sendTrialWelcome, sendSignupCode, sendResetLink,
     render, previewNames, isConfigured, domainStatus, MAIL_FROM, MAIL_TO,

@@ -1,20 +1,6 @@
-/* the signed-in page.
-
-   the server has already refused to send this page to anybody without a good
-   cookie, so this file is not a guard. it fills in the four facts about the
-   account and signs the person out again, and that is all it does.
-
-   the details are fetched rather than rendered into the html on purpose. the
-   page itself is the same bytes for everybody, so it can be cached, diffed and
-   reasoned about; the name and the address arrive over a request that answers
-   no-store. it also means one place decides who somebody is, `/v1/auth/me`, and
-   the navigation on every other page asks the same question the same way. */
 (function () {
     var t = function (x) { return window.SentinelI18n ? window.SentinelI18n.t(x) : x; };
 
-    // one small post, shared by every card on this page. there were two copies of
-    // this by the end of the evening, which is exactly the shape of thing that
-    // later gets fixed in one of them.
     function post(url, body) {
         return fetch(url, {
             method: 'POST',
@@ -28,8 +14,6 @@
             });
         });
     }
-
-    // a line under a card: red by default, green when it is good news
     function note(id, msg, good) {
         var el = document.getElementById(id);
         if (!el) return;
@@ -43,10 +27,6 @@
         var el = document.getElementById(id);
         if (el && value) el.textContent = value;
     }
-
-    // "member since 14 august 2026", in the language the page is in. the date
-    // arrives as an iso string from the server, which is the only format that
-    // means the same thing in every timezone.
     function niceDate(iso) {
         var d = new Date(iso);
         if (isNaN(d.getTime())) return '';
@@ -58,36 +38,22 @@
             return d.toISOString().slice(0, 10);
         }
     }
-
     fetch('/v1/auth/me', { credentials: 'same-origin' })
         .then(function (r) { return r.json(); })
         .then(function (me) {
-            // the cookie can go stale between the server's check and this call:
-            // a sign-out in another tab, or a session we ended from our side
             if (!me || !me.signedIn) { location.replace('/?signin=1'); return; }
             set('dash-name', me.name);
             set('dash-email', me.email);
             set('dash-since', niceDate(me.since));
             var first = String(me.name || '').trim().split(/\s+/)[0];
             if (first) set('dash-greet', t('Welcome back') + ', ' + first);
-            // the panel appears for staff. it is a set of links and nothing
-            // else: every page behind it checks the session for itself, so
-            // unhiding this by hand in a browser opens nothing.
             var staff = document.getElementById('dash-staff');
             if (staff && me.staff) staff.hidden = false;
             twoFactor(me);
             accountTools(me);
         })
         .catch(function () {
-            // the page is already on screen and says nothing untrue: the rows
-            // simply stay as dashes rather than the page throwing somebody out
-            // over one failed request
         });
-
-    // ---- two-factor ---------------------------------------------------------
-    // three states in one card: off, being set up, and on. the card is drawn
-    // from what /v1/auth/me says rather than from what the last button press
-    // did, so a second tab that switched it on is not contradicted by this one.
     function twoFactor(me) {
         var card = document.getElementById('dash-2fa');
         if (!card) return;
@@ -97,9 +63,7 @@
         var setup = document.getElementById('dash-2fa-setup');
         var codesBox = document.getElementById('dash-2fa-codes');
         var offBox = document.getElementById('dash-2fa-offbox');
-
         function say(msg, good) { note('dash-2fa-err', msg, good); }
-
         function paint(on, left, needed) {
             if (startBtn) startBtn.hidden = on;
             if (offBtn) offBtn.hidden = !on;
@@ -111,18 +75,14 @@
                 stateEl.textContent = t('This address is on the staff list, so two-factor is required before the staff pages will open.');
             }
         }
-
         paint(Boolean(me.totp), me.recoveryLeft, me.staffNeeds2fa);
-
         if (startBtn) {
             startBtn.addEventListener('click', function () {
                 say('');
                 startBtn.disabled = true;
                 post('/v1/account/totp/start').then(function (out) {
                     startBtn.disabled = false;
-                    // the button that started this has nothing left to do, and
-                    // leaving it there invites a second press that would mint a
-                    // second secret and orphan the one now in somebody's app
+
                     startBtn.hidden = true;
                     if (setup) setup.hidden = false;
                     var secretEl = document.getElementById('dash-2fa-secret');
@@ -137,7 +97,6 @@
                 });
             });
         }
-
         var confirmBtn = document.getElementById('dash-2fa-confirm');
         if (confirmBtn) {
             confirmBtn.addEventListener('click', function () {
@@ -161,7 +120,6 @@
                 });
             });
         }
-
         if (offBtn) {
             offBtn.addEventListener('click', function () {
                 say('');
@@ -170,7 +128,6 @@
                 if (pw) pw.focus();
             });
         }
-
         var offGo = document.getElementById('dash-2fa-offgo');
         if (offGo) {
             offGo.addEventListener('click', function () {
@@ -194,12 +151,6 @@
             });
         }
     }
-
-    // ---- password, sessions, erasure ----------------------------------------
-    // the three things somebody should be able to do about their own account
-    // without writing to us. all three go through the same small helper, and all
-    // three say what happened in the card rather than in a toast that has gone by
-    // the time you look up.
     function accountTools(me) {
         var pwGo = document.getElementById('dash-pw-go');
         if (pwGo) {
@@ -221,7 +172,6 @@
                 });
             });
         }
-
         function when(iso) {
             var d = new Date(iso);
             if (isNaN(d.getTime())) return '';
@@ -230,7 +180,6 @@
             try { return d.toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' }); }
             catch (err) { return d.toISOString().slice(0, 16).replace('T', ' '); }
         }
-
         function loadSessions() {
             var box = document.getElementById('dash-sessions-list');
             if (!box) return;
@@ -249,7 +198,6 @@
                 .catch(function () { box.textContent = ''; });
         }
         loadSessions();
-
         var revoke = document.getElementById('dash-sessions-revoke');
         if (revoke) {
             revoke.addEventListener('click', function () {
@@ -264,14 +212,12 @@
                 });
             });
         }
-
         var delGo = document.getElementById('dash-del-go');
         if (delGo) {
             var armed = false;
             delGo.addEventListener('click', function () {
                 var pw = document.getElementById('dash-del-pw');
                 if (!pw.value) { note('dash-del-err', t('Please fill in every field.')); return; }
-                // asked twice, because the second press is the one that means it
                 if (!armed) {
                     armed = true;
                     delGo.textContent = t('Press again to delete');
@@ -295,14 +241,13 @@
             });
         }
     }
-
     var out = document.getElementById('dash-logout');
     if (out) {
         out.addEventListener('click', function () {
             out.disabled = true;
             out.textContent = t('Signing out…');
             fetch('/v1/auth/logout', { method: 'POST', credentials: 'same-origin' })
-                .catch(function () { /* the cookie is cleared by the server; try anyway */ })
+                .catch(function () {  })
                 .then(function () { location.replace('/'); });
         });
     }

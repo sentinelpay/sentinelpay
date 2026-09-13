@@ -3,8 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- ios turns things like "1-10" and "51-200" into phone links, which made
-         the company-size options open the call sheet instead of selecting -->
     <meta name="format-detection" content="telephone=no">
     <meta name="robots" content="noindex, nofollow">
     <title>Sentinelpay | Blog | Every vendor says AI now. Ask them to explain one score.</title>
@@ -20,30 +18,19 @@
     <meta property="twitter:title" content="Every vendor says AI now. Ask them to explain one score.">
     <meta property="twitter:description" content="Explainability stopped being a nice-to-have the moment a regulator could ask why you let a payment through. Here is the test I put every risk vendor through, including us.">
     <meta property="twitter:image" content="https://blog.sentinelpay.org/covers/explain-the-score.1.png">
-    <script>/* tab title before first paint; for articles this is the h1 translation */(function(){var T={"hr": "Sentinelpay | Blog | Svaki dobavljač sada govori AI. Tražite da objasne jednu ocjenu.", "de": "Sentinelpay | Blog | Jeder Anbieter sagt jetzt KI. Lassen Sie sich einen Score erklären."},m=document.cookie.match(/(?:^|; )sp-lang=([^;]*)/),l=m?decodeURIComponent(m[1]):null;if(!l){try{l=localStorage.getItem("sp-lang")}catch(e){}}if(l!=="hr"&&l!=="de"&&l!=="en")l=document.documentElement.getAttribute("data-geo-lang");if(l!=="hr"&&l!=="de")return;document.documentElement.lang=l;if(!T)return;window.__SP_TITLE_SRC=document.title.replace(/\s+/g," ").trim();document.title=T[l];})();</script>
+    <script>(function(){var T={"hr": "Sentinelpay | Blog | Svaki dobavljač sada govori AI. Tražite da objasne jednu ocjenu.", "de": "Sentinelpay | Blog | Jeder Anbieter sagt jetzt KI. Lassen Sie sich einen Score erklären."},m=document.cookie.match(/(?:^|; )sp-lang=([^;]*)/),l=m?decodeURIComponent(m[1]):null;if(!l){try{l=localStorage.getItem("sp-lang")}catch(e){}}if(l!=="hr"&&l!=="de"&&l!=="en")l=document.documentElement.getAttribute("data-geo-lang");if(l!=="hr"&&l!=="de")return;document.documentElement.lang=l;if(!T)return;window.__SP_TITLE_SRC=document.title.replace(/\s+/g," ").trim();document.title=T[l];})();</script>
     <script>document.documentElement.classList.add('theme-light');</script>
     <script>if(history.scrollRestoration)history.scrollRestoration='manual';window.scrollTo(0,0);</script>
     <link rel="icon" type="image/svg+xml" href="/logo.svg">
     <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/fonts/jakarta-latin.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="/fonts.1.css">
-    <link rel="stylesheet" href="/style.26.css">
-    <link rel="stylesheet" href="/landing.148.css">
-    <link rel="stylesheet" href="/corp.329.css">
+    <link rel="stylesheet" href="/fonts.2.css">
+    <link rel="stylesheet" href="/style.27.css">
+    <link rel="stylesheet" href="/landing.149.css">
+    <link rel="stylesheet" href="/corp.330.css">
     <style>
-        /* page loader: hold the page until everything is loaded (matches homepage) */
         #sp-loader{position:fixed;inset:0;z-index:99999;background:#050505;display:flex;align-items:center;justify-content:center;transition:opacity 0.55s ease;}
         #sp-loader.spl-done{opacity:0;pointer-events:none;}
-        /* nothing scrolls while the loader is up. the page behind it is already
-           laid out and a stray wheel or swipe used to move it, so the loader
-           lifted on a page halfway down itself. the gutter is held open so the
-           scrollbar coming back does not shift the whole layout sideways at the
-           exact moment the loader fades.
-
-           `:has` rather than a class toggled by script: the lock then ends the
-           moment the loader is marked done, and there is no state to leave
-           behind if the script never runs. where `:has` is not supported this
-           simply does nothing, which is how the page behaved before. */
         html:has(#sp-loader:not(.spl-done)),
         html:has(#sp-loader:not(.spl-done)) body { overflow: hidden; }
         html:has(#sp-loader:not(.spl-done)) { scrollbar-gutter: stable; }
@@ -58,7 +45,6 @@
             --accent-glow: rgba(0,145,200,0.12); --accent-light: #0091c8; --neon-blue: #0091c8;
         }
         html.theme-light body.lp-body { background: linear-gradient(180deg, #fbfcfd 0%, #eef0f3 100%) fixed; }
-        /* same scrollbar as sentinelpay.org (light-blue on light track) */
         html.theme-light, html.theme-light * { scrollbar-color: rgba(0,145,200,0.25) #f0f0f2; }
         html.theme-light::-webkit-scrollbar-track, html.theme-light ::-webkit-scrollbar-track { background: #f0f0f2; }
         html.theme-light::-webkit-scrollbar-thumb, html.theme-light ::-webkit-scrollbar-thumb { background: rgba(0,145,200,0.25); border: 1px solid rgba(0,145,200,0.15); }
@@ -67,10 +53,7 @@
         html.theme-light .lp-btn-ghost.auth-nav-btn { border-color: rgba(0,0,0,0.08) !important; }
         html.theme-light .lp-btn-ghost.auth-nav-btn:hover { background: rgba(0,0,0,0.04) !important; }
         .lp-nav-inner { display: flex !important; justify-content: space-between; align-items: center; }
-
-        /* reading progress bar */
         .read-progress { position: fixed; top: 0; left: 0; height: 3px; width: 0; z-index: 9999; background: rgba(14,35,88,0.55); transition: width 0.08s linear; }
-
         .article-shell { max-width: 720px; margin: 0 auto; padding: 0 1.4rem; }
         .lp-section.article { padding-top: 7rem; }
         .article-back {
@@ -83,8 +66,6 @@
         .article-back:hover { color: #0e2358; border-color: rgba(14,35,88,0.32); background: #fbfcfd; box-shadow: 0 6px 18px -10px rgba(14,35,88,0.35); }
         .article-back:hover svg { transform: translateX(-3px); }
         .article-title { margin: 0 0 1.4rem; font-size: 2.7rem; font-weight: 800; line-height: 1.14; letter-spacing: -0.02em; color: #0e2358; text-transform: none; }
-        /* show-original pill: only rendered on a translated article.
-           cut from the same pattern as .article-back so the two read as a set. */
         .article-original { margin-top: 1.5rem; }
         .article-original-btn {
             display: inline-flex; align-items: center; gap: 0.45rem;
@@ -103,7 +84,6 @@
         }
         .article-original-btn:hover svg { opacity: 1; }
         .article-original-btn:focus-visible { outline: 2px solid rgba(0,145,200,0.5); outline-offset: 3px; }
-        /* showing the original is a held state, so the pill fills in to say so */
         .article-original-btn.is-on {
             color: #0091c8;
             border-color: rgba(0,145,200,0.35);
@@ -113,8 +93,6 @@
         .article-original-btn.is-on:hover {
             color: #0e2358; border-color: rgba(0,145,200,0.55); background: rgba(0,145,200,0.1);
         }
-        /* the shared stylesheet stretches every button to full width below 600px,
-           which is right for form submits and wrong for a pill. opt out. */
         @media (max-width: 600px) {
             .article-original-btn { width: auto; }
         }
@@ -122,13 +100,7 @@
         .article-avatar { position: relative; width: 40px; height: 40px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; background: rgba(0,145,200,0.08); border: 1px solid rgba(14,35,88,0.1); }
         .article-avatar svg { width: 22px; height: 22px; }
         .article-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 2; }
-        /* overlapping avatars: each earlier author sits above the next, so the
-           stack reads left to right in the same order as the names */
         .article-avatars { display: inline-flex; align-items: center; }
-        /* the avatar's own border is translucent, so on a stack it let the face
-           underneath bleed through as a dark hairline just inside the white ring.
-           an opaque backing (the same tint, flattened onto the page colour) keeps
-           the border looking identical without showing what is behind it. */
         .article-avatars .article-avatar { box-shadow: 0 0 0 2px #fbfcfd; background: #e7f3f9; }
         .article-avatars .article-avatar:nth-child(1) { z-index: 3; }
         .article-avatars .article-avatar:nth-child(2) { z-index: 2; }
@@ -136,7 +108,6 @@
         .article-avatars .article-avatar + .article-avatar { margin-left: -15px; }
         .article-byline b { font-size: 0.92rem; font-weight: 700; color: #0e2358; }
         .article-byline small { display: block; font-size: 0.8rem; color: rgba(14,35,88,0.5); }
-
         .article-body { margin-top: 2.6rem; padding-bottom: 1rem; }
         .article-body > p { margin: 1.35rem 0; font-size: 1.13rem; line-height: 1.8; color: #2a3550; }
         .article-body > p.lead { font-size: 1.35rem; line-height: 1.6; font-weight: 500; color: #0e2358; }
@@ -150,17 +121,14 @@
             content: ''; position: absolute; left: 0.15rem; top: 0.68em; width: 5px; height: 5px; border-radius: 50%;
             background: rgba(14,35,88,0.45);
         }
-        /* monotone pull-quote: simple left rule, no colour */
         .article-callout {
             margin: 2rem 0; padding: 0.3rem 0 0.3rem 1.4rem; border-left: 3px solid rgba(14,35,88,0.22);
             font-size: 1.25rem; font-weight: 700; line-height: 1.5; color: #0e2358;
         }
-        /* case blocks: plain flow, sub-heading + text, no card */
         .article-example { margin: 1.6rem 0; padding: 0; background: none; border: none; box-shadow: none; }
         .article-example h3 { margin: 0 0 0.5rem; font-size: 1.2rem; font-weight: 700; color: #0e2358; text-transform: none; }
         .article-example p { margin: 0.7rem 0 0; font-size: 1.08rem; line-height: 1.75; color: #2a3550; }
         .article-example p:first-of-type { margin-top: 0; }
-
         @media (max-width: 640px) {
             .article-title { font-size: 2rem; }
             .lp-section.article { padding-top: 6rem; }
@@ -170,13 +138,6 @@
         }
     </style>
     <noscript><style>
-        /* scripting is off, so the loader is the final screen, not a stage on the
-           way somewhere. stop the pulse so it reads as a message, not a hang. */
-        /* theme-light is added by an inline script, which never runs here, so the
-           loader would sit on the dark default. force the light one. */
-        /* the loader covers the viewport, but the page behind it still has its full
-           height, so the window kept a scrollbar with nothing to scroll to. and
-           without theme-light that scrollbar renders in the dark theme's colours. */
         html, body { overflow: hidden !important; height: 100%; }
         #sp-loader { background: #fbfcfd !important; flex-direction: column; gap: 1.6rem; padding: 0 1.5rem; }
         #sp-loader .spl-logo-svg { animation: none; filter: none; opacity: 0.75; width: 96px; height: 96px; }
@@ -188,7 +149,7 @@
     </style></noscript>
 </head>
 <body class="lp-body">
-    <div id="sp-loader"><svg class="spl-logo-svg" viewBox="0 0 120 120" fill="none"><defs><linearGradient id="spl-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00ffff"/><stop offset="100%" stop-color="#a020f0"/></linearGradient><filter id="spl-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3.5" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#spl-glow)" fill="none" stroke="url(#spl-grad)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/><g class="spl-eye-blink"><path d="M38 60 Q 60 40 82 60 Q 60 80 38 60 Z"/><circle cx="60" cy="60" r="6"/><circle cx="60" cy="60" r="2" fill="url(#spl-grad)" stroke="none"/></g><path d="M60 15 V 30" stroke-width="2" opacity="0.6"/><path d="M60 90 V 105" stroke-width="2" opacity="0.6"/></g></svg><noscript><!--SP_NOSCRIPT--></noscript></div>
+    <div id="sp-loader"><svg class="spl-logo-svg" viewBox="0 0 120 120" fill="none"><defs><linearGradient id="spl-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00ffff"/><stop offset="100%" stop-color="#a020f0"/></linearGradient><filter id="spl-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3.5" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#spl-glow)" fill="none" stroke="url(#spl-grad)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/><g class="spl-eye-blink"><path d="M38 60 Q 60 40 82 60 Q 60 80 38 60 Z"/><circle cx="60" cy="60" r="6"/><circle cx="60" cy="60" r="2" fill="url(#spl-grad)" stroke="none"/></g><path d="M60 15 V 30" stroke-width="2" opacity="0.6"/><path d="M60 90 V 105" stroke-width="2" opacity="0.6"/></g></svg><noscript></noscript></div>
     <div class="read-progress" id="read-progress"></div>
     <nav class="lp-nav">
         <div class="lp-nav-inner">
@@ -422,7 +383,6 @@
             </div>
         </div>
     </div>
-
     <article class="lp-section article">
         <div class="article-shell">
             <a href="/" class="article-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>All articles</a>
@@ -435,31 +395,26 @@
             </div>
             <div class="article-original" data-original-toggle data-i18n-skip></div>
         </div>
-
         <div class="article-shell article-body" data-original-scope>
             <p class="lead">Every compliance deck I have been sent this year says AI somewhere on the first slide. Not one of them could tell me why a specific wallet got a 78.</p>
             <p>I asked. Politely, twice. What I got back was the word model, the word proprietary, and a slide about training data. That is not an answer. That is a shrug with a logo on it.</p>
             <p>So here is the thing nobody selling you this wants to say out loud: a score you cannot explain is not a control. It is a number you will have to defend one day, in a room, to somebody who is allowed to fine you.</p>
-
             <h2>The question that ends the demo</h2>
             <p>Pick one wallet the tool flagged. Ask the vendor to tell you, in a sentence, what made it a 78 rather than a 41.</p>
             <p>You are not being difficult. You are asking the only question that matters, because it is the exact question you will be asked later, and by then the vendor will not be in the room. You will be.</p>
             <p class="article-callout">If nobody can say why the number is the number, you have not bought a risk score. You have bought a coin flip with a confidence interval.</p>
             <p>A good answer sounds like this: two hops from a mixer, one hop from a cluster on a sanctions list, and a funding pattern that matches a known peel chain. Boring. Checkable. Written down. You can put that in a file and it will still make sense in eighteen months.</p>
             <p>A bad answer sounds like the model weighted several hundred features. That sentence has no defence in it. You cannot repeat it to an auditor, you cannot show it to your bank, and you certainly cannot put it in front of the customer whose payment you just held.</p>
-
             <h2>This is not my opinion, it is the paperwork</h2>
             <p>The rules already caught up with this, and most of the market is pretending otherwise.</p>
             <p>Under the GDPR, a decision made purely by automated means that significantly affects somebody carries a right to meaningful information about the logic involved. Freezing a payment or refusing an account is exactly that kind of decision. Meaningful is doing a lot of work in that sentence, and proprietary model is not meaningful.</p>
             <p>The EU AI Act goes further for high-risk systems and gives affected people a right to an explanation of the role the system played in a decision. Whether every crypto risk tool lands in that bucket is still being argued. What is not being argued is the direction: the answer we cannot tell you is closing, not opening.</p>
             <p>And the anti-money-laundering rules have wanted this the whole time. A risk-based approach means you can show your reasoning. Not your outcome, your reasoning. If your defence for holding funds is that the machine said so, you do not have a risk-based approach, you have a machine.</p>
-
             <h2>Where we actually use models, and where we do not</h2>
             <p>I am not going to sit here and pretend we have no statistics in the product. We do, and I would rather tell you exactly where.</p>
             <p>We use models for clustering, which addresses probably belong to the same owner, and for spotting patterns that look like known laundering behaviour. That work is genuinely hard to do with rules alone, and a model earns its place there.</p>
             <p>The score itself is not a model. It is built from named heuristics, and every one of them is a sentence a person wrote on purpose. Distance to a sanctioned address. Mixer exposure. Freeze history on the cluster. Age and funding shape of the wallet. Each contributes a stated amount, and the score carries the list of what fired with it.</p>
             <p>That is a deliberate limit, and it costs us. There are patterns a learned model would catch that our heuristics will miss, and I know it. I would rather miss something and be able to say what we checked than catch it and have nothing to show for how.</p>
-
             <h2>Three questions, before you sign anything</h2>
             <ul>
                 <li>Show me one flagged wallet and tell me in one sentence why. If it takes a diagram, the answer is no.</li>
@@ -472,7 +427,6 @@
             <p>AI is not the problem. Nobody explaining what it did is the problem.</p>
             <p>You are not buying a number. You are buying the ability to say why you did what you did, months later, to somebody who was not there and is not inclined to be generous. Buy that.</p>
             <p>If that is the kind of thing you want watching your back, follow along and get early access when we launch at <a href="https://sentinelpay.org" rel="noopener">sentinelpay.org</a>.</p>
-
             <p class="article-sources-title">Sources</p>
             <ul class="article-sources">
                 <li><a href="https://eur-lex.europa.eu/eli/reg/2016/679/oj" rel="noopener noreferrer" target="_blank">GDPR, regulation (EU) 2016/679, official text</a></li>
@@ -485,7 +439,6 @@
             </ul>
         </div>
     </article>
-
     <footer class="lp-footer">
         <div class="lp-section-inner">
             <div class="lp-footer-top">
@@ -578,7 +531,6 @@
             </div>
         </div>
     </footer>
-
     <script>
         (function() {
             var bar = document.getElementById('read-progress');
@@ -591,19 +543,14 @@
             update();
         })();
     </script>
-    <script>/* the splash must clear whether or not the load event ever arrives. it waits
-   for every subresource including third party scripts, and one slow embed is
-   then a site nobody can see: the safety net below only ever started counting
-   after load, so it protected against a slow image and not against the thing
-   most likely to hang. this arms at dom ready instead and load simply gets
-   there first when it can. */(function(){var fired0=false;var run=function(){if(fired0)return;fired0=true;window.scrollTo(0,0);var l=document.getElementById('sp-loader');if(!l)return;var finish=function(){l.classList.add('spl-done');setTimeout(function(){l.remove();},620);};/* the load event does not wait for lazy images, and nearly every image on the site is lazy, so the loader used to clear while the first screen was still filling in. wait for the ones that will actually be visible: an image further down has not started loading yet and never would, so waiting for all of them would hold the loader open for ever. */var pending=[],im,r,i;for(i=0;i<document.images.length;i++){im=document.images[i];r=im.getBoundingClientRect();if(r.bottom<0||r.top>window.innerHeight*1.2)continue;if(im.complete&&im.naturalWidth>0)continue;pending.push(im);}if(!pending.length){finish();return;}var left=pending.length,fired=false;var one=function(){if(--left<=0&&!fired){fired=true;finish();}};pending.forEach(function(x){x.addEventListener('load',one,{once:true});x.addEventListener('error',one,{once:true});});/* a slow or broken image must never trap anybody behind the loader */setTimeout(function(){if(!fired){fired=true;finish();}},2500);};window.addEventListener('load',run);if(document.readyState!=='loading')setTimeout(run,3500);else document.addEventListener('DOMContentLoaded',function(){setTimeout(run,3500);});})();</script>
-    <script src="/img-fallback.2.js" defer></script>
-    <script src="/nav.1.js" defer></script>
-    <script src="/auth-modal.18.js" defer></script>
-    <script src="/auth-flow.39.js" defer></script>
-    <script src="/auth-nav.4.js" defer></script>
-    <script src="/toast.2.js" defer></script>
-    <script src="/navlift.1.js" defer></script>
-    <script src="/i18n.113.js" defer></script>
+    <script>(function(){var fired0=false;var run=function(){if(fired0)return;fired0=true;window.scrollTo(0,0);var l=document.getElementById('sp-loader');if(!l)return;var finish=function(){l.classList.add('spl-done');setTimeout(function(){l.remove();},620);};var pending=[],im,r,i;for(i=0;i<document.images.length;i++){im=document.images[i];r=im.getBoundingClientRect();if(r.bottom<0||r.top>window.innerHeight*1.2)continue;if(im.complete&&im.naturalWidth>0)continue;pending.push(im);}if(!pending.length){finish();return;}var left=pending.length,fired=false;var one=function(){if(--left<=0&&!fired){fired=true;finish();}};pending.forEach(function(x){x.addEventListener('load',one,{once:true});x.addEventListener('error',one,{once:true});});setTimeout(function(){if(!fired){fired=true;finish();}},2500);};window.addEventListener('load',run);if(document.readyState!=='loading')setTimeout(run,3500);else document.addEventListener('DOMContentLoaded',function(){setTimeout(run,3500);});})();</script>
+    <script src="/img-fallback.3.js" defer></script>
+    <script src="/nav.2.js" defer></script>
+    <script src="/auth-modal.19.js" defer></script>
+    <script src="/auth-flow.40.js" defer></script>
+    <script src="/auth-nav.5.js" defer></script>
+    <script src="/toast.3.js" defer></script>
+    <script src="/navlift.2.js" defer></script>
+    <script src="/i18n.114.js" defer></script>
 </body>
 </html>

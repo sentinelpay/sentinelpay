@@ -571,11 +571,6 @@ html.lp-scroll-lock body {
     right: 0;
     bottom: 0;
     z-index: 998;
-    /* opaque, with no blur behind it.
-       it was 99 percent black over a 28px blur, and one percent of a white
-       policy page is not nothing: the headings behind it came through as grey
-       ghosts under the menu items. a panel you can read the page through is a
-       panel that looks broken rather than one that looks light. */
     background: #050508;
     border-top: 1px solid var(--border-glass);
     opacity: 0;
@@ -738,7 +733,7 @@ html.lp-scroll-lock body {
 }
 .lp-mm-btn-solid:active {
     filter: brightness(0.94);
-}/* sheen sweep on hover/press, same as the desktop nav buttons */
+}
 .lp-mm-btn-ghost,
 .lp-mm-btn-solid { position: relative; overflow: hidden; }
 .lp-mm-btn-ghost::after,
@@ -856,7 +851,6 @@ html.lp-scroll-lock body {
 .lp-nav-inner { grid-template-columns: 1fr auto; }
 #auth-nav-container .lp-desktop-auth { display: none !important; }
 .lp-hamburger { display: flex; }}
-
 @media (max-width: 960px) {
 @keyframes packet-flow-v {
         0%   { top: 0;                    opacity: 0; }
@@ -864,7 +858,6 @@ html.lp-scroll-lock body {
         90%  { top: calc(100% - 20px);    opacity: 1; }
         100% { top: calc(100% - 20px);    opacity: 0; }
     }
-
 .lp-signal-card:nth-child(1),
 .lp-signal-card:nth-child(2),
 .lp-signal-card:nth-child(3),
@@ -872,7 +865,6 @@ html.lp-scroll-lock body {
 .lp-signal-card:nth-child(5) {
         grid-column: auto;
     }}
-
 @media (max-width: 600px) {
 body.lp-body {
         padding-top: 0 !important;
@@ -911,7 +903,6 @@ body.lp-body {
 .lp-btn-solid.auth-nav-btn:active { transform: scale(0.96) !important; }
 .lp-plan-cta-solid:hover { transform: none; }
 .lp-plan-cta-solid:active { transform: scale(0.97); }}
-
 html.auth-session-present #nav-login-btn,
 html.auth-session-present #nav-register-btn { display: none !important; }
 html.auth-session-present #lp-mm-login,
@@ -919,7 +910,6 @@ html.auth-session-present #lp-mm-register { display: none !important; }
 html.auth-session-present #lp-mm-dashboard { display: block !important; }
 @media (min-width: 1281px) {
 html.auth-session-present #nav-dashboard-btn { display: inline-flex !important; }}
-
 .lp-reveal {
     opacity: 0;
     transform: translateY(18px);
@@ -955,7 +945,6 @@ html.auth-session-present #nav-dashboard-btn { display: inline-flex !important; 
     0%, 100% { opacity: 1; }
     50%       { opacity: 0; }
 }
-
 .lp-connected-bar-wrap {
     margin: 0 1.25rem 0;
     height: 2px;
@@ -977,7 +966,6 @@ html.auth-session-present #nav-dashboard-btn { display: inline-flex !important; 
     from { width: 0; }
     to   { width: 100%; }
 }
-
 .lp-connected-label {
     font-family: var(--sp-text);
     font-size: 0.64rem;
@@ -1016,17 +1004,14 @@ html.auth-session-present #nav-dashboard-btn { display: inline-flex !important; 
     0%, 100% { opacity: 1; }
     50%       { opacity: 0.15; }
 }
-
 @keyframes lp-alert-blink {
     0%, 100% { opacity: 1; }
     50%       { opacity: 0; }
 }
-
 @keyframes lp-alert-pulse {
     0%, 100% { color: var(--neon-blue); }
     50%       { color: #ffffff; }
 }
-
 .lp-monitor-log {
     position: relative;
     overflow: hidden;
@@ -1035,7 +1020,6 @@ html.auth-session-present #nav-dashboard-btn { display: inline-flex !important; 
     0%   { top: 0%; }
     100% { top: 100%; }
 }
-
 .lp-alert-card {
     background: rgba(0, 0, 0, 0.7);
     border: 1px solid rgba(255, 51, 51, 0.28);
@@ -1053,18 +1037,15 @@ html.auth-session-present #nav-dashboard-btn { display: inline-flex !important; 
     0%, 100% { box-shadow: 0 0 8px rgba(255, 51, 51, 0.05); }
     50%       { box-shadow: 0 0 40px rgba(255, 51, 51, 0.2); }
 }
-
 @keyframes lp-incoming-dot-pulse {
     0%, 100% { opacity: 1; box-shadow: 0 0 6px var(--color-red), 0 0 14px rgba(255, 51, 51, 0.5); }
     50%       { opacity: 0.35; box-shadow: 0 0 3px var(--color-red); }
 }
-
 @keyframes lp-alert-shimmer-scan {
     0%   { left: -120%; }
     50%  { left: 160%; }
     100% { left: 160%; }
 }
-
 .lp-alert-score-max {
     font-size: 1rem;
     color: rgba(255, 255, 255, 0.25);
@@ -1089,7 +1070,6 @@ html.auth-session-present #nav-dashboard-btn { display: inline-flex !important; 
     0%, 100% { box-shadow: 0 0 30px rgba(0, 240, 255, 0.06), 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
     50%       { box-shadow: 0 0 65px rgba(0, 240, 255, 0.18), 0 0 110px rgba(0, 240, 255, 0.05), 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
 }
-
 .lp-usecase-card {
     position: relative;
     overflow: hidden;
@@ -1107,26 +1087,22 @@ html.auth-session-present #nav-dashboard-btn { display: inline-flex !important; 
     0%, 100% { box-shadow: 0 0 0 0 rgba(0, 240, 255, 0.28), 0 4px 24px rgba(0, 240, 255, 0.1); }
     50%       { box-shadow: 0 0 0 8px rgba(0, 240, 255, 0), 0 4px 40px rgba(0, 240, 255, 0.22); }
 }
-
 @media (max-width: 960px) {
 .lp-how-col-divider { display: none; }
 .lp-how-title { font-size: 1.2rem; }
 .lp-usecase-card:nth-child(1) { grid-column: 1 / 3; }
 .lp-usecase-card:nth-child(4) { grid-column: 1 / 3; }}
-
 @media (max-width: 600px) {
 .lp-how-title { font-size: 1.1rem; }
 .lp-alert-meta { flex-direction: column; gap: 0.25rem; }
 .lp-usecase-card:nth-child(1) { grid-column: 1; }
 .lp-usecase-card:nth-child(4) { grid-column: 1; }}
-
 html.auth-session-present #lp-cta-login,
 html.auth-session-present #lp-cta-register { display: none !important; }
 html.auth-session-present #lp-cta-dashboard { display: inline-flex !important; }
 .lp-plan-featured { transform: scale(1.04) translateY(-5px); z-index: 2; }
 @media (max-width: 960px) {
 .lp-plan-featured { transform: none; }}
-
 .lp-scanner {
     background: rgba(6, 8, 12, 0.72);
     border: 1px solid rgba(255, 255, 255, 0.07);
@@ -1216,7 +1192,6 @@ html.auth-session-present #lp-cta-dashboard { display: inline-flex !important; }
     78%  { opacity: 1; }
     100% { left: calc(100% + 30px); opacity: 0; }
 }
-
 .lp-scn-particle {
     position: absolute;
     width: 26px;
@@ -1264,7 +1239,6 @@ html.auth-session-present #lp-cta-dashboard { display: inline-flex !important; }
 .lp-scn-chain { width: 44px; padding: 0 0.75rem; }
 .lp-scn-name { display: none; }
 .lp-chain-pill { font-size: 0.7rem; padding: 0.35rem 0.75rem; }}
-
 .lp-snap-ind {
     position: fixed;
     right: 1.75rem;
@@ -1281,7 +1255,6 @@ html.auth-session-present #lp-cta-dashboard { display: inline-flex !important; }
     from { opacity: 0; transform: translateY(-50%) translateX(16px); }
     to   { opacity: 1; transform: translateY(-50%) translateX(0); }
 }
-
 .lp-snap-pip {
     position: relative;
     cursor: pointer;
@@ -1344,7 +1317,6 @@ html.auth-session-present #lp-cta-dashboard { display: inline-flex !important; }
 }
 @media (max-width: 1280px) {
 .lp-snap-ind { display: none; }}
-/* ============ elliptic-style rebrand: marquee / stats / roles ============ */
 .lp-marquee-track {
     display: flex;
     gap: 0.9rem;
@@ -1356,10 +1328,8 @@ html.auth-session-present #lp-cta-dashboard { display: inline-flex !important; }
     from { transform: translateX(0); }
     to { transform: translateX(-50%); }
 }
-
 @media (prefers-reduced-motion: reduce) {
 .lp-marquee-track { animation: none; }}
-
 .lp-roles-panels {
     position: relative;
     max-width: 660px;
@@ -1380,7 +1350,6 @@ html.auth-session-present #lp-cta-dashboard { display: inline-flex !important; }
     from { opacity: 0; transform: translateY(14px); }
     to { opacity: 1; transform: translateY(0); }
 }
-
 .lp-role-title {
     font-family: var(--sp-text);
     font-size: 1.25rem;
@@ -1397,38 +1366,12 @@ html.auth-session-present #lp-cta-dashboard { display: inline-flex !important; }
 }
 @media (max-width: 900px) {
 .lp-roles-panels { padding: 1.6rem 1.4rem; }}
-
 html.theme-light .lp-roles-panels {
     border-color: rgba(0, 0, 0, 0.08);
     background: rgba(0, 0, 0, 0.02);
-}/* ============================================================================
-   the hero
-   ============================================================================
-   what it was: a centred stack on a flat dark ground with four blurred orbs
-   behind it, the headline in clipped white-to-grey, two equal buttons, and the
-   logo strip starting eighty pixels later. every part of that is the default,
-   and the sum of the defaults is a page that looks like forty other pages.
-
-   what it is now, and each of these is a specific decision rather than a taste:
-
-   the whole viewport, and nothing else in it. one screen, one sentence, one
-   thing to do. the logo strip has to be scrolled to, which is the point: it is
-   proof, and proof is worth something only after a claim.
-
-   a moving field behind everything rather than static blur. it is a canvas, not
-   a video, so it costs no download. see hero.js.
-
-   the type is the design. bigger than feels comfortable, line-height at exactly
-   1, tracking pulled in hard, and `text-wrap: balance` so the lines break
-   evenly instead of leaving one word alone. the accent is a gradient on the
-   second line, which is the mechanism, while the first stays plain white.
-
-   one primary button and one quiet one, not two of equal weight. */
+}
 .lp-hero {
     position: relative;
-    /* svh rather than vh: on a phone `vh` is the height with the browser bars
-       retracted, so a full-height hero sized in vh is always a little taller
-       than the screen and the scroll cue sits under the address bar */
     min-height: 100svh;
     display: flex;
     flex-direction: column;
@@ -1437,38 +1380,21 @@ html.theme-light .lp-roles-panels {
     padding: 7.5rem 1.5rem 6rem;
     overflow: hidden;
     z-index: 10;
-}/* ---- the scene ----------------------------------------------------------- */
+}
 .sp-hero-scene {
     position: absolute;
     z-index: 1;
-    /* fitted rather than sliced, so on a wide screen the whole mark is in shot
-       and its two long edges frame the copy. on a phone that leaves the scene as
-       a band under the buttons, which the media query further down fixes by
-       oversizing the element instead of by changing preserveAspectRatio, since
-       that is an attribute and not something css can reach. */
     inset: 0;
     width: 100%;
     height: 100%;
     display: block;
     pointer-events: none;
-}/* the blooms breathe, on transform only */
+}
 .sp-scene-bloom { transform-box: fill-box; transform-origin: center; }
 .sp-scene-bloom-a { animation: spBloomA 26s ease-in-out infinite alternate; }
 .sp-scene-bloom-b { animation: spBloomB 33s ease-in-out infinite alternate; }
 @keyframes spBloomA { from { transform: translate(0, 0) scale(1); } to { transform: translate(5%, -4%) scale(1.14); } }
-
 @keyframes spBloomB { from { transform: translate(0, 0) scale(1.1); } to { transform: translate(-4%, 5%) scale(1); } }
-/* ---- our own mark, at the size of the screen ----------------------------- *//* the shield from the logo, drawn as line rather than filled, at a size where the
-   viewport crops it: the shoulders are above the top edge and the point is below
-   the bottom one, so what is left is two long edges sweeping down either side of
-   the copy. the words sit inside the shield.
-
-   it draws itself once: the stroke is dashed to its own length and the offset
-   animates to nothing, so the mark traces on over five seconds rather than being
-   there from the first frame. it does not loop, because a mark that keeps
-   redrawing itself is a mark that never settles.
-
-   this is the part of the page nobody else can copy without copying our logo. */
 .sp-shield {
     fill: none;
     stroke: url(#spShield);
@@ -1479,8 +1405,6 @@ html.theme-light .lp-roles-panels {
     animation: spDraw 5s cubic-bezier(0.35, 0, 0.2, 1) 0.2s forwards;
 }
 @keyframes spDraw { to { stroke-dashoffset: 0; } }
-/* the range it watches. three rings about the same centre, breathing slowly and
-   out of step with each other. */
 .sp-ring {
     fill: none;
     stroke: #5ad9ff;
@@ -1493,32 +1417,12 @@ html.theme-light .lp-roles-panels {
 .sp-ring-b { stroke-opacity: 0.055; animation-duration: 15s; animation-delay: -3s; }
 .sp-ring-c { stroke-opacity: 0.04; animation-duration: 18s; animation-delay: -7s; }
 @keyframes spRing { from { transform: scale(1); } to { transform: scale(1.035); } }
-/* the sweep. one line about the centre of the mark, once every twenty two
-   seconds, because something that watches does not need to hurry. */
 .sp-sweep {
     transform-origin: 800px 470px;
     animation: spSweep 22s linear infinite;
     opacity: 0.5;
 }
 @keyframes spSweep { to { transform: rotate(360deg); } }
-/* ---- the weave and the flow ---------------------------------------------- *//* two things only, and neither of them names a subject: a lattice of dots that
-   drifts, and four curves with a pulse travelling each one.
-
-   the drift is exactly one tile of the pattern, 34 units, so the end of the loop
-   is pixel identical to its start and there is no seam to see. the second layer
-   is turned 1.4 degrees and drifts the other way: two grids at a small angle
-   interfere, and that slow moire is the whole effect. it is why this does not
-   read as a background image.
-
-   both layers move on transform only, and the pulses are `stroke-dashoffset`, so
-   nothing here touches layout and nothing wakes the main thread. *//* the texture is held well back.
-
-   the lattice and the traced shield were carrying too much of the first screen:
-   at full strength the grid reads as a pattern rather than as depth, and the
-   outline reads as a drawing rather than as a shape somebody half notices. both
-   are still here, because between them they are the part of this page nobody
-   can copy without copying the logo, but they sit under the headline now rather
-   than beside it. the flows and the blooms do the visible work. */
 .sp-weave { opacity: 0.34; }
 .sp-shield { opacity: 0.4; }
 .sp-weave-a {
@@ -1534,35 +1438,22 @@ html.theme-light .lp-roles-panels {
     from { transform: translate(0, 0); }
     to   { transform: translate(34px, 34px); }
 }
-
 @keyframes spWeaveB {
     from { transform: rotate(1.4deg) translate(0, 0); }
     to   { transform: rotate(1.4deg) translate(-34px, 34px); }
 }
-
 .sp-flow {
     fill: none;
-    /* a flat tint rather than a gradient: a gradient on a path is laid out across
-       the path's bounding box, not along the dash, so the pulse was only lit
-       while it happened to be over the opaque middle of the gradient and
-       invisible for most of every loop */
     stroke: var(--sp-tint, #5ad9ff);
     stroke-opacity: 0.55;
     stroke-width: 2;
     stroke-linecap: round;
-    /* one lit run and a gap longer than any path here, so exactly one pulse is on
-       a curve at a time. the numbers are literal rather than a custom property:
-       chromium will not interpolate a keyframe whose value is a calc() over a
-       var(), and the animation silently sits at its first frame. */
     stroke-dasharray: 300 2600;
     animation-name: spFlowRun;
     animation-timing-function: cubic-bezier(0.4, 0, 0.5, 1);
     animation-iteration-count: infinite;
 }
-.sp-flow-faint { opacity: 0.5; stroke-width: 1.2; }/* on a portrait screen the 16:9 scene fitted into a tall box is a strip along the
-   bottom. blowing it up to two and a half times the width and centring it gives
-   the same result `slice` would, and unlike `slice` it is a media query rather
-   than an attribute, so there is no script and no second copy of the markup. */
+.sp-flow-faint { opacity: 0.5; stroke-width: 1.2; }
 @media (max-width: 760px) {
 .sp-hero-scene {
         width: 250%;
@@ -1570,23 +1461,18 @@ html.theme-light .lp-roles-panels {
         right: auto;
         height: 100%;
     }}
-
 @keyframes spFlowRun {
     from { stroke-dashoffset: 2600; }
     to   { stroke-dashoffset: -2600; }
 }
-
 @media (prefers-reduced-motion: reduce) {
 .sp-scene-bloom,
 .sp-sweep,
 .sp-ring,
 .sp-weave-a,
-.sp-weave-b { animation: none; }/* the mark is shown finished rather than mid-draw, and the pulses are parked
-       part way along their curves rather than removed: the composition is the
-       same picture, held still */
+.sp-weave-b { animation: none; }
 .sp-shield { animation: none; stroke-dashoffset: 0; }
 .sp-flow { animation: none; stroke-dashoffset: 900; }}
-
 .sp-hero-mid {
     position: relative;
     z-index: 2;
@@ -1602,9 +1488,6 @@ html.theme-light .lp-roles-panels {
 .sp-hero-h1 {
     margin: 0;
     font-family: var(--sp-text);
-    /* 3.7rem at the top end. it was 4.4 when the headline was two short poetic
-       lines; the sentence that replaced them says what we actually do, which
-       takes more words, and words that wrap four deep stop being a statement. */
     font-size: clamp(2.05rem, 4.4vw, 3.7rem);
     font-weight: 600;
     line-height: 1;
@@ -1615,27 +1498,18 @@ html.theme-light .lp-roles-panels {
     display: flex;
     flex-direction: column;
     gap: 0.12em;
-}/* the accent, on the line that says how rather than what. clipped gradient text
-   is a cliche when it is on the whole headline and it is right when it is on one
-   half, because then it is doing a job: separating the promise from the
-   mechanism without a second colour of ink. */
+}
 .sp-hero-l2 {
     background: linear-gradient(92deg, #00f0ff 0%, #a675ff 62%, #c9a7ff 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
     color: transparent;
-    /* clipped text loses its descenders to the box, so the box is given the
-       room back and the space is taken off again underneath */
     padding-block-end: 0.12em;
     margin-block-end: -0.12em;
 }
 .sp-hero-sub {
     margin: 0;
-    /* measured in characters rather than pixels: a line of prose is comfortable
-       between about 45 and 75 characters whatever the screen is doing. 68 rather
-       than the 52 it was: the paragraph now has to carry what we do, for whom,
-       and in what time, and at 52 that was six lines of a narrow column. */
     max-width: 68ch;
     font-family: var(--sp-text);
     font-size: clamp(0.98rem, 1.15vw, 1.12rem);
@@ -1659,8 +1533,6 @@ html.theme-light .lp-roles-panels {
     height: 3rem;
     padding: 0 1.9rem;
     border-radius: 10px;
-    /* the brand's gradient on the one thing we want pressed. it is the only
-       filled element in the hero, so it needs no other emphasis. */
     background: linear-gradient(96deg, #00f0ff, #a675ff);
     color: #06070f;
     font-family: var(--sp-text);
@@ -1674,18 +1546,7 @@ html.theme-light .lp-roles-panels {
     transform: translateY(-2px);
     filter: brightness(1.06);
     box-shadow: 0 16px 40px -14px rgba(0, 240, 255, 0.6);
-}/* the same light sweep the nav buttons have.
-
-   it is worth having in both places for one reason: the two buttons in the hero
-   and the two in the bar are the only four things on the page you are meant to
-   press, and a control that behaves like the others is a control you already
-   know how to use. the sweep is parked off the left edge with no transition, so
-   it only ever animates on the way in and never slides back out when the cursor
-   leaves.
-
-   `overflow: hidden` on the button is what clips it, and it is also why the
-   ghost button needs its radius restated: the sweep is a rectangle and would
-   otherwise square off the corners it passes. */
+}
 .sp-hero-cta,
 .sp-hero-second {
     position: relative;
@@ -1705,8 +1566,7 @@ html.theme-light .lp-roles-panels {
     transition: none;
     pointer-events: none;
     z-index: 1;
-}/* on the filled button the white sweep would just wash it out, so it carries the
-   violet end of the gradient instead, exactly as the solid nav button does */
+}
 .sp-hero-cta::after {
     background: linear-gradient(105deg, transparent, rgba(123, 108, 255, 0.30) 50%, transparent);
 }
@@ -1745,49 +1605,23 @@ html.theme-light .lp-roles-panels {
     color: #7bdcff;
 }
 .sp-hero-second-ico svg { width: 15px; height: 15px; }
-.sp-hero-second:hover .sp-hero-second-ico { background: rgba(0, 240, 255, 0.2); color: #00f0ff; }/* the cue at the bottom. it exists because a hero that fills the screen gives
-   no hint that there is anything under it, and a page whose second screen is
-   never reached may as well not have one. *//* a short bright run travelling down the line, rather than a bouncing arrow.
-   the arrow is the default and it draws more attention than the thing it points
-   at. */
+.sp-hero-second:hover .sp-hero-second-ico { background: rgba(0, 240, 255, 0.2); color: #00f0ff; }
 @keyframes spScrollRun {
     0%   { transform: translateY(0); opacity: 0; }
     25%  { opacity: 1; }
     100% { transform: translateY(280%); opacity: 0; }
 }
-
 @media (max-width: 900px) {
 .lp-hero { padding: 6.5rem 1.25rem 5.5rem; }
 .sp-hero-mid { gap: 1.6rem; }
 .sp-hero-h1 { font-size: clamp(2.3rem, 8.5vw, 3.2rem); letter-spacing: -0.035em; }}
-
 @media (max-width: 560px) {
 .sp-hero-h1 { font-size: clamp(2.05rem, 10vw, 2.7rem); }
 .sp-hero-sub { font-size: 0.98rem; }
 .sp-hero-ctas { flex-direction: column; align-items: stretch; width: 100%; gap: 0.7rem; }
 .sp-hero-cta,
-.sp-hero-second { width: 100%; justify-content: center; }/* full width the asymmetric padding stops being a nice detail and becomes a
-       group that sits off centre, so it goes */
-.sp-hero-second { padding: 0; gap: 0.6rem; }/* the veil is tighter on a narrow screen, because the field has less room
-       to be out of the way in *//* the scene sits as a band across the bottom on a phone, so the veil stops
-       darkening down there: it was covering the only part of it that shows */
+.sp-hero-second { width: 100%; justify-content: center; }
+.sp-hero-second { padding: 0; gap: 0.6rem; }
 .sp-hero-veil { background:
         radial-gradient(ellipse 92% 40% at 50% 40%, rgba(4, 6, 14, 0.94) 0%, rgba(4, 6, 14, 0.6) 55%, transparent 86%),
         linear-gradient(180deg, rgba(4, 6, 14, 0.6) 0%, transparent 22%, transparent 88%, rgba(4, 6, 14, 0.45) 100%); }}
-/* ---- the raymarched hero ------------------------------------------------- *//* the canvas hero3d.js draws into. it is not in the markup: the file adds it and
-   removes itself on anything that cannot run it, so this rule only ever applies
-   to a page where the animation is actually working, and the svg scene under it
-   is what shows otherwise.
-
-   `screen` is the whole compositing story: black in the shader adds nothing, so
-   the hero's own gradient stays the background and this is light laid over it.
-   painting it opaque would mean matching that gradient in glsl and rematching it
-   every time the palette moves. *//* the svg scene stays where it is and keeps doing its job: it is the fallback,
-   and behind the lattice it is still our own mark framing the copy. it only
-   steps back a little so the two are not competing. *//* its dot lattice is not one of the two, though: a flat grid of dots sitting on
-   top of a lattice with real depth reads as dirt on the screen. the mark, the
-   rings and the pulses stay; the weave is for the page that has no canvas. *//* ---- the same lattice behind the dark bands ------------------------------ *//* the band canvases. the hero's rule cannot simply be reused: a band is not
-   full height, it is clipped as it opens, and it must not paint over the copy
-   that sits on top of it. everything else is the same trick, `screen` over the
-   band's own gradient. *//* the band's own dot grid goes when the lattice is there, for the same reason
-   it goes in the hero: flat dots on top of real depth read as dirt *//* and the copy has to sit above it */

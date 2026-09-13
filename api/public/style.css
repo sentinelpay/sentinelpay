@@ -54,11 +54,11 @@ body {
 }
 .cyber-grid {
     position: fixed;
-    top: -32px; 
-    left: 0; 
-    right: 0; 
+    top: -32px;
+    left: 0;
+    right: 0;
     bottom: -32px;
-    background-image: 
+    background-image:
         linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
     background-size: 30px 30px;
@@ -264,7 +264,7 @@ button {
 @media screen and (max-width: 600px) {
 #auth-success-state,
 #auth-verified-state {
-        width: 95vw !important; 
+        width: 95vw !important;
         max-width: 100% !important;
         padding: 1.5rem 1.25rem !important;
         margin: 0 auto !important;

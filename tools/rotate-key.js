@@ -1,42 +1,14 @@
 'use strict';
 
-// Re-encrypt everything under a new key.
-//
-// How a rotation goes:
-//
-//   1. generate a key:  node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
-//   2. on the host, set SUBMISSIONS_KEY_PREVIOUS to the key that is in
-//      SUBMISSIONS_KEY today, and put the new key in SUBMISSIONS_KEY
-//   3. restart. nothing breaks: rows written under the old key are still read,
-//      because db.js tries the current key and then the previous one
-//   4. run this, with the same two variables set:
-//          node tools/rotate-key.js            # says what it would do
-//          node tools/rotate-key.js --write    # does it
-//   5. run it once more without --write. the line that decides this is
-//      "0 value(s) still under the previous key". the row count above it never
-//      falls to zero, because a row already under the new key is rewritten
-//      identically rather than skipped. only then remove SUBMISSIONS_KEY_PREVIOUS
-//
-// The blind index is not touched. It is keyed by SUBMISSIONS_INDEX_KEY, which is
-// a different key on purpose and rotating it would mean every lookup by address
-// stops working until every row is rewritten in the same instant. If that key
-// ever has to change, it is a different and much more careful job than this one.
-//
-// Safe to run twice, safe to stop halfway: a row that is already under the new
-// key is written back identically, and one that is not is fixed the next time.
-
 const path = require('path');
 const db = require(path.join(__dirname, '..', 'api', 'db.js'));
 
 const WRITE = process.argv.includes('--write');
 
-// what to rewrite: a table, its key column, and the sealed columns with the
-// label each one was sealed under
 const WORK = [
     {
         table: 'submissions',
         id: 'id',
-        // the submissions payload is sealed to the row id
         columns: [{ column: 'payload', label: (row) => 'submission:' + row.id }],
         where: 'encrypted = true',
     },
@@ -92,13 +64,6 @@ async function main() {
                 'SELECT ' + select.join(', ') + ' FROM ' + job.table +
                 (job.where ? ' WHERE ' + job.where : ''), []);
         } catch (err) {
-            // a table that does not exist yet is not an error: the schema is
-            // created on boot by whichever module owns it. anything else is,
-            // and it stops the run rather than being counted as nothing to do.
-            // a connection that never opened once read here as "0 rows to
-            // rewrite", which is the one sentence that invites somebody to drop
-            // SUBMISSIONS_KEY_PREVIOUS while every row is still under the old
-            // key.
             if (err.code === '42P01') {
                 console.log('  ' + job.table + ': not present yet, skipped');
                 continue;
@@ -117,16 +82,9 @@ async function main() {
                 const label = spec.label(row);
                 const plain = db.open(label, blob);
                 if (!plain) {
-                    // neither key opened it. that is a row written under a key
-                    // that is gone, and this tool must never quietly replace it
-                    // with an empty string.
                     unreadable++;
                     continue;
                 }
-                // the number that decides whether this is finished. a value the
-                // current key opens on its own is already rotated; one that
-                // needed the previous key is not, and while a single one of
-                // those is left SUBMISSIONS_KEY_PREVIOUS cannot be dropped.
                 if (!db.openCurrent(label, blob)) stale++;
                 args.push(db.seal(label, plain));
                 sets.push(spec.column + ' = $' + args.length);

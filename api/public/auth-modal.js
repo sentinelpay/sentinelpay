@@ -1,15 +1,3 @@
-/* the sign-in dialog behind the nav's log in and get started buttons.
-   it opens over whatever page you are on and leaves the address bar alone:
-   signing in is not a change of place.
-
-   the markup is built here rather than repeated in eleven html files, and it is
-   built as soon as this script runs, which is before i18n walks the page. that
-   is deliberate: a dialog created on first open would come back in english on a
-   translated page.
-
-   the links point at the homepage with ?signin= on them now, and the page reads
-   that and opens the dialog. this handler only saves the round trip when the
-   click happens on a page that already has the dialog in it. */
 (function () {
     if (document.getElementById('sp-authm')) return;
 
@@ -36,7 +24,6 @@
                     '<button type="button" class="sp-auth-tab is-active" id="sp-authm-tab-in" role="tab" aria-selected="true" aria-controls="sp-authm-panel-in">Log in</button>' +
                     '<button type="button" class="sp-auth-tab" id="sp-authm-tab-up" role="tab" aria-selected="false" aria-controls="sp-authm-panel-up">Create account</button>' +
                 '</div>' +
-
                 '<form class="sp-auth-form" id="sp-authm-panel-in" role="tabpanel" data-auth="login" novalidate>' +
                     '<div class="lp-demo-field lp-demo-field-full">' +
                         '<label for="sp-authm-email">Work email</label>' +
@@ -52,7 +39,6 @@
                     '</div>' +
                     '<button type="submit" class="lp-demo-submit sp-auth-submit">Log in</button>' +
                 '</form>' +
-
                 '<form class="sp-auth-form" id="sp-authm-panel-up" role="tabpanel" data-auth="register" novalidate hidden>' +
                     '<div class="lp-demo-grid">' +
                         '<div class="lp-demo-field">' +
@@ -77,9 +63,7 @@
                 '</form>' +
             '</div>' +
         '</div>';
-
     (document.body || document.documentElement).appendChild(wrap);
-
     var box = document.getElementById('sp-authm');
     var tabIn = document.getElementById('sp-authm-tab-in');
     var tabUp = document.getElementById('sp-authm-tab-up');
@@ -91,15 +75,12 @@
 
     var panelEl = box.querySelector('.sp-authm-panel');
     var swapTimer = null;
-
     function apply(login) {
         tabIn.classList.toggle('is-active', login);
         tabUp.classList.toggle('is-active', !login);
         tabIn.setAttribute('aria-selected', login ? 'true' : 'false');
         tabUp.setAttribute('aria-selected', login ? 'false' : 'true');
-        // a sign-up mid flight owns the card: the code panel is up, and putting
-        // the empty form back because the dialog was reopened would throw away
-        // both what was typed and the code already sent
+
         if (panelEl && panelEl.dataset.authStep && panelEl.dataset.authStep !== 'register') return;
         panelIn.hidden = !login;
         panelUp.hidden = login;
@@ -110,22 +91,16 @@
         });
         box.setAttribute('aria-labelledby', login ? 'sp-authm-h-in' : 'sp-authm-h-up');
     }
-
-    // restart an animation: removing the class is not enough on its own, the
-    // element has to be laid out again in between or the browser sees no change
     function replay(el, cls) {
         if (!el) return;
         el.classList.remove(cls);
         void el.offsetWidth;
         el.classList.add(cls);
     }
-
     function swap(login, animate) {
         var already = !panelIn.hidden === login;
         var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         if (!animate || already || reduced || !panelEl) { apply(login); return; }
-
-        // measure, switch, measure again, then glide between the two
         var from = panelEl.getBoundingClientRect().height;
         panelEl.style.height = '';
         apply(login);
@@ -137,9 +112,7 @@
         void panelEl.offsetHeight;
         panelEl.classList.add('sp-auth-swapping');
         panelEl.style.height = to + 'px';
-
         var incoming = login ? panelIn : panelUp;
-        // it arrives from the side its tab is on
         incoming.style.setProperty('--sp-auth-dir', login ? '-12px' : '12px');
         replay(incoming, 'sp-auth-enter');
         var head = document.getElementById(login ? 'sp-authm-h-in' : 'sp-authm-h-up');
@@ -149,43 +122,28 @@
             el.style.setProperty('--sp-auth-dir', login ? '-12px' : '12px');
             replay(el, 'sp-auth-enter-head');
         });
-
-        // hand the height back to the content once it has arrived, so a field
-        // growing later is not trapped inside a fixed box
         swapTimer = setTimeout(function () {
             panelEl.classList.remove('sp-auth-swapping');
             panelEl.style.height = '';
         }, 320);
     }
-
     function open(mode) {
         lastFocus = document.activeElement;
         swap(mode !== 'create');
         wrap.hidden = false;
-        // force a layout between showing it and starting the transition, so the
-        // browser has a state to move from. a frame usually does it; a reflow
-        // always does.
         void wrap.offsetWidth;
         wrap.classList.add('is-open');
-        // measure the scrollbar before it is taken away, so the page behind can be
-        // handed its width back and does not slide sideways as the dialog appears
+
         var sbw = window.innerWidth - document.documentElement.clientWidth;
         document.documentElement.style.setProperty('--sp-sbw', (sbw > 0 ? sbw : 0) + 'px');
         document.documentElement.classList.add('sp-authm-open');
-        // the first field takes the focus on a desktop, where it saves a click.
-        // on a phone it throws the on-screen keyboard up over the dialog before
-        // anyone has read what the dialog says, so there it is left alone.
         var coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
         var first = (mode === 'create' ? panelUp : panelIn).querySelector('input');
         if (first && !coarse) setTimeout(function () { first.focus({ preventScroll: true }); }, 60);
     }
-
     function close() {
         if (wrap.hidden) return;
         var done = false;
-        // the fade out has to finish before anything is taken away. hiding on a
-        // timer cut it off a third of the way through, and unlocking the page
-        // first made everything behind jump while the dialog was still visible.
         function finish() {
             if (done) return;
             done = true;
@@ -193,7 +151,6 @@
             wrap.hidden = true;
             document.documentElement.classList.remove('sp-authm-open');
             document.documentElement.style.removeProperty('--sp-sbw');
-            // back to the button that opened it, so the keyboard keeps its place
             if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
         }
         function onEnd(e) {
@@ -201,10 +158,8 @@
         }
         box.addEventListener('transitionend', onEnd);
         wrap.classList.remove('is-open');
-        // a safety net: if the transition never runs, nothing should be stuck open
         setTimeout(finish, 450);
     }
-
     tabIn.addEventListener('click', function () { swap(true, true); });
     tabUp.addEventListener('click', function () { swap(false, true); });
     closeBtn.addEventListener('click', close);
@@ -213,7 +168,6 @@
         if (wrap.hidden) return;
         if (e.key === 'Escape') { close(); return; }
         if (e.key !== 'Tab') return;
-        // keep tabbing inside the dialog while it is up
         var f = box.querySelectorAll('a[href], button:not([disabled]), input:not([disabled])');
         var vis = [];
         for (var i = 0; i < f.length; i++) if (f[i].offsetParent !== null) vis.push(f[i]);
@@ -222,40 +176,20 @@
         if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
         else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     });
-
-    // both forms are handled by auth-flow.js: the sign-up, the code panel and the
-    // sign-in are one flow and live in one file.
-
-    // the flow needs to be able to put this on screen by itself: somebody
-    // arriving from a reset link has to land on the dialog with the password
-    // panel already up, and only the flow knows that.
     window.SentinelAuthModal = { open: open, close: close };
-
-    // this script may run before or after the flow: whichever is second picks the
-    // other up, so the dialog is never left as a form that does nothing
     if (window.SentinelAuthFlow) window.SentinelAuthFlow.scan();
 
-    // Every link that used to go to a sign-in page opens the dialog instead.
-    //
-    // The links still have real hrefs, and that is the point: with scripting off,
-    // or on a middle click, they go to the homepage with ?signin= on it and the
-    // page opens the dialog from that. So this is the fast path, not the only
-    // one, and nothing here is load-bearing.
     document.addEventListener('click', function (e) {
         var a = e.target.closest && e.target.closest('a[href]');
         if (!a) return;
         var href = a.getAttribute('href') || '';
-        // the current shape, and the old /auth one for anything not yet updated
+
         var m = href.match(/[?&]signin=([^&#]*)/) || href.match(/(?:^|\/\/[^/]+)\/auth(#create)?$/);
         if (!m) return;
-        // a modified click means "open it somewhere else", and that is the
-        // browser's job rather than ours
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
         var want = String(m[1] || '').replace('#', '').toLowerCase();
         e.preventDefault();
         open(want === 'create' ? 'create' : 'login');
-        // "ask for a new link" opens the dialog and then steps to the reset
-        // panel, which only the flow knows how to do
         if (want === 'reset' && window.SentinelAuthFlow && window.SentinelAuthFlow.reset) {
             window.SentinelAuthFlow.reset();
         }

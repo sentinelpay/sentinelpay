@@ -1,31 +1,3 @@
-/* the two faces, served from our own origin.
-
-   uber runs UberMove for display and UberMoveText for reading. that split is
-   the part worth copying and their actual faces are not ours to use: Uber Move
-   is a commissioned proprietary typeface. this is the same structure with the
-   closest openly licensed pair, Plus Jakarta Sans for display and Inter for
-   text, both under the SIL open font license, which permits exactly this.
-
-   self hosted rather than linked from google, for three reasons and the first
-   one is the point:
-
-     a request to fonts.googleapis.com hands google the ip address of every
-     visitor to a compliance company's website, on every page load. a german
-     court has already ruled that embedding google fonts without consent
-     breaches the gdpr. we are not going to argue about our own privacy policy
-     with our own font loader.
-
-     it is faster. two extra dns lookups and two extra tls handshakes to two
-     more hosts, before a single glyph arrives, against a file that comes down
-     the connection the page is already using.
-
-     it removes two third parties from the content security policy.
-
-   one variable file per family per subset instead of six static weights: every
-   weight from 300 to 800 comes out of the same 48 kilobytes, and the ext file
-   is only fetched when a page actually contains a character that needs it,
-   which for us means the croatian diacritics. */
-
 @font-face {
     font-family: 'Inter';
     font-style: normal;

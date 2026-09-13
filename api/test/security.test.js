@@ -1,23 +1,11 @@
 'use strict';
 
-// The tests that exist because these are the things that must not quietly break.
-//
-// Two halves. The first needs nothing but node and runs everywhere, including
-// on a laptop with no database: the maths, the key handling, the address
-// masking. The second needs a postgres and covers the flows, and it skips
-// rather than fails when DATABASE_URL is not set, so `npm test` on a fresh
-// clone still tells you something true.
-//
-// What is deliberately not here: anything that asserts on wording. A test that
-// breaks when a sentence is reworded teaches people to stop running tests.
-
 const test = require('node:test');
 const assert = require('node:assert');
 const crypto = require('crypto');
 
 process.env.SUBMISSIONS_KEY = process.env.SUBMISSIONS_KEY ||
     crypto.randomBytes(32).toString('base64');
-// the breach check talks to the internet; the flow tests are not about it
 process.env.BREACH_CHECK = 'false';
 
 const totp = require('../totp');
@@ -25,12 +13,7 @@ const { ipKey } = require('../rate-store');
 const db = require('../db');
 const accounts = require('../accounts');
 
-// ---------------------------------------------------------------------------
-// one time passwords
-// ---------------------------------------------------------------------------
-
 test('totp matches the published test vectors', () => {
-    // RFC 6238, appendix B: the ascii secret "12345678901234567890", sha-1.
     const secret = totp.base32Encode(Buffer.from('12345678901234567890', 'ascii'));
     assert.strictEqual(totp.codeFor(secret, Math.floor(59 / 30)), '287082');
     assert.strictEqual(totp.codeFor(secret, Math.floor(1111111109 / 30)), '081804');
@@ -61,15 +44,9 @@ test('recovery codes are unique and readable', () => {
     for (const c of codes) assert.match(c, /^\d{5}-\d{5}$/);
 });
 
-// ---------------------------------------------------------------------------
-// keys
-// ---------------------------------------------------------------------------
-
 test('a sealed value opens again, and only with its own label', () => {
     const blob = db.seal('label-a:1', 'ana@primjer.hr');
     assert.strictEqual(db.open('label-a:1', blob), 'ana@primjer.hr');
-    // the label is authenticated, so the wrong one does not decrypt to
-    // something else, it does not decrypt at all
     assert.strictEqual(db.open('label-b:1', blob), '');
 });
 
@@ -89,22 +66,13 @@ test('the blind index is stable, keyed, and not reversible by shape', () => {
     assert.notStrictEqual(a, db.blindIndex('ana@primjer.de'));
 });
 
-// ---------------------------------------------------------------------------
-// rate limit keys
-// ---------------------------------------------------------------------------
-
 test('ipv6 is counted by network and ipv4 by address', () => {
     assert.strictEqual(ipKey('1.2.3.4'), '1.2.3.4');
     assert.strictEqual(ipKey('::ffff:1.2.3.4'), '1.2.3.4');
     assert.strictEqual(ipKey('2a01:4f8:c17:b8f::1'), '2a01:4f8:c17:b8f::/64');
     assert.strictEqual(ipKey('2a01:4f8:c17:b8f:1:2:3:4'), '2a01:4f8:c17:b8f::/64');
-    // two addresses in one /64 must land in the same bucket
     assert.strictEqual(ipKey('2a01:4f8:c17:b8f::dead'), ipKey('2a01:4f8:c17:b8f::beef'));
 });
-
-// ---------------------------------------------------------------------------
-// passwords
-// ---------------------------------------------------------------------------
 
 test('a password verifies against its own hash and nothing else', async () => {
     const hash = await accounts.hashPassword('a-very-long-password-1');
@@ -121,15 +89,9 @@ test('a broken hash is a no, not a crash', async () => {
     }
 });
 
-// ---------------------------------------------------------------------------
-// the flows, when there is a database to run them against
-// ---------------------------------------------------------------------------
-
 const haveDb = Boolean(process.env.DATABASE_URL);
 const flow = { skip: haveDb ? false : 'no DATABASE_URL' };
 
-// the code is never stored, so a test that wants to finish a sign-up has to
-// find it the way an attacker would have to: by trying all million.
 async function codeFor(emailHash) {
     const row = await db.query('SELECT code_hash FROM signup_codes WHERE email_hash = $1', [emailHash]);
     const target = row.rows[0].code_hash;
@@ -174,8 +136,6 @@ test('the sign-in throttle follows the address, account or not', flow, async () 
     assert.strictEqual(last.reason, 'too-many-attempts');
     assert.ok(last.retryIn > 0);
 
-    // an address nobody has must be slowed down the same way, or the throttle
-    // itself says which addresses exist
     const unknown = freshEmail('nobody');
     let u = null;
     for (let i = 0; i < 7; i++) u = await accounts.signIn(unknown, 'wrong-password-here');
@@ -201,7 +161,6 @@ test('two-factor: enrolling, signing in, reuse, and recovery', flow, async () =>
     const secret = await accounts.startTotp(userId);
     assert.ok(secret);
 
-    // an account is not protected until the app has proved it works
     let signIn = await accounts.signIn(email, 'a-very-long-password-1');
     assert.strictEqual(signIn.ok, true, 'an unconfirmed secret must not lock anybody out');
 
@@ -211,12 +170,10 @@ test('two-factor: enrolling, signing in, reuse, and recovery', flow, async () =>
     assert.strictEqual(confirmed.ok, true);
     assert.strictEqual(confirmed.codes.length, 10);
 
-    // now the password alone is not enough
     signIn = await accounts.signIn(email, 'a-very-long-password-1');
     assert.strictEqual(signIn.reason, 'totp-required');
     assert.ok(signIn.pending);
 
-    // the code that switched it on has been used and must not work again
     assert.strictEqual((await accounts.finishTotp(signIn.pending, totp.codeFor(secret, step))).reason, 'code-used');
     assert.strictEqual((await accounts.finishTotp(signIn.pending, '000000')).reason, 'bad-code');
 
@@ -224,7 +181,6 @@ test('two-factor: enrolling, signing in, reuse, and recovery', flow, async () =>
     assert.strictEqual(next.ok, true);
     assert.ok(next.session);
 
-    // and a recovery code works once
     const again = await accounts.signIn(email, 'a-very-long-password-1');
     const rescued = await accounts.finishTotp(again.pending, confirmed.codes[0]);
     assert.strictEqual(rescued.ok, true);
@@ -304,7 +260,6 @@ test('the audit trail records the flow and names nobody', flow, async () => {
     await accounts.verifySignup(email, await codeFor(db.blindIndex(email)), started.origin);
     await accounts.signIn(email, 'wrong-password-here');
 
-    // the writes are deliberately not awaited by the code that triggers them
     await new Promise((r) => setTimeout(r, 600));
 
     const rows = await accounts.recentAudit({ limit: 100, subject: db.blindIndex(email) });
@@ -318,8 +273,6 @@ test('the audit trail records the flow and names nobody', flow, async () => {
 });
 
 test.after(async () => {
-    // the connection pool keeps the process alive otherwise, and a test run that
-    // never exits looks exactly like a test run that hung
     await new Promise((r) => setTimeout(r, 250));
     await db.close();
 });
