@@ -13,6 +13,9 @@ const accounts = require('./accounts');
 const breached = require('./breached');
 const totp = require('./totp');
 const { PostgresStore, ipKey, startSweep: startRateSweep } = require('./rate-store');
+const sanctions = require('./sanctions');
+const trial = require('./trial');
+const screening = require('./screening');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -621,6 +624,26 @@ const demoRequestLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => `demo_request:${ipKey(req.realIp)}`,
+    store: new PostgresStore(),
+    message: { error: 'Too many requests, please try again later' }
+});
+
+const screenLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => `screen:${ipKey(req.realIp)}`,
+    store: new PostgresStore(),
+    message: { error: 'Too many requests, please try again later' }
+});
+
+const trialActivateLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 6,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => `trial_activate:${ipKey(req.realIp)}`,
     store: new PostgresStore(),
     message: { error: 'Too many requests, please try again later' }
 });
@@ -1732,6 +1755,146 @@ app.get('/v1/auth/me', authMeLimiter, async (req, res) => {
     }
 });
 
+app.get('/v1/entitlement', async (req, res) => {
+    res.set('Cache-Control', 'no-store, private');
+    try {
+        const me = await currentUser(req);
+        if (!me) return res.status(401).json({ error: 'Sign in first' });
+        const [state, listed, runs] = await Promise.all([
+            trial.ensure(me.userId),
+            sanctions.status(),
+            screening.countFor(me.userId),
+        ]);
+        res.json({
+            name: me.name,
+            email: me.email,
+            since: me.since,
+            trial: {
+                ...state,
+                historyLeft: state.historyLeft === Infinity ? null : state.historyLeft,
+            },
+            screeningsRun: runs,
+            coverage: {
+                source: 'OFAC SDN',
+                listDate: listed.listDate || '',
+                addresses: listed.addressCount || 0,
+                refreshedAt: listed.refreshedAt || null,
+            },
+        });
+    } catch (err) {
+        console.error('[entitlement]', err.message);
+        res.status(500).json({ error: 'Could not read the account' });
+    }
+});
+
+app.post('/v1/trial/activate', trialActivateLimiter, async (req, res) => {
+    res.set('Cache-Control', 'no-store, private');
+    try {
+        const me = await currentUser(req);
+        if (!me) return res.status(401).json({ error: 'Sign in first' });
+        const b = req.body || {};
+        const out = await trial.activate(me.userId, {
+            email: me.email,
+            website: b.website,
+            company: b.company,
+            consent: b.consent === true,
+            notGambling: b.notGambling === true,
+        });
+        if (!out.ok) {
+            const said = {
+                'both-confirmations-required': 'Both confirmations are required',
+                'bad-website': 'That does not look like a company website',
+                'bad-email': 'Your account address is not usable for this',
+                'company-already-has-a-trial': 'This company already has a trial. Ask a colleague for access.',
+                'unavailable': 'Not available right now',
+            };
+            return res.status(400).json({ error: said[out.reason] || 'Could not start the trial' });
+        }
+        await accounts.audit('trial-activated', {
+            actor: String(me.userId), subject: String(me.userId), ip: req.realIp,
+            detail: out.state + ' ' + out.companyHost,
+        });
+        res.json(out);
+    } catch (err) {
+        console.error('[trial activate]', err.message);
+        res.status(500).json({ error: 'Could not start the trial' });
+    }
+});
+
+app.post('/v1/screen', screenLimiter, async (req, res) => {
+    res.set('Cache-Control', 'no-store, private');
+    try {
+        const me = await currentUser(req);
+        if (!me) return res.status(401).json({ error: 'Sign in first' });
+
+        const address = String((req.body && req.body.address) || '').trim();
+        if (!address) return res.status(400).json({ error: 'Paste an address first' });
+        if (address.length > 128) return res.status(400).json({ error: 'That is too long to be an address' });
+
+        const kind = (req.body && req.body.kind) === 'history' ? 'history' : 'live';
+        const spent = await trial.spend(me.userId, kind);
+        if (!spent.ok) {
+            const said = {
+                'no-trial': 'Start your trial first',
+                'awaiting-approval': 'Your trial is waiting on us, we will email you',
+                'trial-expired': 'Your trial has ended',
+                'out-of-checks': 'No checks left on this trial',
+                'history-locked': 'Verify your number to open your history',
+            };
+            return res.status(402).json({
+                error: said[spent.reason] || 'Not available on this trial',
+                reason: spent.reason,
+                trial: { ...spent, historyLeft: spent.historyLeft === Infinity ? null : spent.historyLeft },
+            });
+        }
+
+        const out = await screening.screen(me.userId, address, kind);
+        if (!out.ok) return res.status(400).json({ error: 'That does not look like an address' });
+
+        await accounts.audit('screening', {
+            actor: String(me.userId), subject: String(me.userId), ip: req.realIp,
+            detail: out.verdict + ' ' + (out.asset || '?'),
+        });
+
+        const left = await trial.get(me.userId);
+        res.json({
+            ...out,
+            trial: { ...left, historyLeft: left.historyLeft === Infinity ? null : left.historyLeft },
+        });
+    } catch (err) {
+        console.error('[screen]', err.message);
+        res.status(500).json({ error: 'The check could not be completed' });
+    }
+});
+
+app.get('/v1/screenings', async (req, res) => {
+    res.set('Cache-Control', 'no-store, private');
+    try {
+        const me = await currentUser(req);
+        if (!me) return res.status(401).json({ error: 'Sign in first' });
+        res.json({ rows: await screening.recent(me.userId, req.query.limit) });
+    } catch (err) {
+        console.error('[screenings]', err.message);
+        res.status(500).json({ error: 'Could not read the log' });
+    }
+});
+
+app.get('/v1/screenings/:id', async (req, res) => {
+    res.set('Cache-Control', 'no-store, private');
+    try {
+        const me = await currentUser(req);
+        if (!me) return res.status(401).json({ error: 'Sign in first' });
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: 'Not a screening' });
+        const row = await screening.byId(me.userId, id);
+        if (!row) return res.status(404).json({ error: 'Not found' });
+        res.json(row);
+    } catch (err) {
+        console.error('[screening read]', err.message);
+        res.status(500).json({ error: 'Could not read it' });
+    }
+});
+
 app.post('/v1/trial-request', requireCloudflareOrigin, trialRequestLimiter, async (req, res) => {
     try {
         const b = req.body || {};
@@ -2047,6 +2210,7 @@ app.listen(PORT, () => {
         }
         db.startRetention();
         startRateSweep();
+        sanctions.startRefresh();
         setTimeout(() => { accounts.purge(); }, 45000).unref();
         setInterval(() => { accounts.purge(); }, 6 * 60 * 60 * 1000).unref();
     }
