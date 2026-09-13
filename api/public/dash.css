@@ -146,11 +146,11 @@ body.dash-body {
     position: sticky; top: 0; z-index: 30;
     margin: 0;
     display: flex; align-items: center; gap: 0.8rem;
-    padding: 0.7rem 1.4rem;
     background: rgba(244, 246, 250, 0.86);
     backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
     border-bottom: 1px solid var(--d-line-2);
-    padding: 0.7rem 1.4rem;
+    /* the padding is set on `.dash-body .dash-top` above, where it can beat the
+       tag reset. declaring it here as well was one of the two doing nothing. */
 }
 .dash-burger {
     display: none; align-items: center; justify-content: center;
