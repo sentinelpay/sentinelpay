@@ -114,6 +114,15 @@ for f in sorted(x for x in os.listdir(PUB) if x.endswith('.js')):
         # the gpu, not a word anybody reads, so there is nothing here to
         # translate and every literal would be a false positive.
         continue
+    if f in ('dash-data.js',):
+        # the dashboard's sample data. every string in it is invented content
+        # standing in for what the engine will answer with: verdicts, reasons,
+        # rule sentences, case titles. it is english on purpose and it is not
+        # translated, because it is deleted the day the engine is wired in and
+        # the real text then comes from the server, in the language the caller
+        # asked for. the dashboard's own labels and headings are in dash-app.js
+        # and they are checked like everything else.
+        continue
     if f in ('inbox.js',):
         # the staff inbox. english on purpose and not translated: it is an
         # internal tool for three people who all read english, and the three
@@ -121,10 +130,19 @@ for f in sorted(x for x in os.listdir(PUB) if x.endswith('.js')):
         # than half translated, so a real miss on a real page still stands out.
         continue
     lits = []
-    lits += re.findall(r"return\s+'((?:[^'\\]|\\.)*)'", src)
-    lits += re.findall(r"textContent\s*=\s*'((?:[^'\\]|\\.)*)'", src)
+    # these two are also filtered by CODEY below: a function that returns markup
+    # or a shell command is returning code, and a string with a tag or a
+    # backslash in it has never been a sentence anybody reads.
+    lits += [x for x in re.findall(r"return\s+'((?:[^'\\]|\\.)*)'", src)]
+    lits += [x for x in re.findall(r"textContent\s*=\s*'((?:[^'\\]|\\.)*)'", src)]
     lits += re.findall(r"\.show\(\s*'((?:[^'\\]|\\.)*)'", src)
     lits += re.findall(r"alert\(\s*'((?:[^'\\]|\\.)*)'", src)
+    # a label in a config object is copy, and a single word escapes the sweep
+    # below because that one needs a space to tell prose from a class name. the
+    # dashboard's navigation is a list of these, and every one of them was
+    # invisible to this audit until it was looked for by name.
+    lits += re.findall(r"\b(?:label|title|heading|placeholder|group|name)\s*:\s*'((?:[^'\\]|\\.)+)'", src)
+
     # a string wrapped in t('…') is looked up at runtime, so it still has to be
     # in the dictionary. check those too rather than trusting the wrapper.
     lits += re.findall(r"[^a-zA-Z_.]t\(\s*'((?:[^'\\]|\\.)*)'", src)
@@ -135,10 +153,25 @@ for f in sorted(x for x in os.listdir(PUB) if x.endswith('.js')):
     # prose starts with a letter and carries no code punctuation. that alone
     # separates copy from selectors, regex fragments and concatenation stubs.
     CODEY = re.compile(r'^[^a-zA-Z]|[\\\[\]{}<>=()]|^https?:|\bdata-|\baria-')
+    # a list of class names reads like two short words and is not prose. the
+    # test is that every word is lowercase, and at least one carries a hyphen:
+    # "dash-grid dash-grid-3" is a class list, "sign in" is a sentence.
+    CLASSY = re.compile(r'^[a-z0-9-]+(?: [a-z0-9-]+)*$')
+    def codey(lit):
+        # the brand and a separator, which is what a tab title is built from
+        if lit.strip() in ('Sentinelpay ·', 'Sentinelpay'):
+            return True
+        if CODEY.search(lit):
+            return True
+        if lit == 'use strict':
+            return True
+        bare = lit.strip()
+        return bool('-' in bare and CLASSY.match(bare))
     for lit in re.findall(r"'((?:[^'\\\n]|\\.){4,})'", src):
-        if ' ' not in lit or CODEY.search(lit):
+        if ' ' not in lit or codey(lit):
             continue
         lits.append(lit)
+    lits = [x for x in lits if not codey(x)]
     total += report('js-literal', f, lits)
 
 # 4. the answers the server writes.

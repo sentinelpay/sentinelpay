@@ -1,0 +1,491 @@
+/* The dashboard, and its own stylesheet.
+ *
+ * Not in corp.css on purpose. That file is a five thousand line override layer
+ * over landing.css and the dashboard is a different product: a tool somebody
+ * has open for an hour, not a page they read once. Mixing them would mean every
+ * rule here fighting a rule there on specificity, which is exactly the problem
+ * the site already has and does not need a second copy of.
+ *
+ * What the design is arguing for:
+ *
+ *   - light. every competitor is a dark forensics console, which is a look for
+ *     an analyst proving they are an analyst. our reader is a compliance
+ *     officer who has to show this to a bank and a board, and it should look
+ *     like something from a bank.
+ *   - the gradient is one accent per screen, on the thing that matters. it is
+ *     never a background and never a chart.
+ *   - hierarchy comes from type and space, not from boxes inside boxes.
+ *   - numbers are tabular and right aligned. this is a screen people compare
+ *     figures on.
+ *   - everything is readable at 390px, because an alert at the weekend is read
+ *     on a phone.
+ */
+
+:root {
+    --d-ink: #0e2358;
+    --d-ink-2: rgba(14, 35, 88, 0.62);
+    --d-ink-3: rgba(14, 35, 88, 0.42);
+    --d-line: rgba(14, 35, 88, 0.1);
+    --d-line-2: rgba(14, 35, 88, 0.06);
+    --d-bg: #f4f6fa;
+    --d-card: #ffffff;
+    --d-accent: #1c4ed8;
+    --d-accent-soft: rgba(28, 78, 216, 0.08);
+    --d-grad: linear-gradient(90deg, #00d5ff 0%, #7b6cff 52%, #b14cff 100%);
+
+    --d-severe: #b3261e;
+    --d-severe-bg: rgba(179, 38, 30, 0.08);
+    --d-high: #b3541e;
+    --d-high-bg: rgba(179, 84, 30, 0.09);
+    --d-medium: #8a6d00;
+    --d-medium-bg: rgba(138, 109, 0, 0.1);
+    --d-low: #0f7b4f;
+    --d-low-bg: rgba(15, 123, 79, 0.09);
+
+    --d-side: 232px;
+    --d-radius: 14px;
+    --d-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* ---- shell --------------------------------------------------------------- */
+
+body.dash-body {
+    /* style.css centres the body with flex, which is right for a page that is
+       one card in the middle of a screen and wrong for an application: it was
+       pushing the whole shell down by half the empty space below it. */
+    display: block;
+    margin: 0;
+    background: var(--d-bg);
+    color: var(--d-ink);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* the site's own stylesheet styles bare tags: header carries three rem of margin
+   for the marketing pages, and that was pushing the whole workspace down by
+   exactly that. the dashboard uses the same tags for different things, so the
+   few that matter are reset here rather than fought one by one. */
+.dash-body header,
+.dash-body main,
+.dash-body h1, .dash-body h2, .dash-body h3,
+.dash-body p, .dash-body dl, .dash-body pre, .dash-body table { margin: 0; }
+.dash-body header { padding: 0; border: 0; }
+/* and then the top bar takes its padding back, at a specificity the reset
+   cannot beat. the reset is there for tags the site styles, not for ours. */
+.dash-body .dash-top { padding: 0.7rem 1.4rem; }
+
+.dash-shell { display: flex; min-height: 100vh; min-height: 100dvh; }
+
+/* the rail. fixed, because the point of it is that it is always in the same
+   place: a tool is a place you learn, and a navigation that moves is one you
+   have to read every time. */
+.dash-side {
+    position: fixed;
+    top: 0; bottom: 0; left: 0;
+    width: var(--d-side);
+    background: #ffffff;
+    border-right: 1px solid var(--d-line);
+    display: flex;
+    flex-direction: column;
+    z-index: 40;
+}
+
+.dash-brand {
+    display: flex; align-items: center; gap: 0.55rem;
+    padding: 1.15rem 1.15rem 0.9rem;
+    font-weight: 800; font-size: 0.98rem; letter-spacing: -0.01em;
+    color: var(--d-ink); text-decoration: none;
+}
+.dash-brand img { width: 24px; height: 24px; display: block; }
+
+.dash-nav { padding: 0.25rem 0.6rem; overflow-y: auto; flex: 1 1 auto; }
+.dash-nav-group {
+    padding: 0.9rem 0.55rem 0.3rem;
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--d-ink-3);
+}
+.dash-nav a {
+    display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.48rem 0.55rem;
+    margin: 1px 0;
+    border-radius: 9px;
+    color: var(--d-ink-2);
+    text-decoration: none;
+    font-weight: 500;
+    transition: background 0.14s ease, color 0.14s ease;
+}
+.dash-nav a:hover { background: var(--d-accent-soft); color: var(--d-ink); }
+.dash-nav a.is-on { background: var(--d-accent-soft); color: var(--d-accent); font-weight: 600; }
+.dash-nav svg { width: 16px; height: 16px; flex: none; stroke-width: 1.8; }
+.dash-nav .dash-count {
+    margin-left: auto;
+    font-size: 0.72rem; font-weight: 700;
+    background: var(--d-severe-bg); color: var(--d-severe);
+    padding: 0.05rem 0.4rem; border-radius: 999px;
+}
+
+/* usage sits at the bottom of the rail: it is the thing you glance at, never
+   the thing you came for */
+.dash-usage { padding: 0.9rem 1.15rem 1.1rem; border-top: 1px solid var(--d-line-2); }
+.dash-usage-top { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--d-ink-2); }
+.dash-usage-bar { height: 5px; border-radius: 999px; background: rgba(14, 35, 88, 0.08); margin: 0.45rem 0 0.3rem; overflow: hidden; }
+.dash-usage-fill { height: 100%; background: var(--d-grad); border-radius: 999px; }
+.dash-usage-note { font-size: 0.72rem; color: var(--d-ink-3); }
+
+.dash-main { flex: 1 1 auto; min-width: 0; margin-left: var(--d-side); display: flex; flex-direction: column; }
+
+/* ---- top bar ------------------------------------------------------------- */
+
+.dash-top {
+    position: sticky; top: 0; z-index: 30;
+    margin: 0;
+    display: flex; align-items: center; gap: 0.8rem;
+    padding: 0.7rem 1.4rem;
+    background: rgba(244, 246, 250, 0.86);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--d-line-2);
+    padding: 0.7rem 1.4rem;
+}
+.dash-burger {
+    display: none; align-items: center; justify-content: center;
+    width: 34px; height: 34px; border: 1px solid var(--d-line); border-radius: 9px;
+    background: #fff; color: var(--d-ink); cursor: pointer; flex: none; padding: 0;
+}
+.dash-burger svg { width: 17px; height: 17px; }
+
+.dash-search { position: relative; flex: 1 1 auto; max-width: 640px; }
+.dash-search input {
+    width: 100%; box-sizing: border-box;
+    padding: 0.6rem 0.85rem 0.6rem 2.3rem;
+    font: inherit; color: var(--d-ink);
+    background: #fff;
+    border: 1px solid var(--d-line); border-radius: 11px;
+    transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+.dash-search input::placeholder { color: var(--d-ink-3); }
+.dash-search input:focus {
+    outline: none;
+    border-color: rgba(28, 78, 216, 0.45);
+    box-shadow: 0 0 0 3px rgba(28, 78, 216, 0.1);
+}
+.dash-search svg { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--d-ink-3); }
+.dash-search kbd {
+    position: absolute; right: 0.55rem; top: 50%; transform: translateY(-50%);
+    font: 600 0.7rem/1 var(--d-mono); color: var(--d-ink-3);
+    background: rgba(14, 35, 88, 0.05); border: 1px solid var(--d-line-2);
+    padding: 0.2rem 0.35rem; border-radius: 5px;
+}
+
+.dash-top-right { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
+.dash-chip {
+    font-size: 0.72rem; font-weight: 600;
+    padding: 0.22rem 0.55rem; border-radius: 999px;
+    background: var(--d-medium-bg); color: var(--d-medium);
+    white-space: nowrap;
+}
+.dash-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.74rem; font-weight: 700; letter-spacing: 0.02em;
+    color: #fff; background: linear-gradient(135deg, #1c4ed8, #7b6cff);
+    text-decoration: none; flex: none;
+}
+
+/* ---- page ---------------------------------------------------------------- */
+
+.dash-page { padding: 1.5rem 1.4rem 4rem; max-width: 1180px; width: 100%; box-sizing: border-box; }
+.dash-h1 { margin: 0 0 0.2rem; font-size: 1.35rem; font-weight: 800; letter-spacing: -0.015em; }
+.dash-sub { margin: 0 0 1.3rem; color: var(--d-ink-2); font-size: 0.9rem; max-width: 62ch; }
+.dash-head { display: flex; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.3rem; }
+.dash-head .dash-sub { margin-bottom: 0; }
+.dash-head-actions { margin-left: auto; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+.dash-card {
+    background: var(--d-card);
+    border: 1px solid var(--d-line);
+    border-radius: var(--d-radius);
+    padding: 1.15rem 1.2rem;
+    position: relative;
+}
+.dash-card + .dash-card { margin-top: 1rem; }
+.dash-card-h {
+    display: flex; align-items: baseline; gap: 0.6rem;
+    margin: 0 0 0.85rem;
+    font-size: 0.95rem; font-weight: 700;
+}
+.dash-card-h .dash-card-note {
+    margin-left: auto; font-size: 0.78rem; font-weight: 500; color: var(--d-ink-3);
+    text-align: right; max-width: 55%;
+}
+
+/* every grid and flex child gets min-width: 0.
+   the default is min-width: auto, which means a child never shrinks below the
+   widest thing inside it. one table with a long address in it then pushes the
+   whole column past the edge of the screen, and on a phone the page does not
+   even scroll to show it because the body hides horizontal overflow. this is
+   the single most common way a layout that is correct on a laptop is broken on
+   a phone, and it is one line. */
+.dash-grid { display: grid; gap: 1rem; }
+.dash-grid > *,
+.dash-reason > *,
+.dash-hop > *,
+.dash-rule > * { min-width: 0; }
+.dash-grid-2 { grid-template-columns: 1fr 1fr; }
+.dash-grid-3 { grid-template-columns: repeat(3, 1fr); }
+.dash-grid-side { grid-template-columns: minmax(0, 1fr) 320px; align-items: start; }
+
+/* ---- numbers ------------------------------------------------------------- */
+
+.dash-stat { display: flex; flex-direction: column; gap: 0.15rem; }
+.dash-stat-n { font-size: 1.7rem; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.dash-stat-l { font-size: 0.8rem; color: var(--d-ink-2); }
+.dash-stat-d { font-size: 0.76rem; color: var(--d-ink-3); }
+
+/* ---- bands --------------------------------------------------------------- */
+
+.dash-band {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    font-size: 0.74rem; font-weight: 700; letter-spacing: 0.01em;
+    padding: 0.15rem 0.5rem; border-radius: 999px;
+    white-space: nowrap;
+}
+.dash-band::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.dash-band-severe { background: var(--d-severe-bg); color: var(--d-severe); }
+.dash-band-high { background: var(--d-high-bg); color: var(--d-high); }
+.dash-band-medium { background: var(--d-medium-bg); color: var(--d-medium); }
+.dash-band-low { background: var(--d-low-bg); color: var(--d-low); }
+
+/* ---- tables -------------------------------------------------------------- */
+
+.dash-table-wrap { overflow-x: auto; margin: 0 -1.2rem -1.15rem; padding: 0 1.2rem 0.2rem; }
+table.dash-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.dash-table th {
+    text-align: left; font-weight: 600; font-size: 0.74rem; letter-spacing: 0.05em; text-transform: uppercase;
+    color: var(--d-ink-3);
+    padding: 0 0.7rem 0.5rem 0; white-space: nowrap;
+}
+.dash-table td { padding: 0.62rem 0.7rem 0.62rem 0; border-top: 1px solid var(--d-line-2); vertical-align: middle; }
+.dash-table tr:last-child td { padding-bottom: 0.2rem; }
+.dash-table .num { text-align: right; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; white-space: nowrap; }
+.dash-table .mono {
+    font-family: var(--d-mono);
+    font-size: 0.82rem;
+    /* an address is one thing. broken over two lines it reads as two, and the
+       eye has to put it back together on every row. */
+    white-space: nowrap;
+}
+.dash-table tr.is-row { cursor: pointer; }
+.dash-table tr.is-row:hover td { background: rgba(28, 78, 216, 0.035); }
+.dash-table tr.is-cursor td { background: rgba(28, 78, 216, 0.07); }
+.dash-table tr.is-cursor td:first-child { box-shadow: inset 2px 0 0 var(--d-accent); }
+
+.dash-empty { padding: 1.6rem 0; text-align: center; color: var(--d-ink-3); font-size: 0.88rem; }
+
+/* ---- buttons ------------------------------------------------------------- */
+
+.dash-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+    padding: 0.48rem 0.85rem;
+    font: inherit; font-weight: 600; font-size: 0.85rem;
+    color: var(--d-ink); background: #fff;
+    border: 1px solid var(--d-line); border-radius: 10px;
+    cursor: pointer; text-decoration: none;
+    transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.dash-btn:hover { border-color: rgba(14, 35, 88, 0.25); }
+.dash-btn svg { width: 15px; height: 15px; }
+.dash-btn-primary { background: var(--d-ink); border-color: var(--d-ink); color: #fff; }
+.dash-btn-primary:hover { background: #0a1a45; border-color: #0a1a45; }
+.dash-btn-danger { color: var(--d-severe); border-color: rgba(179, 38, 30, 0.3); }
+.dash-btn-danger:hover { background: var(--d-severe-bg); }
+.dash-btn-good { color: var(--d-low); border-color: rgba(15, 123, 79, 0.3); }
+.dash-btn-good:hover { background: var(--d-low-bg); }
+.dash-btn[disabled] { opacity: 0.5; cursor: default; }
+.dash-btn kbd { font: 600 0.68rem/1 var(--d-mono); opacity: 0.55; }
+
+/* ---- the verdict, the one thing this product is ------------------------- */
+
+.dash-verdict { position: relative; overflow: hidden; padding-top: 1.3rem; }
+.dash-verdict::before {
+    content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px;
+    background: var(--d-grad);
+}
+.dash-verdict-top { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.7rem; }
+.dash-verdict-subject { font-family: var(--d-mono); font-size: 0.84rem; color: var(--d-ink-2); word-break: break-all; }
+.dash-verdict-line {
+    margin: 0 0 1rem;
+    font-size: 1.22rem; line-height: 1.45; font-weight: 700; letter-spacing: -0.012em;
+    max-width: 46ch;
+}
+.dash-verdict-acts { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+.dash-reason { display: flex; gap: 0.75rem; padding: 0.85rem 0; border-top: 1px solid var(--d-line-2); }
+.dash-reason:first-of-type { border-top: 0; padding-top: 0.2rem; }
+.dash-reason-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 0.45rem; flex: none; }
+.dash-reason-dot.severe { background: var(--d-severe); }
+.dash-reason-dot.high { background: var(--d-high); }
+.dash-reason-dot.medium { background: var(--d-medium); }
+.dash-reason-dot.low { background: var(--d-low); }
+.dash-reason-t { font-weight: 650; margin: 0 0 0.15rem; }
+.dash-reason-d { margin: 0; color: var(--d-ink-2); }
+.dash-reason-s { margin: 0.3rem 0 0; font-size: 0.78rem; color: var(--d-ink-3); }
+.dash-reason-s a { color: var(--d-accent); text-decoration: none; border-bottom: 1px solid rgba(28, 78, 216, 0.25); }
+
+/* exposure: one bar, because a pie chart of six categories is a puzzle */
+.dash-expo { display: flex; height: 12px; border-radius: 999px; overflow: hidden; background: rgba(14, 35, 88, 0.06); }
+.dash-expo span { display: block; height: 100%; }
+.dash-expo-key { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; margin-top: 0.7rem; font-size: 0.8rem; }
+.dash-expo-key div { display: flex; align-items: center; gap: 0.4rem; color: var(--d-ink-2); }
+.dash-expo-key i { width: 9px; height: 9px; border-radius: 3px; display: block; }
+.dash-expo-key b { font-variant-numeric: tabular-nums; color: var(--d-ink); font-weight: 650; }
+
+/* the path: a list, not a graph. a graph of four hops is a graph you have to
+   learn to read, and there is nothing in it a list does not say */
+.dash-hop { display: flex; gap: 0.8rem; padding: 0.7rem 0; position: relative; }
+.dash-hop + .dash-hop::before {
+    content: ''; position: absolute; left: 11px; top: -0.35rem; height: 0.7rem;
+    border-left: 2px dotted var(--d-line);
+}
+.dash-hop-mark {
+    width: 24px; height: 24px; border-radius: 50%; flex: none;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.72rem; font-weight: 700;
+    background: rgba(14, 35, 88, 0.06); color: var(--d-ink-2);
+}
+.dash-hop-mark.severe { background: var(--d-severe-bg); color: var(--d-severe); }
+.dash-hop-mark.high { background: var(--d-high-bg); color: var(--d-high); }
+.dash-hop-mark.medium { background: var(--d-medium-bg); color: var(--d-medium); }
+.dash-hop-t { font-weight: 650; }
+.dash-hop-r { font-family: var(--d-mono); font-size: 0.8rem; color: var(--d-ink-2); word-break: break-all; }
+.dash-hop-n { font-size: 0.8rem; color: var(--d-ink-3); }
+.dash-hop-a { margin-left: auto; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ---- facts list ---------------------------------------------------------- */
+
+.dash-facts { margin: 0; }
+.dash-facts div { display: flex; justify-content: space-between; gap: 1rem; padding: 0.45rem 0; border-top: 1px solid var(--d-line-2); }
+.dash-facts div:first-child { border-top: 0; padding-top: 0; }
+.dash-facts dt { color: var(--d-ink-2); }
+.dash-facts dd { margin: 0; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; word-break: break-word; }
+
+/* ---- rules and policy ---------------------------------------------------- */
+
+.dash-rule { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.8rem 0; border-top: 1px solid var(--d-line-2); }
+.dash-rule:first-of-type { border-top: 0; }
+.dash-rule-text { flex: 1 1 auto; }
+.dash-rule-off { color: var(--d-ink-3); }
+.dash-switch {
+    position: relative; width: 36px; height: 20px; flex: none; margin-top: 0.1rem;
+    border-radius: 999px; border: 0; padding: 0; cursor: pointer;
+    background: rgba(14, 35, 88, 0.18);
+    transition: background 0.18s ease;
+}
+.dash-switch::after {
+    content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
+    border-radius: 50%; background: #fff; transition: transform 0.18s ease;
+}
+.dash-switch.is-on { background: var(--d-accent); }
+.dash-switch.is-on::after { transform: translateX(16px); }
+
+/* ---- misc ---------------------------------------------------------------- */
+
+.dash-sample {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    font-size: 0.74rem; font-weight: 600;
+    color: var(--d-medium); background: var(--d-medium-bg);
+    padding: 0.2rem 0.55rem; border-radius: 999px;
+}
+.dash-mono { font-family: var(--d-mono); font-size: 0.84rem; word-break: break-all; }
+.dash-muted { color: var(--d-ink-2); }
+.dash-tiny { font-size: 0.78rem; }
+.dash-right { text-align: right; }
+.dash-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.dash-gap { margin-top: 1rem; }
+a.dash-link { color: var(--d-accent); text-decoration: none; border-bottom: 1px solid rgba(28, 78, 216, 0.25); }
+a.dash-link:hover { border-bottom-color: var(--d-accent); }
+
+.dash-kbd-help { display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.78rem; color: var(--d-ink-3); margin-top: 1rem; }
+.dash-kbd-help kbd {
+    font: 600 0.72rem/1 var(--d-mono); color: var(--d-ink-2);
+    background: rgba(14, 35, 88, 0.05); border: 1px solid var(--d-line-2);
+    padding: 0.15rem 0.35rem; border-radius: 5px; margin-right: 0.25rem;
+}
+
+/* ---- the sheet the rail becomes on a phone ------------------------------- */
+
+.dash-scrim {
+    position: fixed; inset: 0; background: rgba(8, 14, 34, 0.35);
+    opacity: 0; visibility: hidden; transition: opacity 0.22s ease, visibility 0s linear 0.22s;
+    z-index: 39;
+}
+.dash-scrim.is-on { opacity: 1; visibility: visible; transition: opacity 0.22s ease, visibility 0s linear 0s; }
+
+@media (max-width: 900px) {
+    .dash-side {
+        transform: translateX(-100%);
+        transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+        box-shadow: 0 20px 60px -30px rgba(4, 6, 20, 0.5);
+    }
+    .dash-side.is-open { transform: none; }
+    .dash-main { margin-left: 0; }
+    .dash-burger { display: flex; }
+    .dash-grid-2, .dash-grid-3, .dash-grid-side { grid-template-columns: 1fr; }
+    .dash-page { padding: 1.1rem 1rem 3.5rem; }
+    .dash-top { padding: 0.6rem 1rem; }
+    .dash-search kbd { display: none; }
+}
+
+@media (max-width: 560px) {
+    /* the note beside a card title is an aside. on a narrow screen it was
+       fighting the title for the same line and both were wrapping; below it,
+       left aligned, it reads as what it is. */
+    .dash-card-h { display: block; }
+    .dash-card-h .dash-card-note { display: block; margin: 0.15rem 0 0; max-width: none; text-align: left; }
+    .dash-verdict-line { font-size: 1.08rem; }
+    .dash-stat-n { font-size: 1.45rem; }
+    .dash-table-wrap { margin: 0 -1rem -1.15rem; padding: 0 1rem 0.2rem; }
+    .dash-card { padding: 1rem; border-radius: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dash-side, .dash-scrim, .dash-switch, .dash-switch::after { transition: none; }
+}
+
+/* ---- the report ---------------------------------------------------------- */
+/* Printing is the export. A pdf library in the browser would be another
+   dependency producing a worse document than the one the operating system
+   already knows how to make, and the print dialog saves to pdf everywhere. */
+@media print {
+    .dash-side, .dash-top, .dash-scrim, .dash-verdict-acts, .dash-kbd-help, .dash-no-print { display: none !important; }
+    body.dash-body { background: #fff; font-size: 11pt; }
+    .dash-main { margin-left: 0; }
+    .dash-page { padding: 0; max-width: none; }
+    .dash-card { border: 1px solid #d7dce8; break-inside: avoid; box-shadow: none; }
+    .dash-print-head { display: block !important; margin-bottom: 1rem; }
+    a[href]::after { content: ''; }
+}
+.dash-print-head { display: none; }
+.dash-print-head h1 { margin: 0 0 0.2rem; font-size: 1.2rem; }
+.dash-print-head p { margin: 0; color: var(--d-ink-2); font-size: 0.85rem; }
+
+/* ---- the settings cards -------------------------------------------------- */
+/* They are the site's own components, dropped into an application shell, and
+   side by side with the cards above they read as another product: rounder,
+   glowing, a gradient edge. The markup stays as it is, because it works and is
+   tested; the surface is brought into line here. */
+.dash-body .sp-dash-card,
+.dash-body .lp-demo-card.sp-auth-panel {
+    background: var(--d-card) !important;
+    border: 1px solid var(--d-line) !important;
+    border-radius: var(--d-radius) !important;
+    box-shadow: none !important;
+    max-width: none;
+}
+.dash-body .sp-dash-card::before,
+.dash-body .sp-dash-card::after,
+.dash-body .lp-demo-card.sp-auth-panel::before,
+.dash-body .lp-demo-card.sp-auth-panel::after { display: none !important; }
+.dash-body .sp-dash-h2 { font-size: 0.95rem; }
+.dash-body #dash-settings > div { margin-bottom: 1rem; }
