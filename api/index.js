@@ -533,6 +533,10 @@ function statusBanner() {
 // the site's policy allows inline stylesheets and forbids inline style
 // attributes, and this is not a good enough reason to weaken that.
 const IS_STAGING = String(process.env.APP_ENV || '').toLowerCase() === 'staging';
+// the application dashboard: on wherever it is asked for, and on staging by
+// default, because that is where it is being built
+const DASHBOARD_NEXT = String(process.env.DASHBOARD_NEXT || (IS_STAGING ? 'true' : 'false'))
+    .trim().toLowerCase() === 'true';
 
 function stagingRibbon() {
     if (!IS_STAGING) return '';
@@ -795,6 +799,24 @@ app.get('/dashboard', async (req, res, next) => {
     // no store rather than no cache: a signed-in page must not sit in a shared
     // cache or come back from the back button after signing out
     res.set('Cache-Control', 'no-store, private');
+
+    // Two dashboards, one flag.
+    //
+    // The new one is a working application: a rail, ten screens, a screening
+    // result with a verdict and a decision on it. Everything in it is sample
+    // data until the engine exists, so it is not what a customer should be
+    // shown on the live site yet. The old page is the account: the password,
+    // the sessions, the second factor, the erasure. Those are real and they
+    // stay real on both.
+    //
+    // So production serves the account page and staging serves the application,
+    // out of the same branch. The alternative was a branch that only exists on
+    // staging, which diverges within a week and then every push to production
+    // is a decision somebody has to remember to get right.
+    //
+    // DASHBOARD_NEXT=true turns the new one on anywhere, which is how it goes
+    // live the day the engine is behind it.
+    if (DASHBOARD_NEXT) return sendPage(res, req, 'dashboard-next.html', 200, undefined, 'no-store, private');
     return next();
 });
 
