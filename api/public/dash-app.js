@@ -194,6 +194,14 @@
         });
     }
 
+    // the rail carries one live thing: whether monitoring is actually running.
+    // a tool that watches something should say so without being asked.
+    function paintLive() {
+        var box = document.getElementById('dash-live');
+        if (!box) return;
+        box.innerHTML = '<i></i><span>' + esc(t('Monitoring is running')) + '</span>';
+    }
+
     function paintUsage() {
         var box = document.getElementById('dash-usage');
         if (!box) return;
@@ -301,6 +309,121 @@
         return dl;
     }
 
+    // A segmented filter. The chosen one goes in the hash, so a filtered list is
+    // a link somebody can send.
+    function segmented(options, current, onPick) {
+        var wrap = el('div', 'dash-seg');
+        options.forEach(function (o) {
+            var b = el('button');
+            b.type = 'button';
+            b.textContent = t(o.label);
+            if (o.count != null) {
+                var n = el('span', 'dash-seg-n');
+                n.textContent = String(o.count);
+                b.appendChild(n);
+            }
+            if (o.key === current) b.classList.add('is-on');
+            b.addEventListener('click', function () { onPick(o.key); });
+            wrap.appendChild(b);
+        });
+        return wrap;
+    }
+
+    // A number against the one before it. The arrow is the point: a figure on
+    // its own says nothing about whether today is a normal day.
+    function trend(now, before) {
+        var d = before ? Math.round(((now - before) / before) * 100) : 0;
+        var kind = d > 2 ? 'up' : (d < -2 ? 'down' : 'flat');
+        var n = el('span', 'dash-trend dash-trend-' + kind);
+        n.textContent = (d > 0 ? '+' : '') + d + '%';
+        return n;
+    }
+
+    // Thirty numbers and a shape. No axes, no grid, no library: an overview
+    // chart answers "is this normal" and anything more belongs on a page of its
+    // own.
+    function sparkline(points, w, h) {
+        var max = Math.max.apply(null, points) || 1;
+        var step = w / Math.max(1, points.length - 1);
+        var line = points.map(function (v, i) {
+            return (i ? 'L' : 'M') + (i * step).toFixed(1) + ' ' + (h - (v / max) * (h - 6) - 3).toFixed(1);
+        }).join(' ');
+        var area = line + ' L' + w.toFixed(1) + ' ' + h + ' L0 ' + h + ' Z';
+        var last = { x: w, y: h - (points[points.length - 1] / max) * (h - 6) - 3 };
+        var svg = '<svg class="dash-spark" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" aria-hidden="true">' +
+            '<defs>' +
+            '<linearGradient id="dashGrad" x1="0" y1="0" x2="1" y2="0">' +
+            '<stop offset="0%" stop-color="#00d5ff"/><stop offset="55%" stop-color="#7b6cff"/><stop offset="100%" stop-color="#b14cff"/>' +
+            '</linearGradient>' +
+            '<linearGradient id="dashFade" x1="0" y1="0" x2="0" y2="1">' +
+            '<stop offset="0%" stop-color="rgba(123,108,255,0.18)"/><stop offset="100%" stop-color="rgba(123,108,255,0)"/>' +
+            '</linearGradient>' +
+            '</defs>' +
+            '<path class="area" d="' + area + '"/><path class="line" d="' + line + '"/>' +
+            '<circle cx="' + last.x.toFixed(1) + '" cy="' + last.y.toFixed(1) + '" r="2.6"/></svg>';
+        var box = el('div');
+        box.innerHTML = svg;
+        return box;
+    }
+
+    // An address is copied far more often than it is read. On a phone,
+    // selecting one by hand is most of a minute.
+    function copyButton(text) {
+        var b = el('button', 'dash-copy');
+        b.type = 'button';
+        b.setAttribute('aria-label', t('Copy'));
+        b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
+            'stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2.5"/>' +
+            '<path d="M15 6.5V5.5A2.5 2.5 0 0 0 12.5 3H5.5A2.5 2.5 0 0 0 3 5.5v7A2.5 2.5 0 0 0 5.5 15h1"/></svg>';
+        b.addEventListener('click', function (e) {
+            e.stopPropagation();
+            try {
+                navigator.clipboard.writeText(text).then(function () { toast(t('Copied')); });
+            } catch (err) { /* an old browser without the api: the text is still on screen */ }
+        });
+        return b;
+    }
+
+    // Said once, in the corner, and gone. A decision that changes a screen
+    // should still say out loud that it happened.
+    var toastEl = null;
+    var toastTimer = null;
+    function toast(message) {
+        if (!toastEl) {
+            toastEl = el('div', 'dash-toast');
+            toastEl.setAttribute('role', 'status');
+            document.body.appendChild(toastEl);
+        }
+        toastEl.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
+            'stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7"/></svg>';
+        toastEl.appendChild(document.createTextNode(message));
+        toastEl.classList.add('is-on');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { toastEl.classList.remove('is-on'); }, 2600);
+    }
+
+    // How many rows there are, and which of them these are.
+    function footRow(shown, total, label) {
+        var f = el('div', 'dash-foot');
+        f.textContent = t('Showing') + ' ' + shown + ' ' + t('of') + ' ' + total + ' ' + t(label);
+        return f;
+    }
+
+    function crumbs(trail) {
+        var c = el('div', 'dash-crumbs');
+        trail.forEach(function (step, i) {
+            if (i) c.appendChild(document.createTextNode('/'));
+            if (step.route != null) {
+                var a = el('a', null, step.label);
+                a.href = '#/' + step.route;
+                c.appendChild(a);
+            } else {
+                c.appendChild(el('span', null, step.label));
+            }
+        });
+        return c;
+    }
+
     function sampleChip() {
         var s = el('span', 'dash-sample');
         s.textContent = t('Sample data');
@@ -315,30 +438,44 @@
         var page = el('div');
         var open = D.alerts.filter(function (a) { return a.state === 'open'; });
         var severe = open.filter(function (a) { return a.band === 'severe' || a.band === 'high'; });
+        var series = D.series || [];
+        var today = series.length ? series[series.length - 1].checks : 0;
+        var yesterday = series.length > 1 ? series[series.length - 2].checks : 0;
+        var week = series.slice(-7).reduce(function (n, x) { return n + x.checks; }, 0);
+        var weekBefore = series.slice(-14, -7).reduce(function (n, x) { return n + x.checks; }, 0);
 
         page.appendChild(head('Overview',
             'Everything that needs a person, and nothing that does not.',
             [button('Run a check', 'primary', function () { focusSearch(); }, 'search')]));
 
-        // the three numbers worth having on a wall
+        // the three numbers, each against the one before it
         var stats = el('div', 'dash-grid dash-grid-3');
         [
-            [num(open.length), t('Open alerts'), severe.length ? t('of those, high or worse') + ': ' + severe.length : t('nothing above medium')],
-            [num(D.account.checksUsed), t('Checks this month'), t('of') + ' ' + num(D.account.checksIncluded) + ' ' + t('included')],
-            [num(D.watched.length), t('Addresses watched'), t('rechecked continuously')],
-        ].forEach(function (s) {
+            { n: num(open.length), label: t('Open alerts'),
+              note: severe.length ? t('of those, high or worse') + ': ' + severe.length : t('nothing above medium'),
+              tone: severe.length ? 'severe' : 'low' },
+            { n: num(week), label: t('Checks this week'), note: t('yesterday') + ': ' + num(yesterday),
+              trend: [week, weekBefore] },
+            { n: num(D.watched.length), label: t('Addresses watched'), note: t('rechecked continuously') },
+        ].forEach(function (x) {
             var c = card();
             var st = el('div', 'dash-stat');
-            st.appendChild(el('div', 'dash-stat-n', s[0]));
-            st.appendChild(el('div', 'dash-stat-l', s[1]));
-            st.appendChild(el('div', 'dash-stat-d', s[2]));
+            var top = el('div', 'dash-stat-top');
+            top.appendChild(el('div', 'dash-stat-n', x.n));
+            if (x.trend) top.appendChild(trend(x.trend[0], x.trend[1]));
+            if (x.tone && x.tone !== 'low') top.appendChild(bandTag(x.tone));
+            st.appendChild(top);
+            st.appendChild(el('div', 'dash-stat-l', x.label));
+            st.appendChild(el('div', 'dash-stat-d', x.note));
             c.appendChild(st);
             stats.appendChild(c);
         });
         page.appendChild(stats);
 
         var grid = el('div', 'dash-grid dash-grid-side dash-gap');
+        var main = el('div');
 
+        // what needs a person, first, because that is what this screen is for
         var attention = card('Needs your attention', open.length ? '' : t('All clear'));
         attention.appendChild(table(
             [{ label: 'Risk' }, { label: 'Subject' }, { label: 'Why' }, { label: 'When', num: true }],
@@ -355,22 +492,53 @@
             }),
             function (a) { go(a.screening ? 'screening/' + a.screening : 'alerts'); }
         ));
-        grid.appendChild(attention);
+        main.appendChild(attention);
+
+        // the shape of the month. thirty numbers, no axes: this answers "is
+        // today normal" and nothing else.
+        var chart = card('Checks', t('last 30 days') + ' · ' + t('today') + ': ' + num(today));
+        chart.appendChild(sparkline(series.map(function (x) { return x.checks; }), 600, 46));
+        main.appendChild(chart);
+
+        var mix = card('How this month came out', t('by risk band'));
+        var total = (D.riskMix || []).reduce(function (n, x) { return n + x.count; }, 0) || 1;
+        var bar = el('div', 'dash-mix');
+        var key = el('div', 'dash-mix-key');
+        (D.riskMix || []).forEach(function (m) {
+            var seg = document.createElement('span');
+            seg.style.width = ((m.count / total) * 100).toFixed(1) + '%';
+            seg.style.background = toneColour(m.band);
+            seg.title = bandName(m.band) + ' ' + m.count;
+            bar.appendChild(seg);
+            var k = el('div');
+            var dot = document.createElement('i');
+            dot.style.background = toneColour(m.band);
+            k.appendChild(dot);
+            k.appendChild(document.createTextNode(bandName(m.band) + ' '));
+            var b = document.createElement('b');
+            b.textContent = num(m.count);
+            k.appendChild(b);
+            key.appendChild(k);
+        });
+        mix.appendChild(bar);
+        mix.appendChild(key);
+        main.appendChild(mix);
+        grid.appendChild(main);
 
         var side = el('div');
         var recent = card('Recent checks');
         recent.appendChild(table(
             [{ label: 'Subject' }, { label: 'Risk' }],
-            D.screenings.slice(0, 5).map(function (s) {
+            D.screenings.slice(0, 5).map(function (sc) {
                 return {
-                    data: s,
+                    data: sc,
                     cells: [
-                        { text: short(s.subject), cls: 'mono' },
-                        { node: bandTag(s.band) },
+                        { text: short(sc.subject), cls: 'mono' },
+                        { node: bandTag(sc.band) },
                     ],
                 };
             }),
-            function (s) { go('screening/' + s.id); }
+            function (sc) { go('screening/' + sc.id); }
         ));
         side.appendChild(recent);
 
@@ -392,27 +560,48 @@
         return page;
     };
 
-    views.screenings = function () {
+    views.screenings = function (filter) {
         var page = el('div');
-        page.appendChild(head('Screenings', 'Every check this account has run, newest first.'));
+        var all = D.screenings;
+        var counts = {
+            all: all.length,
+            undecided: all.filter(function (x) { return !x.decision; }).length,
+            flagged: all.filter(function (x) { return x.band === 'severe' || x.band === 'high'; }).length,
+        };
+        var which = ['undecided', 'flagged'].indexOf(filter) === -1 ? 'all' : filter;
+        var rows = all.filter(function (x) {
+            if (which === 'undecided') return !x.decision;
+            if (which === 'flagged') return x.band === 'severe' || x.band === 'high';
+            return true;
+        });
+
+        page.appendChild(head('Screenings', 'Every check this account has run, newest first.', [
+            segmented([
+                { key: 'all', label: 'All', count: counts.all },
+                { key: 'undecided', label: 'Undecided', count: counts.undecided },
+                { key: 'flagged', label: 'Flagged', count: counts.flagged },
+            ], which, function (k) { go('screenings/' + k); }),
+        ]));
+
         var c = card();
         c.appendChild(table(
             [{ label: 'Subject' }, { label: 'Chain' }, { label: 'Risk' }, { label: 'Decision' }, { label: 'By' }, { label: 'When', num: true }],
-            D.screenings.map(function (s) {
+            rows.map(function (sc) {
                 return {
-                    data: s,
+                    data: sc,
                     cells: [
-                        { text: short(s.subject), cls: 'mono' },
-                        { text: s.chain },
-                        { node: bandTag(s.band) },
-                        { text: decisionWord(s.decision) },
-                        { text: s.by },
-                        { text: since(s.at), cls: 'num' },
+                        { text: short(sc.subject), cls: 'mono' },
+                        { node: (function () { var n = el('span', 'dash-tag'); n.textContent = sc.chain; return n; })() },
+                        { node: bandTag(sc.band) },
+                        { text: decisionWord(sc.decision) },
+                        { text: sc.by },
+                        { text: since(sc.at), cls: 'num' },
                     ],
                 };
             }),
-            function (s) { go('screening/' + s.id); }
+            function (sc) { go('screening/' + sc.id); }
         ));
+        c.appendChild(footRow(rows.length, all.length, 'checks'));
         page.appendChild(c);
         page.appendChild(keyboardHelp());
         return page;
@@ -428,12 +617,10 @@
             return page;
         }
 
-        var back = el('a', 'dash-link');
-        back.href = '#/screenings';
-        back.textContent = '← ' + t('All screenings');
-        back.style.display = 'inline-block';
-        back.style.marginBottom = '0.9rem';
-        page.appendChild(back);
+        page.appendChild(crumbs([
+            { label: t('Screenings'), route: 'screenings' },
+            { label: short(s.subject) },
+        ]));
 
         // what a printed report needs and the screen does not
         var ph = el('div', 'dash-print-head');
@@ -445,7 +632,11 @@
         verdict.classList.add('dash-verdict');
         var top = el('div', 'dash-verdict-top');
         top.appendChild(bandTag(s.band));
+        var chainTag = el('span', 'dash-tag');
+        chainTag.textContent = s.chain;
+        top.appendChild(chainTag);
         top.appendChild(el('span', 'dash-verdict-subject', s.subject));
+        top.appendChild(copyButton(s.subject));
         top.appendChild(sampleChip());
         verdict.appendChild(top);
         verdict.appendChild(el('p', 'dash-verdict-line', s.verdict));
@@ -456,6 +647,7 @@
         function setDecision(d) {
             s.decision = d;
             paint();
+            if (d) toast(t('Decision recorded') + ': ' + decisionWord(d));
         }
         function paint() {
             acts.textContent = '';
@@ -609,13 +801,29 @@
         return page;
     };
 
-    views.alerts = function () {
+    views.alerts = function (filter) {
         var page = el('div');
-        page.appendChild(head('Alerts', 'What monitoring found while nobody was looking. Every alert says which rule produced it.'));
+        var all = D.alerts;
+        var which = ['open', 'closed'].indexOf(filter) === -1 ? 'all' : filter;
+        var rows = all.filter(function (a) {
+            if (which === 'open') return a.state === 'open';
+            if (which === 'closed') return a.state === 'closed';
+            return true;
+        });
+
+        page.appendChild(head('Alerts',
+            'What monitoring found while nobody was looking. Every alert says which rule produced it.', [
+                segmented([
+                    { key: 'all', label: 'All', count: all.length },
+                    { key: 'open', label: 'Open', count: all.filter(function (a) { return a.state === 'open'; }).length },
+                    { key: 'closed', label: 'Closed', count: all.filter(function (a) { return a.state === 'closed'; }).length },
+                ], which, function (k) { go('alerts/' + k); }),
+            ]));
+
         var c = card();
         c.appendChild(table(
             [{ label: 'Risk' }, { label: 'Subject' }, { label: 'Rule' }, { label: 'What happened' }, { label: 'State' }, { label: 'When', num: true }],
-            D.alerts.map(function (a) {
+            rows.map(function (a) {
                 return {
                     data: a,
                     cells: [
@@ -630,6 +838,7 @@
             }),
             function (a) { if (a.screening) go('screening/' + a.screening); }
         ));
+        c.appendChild(footRow(rows.length, all.length, 'alerts'));
         page.appendChild(c);
         page.appendChild(keyboardHelp());
         return page;
@@ -929,6 +1138,7 @@
         view.appendChild(node);
         currentKeys = node.__keys || null;
         paintNav(r.name === 'screening' ? 'screenings' : r.name);
+        paintLive();
         paintUsage();
         closeRail();
         window.scrollTo(0, 0);

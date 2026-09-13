@@ -42,8 +42,12 @@
     --d-low: #0f7b4f;
     --d-low-bg: rgba(15, 123, 79, 0.09);
 
-    --d-side: 232px;
+    --d-side: 244px;
     --d-radius: 14px;
+    /* shadows do the work borders were doing. two of them: one for a card at
+       rest, one for something that has lifted off the page. */
+    --d-shadow: 0 1px 2px rgba(14, 35, 88, 0.04), 0 1px 3px rgba(14, 35, 88, 0.03);
+    --d-shadow-up: 0 12px 28px -12px rgba(14, 35, 88, 0.18), 0 2px 6px rgba(14, 35, 88, 0.05);
     --d-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
@@ -204,16 +208,18 @@ body.dash-body {
 
 .dash-card {
     background: var(--d-card);
-    border: 1px solid var(--d-line);
+    border: 1px solid var(--d-line-2);
     border-radius: var(--d-radius);
-    padding: 1.15rem 1.2rem;
+    padding: 1.15rem 1.25rem;
     position: relative;
+    box-shadow: var(--d-shadow);
 }
+.dash-card-tight { padding: 0.9rem 1rem; }
 .dash-card + .dash-card { margin-top: 1rem; }
 .dash-card-h {
     display: flex; align-items: baseline; gap: 0.6rem;
     margin: 0 0 0.85rem;
-    font-size: 0.95rem; font-weight: 700;
+    font-size: 0.92rem; font-weight: 700; letter-spacing: -0.006em;
 }
 .dash-card-h .dash-card-note {
     margin-left: auto; font-size: 0.78rem; font-weight: 500; color: var(--d-ink-3);
@@ -262,9 +268,15 @@ body.dash-body {
 .dash-table-wrap { overflow-x: auto; margin: 0 -1.2rem -1.15rem; padding: 0 1.2rem 0.2rem; }
 table.dash-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
 .dash-table th {
-    text-align: left; font-weight: 600; font-size: 0.74rem; letter-spacing: 0.05em; text-transform: uppercase;
+    text-align: left; font-weight: 600; font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase;
     color: var(--d-ink-3);
-    padding: 0 0.7rem 0.5rem 0; white-space: nowrap;
+    padding: 0 0.7rem 0.55rem 0; white-space: nowrap;
+    /* not sticky. a sticky header inside a card sticks to the window rather
+       than to the card, so once the card scrolls past it floats over the rows
+       of whatever is underneath. these tables are a card tall; the header is
+       never far away. */
+    background: var(--d-card);
+    box-shadow: inset 0 -1px 0 var(--d-line-2);
 }
 .dash-table td { padding: 0.62rem 0.7rem 0.62rem 0; border-top: 1px solid var(--d-line-2); vertical-align: middle; }
 .dash-table tr:last-child td { padding-bottom: 0.2rem; }
@@ -277,7 +289,8 @@ table.dash-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
     white-space: nowrap;
 }
 .dash-table tr.is-row { cursor: pointer; }
-.dash-table tr.is-row:hover td { background: rgba(28, 78, 216, 0.035); }
+.dash-table tr.is-row:hover td { background: rgba(28, 78, 216, 0.03); }
+.dash-table tr.is-row:active td { background: rgba(28, 78, 216, 0.06); }
 .dash-table tr.is-cursor td { background: rgba(28, 78, 216, 0.07); }
 .dash-table tr.is-cursor td:first-child { box-shadow: inset 2px 0 0 var(--d-accent); }
 
@@ -294,10 +307,18 @@ table.dash-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
     cursor: pointer; text-decoration: none;
     transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
 }
-.dash-btn:hover { border-color: rgba(14, 35, 88, 0.25); }
+.dash-btn:hover { border-color: rgba(14, 35, 88, 0.22); box-shadow: var(--d-shadow); }
+.dash-btn:active { transform: translateY(0.5px); }
+.dash-btn:focus-visible,
+.dash-search input:focus-visible,
+.dash-nav a:focus-visible,
+.dash-seg button:focus-visible {
+    outline: 2px solid rgba(28, 78, 216, 0.5);
+    outline-offset: 2px;
+}
 .dash-btn svg { width: 15px; height: 15px; }
-.dash-btn-primary { background: var(--d-ink); border-color: var(--d-ink); color: #fff; }
-.dash-btn-primary:hover { background: #0a1a45; border-color: #0a1a45; }
+.dash-btn-primary { background: var(--d-ink); border-color: var(--d-ink); color: #fff; box-shadow: var(--d-shadow); }
+.dash-btn-primary:hover { background: #0a1a45; border-color: #0a1a45; box-shadow: var(--d-shadow-up); }
 .dash-btn-danger { color: var(--d-severe); border-color: rgba(179, 38, 30, 0.3); }
 .dash-btn-danger:hover { background: var(--d-severe-bg); }
 .dash-btn-good { color: var(--d-low); border-color: rgba(15, 123, 79, 0.3); }
@@ -489,3 +510,123 @@ a.dash-link:hover { border-bottom-color: var(--d-accent); }
 .dash-body .lp-demo-card.sp-auth-panel::after { display: none !important; }
 .dash-body .sp-dash-h2 { font-size: 0.95rem; }
 .dash-body #dash-settings > div { margin-bottom: 1rem; }
+
+/* ---- the pieces the bigger tools have and we did not ---------------------- */
+
+/* segmented filter. one control, three or four states, and the state is in the
+   url so a filtered list can be sent to somebody. */
+.dash-seg {
+    display: inline-flex; padding: 3px; gap: 2px;
+    background: rgba(14, 35, 88, 0.05);
+    border-radius: 10px;
+}
+.dash-seg button {
+    font: inherit; font-size: 0.82rem; font-weight: 600;
+    padding: 0.3rem 0.7rem; border: 0; border-radius: 8px;
+    background: transparent; color: var(--d-ink-2); cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+    white-space: nowrap;
+}
+.dash-seg button:hover { color: var(--d-ink); }
+.dash-seg button.is-on { background: #fff; color: var(--d-ink); box-shadow: var(--d-shadow); }
+.dash-seg .dash-seg-n { opacity: 0.55; font-variant-numeric: tabular-nums; margin-left: 0.3rem; }
+
+/* a number with its direction of travel, the way every analytics tool shows it.
+   the arrow is the point: a figure on its own says nothing about whether today
+   is a good day. */
+.dash-trend {
+    display: inline-flex; align-items: center; gap: 0.22rem;
+    font-size: 0.76rem; font-weight: 700;
+    padding: 0.1rem 0.4rem; border-radius: 999px;
+}
+.dash-trend-up { background: var(--d-low-bg); color: var(--d-low); }
+.dash-trend-down { background: var(--d-severe-bg); color: var(--d-severe); }
+.dash-trend-flat { background: rgba(14, 35, 88, 0.06); color: var(--d-ink-2); }
+.dash-stat-top { display: flex; align-items: center; gap: 0.55rem; }
+
+/* the small chart. no axes, no grid, no library: thirty numbers and a shape.
+   an overview chart answers "is this normal", and anything more is a page of
+   its own. */
+.dash-spark { display: block; width: 100%; height: 46px; overflow: visible; }
+.dash-spark path.line { fill: none; stroke: url(#dashGrad); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.dash-spark path.area { fill: url(#dashFade); stroke: none; }
+.dash-spark circle { fill: #7b6cff; }
+.dash-bars { display: flex; align-items: flex-end; gap: 3px; height: 54px; }
+.dash-bars span { flex: 1 1 auto; border-radius: 3px 3px 0 0; background: rgba(28, 78, 216, 0.16); min-height: 2px; }
+.dash-bars span.is-now { background: var(--d-accent); }
+
+/* the stacked bar for how a month came out */
+.dash-mix { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: rgba(14, 35, 88, 0.06); }
+.dash-mix span { display: block; height: 100%; }
+.dash-mix-key { display: flex; flex-wrap: wrap; gap: 0.35rem 0.9rem; margin-top: 0.65rem; font-size: 0.8rem; color: var(--d-ink-2); }
+.dash-mix-key div { display: flex; align-items: center; gap: 0.35rem; }
+.dash-mix-key i { width: 8px; height: 8px; border-radius: 2px; display: block; }
+.dash-mix-key b { color: var(--d-ink); font-variant-numeric: tabular-nums; }
+
+/* copy an address without selecting it by hand, which on a phone is most of a
+   minute */
+.dash-copy {
+    border: 0; background: transparent; padding: 0.15rem; margin-left: 0.15rem;
+    color: var(--d-ink-3); cursor: pointer; border-radius: 6px; line-height: 0;
+    transition: color 0.15s ease, background 0.15s ease;
+}
+.dash-copy:hover { color: var(--d-accent); background: var(--d-accent-soft); }
+.dash-copy svg { width: 14px; height: 14px; }
+
+/* what happened, said once, in the corner, and gone */
+.dash-toast {
+    position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 12px);
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.6rem 0.95rem; border-radius: 11px;
+    background: var(--d-ink); color: #fff;
+    font-size: 0.86rem; font-weight: 600;
+    box-shadow: var(--d-shadow-up);
+    opacity: 0; pointer-events: none; z-index: 90;
+    transition: opacity 0.2s ease, transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.dash-toast.is-on { opacity: 1; transform: translate(-50%, 0); }
+.dash-toast svg { width: 15px; height: 15px; }
+
+/* where you are, for screens that are two deep */
+.dash-crumbs { display: flex; align-items: center; gap: 0.4rem; margin: 0 0 0.8rem; font-size: 0.82rem; color: var(--d-ink-3); }
+.dash-crumbs a { color: var(--d-ink-2); text-decoration: none; }
+.dash-crumbs a:hover { color: var(--d-accent); }
+
+/* the chain a thing is on, said quietly next to it */
+.dash-tag {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    font-size: 0.74rem; font-weight: 600; color: var(--d-ink-2);
+    background: rgba(14, 35, 88, 0.05);
+    padding: 0.12rem 0.45rem; border-radius: 6px; white-space: nowrap;
+}
+
+/* a page of rows says how many there are and which ones these are */
+.dash-foot {
+    display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+    margin-top: 0.9rem; padding-top: 0.8rem; border-top: 1px solid var(--d-line-2);
+    font-size: 0.8rem; color: var(--d-ink-3);
+}
+.dash-foot .dash-btn { padding: 0.3rem 0.6rem; font-size: 0.8rem; }
+
+/* the rail gets a section for what is happening right now */
+.dash-live {
+    margin: 0.6rem 0.6rem 0; padding: 0.6rem 0.7rem;
+    border-radius: 10px; background: rgba(15, 123, 79, 0.07);
+    font-size: 0.76rem; color: var(--d-low); font-weight: 600;
+    display: flex; align-items: center; gap: 0.45rem;
+}
+.dash-live i {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--d-low); display: block;
+    box-shadow: 0 0 0 0 rgba(15, 123, 79, 0.5); animation: dashPulse 2.4s infinite;
+}
+@keyframes dashPulse {
+    0% { box-shadow: 0 0 0 0 rgba(15, 123, 79, 0.45); }
+    70% { box-shadow: 0 0 0 7px rgba(15, 123, 79, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(15, 123, 79, 0); }
+}
+@media (prefers-reduced-motion: reduce) { .dash-live i { animation: none; } }
+
+@media (max-width: 560px) {
+    .dash-seg { width: 100%; overflow-x: auto; }
+    .dash-head-actions { width: 100%; }
+}

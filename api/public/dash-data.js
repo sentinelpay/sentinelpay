@@ -160,7 +160,7 @@
             band: 'medium',
             decision: 'escalated',
             at: ago(28 * hour),
-            by: 'Josip Kovac',
+            by: 'Josip Družianić',
             balance: '18,220.00 USDC',
             firstSeen: ago(120 * day),
             lastSeen: ago(3 * day),
@@ -194,7 +194,7 @@
         },
         {
             id: 'scr_77aa10', subject: 'TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE', kind: 'address', chain: 'Tron', asset: 'USDT',
-            band: 'low', decision: 'approved', at: ago(3 * day), by: 'Josip Kovac', balance: '96,100.00 USDT',
+            band: 'low', decision: 'approved', at: ago(3 * day), by: 'Josip Družianić', balance: '96,100.00 USDT',
             firstSeen: ago(300 * day), lastSeen: ago(4 * day), txCount: 540, counterparties: 44,
             verdict: 'A payment processor address with nothing flagged against it in five hops.',
             reasons: [{ key: 'clean', weight: 'low', title: 'No exposure to flagged categories', detail: 'Nothing within five hops appears on a sanctions list or in an attributed illicit cluster.', source: 'Sentinelpay attribution', evidence: null }],
@@ -241,9 +241,9 @@
     // ---- cases --------------------------------------------------------------
     var CASES = [
         { id: 'case_0042', title: 'Sanctions exposure, treasury hot wallet', opened: ago(2 * hour), state: 'open', owner: 'Vibor Sumic', band: 'severe', items: 3, note: 'Two hops from an OFAC listing. Payment held pending legal.' },
-        { id: 'case_0041', title: 'Darknet exposure, customer 9920', opened: ago(2 * day), state: 'review', owner: 'Josip Kovac', band: 'high', items: 5, note: 'Account frozen, awaiting customer explanation.' },
+        { id: 'case_0041', title: 'Darknet exposure, customer 9920', opened: ago(2 * day), state: 'review', owner: 'Josip Družianić', band: 'high', items: 5, note: 'Account frozen, awaiting customer explanation.' },
         { id: 'case_0038', title: 'Unattributed flow, customer 4471', opened: ago(6 * day), state: 'review', owner: 'Vibor Sumic', band: 'medium', items: 2, note: 'Pass-through pattern. Watching for a week before deciding.' },
-        { id: 'case_0031', title: 'Large inbound, cold storage', opened: ago(14 * day), state: 'closed', owner: 'Josip Kovac', band: 'low', items: 1, note: 'Source confirmed as the customer own exchange account. No action.' },
+        { id: 'case_0031', title: 'Large inbound, cold storage', opened: ago(14 * day), state: 'closed', owner: 'Josip Družianić', band: 'low', items: 1, note: 'Source confirmed as the customer own exchange account. No action.' },
     ];
 
     // ---- the policy ---------------------------------------------------------
@@ -288,12 +288,33 @@
         { at: ago(2 * hour), who: 'Vibor Sumic', what: 'Screened 0x9A7c…8d0A', kind: 'screening' },
         { at: ago(2 * hour), who: 'Vibor Sumic', what: 'Opened case 0042', kind: 'case' },
         { at: ago(5 * hour), who: 'Vibor Sumic', what: 'Approved bc1qar0…5mdq', kind: 'decision' },
-        { at: ago(28 * hour), who: 'Josip Kovac', what: 'Escalated 0x4D2f…0d2B', kind: 'decision' },
+        { at: ago(28 * hour), who: 'Josip Družianić', what: 'Escalated 0x4D2f…0d2B', kind: 'decision' },
         { at: ago(2 * day), who: 'Vibor Sumic', what: 'Rejected 0xE1a7…A8c0', kind: 'decision' },
         { at: ago(11 * day), who: 'Vibor Sumic', what: 'Changed the mixer threshold to 10%', kind: 'policy' },
     ];
 
     // ---- usage and keys -----------------------------------------------------
+    // Thirty days of checks, for the shape rather than the numbers: a chart on
+    // an overview answers "is this normal" and nothing else, so it is drawn
+    // small, without axes, and the only figure that gets read out is today's.
+    var SERIES = [];
+    (function () {
+        var base = 42;
+        for (var i = 29; i >= 0; i--) {
+            var weekend = [0, 6].indexOf(new Date(now - i * day).getUTCDay()) !== -1;
+            var n = Math.round(base * (weekend ? 0.35 : 1) + (Math.sin(i / 2.3) * 9) + (i % 5) * 3);
+            SERIES.push({ at: ago(i * day), checks: Math.max(4, n), flagged: Math.max(0, Math.round(n * 0.06)) });
+        }
+    })();
+
+    // How the month's checks came out, for the bar on the overview
+    var RISK_MIX = [
+        { band: 'severe', count: 6 },
+        { band: 'high', count: 21 },
+        { band: 'medium', count: 148 },
+        { band: 'low', count: 1109 },
+    ];
+
     var ACCOUNT = {
         plan: 'Growth',
         checksUsed: 1284,
@@ -310,8 +331,8 @@
 
     var TEAM = [
         { name: 'Vibor Sumic', role: 'MLRO', email: 'vibor@sentinelpay.org', twofa: true, last: ago(20 * 60 * 1000) },
-        { name: 'Josip Kovac', role: 'Analyst', email: 'josip@sentinelpay.org', twofa: true, last: ago(28 * hour) },
-        { name: 'Mind', role: 'Read only', email: 'mind@sentinelpay.org', twofa: false, last: ago(4 * day) },
+        { name: 'Josip Družianić', role: 'Analyst', email: 'josip@sentinelpay.org', twofa: true, last: ago(28 * hour) },
+        { name: 'Vitali Friesen', role: 'Read only', email: 'vitali@sentinelpay.org', twofa: false, last: ago(4 * day) },
     ];
 
     window.SentinelDashData = {
@@ -327,6 +348,8 @@
         reports: REPORTS,
         activity: ACTIVITY,
         account: ACCOUNT,
+        series: SERIES,
+        riskMix: RISK_MIX,
         keys: KEYS,
         team: TEAM,
 
