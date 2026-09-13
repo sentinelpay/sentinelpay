@@ -89,9 +89,18 @@ async function main() {
                 (job.where ? ' WHERE ' + job.where : ''), []);
         } catch (err) {
             // a table that does not exist yet is not an error: the schema is
-            // created on boot by whichever module owns it
-            console.log('  ' + job.table + ': skipped (' + err.message + ')');
-            continue;
+            // created on boot by whichever module owns it. anything else is,
+            // and it stops the run rather than being counted as nothing to do.
+            // a connection that never opened once read here as "0 rows to
+            // rewrite", which is the one sentence that invites somebody to drop
+            // SUBMISSIONS_KEY_PREVIOUS while every row is still under the old
+            // key.
+            if (err.code === '42P01') {
+                console.log('  ' + job.table + ': not present yet, skipped');
+                continue;
+            }
+            console.error('  ' + job.table + ': ' + err.message);
+            throw err;
         }
 
         let n = 0;
