@@ -111,6 +111,31 @@
                 { hop: 1, label: 'Intermediate address', ref: '0x1c88…9dF2', note: 'No attribution', amount: '4,200 USDT', at: ago(7 * day), tone: 'medium' },
                 { hop: 2, label: 'This address', ref: '0x9A7c…8d0A', note: 'The address you screened', amount: '4,200 USDT', at: ago(6 * day), tone: 'high' },
             ],
+            // The evidence record.
+            //
+            // A screening is not an opinion, it is a statement about the world at
+            // a moment. So the moment is recorded: which list versions were in
+            // hand, how far we looked, and a digest over the whole answer. The
+            // report carries the digest, and anybody holding the report can check
+            // it against ours. A bank asked to accept a pdf from a supplier can
+            // then verify it rather than trust it.
+            evidence: {
+                hash: 'a4f19c7b2e8d6015',
+                lists: [
+                    { name: 'OFAC SDN', version: '2026-09-13T06:00Z' },
+                    { name: 'EU consolidated', version: '2026-09-13T03:20Z' },
+                    { name: 'UN Security Council', version: '2026-09-12T01:40Z' },
+                    { name: 'UK OFSI', version: '2026-09-12T22:10Z' },
+                ],
+                hops: 5,
+                chainTip: 23481902,
+            },
+            // What changed since. The most important question in any compliance
+            // review is not what you know now, it is what you knew then, and
+            // whether the decision was reasonable on the day it was made.
+            changedSince: [
+                { at: ago(3 * day), what: 'The intermediate address 0x1c88…9dF2 was attributed to a mixing service. It had no attribution when this check ran.' },
+            ],
             transactions: [
                 { id: 'tx_2f9c81', dir: 'in', amount: '4,200.00 USDT', from: '0x1c88…9dF2', at: ago(6 * day), tag: 'sanctions' },
                 { id: 'tx_77b210', dir: 'in', amount: '31,500.00 USDT', from: '0x54ba…77c1', at: ago(21 * day), tag: 'mixer' },
@@ -127,6 +152,9 @@
             asset: 'BTC',
             band: 'low',
             decision: 'approved',
+            decidedBy: 'Vibor Sumic',
+            decidedAt: ago(5 * hour),
+            reason: 'Counterparties are two licensed EU exchanges, nothing flagged in five hops.',
             at: ago(5 * hour),
             by: 'Vibor Sumic',
             balance: '2.41 BTC',
@@ -186,6 +214,9 @@
         {
             id: 'scr_920fd1', subject: '0xE1a7C3b5D9f2A4c6E8b0D2f4A6c8E0b2D4f6A8c0', kind: 'address', chain: 'Ethereum', asset: 'ETH',
             band: 'high', decision: 'rejected', at: ago(2 * day), by: 'Vibor Sumic', balance: '0.04 ETH',
+            decidedBy: 'Vibor Sumic', decidedAt: ago(2 * day),
+            reason: 'Direct darknet exposure over the policy threshold. Payment refused and the customer was told why.',
+            secondApproval: { by: 'Josip Družianić', at: ago(2 * day) },
             firstSeen: ago(60 * day), lastSeen: ago(2 * day), txCount: 8, counterparties: 3,
             verdict: 'Two of the three addresses that ever paid this one are attributed to a darknet market.',
             reasons: [{ key: 'darknet', weight: 'high', title: 'Direct exposure to a darknet market', detail: '61% of incoming value came directly from a cluster attributed to a darknet marketplace.', source: 'Sentinelpay attribution, confidence medium', evidence: 'tx_aa1122' }],
@@ -293,6 +324,90 @@
         { at: ago(11 * day), who: 'Vibor Sumic', what: 'Changed the mixer threshold to 10%', kind: 'policy' },
     ];
 
+    // ---- where the addresses come from --------------------------------------
+    //
+    // The thing nobody else models properly. Competitors ask for a list of
+    // addresses, which is fine until the customer has a wallet that mints a new
+    // one per invoice, and then their list is stale the day after they upload it.
+    //
+    // A source is the thing the customer actually has: an extended public key, a
+    // list, a read only key at their custodian. We derive from it and keep
+    // deriving. One paste, and monitoring stays correct as the wallet grows.
+    //
+    // An xpub is also the most sensitive thing a customer can hand over: it is
+    // their entire history and every future address. That is why the screen says
+    // out loud how it is stored, and why the fingerprint rather than the key is
+    // what is shown back.
+    var SOURCES = [
+        {
+            id: 'src_01', kind: 'xpub', label: 'Treasury, BTC',
+            chain: 'Bitcoin', fingerprint: '7a4f…c19b', path: "m/84'/0'/0'",
+            derived: 214, gap: 20, addedAt: ago(120 * day), lastScan: ago(4 * 60 * 1000),
+            state: 'live', band: 'low', backfill: 'done', encrypted: true,
+        },
+        {
+            id: 'src_02', kind: 'addresses', label: 'Settlement wallets, EVM',
+            chain: 'Ethereum', fingerprint: null, path: null,
+            derived: 12, gap: null, addedAt: ago(60 * day), lastScan: ago(9 * 60 * 1000),
+            state: 'live', band: 'severe', backfill: 'done', encrypted: true,
+        },
+        {
+            id: 'src_03', kind: 'exchange', label: 'Kraken, read only key',
+            chain: 'Multiple', fingerprint: 'kr_9f2a', path: null,
+            derived: 46, gap: null, addedAt: ago(9 * day), lastScan: ago(21 * 60 * 1000),
+            state: 'live', band: 'low', backfill: 'done', encrypted: true,
+        },
+        {
+            id: 'src_04', kind: 'xpub', label: 'Customer payouts, BTC',
+            chain: 'Bitcoin', fingerprint: '2b91…08de', path: "m/84'/0'/1'",
+            derived: 61, gap: 20, addedAt: ago(2 * hour), lastScan: ago(6 * 60 * 1000),
+            state: 'backfilling', band: null, backfill: '68%', encrypted: true,
+        },
+    ];
+
+    // ---- what we can and cannot see ------------------------------------------
+    //
+    // Written down and shown, rather than buried in a sales conversation. A
+    // compliance officer has to document the limits of their tooling anyway; a
+    // vendor who states them is doing half their paperwork, and a vendor who
+    // hides them is a vendor they will be embarrassed by in an audit.
+    var COVERAGE = {
+        chains: [
+            { name: 'Bitcoin', depth: 'full', note: 'clustering and attribution' },
+            { name: 'Ethereum', depth: 'full', note: 'clustering and attribution' },
+            { name: 'Tron', depth: 'full', note: 'clustering and attribution' },
+            { name: 'Polygon', depth: 'partial', note: 'sanctions and direct exposure' },
+            { name: 'Arbitrum', depth: 'partial', note: 'sanctions and direct exposure' },
+            { name: 'Base', depth: 'partial', note: 'sanctions and direct exposure' },
+            { name: 'Solana', depth: 'partial', note: 'sanctions and direct exposure' },
+            { name: 'Avalanche', depth: 'partial', note: 'sanctions and direct exposure' },
+        ],
+        depthNote: 'Full means we cluster addresses and attribute entities. Partial means sanctions lists and direct counterparties only, with no clustering.',
+        hops: 5,
+        refresh: 'Sanctions lists every six hours. Chain data within one block.',
+    };
+
+    // ---- what a change to the policy would have done --------------------------
+    //
+    // A threshold is an abstraction until somebody shows you the payments it
+    // would have stopped. This is the number that turns a settings page into a
+    // decision, and it is the one thing on this product nobody else offers.
+    var SIMULATION = {
+        window: 'the last 30 days',
+        current: { blocked: 4, held: 26, allowed: 1254 },
+        proposals: [
+            { key: 'mixer', label: 'Mixer exposure', from: 'above 10%', to: 'above 5%',
+              blocked: 4, held: 39, wouldCatch: 13, wouldHaveApproved: 9,
+              note: 'Thirteen more payments held. Nine of them you approved by hand, so the rule would agree with you.' },
+            { key: 'unknown', label: 'Unattributed share', from: 'above 25%', to: 'above 40%',
+              blocked: 4, held: 14, wouldCatch: -12, wouldHaveApproved: 12,
+              note: 'Twelve fewer held. All twelve were approved in the end, so this rule is currently costing you time rather than catching anything.' },
+            { key: 'amount', label: 'Single transfer', from: 'above 50,000 EUR', to: 'above 25,000 EUR',
+              blocked: 4, held: 61, wouldCatch: 35, wouldHaveApproved: 34,
+              note: 'Thirty five more held, thirty four of which were fine. That is an hour a day for one extra finding.' },
+        ],
+    };
+
     // ---- usage and keys -----------------------------------------------------
     // Thirty days of checks, for the shape rather than the numbers: a chart on
     // an overview answers "is this normal" and nothing else, so it is drawn
@@ -348,6 +463,9 @@
         reports: REPORTS,
         activity: ACTIVITY,
         account: ACCOUNT,
+        sources: SOURCES,
+        coverage: COVERAGE,
+        simulation: SIMULATION,
         series: SERIES,
         riskMix: RISK_MIX,
         keys: KEYS,

@@ -24,6 +24,17 @@
 
     var t = function (x) { return window.SentinelI18n ? window.SentinelI18n.t(x) : x; };
 
+    // who is deciding. filled in from the session below; until then the screens
+    // say nothing rather than guessing a name.
+    var me = { name: '' };
+    // and the second approver comes from the team list rather than from a
+    // literal, because a name typed into the code is a name nobody updates
+    function anotherApprover() {
+        var hit = null;
+        (D.team || []).forEach(function (m) { if (!hit && m.name !== me.name) hit = m; });
+        return hit ? hit.name : '';
+    }
+
     // ---- small helpers ------------------------------------------------------
 
     function el(tag, cls, text) {
@@ -138,6 +149,9 @@
         check: '<path d="m5 12.5 4.5 4.5L19 7"/>',
         x: '<path d="M6 6l12 12M18 6 6 18"/>',
         up: '<path d="M12 19V6"/><path d="m6.5 11.5 5.5-5.5 5.5 5.5"/>',
+        inbox: '<path d="M3.5 13H8l1.5 3h5L16 13h4.5"/><path d="M5 5.5h14l1.5 7.5v5.5H3.5V13Z"/>',
+        shield: '<path d="M12 3.5 5 6.5v5c0 5 4.4 8.4 7 9.2 2.6-.8 7-4.2 7-9.2v-5Z"/>',
+        clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
     };
 
     function icon(name, cls) {
@@ -151,6 +165,9 @@
     var NAV = [
         { group: 'Work', items: [
             { route: '', label: 'Overview', icon: 'home' },
+            { route: 'triage', label: 'Triage', icon: 'inbox', count: function () {
+                var n = 0; D.alerts.forEach(function (a) { if (a.state === 'open') n++; }); return n;
+            } },
             { route: 'screenings', label: 'Screenings', icon: 'search' },
             { route: 'alerts', label: 'Alerts', icon: 'bell', count: function () {
                 var n = 0; D.alerts.forEach(function (a) { if (a.state === 'open') n++; }); return n;
@@ -621,6 +638,10 @@
             { label: t('Screenings'), route: 'screenings' },
             { label: short(s.subject) },
         ]));
+        page.appendChild(head('Screening',
+            s.chain + ' · ' + t('run') + ' ' + since(s.at) + ' · ' + t('by') + ' ' + s.by, [
+                button('Download report', null, function () { window.print(); }, 'download'),
+            ]));
 
         // what a printed report needs and the screen does not
         var ph = el('div', 'dash-print-head');
@@ -645,15 +666,47 @@
         var decided = el('span', 'dash-tiny dash-muted');
 
         function setDecision(d) {
-            s.decision = d;
-            paint();
-            if (d) toast(t('Decision recorded') + ': ' + decisionWord(d));
+            if (!d) {
+                s.decision = null;
+                s.reason = '';
+                s.secondApproval = null;
+                paint();
+                return;
+            }
+            askReason(d, function (reason) {
+                s.decision = d;
+                s.reason = reason;
+                s.decidedBy = me.name;
+                s.decidedAt = new Date().toISOString();
+                // The policy says two people for a severe finding, so the screen
+                // says it too. A rule that lives only in a document is a rule
+                // somebody breaks on a Friday afternoon without noticing.
+                s.secondApproval = null;
+                paint();
+                toast(needsTwo(s) ? t('Waiting for a second approval') : t('Decision recorded') + ': ' + decisionWord(d));
+            });
+        }
+
+        function needsTwo(sc) {
+            return sc.band === 'severe' && sc.decision === 'approved' && !sc.secondApproval;
         }
         function paint() {
             acts.textContent = '';
             if (s.decision) {
-                decided.textContent = t('Decision') + ': ' + decisionWord(s.decision) + ' · ' + t('by') + ' ' + s.by + ' · ' + since(s.at);
+                var line = decisionWord(s.decision) + ' · ' + t('by') + ' ' +
+                    (s.decidedBy || s.by) + ' · ' + since(s.decidedAt || s.at);
+                decided.textContent = line;
                 acts.appendChild(decided);
+                if (needsTwo(s)) {
+                    var wait = el('span', 'dash-pill-warn');
+                    wait.textContent = t('Waiting for a second approval');
+                    acts.appendChild(wait);
+                    acts.appendChild(button('Approve as the second pair of eyes', null, function () {
+                        s.secondApproval = { by: anotherApprover(), at: new Date().toISOString() };
+                        paint();
+                        toast(t('Released. Two people signed this.'));
+                    }, 'shield'));
+                }
                 acts.appendChild(button('Change the decision', null, function () { setDecision(null); }));
             } else {
                 var ok = button('Approve', 'good', function () { setDecision('approved'); }, 'check');
@@ -783,8 +836,67 @@
             [t('Run at'), when(s.at, true)],
             [t('Risk'), bandName(s.band)],
             [t('Decision'), decisionWord(s.decision)],
+            [t('Decided by'), s.decision ? (s.decidedBy || s.by) : ''],
+            [t('Second approval'), s.secondApproval ? s.secondApproval.by : ''],
         ]));
+        if (s.reason) {
+            var why2 = el('div', 'dash-note dash-gap');
+            why2.appendChild(el('div', 'dash-note-t', 'Reason given'));
+            why2.appendChild(el('div', 'dash-note-d', s.reason));
+            meta.appendChild(why2);
+        }
         side.appendChild(meta);
+
+        // The evidence lock.
+        //
+        // A screening is a statement about the world at a moment, so the moment
+        // is recorded and sealed: which list versions were in hand, how far we
+        // looked, which block we had reached, and a digest over the answer. The
+        // report carries the digest. A bank handed a pdf by a supplier can check
+        // it against ours rather than take it on trust, and that is the
+        // difference between a document and a screenshot.
+        if (s.evidence) {
+            var ev = card('Evidence', t('sealed when this check ran'));
+            ev.appendChild(facts(
+                s.evidence.lists.map(function (l) {
+                    return [l.name, when(l.version, true)];
+                }).concat([
+                    [t('Hops searched'), String(s.evidence.hops)],
+                    [t('Block'), num(s.evidence.chainTip)],
+                ])
+            ));
+            var digest = el('div', 'dash-seal');
+            digest.appendChild(el('div', 'dash-seal-l', 'Verification code'));
+            var code = el('div', 'dash-seal-c');
+            code.textContent = s.evidence.hash.replace(/(.{4})/g, '$1 ').trim().toUpperCase();
+            digest.appendChild(code);
+            digest.appendChild(el('div', 'dash-seal-d',
+                'Anybody holding the report can check this against our record. If one number in it changed, the code will not match.'));
+            ev.appendChild(digest);
+            side.appendChild(ev);
+        }
+
+        // What changed since the decision.
+        //
+        // The question a compliance review actually asks is not what you know
+        // now, it is what you knew then, and whether the decision was reasonable
+        // on the day. So the screen keeps the two apart instead of quietly
+        // rewriting history with today's data.
+        if (s.changedSince && s.changedSince.length) {
+            var ch = card('Since this check ran', t('what we did not know at the time'));
+            s.changedSince.forEach(function (c) {
+                var row = el('div', 'dash-note');
+                row.appendChild(el('div', 'dash-note-t', when(c.at)));
+                row.appendChild(el('div', 'dash-note-d', c.what));
+                ch.appendChild(row);
+            });
+            var again = el('div', 'dash-gap');
+            again.appendChild(button('Run it again with today\'s data', null, function () {
+                toast(t('Sample data: nothing is re-run yet.'));
+            }, 'clock'));
+            ch.appendChild(again);
+            side.appendChild(ch);
+        }
         grid.appendChild(side);
 
         page.appendChild(grid);
@@ -844,13 +956,65 @@
         return page;
     };
 
-    views.monitoring = function () {
+    views.monitoring = function (arg) {
+        // one route, two screens: /monitoring and /monitoring/connect. the
+        // alternative is a second top level entry in the rail for something
+        // that is a step inside monitoring rather than a place of its own.
+        if (arg === 'connect') return views.connect();
         var page = el('div');
         page.appendChild(head('Monitoring',
-            'Addresses we recheck for you, and the rules that decide when you hear about it.',
-            [button('Watch an address', 'primary', function () { focusSearch(); }, 'eye')]));
+            'What we watch, where it came from, and the rules that decide when you hear about it.',
+            [button('Connect a wallet', 'primary', function () { go('monitoring/connect'); }, 'eye')]));
 
-        var watched = card('Watched addresses');
+        // Sources, not addresses.
+        //
+        // A customer does not have a list of addresses, they have a wallet. If we
+        // ask for the list, it is stale the day after they paste it, and every
+        // invoice they raise afterwards is unwatched.
+        var sources = card('Wallet sources', t('one paste, and it keeps deriving'));
+        sources.appendChild(table(
+            [{ label: 'Source' }, { label: 'Kind' }, { label: 'Chain' }, { label: 'Addresses', num: true },
+             { label: 'Risk' }, { label: 'State' }, { label: 'Last scan', num: true }],
+            D.sources.map(function (src) {
+                var kind = el('span', 'dash-tag');
+                kind.textContent = src.kind === 'xpub' ? t('Extended key')
+                    : (src.kind === 'exchange' ? t('Exchange key') : t('Address list'));
+                var state;
+                if (src.state === 'backfilling') {
+                    state = el('span', 'dash-row');
+                    var dot = el('span', 'dash-dot-live');
+                    state.appendChild(dot);
+                    state.appendChild(document.createTextNode(t('Reading history') + ' ' + src.backfill));
+                } else {
+                    state = el('span', 'dash-band dash-band-low');
+                    state.textContent = t('Live');
+                }
+                return {
+                    data: src,
+                    cells: [
+                        { node: (function () {
+                            var w = el('div');
+                            w.appendChild(el('div', null, src.label));
+                            if (src.fingerprint) {
+                                var f = el('div', 'dash-tiny dash-muted dash-mono');
+                                f.textContent = src.fingerprint + (src.path ? ' · ' + src.path : '');
+                                w.appendChild(f);
+                            }
+                            return w;
+                        })() },
+                        { node: kind },
+                        { text: src.chain },
+                        { text: num(src.derived), cls: 'num' },
+                        { node: src.band ? bandTag(src.band) : el('span', 'dash-muted', '—') },
+                        { node: state },
+                        { text: since(src.lastScan), cls: 'num' },
+                    ],
+                };
+            })
+        ));
+        page.appendChild(sources);
+
+        var watched = card('Addresses', t('derived from the sources above'));
         watched.appendChild(table(
             [{ label: 'Label' }, { label: 'Address' }, { label: 'Chain' }, { label: 'Risk' }, { label: 'Rules', num: true }, { label: 'Last check', num: true }],
             D.watched.map(function (w) {
@@ -879,6 +1043,7 @@
                 r.on = !r.on;
                 sw.classList.toggle('is-on', r.on);
                 row.querySelector('.dash-rule-text').classList.toggle('dash-rule-off', !r.on);
+                toast(r.on ? t('Rule is on') : t('Rule is off'));
             });
             row.appendChild(sw);
             var text = el('div', 'dash-rule-text' + (r.on ? '' : ' dash-rule-off'));
@@ -892,6 +1057,295 @@
         page.appendChild(rules);
         return page;
     };
+
+    // Connecting a wallet, which is the whole onboarding. Three ways in, and the
+    // one that matters is the first: an extended public key covers every address
+    // the wallet will ever make, which is why a customer can be live in a minute
+    // rather than after an afternoon of pasting.
+    views.connect = function () {
+        var page = el('div');
+        page.appendChild(crumbs([{ label: t('Monitoring'), route: 'monitoring' }, { label: t('Connect a wallet') }]));
+        page.appendChild(head('Connect a wallet', 'Paste one thing. We derive the addresses and keep deriving as the wallet grows.'));
+
+        var grid = el('div', 'dash-grid dash-grid-side');
+        var main = el('div');
+
+        [
+            { kind: 'xpub', title: 'Extended public key', best: true,
+              body: 'For Bitcoin and anything else with an address chain. Covers every address the wallet has used and every one it will use. It cannot move funds: it is a public key.',
+              example: 'zpub6rFR7y4Q2AijBEqTUquhVz398htDFrtymD9xYYfG1m4wAcvPhXNfE3EfH1r1ADqtfSdVCToUG868RvUUkgDKf31mGDtKsAYz2oz2AGutZYs' },
+            { kind: 'addresses', title: 'A list of addresses',
+              body: 'For account based chains where there is no address chain to derive, and for anything you keep by hand. One per line, any of the chains we cover.',
+              example: '0x9A7c4F2b8E1d6c3A5b0F8e2D4c7A9b1E3f5C8d0A\n0x4D2f9b1A7c3E5d8F0b6A2c4E7d9B1f3A5c8E0d2B' },
+            { kind: 'exchange', title: 'A read only key at your exchange or custodian',
+              body: 'We read your deposit addresses and keep up as new ones are issued. Read only, no withdrawal permission, and we refuse a key that has one.',
+              example: 'Kraken · Binance · Coinbase Prime · Fireblocks · BitGo' },
+        ].forEach(function (opt) {
+            var c = card();
+            var h = el('div', 'dash-card-h');
+            h.appendChild(el('span', null, opt.title));
+            if (opt.best) {
+                var b = el('span', 'dash-pill-good');
+                b.textContent = t('Fastest');
+                h.appendChild(b);
+            }
+            c.appendChild(h);
+            c.appendChild(el('p', 'dash-muted', opt.body));
+            var ex = el('pre', 'dash-pre');
+            ex.textContent = opt.example;
+            c.appendChild(ex);
+            var act = el('div', 'dash-row dash-gap');
+            act.appendChild(button('Use this', opt.best ? 'primary' : null, function () {
+                toast(t('Sample data: nothing is connected yet.'));
+            }));
+            c.appendChild(act);
+            main.appendChild(c);
+        });
+        grid.appendChild(main);
+
+        // The honest panel. An extended key is the most sensitive thing a
+        // customer can hand over, and a vendor who does not say so before asking
+        // for it is a vendor who has not thought about it.
+        var side = el('div');
+        var safe = card('What happens to what you paste');
+        [
+            ['Encrypted before it is stored', 'AES-256-GCM, with the key held outside the database. A copy of the database is not a copy of your keys.'],
+            ['Never written to a log', 'Not in an error, not in a trace, not in a support ticket.'],
+            ['Watch only, always', 'An extended public key cannot sign. An exchange key with withdrawal permission is refused rather than used.'],
+            ['Yours to remove', 'Delete a source and the key and every address derived from it go with it, the same hour.'],
+        ].forEach(function (pair) {
+            var row = el('div', 'dash-note');
+            row.appendChild(el('div', 'dash-note-t', pair[0]));
+            row.appendChild(el('div', 'dash-note-d', pair[1]));
+            safe.appendChild(row);
+        });
+        side.appendChild(safe);
+
+        var cov = card('What we can see', t('stated, not buried'));
+        cov.appendChild(el('p', 'dash-tiny dash-muted', D.coverage.depthNote));
+        var list = el('dl', 'dash-facts');
+        D.coverage.chains.forEach(function (ch) {
+            var row = el('div');
+            row.appendChild(el('dt', null, ch.name));
+            var dd = el('dd');
+            dd.textContent = ch.depth === 'full' ? t('Full') : t('Partial');
+            row.appendChild(dd);
+            list.appendChild(row);
+        });
+        cov.appendChild(list);
+        side.appendChild(cov);
+        grid.appendChild(side);
+
+        page.appendChild(grid);
+        return page;
+    };
+
+    // ---- triage -------------------------------------------------------------
+    //
+    // The queue is the job. Everything else on this rail is either how work
+    // arrives or how it is proved afterwards; this is the screen somebody has
+    // open for an hour at a time.
+    //
+    // So it is built like a mail client rather than a report: one item fills the
+    // screen, the decision is three keys away, and the next one arrives without
+    // a click. Competitors make you go back to a list after every item, which
+    // costs two seconds and all of the rhythm.
+    views.triage = function () {
+        var page = el('div');
+        var queue = D.alerts.filter(function (a) { return a.state === 'open'; });
+
+        page.appendChild(head('Triage', 'One at a time, decided and gone. The queue is what monitoring found and nobody has answered yet.'));
+
+        if (!queue.length) {
+            var done = card();
+            done.classList.add('dash-zero');
+            done.innerHTML = '<div class="dash-zero-mark">' + icon('check') + '</div>';
+            done.appendChild(el('h2', 'dash-zero-t', 'Nothing is waiting'));
+            done.appendChild(el('p', 'dash-zero-d', 'Every alert has an answer on it. Monitoring is still running.'));
+            page.appendChild(done);
+            return page;
+        }
+
+        var at = 0;
+        var body = el('div');
+        page.appendChild(body);
+
+        function draw() {
+            body.textContent = '';
+            var a = queue[at];
+            if (!a) {
+                body.appendChild(views.triage().firstChild);
+                return;
+            }
+            var sc = a.screening ? D.byId(a.screening) : null;
+
+            var bar = el('div', 'dash-queue-bar');
+            bar.appendChild(el('span', null, t('In the queue') + ': ' + (at + 1) + ' / ' + queue.length));
+            var prog = el('div', 'dash-queue-prog');
+            var fill = el('div', 'dash-queue-fill');
+            fill.style.width = ((at / queue.length) * 100) + '%';
+            prog.appendChild(fill);
+            bar.appendChild(prog);
+            body.appendChild(bar);
+
+            var c = card();
+            c.classList.add('dash-verdict');
+
+            var top = el('div', 'dash-verdict-top');
+            top.appendChild(bandTag(a.band));
+            var chain = el('span', 'dash-tag');
+            chain.textContent = a.chain;
+            top.appendChild(chain);
+            top.appendChild(el('span', 'dash-verdict-subject', a.subject));
+            top.appendChild(copyButton(a.subject));
+            top.appendChild(sampleChip());
+            c.appendChild(top);
+
+            c.appendChild(el('p', 'dash-verdict-line', a.summary));
+
+            var why = el('p', 'dash-tiny dash-muted');
+            why.textContent = t('Raised by') + ': ' + a.rule + ' · ' + since(a.at);
+            c.appendChild(why);
+
+            if (sc) {
+                var link = el('a', 'dash-link');
+                link.href = '#/screening/' + sc.id;
+                link.textContent = t('Open the full screening');
+                var lw = el('p', 'dash-gap');
+                lw.appendChild(link);
+                c.appendChild(lw);
+            }
+
+            var acts = el('div', 'dash-verdict-acts dash-gap');
+            [
+                ['Approve', 'good', 'approved', 'check', 'A'],
+                ['Reject', 'danger', 'rejected', 'x', 'R'],
+                ['Escalate', null, 'escalated', 'up', 'E'],
+            ].forEach(function (spec) {
+                var b = button(spec[0], spec[1], function () { decide(a, spec[2]); }, spec[3]);
+                var k = document.createElement('kbd');
+                k.textContent = spec[4];
+                b.appendChild(k);
+                acts.appendChild(b);
+            });
+            acts.appendChild(button('Skip for now', null, function () { move(1); }));
+            c.appendChild(acts);
+            body.appendChild(c);
+        }
+
+        function move(by) {
+            at = Math.max(0, Math.min(queue.length - 1, at + by));
+            draw();
+        }
+
+        function decide(alert, value) {
+            askReason(value, function (reason) {
+                alert.state = 'closed';
+                var sc = alert.screening ? D.byId(alert.screening) : null;
+                if (sc) {
+                    sc.decision = value;
+                    sc.reason = reason;
+                    sc.decidedBy = me.name;
+                    sc.decidedAt = new Date().toISOString();
+                }
+                D.activity.unshift({ at: new Date().toISOString(), who: me.name,
+                    what: decisionWord(value) + ' ' + short(alert.subject), kind: 'decision' });
+                toast(t('Decision recorded') + ': ' + decisionWord(value));
+                queue.splice(at, 1);
+                if (at >= queue.length) at = Math.max(0, queue.length - 1);
+                if (!queue.length) { render(); return; }
+                draw();
+                paintNav('triage');
+            });
+        }
+
+        page.__keys = function (e) {
+            var k = e.key.toLowerCase();
+            if (k === 'a') { decide(queue[at], 'approved'); return true; }
+            if (k === 'r') { decide(queue[at], 'rejected'); return true; }
+            if (k === 'e') { decide(queue[at], 'escalated'); return true; }
+            if (k === 'j' || e.key === 'ArrowDown') { move(1); return true; }
+            if (k === 'k' || e.key === 'ArrowUp') { move(-1); return true; }
+            return false;
+        };
+
+        draw();
+        page.appendChild(keyboardHelp());
+        return page;
+    };
+
+    // A decision without a reason is a decision nobody can defend six months
+    // later, and "we treat like cases alike" is provable only if the reasons are
+    // written down. One line, and the ones already given are offered back so the
+    // common cases cost a click.
+    function askReason(value, done) {
+        var known = {
+            approved: [
+                'Counterparties are regulated venues.',
+                'Source of funds confirmed with the customer.',
+                'Exposure is below our policy threshold.',
+            ],
+            rejected: [
+                'Exposure to a sanctioned address.',
+                'Darknet exposure above the policy threshold.',
+                'Customer could not explain the source of funds.',
+            ],
+            escalated: [
+                'Needs a second opinion before we answer.',
+                'Pattern repeats and is worth watching for a week.',
+                'Legal should see this before the payment moves.',
+            ],
+        }[value] || [];
+
+        var back = el('div', 'dash-modal-back');
+        var box = el('div', 'dash-modal');
+        box.appendChild(el('h2', 'dash-modal-t', decisionWord(value)));
+        box.appendChild(el('p', 'dash-modal-d', 'One line on why. It goes in the record and it is what an auditor reads.'));
+
+        var field = el('div', 'lp-demo-field lp-demo-field-full');
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.maxLength = 160;
+        input.placeholder = t('Why');
+        field.appendChild(input);
+        box.appendChild(field);
+
+        var quick = el('div', 'dash-chips');
+        known.forEach(function (text) {
+            var b = el('button', 'dash-reason-chip');
+            b.type = 'button';
+            b.textContent = t(text);
+            b.addEventListener('click', function () { input.value = t(text); input.focus(); });
+            quick.appendChild(b);
+        });
+        box.appendChild(quick);
+
+        var acts = el('div', 'dash-row dash-gap');
+        var ok = button('Record it', 'primary', function () {
+            var reason = input.value.trim();
+            if (!reason) { input.focus(); return; }
+            close();
+            done(reason);
+        });
+        acts.appendChild(ok);
+        acts.appendChild(button('Cancel', null, function () { close(); }));
+        box.appendChild(acts);
+
+        function close() {
+            back.remove();
+            document.removeEventListener('keydown', esc, true);
+        }
+        function esc(e) {
+            if (e.key === 'Escape') { e.stopPropagation(); close(); }
+            if (e.key === 'Enter' && document.activeElement === input) ok.click();
+        }
+        document.addEventListener('keydown', esc, true);
+        back.addEventListener('click', function (e) { if (e.target === back) close(); });
+
+        back.appendChild(box);
+        document.body.appendChild(back);
+        setTimeout(function () { input.focus(); }, 40);
+    }
 
     views.cases = function () {
         var page = el('div');
@@ -949,6 +1403,41 @@
         ));
         page.appendChild(thresholds);
 
+        // What a change would have done.
+        //
+        // A threshold is an abstraction until somebody shows you the payments it
+        // would have stopped, and the ones it would have stopped for nothing. An
+        // MLRO is choosing between missing something and drowning their team,
+        // and that trade is invisible on every settings page I have ever seen.
+        var sim = card('If you changed a threshold', t('measured against') + ' ' + t(D.simulation.window));
+        sim.appendChild(el('p', 'dash-tiny dash-muted',
+            t('Today') + ': ' + num(D.simulation.current.blocked) + ' ' + t('blocked') + ', ' +
+            num(D.simulation.current.held) + ' ' + t('held for review') + ', ' +
+            num(D.simulation.current.allowed) + ' ' + t('allowed')));
+
+        D.simulation.proposals.forEach(function (pr) {
+            var row = el('div', 'dash-sim');
+            var headRow = el('div', 'dash-sim-h');
+            headRow.appendChild(el('b', null, pr.label));
+            var move = el('span', 'dash-sim-move');
+            move.textContent = pr.from + '  →  ' + pr.to;
+            headRow.appendChild(move);
+            var delta = el('span', 'dash-trend ' + (pr.wouldCatch > 0 ? 'dash-trend-down' : 'dash-trend-up'));
+            delta.textContent = (pr.wouldCatch > 0 ? '+' : '') + pr.wouldCatch + ' ' + t('held');
+            headRow.appendChild(delta);
+            row.appendChild(headRow);
+            row.appendChild(el('div', 'dash-sim-note', pr.note));
+
+            var act = el('div', 'dash-row');
+            act.appendChild(button('Apply this', null, function () {
+                toast(t('Sample data: the policy is not changed.'));
+            }));
+            act.appendChild(button('See the payments', null, function () { go('screenings'); }));
+            row.appendChild(act);
+            sim.appendChild(row);
+        });
+        page.appendChild(sim);
+
         var approvals = card('Who may approve what');
         approvals.appendChild(table(
             [{ label: 'Action' }, { label: 'Approval needed' }],
@@ -957,6 +1446,18 @@
             })
         ));
         page.appendChild(approvals);
+
+        var cov = card('What we can see', t('stated, not buried'));
+        cov.appendChild(el('p', 'dash-tiny dash-muted', D.coverage.depthNote));
+        cov.appendChild(table(
+            [{ label: 'Chain' }, { label: 'Depth' }, { label: 'What that means' }],
+            D.coverage.chains.map(function (ch) {
+                var pill = el('span', 'dash-band dash-band-' + (ch.depth === 'full' ? 'low' : 'medium'));
+                pill.textContent = ch.depth === 'full' ? t('Full') : t('Partial');
+                return { data: ch, cells: [{ text: ch.name }, { node: pill }, { text: t(ch.note) }] };
+            })
+        ));
+        page.appendChild(cov);
 
         var lists = card('Lists we check against');
         lists.appendChild(table(
@@ -1099,6 +1600,102 @@
         return d;
     }
 
+    // ---- the command palette --------------------------------------------------
+    //
+    // Every tool people live in has one, and for the same reason: after a week
+    // you know where you are going and the mouse is in the way. It searches two
+    // things at once, the screens and the data, because "alerts" and an address
+    // are the same kind of intent typed into the same box.
+    function palette() {
+        var back = el('div', 'dash-modal-back dash-modal-top');
+        var box = el('div', 'dash-palette');
+
+        var field = el('div', 'dash-palette-field');
+        field.innerHTML = icon('search');
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = t('Go to a screen, or paste an address');
+        input.setAttribute('aria-label', t('Go to a screen, or paste an address'));
+        field.appendChild(input);
+        box.appendChild(field);
+
+        var list = el('div', 'dash-palette-list');
+        box.appendChild(list);
+
+        var items = [];
+        NAV.forEach(function (g) {
+            g.items.forEach(function (it) {
+                items.push({ label: t(it.label), hint: t(g.group), icon: it.icon, go: it.route });
+            });
+        });
+        items.push({ label: t('Connect a wallet'), hint: t('Monitoring'), icon: 'eye', go: 'monitoring/connect' });
+        D.screenings.slice(0, 6).forEach(function (sc) {
+            items.push({ label: short(sc.subject), hint: sc.chain + ' · ' + bandName(sc.band), icon: 'search', go: 'screening/' + sc.id });
+        });
+
+        var shown = items.slice();
+        var at = 0;
+
+        function draw() {
+            list.textContent = '';
+            shown.slice(0, 8).forEach(function (it, i) {
+                var row = el('button', 'dash-palette-row' + (i === at ? ' is-on' : ''));
+                row.type = 'button';
+                row.innerHTML = icon(it.icon || 'search');
+                var label = el('span', 'dash-palette-l');
+                label.textContent = it.label;
+                row.appendChild(label);
+                var hint = el('span', 'dash-palette-h');
+                hint.textContent = it.hint || '';
+                row.appendChild(hint);
+                row.addEventListener('click', function () { close(); go(it.go); });
+                list.appendChild(row);
+            });
+            if (!shown.length) {
+                var none = el('div', 'dash-palette-none');
+                none.textContent = t('Nothing matches. Press enter to screen it as an address.');
+                list.appendChild(none);
+            }
+        }
+
+        function filter() {
+            var q = input.value.trim().toLowerCase();
+            shown = !q ? items.slice() : items.filter(function (it) {
+                return (it.label + ' ' + (it.hint || '')).toLowerCase().indexOf(q) !== -1;
+            });
+            at = 0;
+            draw();
+        }
+
+        input.addEventListener('input', filter);
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'ArrowDown') { e.preventDefault(); at = Math.min(at + 1, Math.min(shown.length, 8) - 1); draw(); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); at = Math.max(at - 1, 0); draw(); }
+            else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (shown[at]) { close(); go(shown[at].go); return; }
+                var q = input.value.trim();
+                if (!q) return;
+                var hit = D.find(q);
+                close();
+                if (hit) go('screening/' + hit.id);
+            } else if (e.key === 'Escape') { close(); }
+        });
+
+        function close() {
+            back.remove();
+            document.removeEventListener('keydown', esc, true);
+        }
+        function esc(e) { if (e.key === 'Escape') { e.stopPropagation(); close(); } }
+        document.addEventListener('keydown', esc, true);
+        back.addEventListener('click', function (e) { if (e.target === back) close(); });
+
+        back.appendChild(box);
+        document.body.appendChild(back);
+        draw();
+        setTimeout(function () { input.focus(); }, 30);
+    }
+
     // ---- routing ------------------------------------------------------------
 
     var currentKeys = null;
@@ -1177,6 +1774,7 @@
     document.addEventListener('keydown', function (e) {
         var tag = (e.target.tagName || '').toLowerCase();
         var typing = tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable;
+        if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); palette(); return; }
         if (e.metaKey || e.ctrlKey || e.altKey) return;
 
         if (e.key === '/' && !typing) { e.preventDefault(); focusSearch(); return; }
@@ -1235,14 +1833,15 @@
 
     fetch('/v1/auth/me', { credentials: 'same-origin' })
         .then(function (r) { return r.json(); })
-        .then(function (me) {
-            if (!me || !me.signedIn) { location.replace('/?signin=1'); return; }
+        .then(function (who) {
+            if (!who || !who.signedIn) { location.replace('/?signin=1'); return; }
+            me.name = who.name || '';
             var avatar = document.getElementById('dash-avatar');
             if (avatar) {
-                var parts = String(me.name || '').trim().split(/\s+/).filter(Boolean);
+                var parts = String(who.name || '').trim().split(/\s+/).filter(Boolean);
                 avatar.textContent = ((parts[0] || '?').charAt(0) + (parts.length > 1 ? parts[parts.length - 1].charAt(0) : '')).toUpperCase();
-                avatar.title = me.name || '';
-                avatar.setAttribute('aria-label', me.name || t('Your account'));
+                avatar.title = who.name || '';
+                avatar.setAttribute('aria-label', who.name || t('Your account'));
             }
             // the sample-data chip is not decoration: everything on these screens
             // is invented until the engine is wired in, and nobody should be able

@@ -221,6 +221,8 @@ body.dash-body {
     margin: 0 0 0.85rem;
     font-size: 0.92rem; font-weight: 700; letter-spacing: -0.006em;
 }
+/* a paragraph straight after the card title needs air before a list starts */
+.dash-card-h + .dash-tiny { margin-bottom: 0.7rem; }
 .dash-card-h .dash-card-note {
     margin-left: auto; font-size: 0.78rem; font-weight: 500; color: var(--d-ink-3);
     text-align: right; max-width: 55%;
@@ -463,7 +465,9 @@ a.dash-link:hover { border-bottom-color: var(--d-accent); }
        fighting the title for the same line and both were wrapping; below it,
        left aligned, it reads as what it is. */
     .dash-card-h { display: block; }
-    .dash-card-h .dash-card-note { display: block; margin: 0.15rem 0 0; max-width: none; text-align: left; }
+    /* a paragraph straight after the card title needs air before a list starts */
+.dash-card-h + .dash-tiny { margin-bottom: 0.7rem; }
+.dash-card-h .dash-card-note { display: block; margin: 0.15rem 0 0; max-width: none; text-align: left; }
     .dash-verdict-line { font-size: 1.08rem; }
     .dash-stat-n { font-size: 1.45rem; }
     .dash-table-wrap { margin: 0 -1rem -1.15rem; padding: 0 1rem 0.2rem; }
@@ -629,4 +633,137 @@ a.dash-link:hover { border-bottom-color: var(--d-accent); }
 @media (max-width: 560px) {
     .dash-seg { width: 100%; overflow-x: auto; }
     .dash-head-actions { width: 100%; }
+}
+
+/* ---- the queue ------------------------------------------------------------ */
+/* The triage screen is a mail client, not a report: one item fills the view and
+   the next arrives without a click. The bar exists so somebody can see the end
+   of the queue, which is most of what makes a queue bearable. */
+.dash-queue-bar {
+    display: flex; align-items: center; gap: 0.8rem;
+    margin: 0 0 0.9rem; font-size: 0.82rem; font-weight: 600; color: var(--d-ink-2);
+}
+.dash-queue-prog { flex: 1 1 auto; height: 4px; border-radius: 999px; background: rgba(14, 35, 88, 0.08); overflow: hidden; }
+.dash-queue-fill { height: 100%; background: var(--d-grad); border-radius: 999px; transition: width 0.3s ease; }
+
+/* an empty queue is a result, so it is drawn like one */
+.dash-zero { text-align: center; padding: 2.6rem 1.4rem; }
+.dash-zero-mark {
+    width: 44px; height: 44px; margin: 0 auto 0.9rem;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; background: var(--d-low-bg); color: var(--d-low);
+}
+.dash-zero-mark svg { width: 22px; height: 22px; }
+.dash-zero-t { font-size: 1.1rem; font-weight: 800; margin: 0 0 0.25rem; }
+.dash-zero-d { color: var(--d-ink-2); margin: 0; }
+
+/* ---- dialogs -------------------------------------------------------------- */
+.dash-modal-back {
+    position: fixed; inset: 0; z-index: 80;
+    background: rgba(8, 14, 34, 0.32);
+    backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 1.2rem;
+    animation: dashFade 0.16s ease;
+}
+.dash-modal-top { align-items: flex-start; padding-top: 12vh; }
+@keyframes dashFade { from { opacity: 0; } to { opacity: 1; } }
+
+.dash-modal {
+    width: 100%; max-width: 460px;
+    background: var(--d-card); border-radius: 16px; padding: 1.3rem 1.4rem;
+    box-shadow: var(--d-shadow-up);
+    animation: dashRise 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes dashRise { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+.dash-modal-t { margin: 0 0 0.25rem; font-size: 1.05rem; font-weight: 800; }
+.dash-modal-d { margin: 0 0 0.9rem; color: var(--d-ink-2); font-size: 0.88rem; }
+
+/* the reasons already given, offered back, because the common case should cost
+   a click rather than a sentence */
+.dash-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.7rem 0 0.2rem; }
+/* named for what it is rather than what it looks like: dash-chip was already
+   the sample-data badge in the top bar, and two different things answering to
+   one class is how a click lands on the wrong element. */
+.dash-reason-chip {
+    font: inherit; font-size: 0.8rem;
+    padding: 0.3rem 0.6rem; border-radius: 999px;
+    border: 1px solid var(--d-line); background: #fff; color: var(--d-ink-2);
+    cursor: pointer; text-align: left;
+}
+.dash-reason-chip:hover { border-color: rgba(28, 78, 216, 0.4); color: var(--d-accent); background: var(--d-accent-soft); }
+
+/* ---- the palette ---------------------------------------------------------- */
+.dash-palette {
+    width: 100%; max-width: 560px;
+    background: var(--d-card); border-radius: 14px; overflow: hidden;
+    box-shadow: var(--d-shadow-up);
+    animation: dashRise 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.dash-palette-field { display: flex; align-items: center; gap: 0.6rem; padding: 0.9rem 1rem; border-bottom: 1px solid var(--d-line-2); }
+.dash-palette-field svg { width: 17px; height: 17px; color: var(--d-ink-3); flex: none; }
+.dash-palette-field input {
+    flex: 1 1 auto; border: 0; outline: 0; font: inherit; font-size: 0.98rem;
+    color: var(--d-ink); background: transparent;
+}
+.dash-palette-list { max-height: 50vh; overflow-y: auto; padding: 0.4rem; }
+.dash-palette-row {
+    display: flex; align-items: center; gap: 0.65rem; width: 100%;
+    padding: 0.55rem 0.6rem; border: 0; border-radius: 9px;
+    background: transparent; font: inherit; color: var(--d-ink); cursor: pointer; text-align: left;
+}
+.dash-palette-row svg { width: 16px; height: 16px; color: var(--d-ink-3); flex: none; }
+.dash-palette-row.is-on, .dash-palette-row:hover { background: var(--d-accent-soft); }
+.dash-palette-row.is-on svg { color: var(--d-accent); }
+.dash-palette-l { flex: 1 1 auto; font-weight: 550; }
+.dash-palette-h { font-size: 0.78rem; color: var(--d-ink-3); }
+.dash-palette-none { padding: 1rem 0.7rem; color: var(--d-ink-3); font-size: 0.86rem; }
+
+/* ---- notes, seals and simulations ----------------------------------------- */
+.dash-note { padding: 0.6rem 0; border-top: 1px solid var(--d-line-2); }
+.dash-note:first-of-type { border-top: 0; padding-top: 0; }
+.dash-note-t { font-weight: 650; margin-bottom: 0.1rem; }
+.dash-note-d { color: var(--d-ink-2); font-size: 0.88rem; }
+
+/* the seal. a verification code is not decoration: it is the difference between
+   a document somebody can check and a screenshot they have to believe. */
+.dash-seal {
+    margin-top: 0.9rem; padding: 0.8rem 0.9rem;
+    border-radius: 11px; border: 1px dashed rgba(14, 35, 88, 0.18);
+    background: rgba(14, 35, 88, 0.02);
+}
+.dash-seal-l { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--d-ink-3); }
+.dash-seal-c {
+    font-family: var(--d-mono); font-size: 1rem; font-weight: 600; letter-spacing: 0.12em;
+    margin: 0.25rem 0 0.35rem; color: var(--d-ink);
+}
+.dash-seal-d { font-size: 0.78rem; color: var(--d-ink-3); line-height: 1.5; }
+
+.dash-sim { padding: 0.9rem 0; border-top: 1px solid var(--d-line-2); }
+.dash-sim:first-of-type { border-top: 0; }
+.dash-sim-h { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.2rem; }
+.dash-sim-move { font-family: var(--d-mono); font-size: 0.82rem; color: var(--d-ink-2); }
+.dash-sim-note { color: var(--d-ink-2); margin-bottom: 0.6rem; font-size: 0.9rem; }
+
+.dash-pill-good, .dash-pill-warn {
+    font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 999px; white-space: nowrap;
+}
+.dash-pill-good { background: var(--d-low-bg); color: var(--d-low); }
+.dash-pill-warn { background: var(--d-medium-bg); color: var(--d-medium); }
+
+.dash-pre {
+    margin: 0.6rem 0 0; padding: 0.75rem 0.85rem;
+    background: rgba(14, 35, 88, 0.035); border-radius: 10px;
+    font-family: var(--d-mono); font-size: 0.78rem; line-height: 1.6;
+    color: var(--d-ink-2); overflow-x: auto; white-space: pre-wrap; word-break: break-all;
+}
+
+.dash-dot-live {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--d-accent); display: inline-block;
+    box-shadow: 0 0 0 0 rgba(28, 78, 216, 0.5); animation: dashPulse 2.4s infinite;
+}
+
+@media (max-width: 560px) {
+    .dash-modal-top { padding-top: 8vh; }
+    .dash-palette-list { max-height: 60vh; }
 }
