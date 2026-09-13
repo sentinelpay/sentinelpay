@@ -238,6 +238,11 @@ async function main() {
                 crypto.randomBytes(16).toString('base64') + '$' + crypto.randomBytes(64).toString('base64'),
             lang: u.lang, flags: u.flags, verified_at: u.verified_at, last_login_at: u.last_login_at,
             sourceHash: u.email_hash,
+            // the plain invented person, kept beside the sealed columns. a
+            // submission that belongs to this user is rewritten to the same
+            // name and address, and reaching for them through the sealed
+            // columns would mean unsealing what was just sealed.
+            person: person,
         };
     });
 
@@ -250,7 +255,8 @@ async function main() {
             fields = JSON.parse(r.encrypted ? open(SRC_KEY, 'submission:' + r.id, r.payload) : r.payload) || {};
         } catch (err) { fields = {}; }
         const known = r.email_hash ? byOldHash[r.email_hash] : null;
-        const person = known || (r.email_hash ? invent(r.email_hash) : invent('00000000'));
+        const person = (known && known.person)
+            || (r.email_hash ? invent(r.email_hash) : invent('00000000'));
         // the shape is kept and the person is not: a form submission is mostly
         // a name, an address, a company and an ip, and none of those need to be
         // real for a staging inbox to be worth looking at
