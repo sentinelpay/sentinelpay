@@ -40,6 +40,15 @@
        to a third party script. the url is left reading sentinelpay.org and the
        dialog opens over it. */
     (function(){try{var m=location.search.match(/[?&]token=([^&]*)/);if(!m)return;window.__SP_RESET_TOKEN=decodeURIComponent(m[1]);if(history.replaceState)history.replaceState(null,'','/');}catch(e){window.__SP_RESET_TOKEN='';}})();</script>
+    <script>/* "open the sign-in dialog" arrives as a query, from /dashboard when nobody is
+       signed in, from the buttons in the navigation with scripting off, and from
+       the old /auth url. it is read here for the same reason the token above is:
+       once, before anything else, and taken out of the address bar so a reload
+       or a shared link is just the homepage.
+
+       the hash is read too, because /auth#create is in people's bookmarks and a
+       fragment survives a redirect. */
+    (function(){try{var q=(location.search.match(/[?&]signin=([^&]*)/)||[])[1]||'';var h=(location.hash||'').replace('#','').toLowerCase();var want=decodeURIComponent(q).toLowerCase();if(h==='create'||h==='reset')want=h;if(!want)return;window.__SP_OPEN_SIGNIN=(want==='create'||want==='reset')?want:'login';if(history.replaceState)history.replaceState(null,'',location.pathname);}catch(e){}})();</script>
     <script>document.documentElement.classList.add('theme-light');</script>
     <script>(function(){try{var s=localStorage.getItem('sb-aivqwkgjdpklxxuvkxpy-auth-token');if(s){var d=JSON.parse(s);if(d&&d.expires_at&&Math.floor(Date.now()/1000)<d.expires_at){document.documentElement.classList.add('auth-session-present');}}}catch(e){}})();</script>
     <link rel="icon" type="image/svg+xml" href="/logo.svg">
@@ -598,8 +607,8 @@
                 </div>
             </div>
             <div id="auth-nav-container" style="display: flex; gap: 0.5rem; align-items: center;">
-                <a href="/auth" id="nav-login-btn" class="auth-nav-btn lp-btn-ghost lp-desktop-auth">Log in</a>
-                <a href="/auth#create" id="nav-register-btn" class="auth-nav-btn lp-btn-solid lp-desktop-auth">Get started</a>
+                <a href="/?signin=1" id="nav-login-btn" class="auth-nav-btn lp-btn-ghost lp-desktop-auth">Log in</a>
+                <a href="/?signin=create" id="nav-register-btn" class="auth-nav-btn lp-btn-solid lp-desktop-auth">Get started</a>
                 <button class="lp-hamburger" id="lp-hamburger" aria-label="Menu">
                     <span class="lp-hb-line"></span>
                     <span class="lp-hb-line"></span>
@@ -659,8 +668,8 @@
             <div class="lp-mobile-ctas">
                 <a href="#" id="lp-mm-livechat" class="lp-mm-btn-ghost">Live chat</a>
                 <div class="lp-mm-ctas-row">
-                    <a href="/auth" id="lp-mm-login" class="lp-mm-btn-ghost">Log in</a>
-                    <a href="/auth#create" id="lp-mm-register" class="lp-mm-btn-solid">Get started</a>
+                    <a href="/?signin=1" id="lp-mm-login" class="lp-mm-btn-ghost">Log in</a>
+                    <a href="/?signin=create" id="lp-mm-register" class="lp-mm-btn-solid">Get started</a>
                 </div>
             </div>
         </div>
@@ -2012,8 +2021,8 @@
     <script src="/faq.1.js" defer></script>
     <script src="/img-fallback.2.js" defer></script>
     <!-- the sign-in dialog. loaded before i18n so its copy is translated too -->
-    <script src="/auth-modal.16.js" defer></script>
-    <script src="/auth-flow.38.js" defer></script>
+    <script src="/auth-modal.18.js" defer></script>
+    <script src="/auth-flow.39.js" defer></script>
     <script src="/auth-nav.4.js" defer></script>
     <script src="/flair.13.js" defer></script>
     <script src="/reveal.6.js" defer></script>

@@ -231,7 +231,7 @@
 
         return fetch('/v1/submissions?' + q.toString(), { credentials: 'same-origin' })
             .then(function (r) {
-                if (r.status === 404) { location.replace('/auth'); return null; }
+                if (r.status === 404) { location.replace('/?signin=1'); return null; }
                 return r.json();
             })
             .then(function (data) {

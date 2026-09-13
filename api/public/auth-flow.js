@@ -920,7 +920,7 @@
                 // could not be opened the account still exists, so they are sent
                 // to sign in rather than to a page that would turn them away.
                 setTimeout(function () {
-                    location.replace(out && out.signedIn === false ? '/auth' : '/dashboard');
+                    location.replace(out && out.signedIn === false ? '/?signin=1' : '/dashboard');
                 }, 1400);
             }).catch(function (err) {
                 codeWrap.classList.remove('is-wrong');
@@ -1276,6 +1276,17 @@
                 replay(into, 'sp-auth-enter');
             }
 
+            // a url can ask for this panel too: /?signin=reset, which is where
+            // the expired-link page sends people. the dialog opens on sign-in and
+            // steps here, the same journey the link below makes.
+            window.SentinelAuthFlow = window.SentinelAuthFlow || {};
+            window.SentinelAuthFlow.reset = function () {
+                var typed = form.querySelector('input[type="email"]');
+                if (typed && typed.value.trim()) rMail.value = typed.value.trim();
+                lStep('reset');
+                setTimeout(function () { rMail.focus(); }, 60);
+            };
+
             forgotLink.addEventListener('click', function (e) {
                 e.preventDefault();
                 // carry over whatever they had already typed: retyping an address
@@ -1552,13 +1563,35 @@
                 }).observe(backdrop, { attributes: true, attributeFilter: ['hidden'] });
             }
 
+            // "open the sign-in dialog", asked for by a url rather than a press.
+            //
+            // /dashboard redirects here when nobody is signed in, the navigation
+            // links point here when scripting is off, and the old /auth url ends
+            // here too. the flag was taken out of the address bar before anything
+            // else ran, so a reload is the plain homepage.
+            //
+            // it waits for the splash for the same reason the reset link does: a
+            // dialog that animates in over a loader that is still fading looks
+            // like two things fighting.
+            if (backdrop && window.__SP_OPEN_SIGNIN && !window.__SP_RESET_TOKEN) {
+                var want = window.__SP_OPEN_SIGNIN;
+                try { delete window.__SP_OPEN_SIGNIN; } catch (e) { window.__SP_OPEN_SIGNIN = ''; }
+                afterLoader(function () {
+                    if (!window.SentinelAuthModal) return;
+                    window.SentinelAuthModal.open(want === 'create' ? 'create' : 'login');
+                    // "I forgot my password" as a url: the dialog opens on the
+                    // sign-in tab and then steps to the reset panel, which is the
+                    // same journey a press makes.
+                    if (want === 'reset' && window.SentinelAuthFlow && window.SentinelAuthFlow.reset) {
+                        window.SentinelAuthFlow.reset();
+                    }
+                });
+            }
+
             // and the arrival itself. the token was taken out of the address bar
             // by an inline script in the head before anything else ran, so by the
             // time this fires the url already reads sentinelpay.org and nothing
             // on the page has seen it.
-            //
-            // only the dialog does this. /auth has a card of its own and is not
-            // where the mail sends anybody.
             if (backdrop && window.__SP_RESET_TOKEN) {
                 var linkToken = window.__SP_RESET_TOKEN;
 
@@ -1982,5 +2015,6 @@
     scan();
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', scan);
     else setTimeout(scan, 0);
-    window.SentinelAuthFlow = { scan: scan };
+    window.SentinelAuthFlow = window.SentinelAuthFlow || {};
+    window.SentinelAuthFlow.scan = scan;
 })();

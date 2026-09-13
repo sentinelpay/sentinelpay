@@ -7,9 +7,9 @@
    is deliberate: a dialog created on first open would come back in english on a
    translated page.
 
-   /auth is still a real page. the links keep pointing at it, this only
-   intercepts the click, so a visitor with javascript off follows the same link
-   and gets the same form on its own screen. */
+   the links point at the homepage with ?signin= on them now, and the page reads
+   that and opens the dialog. this handler only saves the round trip when the
+   click happens on a page that already has the dialog in it. */
 (function () {
     if (document.getElementById('sp-authm')) return;
 
@@ -48,7 +48,7 @@
                     '</div>' +
                     '<div class="sp-auth-row">' +
                         '<label class="sp-auth-remember"><input type="checkbox" name="remember"><span>Keep me signed in</span></label>' +
-                        '<a class="sp-auth-link" href="/auth">Forgot your password?</a>' +
+                        '<a class="sp-auth-link" href="/?signin=reset">Forgot your password?</a>' +
                     '</div>' +
                     '<button type="submit" class="lp-demo-submit sp-auth-submit">Log in</button>' +
                 '</form>' +
@@ -235,17 +235,29 @@
     // other up, so the dialog is never left as a form that does nothing
     if (window.SentinelAuthFlow) window.SentinelAuthFlow.scan();
 
-    // the nav keeps pointing at /auth, so this is an enhancement rather than the
-    // only way in. anything linking there opens the dialog instead.
+    // Every link that used to go to a sign-in page opens the dialog instead.
+    //
+    // The links still have real hrefs, and that is the point: with scripting off,
+    // or on a middle click, they go to the homepage with ?signin= on it and the
+    // page opens the dialog from that. So this is the fast path, not the only
+    // one, and nothing here is load-bearing.
     document.addEventListener('click', function (e) {
         var a = e.target.closest && e.target.closest('a[href]');
         if (!a) return;
         var href = a.getAttribute('href') || '';
-        var m = href.match(/(?:^|\/\/[^/]+)\/auth(#create)?$/);
+        // the current shape, and the old /auth one for anything not yet updated
+        var m = href.match(/[?&]signin=([^&#]*)/) || href.match(/(?:^|\/\/[^/]+)\/auth(#create)?$/);
         if (!m) return;
-        // on /auth itself the page is already the form; leave those links alone
-        if (location.pathname.replace(/\/+$/, '') === '/auth') return;
+        // a modified click means "open it somewhere else", and that is the
+        // browser's job rather than ours
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+        var want = String(m[1] || '').replace('#', '').toLowerCase();
         e.preventDefault();
-        open(m[1] ? 'create' : 'login');
+        open(want === 'create' ? 'create' : 'login');
+        // "ask for a new link" opens the dialog and then steps to the reset
+        // panel, which only the flow knows how to do
+        if (want === 'reset' && window.SentinelAuthFlow && window.SentinelAuthFlow.reset) {
+            window.SentinelAuthFlow.reset();
+        }
     });
 })();

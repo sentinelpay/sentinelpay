@@ -743,7 +743,12 @@ app.get('/', (req, res, next) => {
 
     res.set('Cache-Control', 'no-store');
     res.set('Vary', 'Cookie, CF-IPCountry');
-    return res.redirect(302, '/' + lang);
+    // the query comes along. it used to be dropped here, which was harmless
+    // while nothing carried one; ?signin= is read by the page this redirects to,
+    // and losing it would send somebody who asked for the sign-in dialog to a
+    // homepage with no dialog on it.
+    const rest = req.originalUrl.indexOf('?');
+    return res.redirect(302, '/' + lang + (rest === -1 ? '' : req.originalUrl.slice(rest)));
 });
 
 // express 5 dropped inline path regexes, so the paths are listed instead
@@ -756,6 +761,21 @@ app.get(HOMEPAGE_LANGS.flatMap((l) => ['/' + l, '/' + l + '/']), (req, res, next
 });
 
 // Legal pages moved to clean urls; keep the old paths working with 301s.
+// /auth was a whole page carrying a second copy of the sign-in card: the same
+// two forms, the same panels, the same copy, kept in step by hand. Everything it
+// did is the dialog now, which is where every other thing about an account
+// already happens, so the page is deleted rather than maintained twice.
+//
+// The url keeps working. It is in bookmarks, in browser history, in the address
+// bar of anybody who typed it once, and answering 404 to all of them to make a
+// point about tidiness would be a worse site. It carries the same signin value
+// the links do, so /auth#create still arrives on the create-account tab.
+app.get('/auth', (req, res) => {
+    const which = String(req.query.signin || '').toLowerCase();
+    const want = ['create', 'reset'].includes(which) ? which : '1';
+    return res.redirect(301, '/?signin=' + want);
+});
+
 app.get('/privacy', (req, res) => res.redirect(301, '/privacy-policy'));
 app.get('/tos', (req, res) => res.redirect(301, '/terms-of-service'));
 
@@ -767,10 +787,10 @@ app.get('/tos', (req, res) => res.redirect(301, '/terms-of-service'));
 app.get('/dashboard', async (req, res, next) => {
     try {
         const me = await currentUser(req);
-        if (!me) return res.redirect(302, '/auth');
+        if (!me) return res.redirect(302, '/?signin=1');
     } catch (err) {
         console.error('[dashboard guard]', err.message);
-        return res.redirect(302, '/auth');
+        return res.redirect(302, '/?signin=1');
     }
     // no store rather than no cache: a signed-in page must not sit in a shared
     // cache or come back from the back button after signing out
@@ -1462,7 +1482,7 @@ app.get('/v1/inbox', requireStaff('inbox'), (req, res) => {
         '<div id="live" style="margin:0 0 16px;font-size:12px;color:#94a0bd;"></div>' +
         '<div id="rows"></div>' +
         '<div id="pager"></div>' +
-        '</div><script src="/inbox.js?v=1"></script></body>');
+        '</div><script src="/inbox.js?v=2"></script></body>');
 });
 
 // The same list, for whoever is signed in as staff. No values, only whether a

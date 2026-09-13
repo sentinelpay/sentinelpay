@@ -64,7 +64,7 @@
         .then(function (me) {
             // the cookie can go stale between the server's check and this call:
             // a sign-out in another tab, or a session we ended from our side
-            if (!me || !me.signedIn) { location.replace('/auth'); return; }
+            if (!me || !me.signedIn) { location.replace('/?signin=1'); return; }
             set('dash-name', me.name);
             set('dash-email', me.email);
             set('dash-since', niceDate(me.since));
