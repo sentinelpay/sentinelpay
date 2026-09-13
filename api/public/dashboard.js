@@ -12,6 +12,33 @@
 (function () {
     var t = function (x) { return window.SentinelI18n ? window.SentinelI18n.t(x) : x; };
 
+    // one small post, shared by every card on this page. there were two copies of
+    // this by the end of the evening, which is exactly the shape of thing that
+    // later gets fixed in one of them.
+    function post(url, body) {
+        return fetch(url, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body || {}),
+        }).then(function (r) {
+            return r.json().catch(function () { return {}; }).then(function (d) {
+                if (!r.ok) { var e = new Error(d.error || 'failed'); e.status = r.status; throw e; }
+                return d;
+            });
+        });
+    }
+
+    // a line under a card: red by default, green when it is good news
+    function note(id, msg, good) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = msg || '';
+        el.hidden = !msg;
+        el.classList.toggle('sp-dash-good', Boolean(good));
+        el.classList.toggle('sp-dash-err', !good);
+    }
+
     function set(id, value) {
         var el = document.getElementById(id);
         if (el && value) el.textContent = value;
@@ -70,33 +97,8 @@
         var setup = document.getElementById('dash-2fa-setup');
         var codesBox = document.getElementById('dash-2fa-codes');
         var offBox = document.getElementById('dash-2fa-offbox');
-        var errEl = document.getElementById('dash-2fa-err');
 
-        function say(msg, good) {
-            if (!errEl) return;
-            errEl.textContent = msg || '';
-            errEl.hidden = !msg;
-            errEl.classList.toggle('sp-dash-good', Boolean(good));
-            errEl.classList.toggle('sp-dash-err', !good);
-        }
-
-        function post(url, body) {
-            return fetch(url, {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body || {}),
-            }).then(function (r) {
-                return r.json().catch(function () { return {}; }).then(function (d) {
-                    if (!r.ok) {
-                        var e = new Error(d.error || 'failed');
-                        e.status = r.status;
-                        throw e;
-                    }
-                    return d;
-                });
-            });
-        }
+        function say(msg, good) { note('dash-2fa-err', msg, good); }
 
         function paint(on, left, needed) {
             if (startBtn) startBtn.hidden = on;
@@ -199,28 +201,6 @@
     // three say what happened in the card rather than in a toast that has gone by
     // the time you look up.
     function accountTools(me) {
-        function post(url, body) {
-            return fetch(url, {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body || {}),
-            }).then(function (r) {
-                return r.json().catch(function () { return {}; }).then(function (d) {
-                    if (!r.ok) { var e = new Error(d.error || 'failed'); e.status = r.status; throw e; }
-                    return d;
-                });
-            });
-        }
-        function note(id, msg, good) {
-            var el = document.getElementById(id);
-            if (!el) return;
-            el.textContent = msg || '';
-            el.hidden = !msg;
-            el.classList.toggle('sp-dash-good', Boolean(good));
-            el.classList.toggle('sp-dash-err', !good);
-        }
-
         var pwGo = document.getElementById('dash-pw-go');
         if (pwGo) {
             pwGo.addEventListener('click', function () {
