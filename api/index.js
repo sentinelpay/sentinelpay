@@ -537,6 +537,8 @@ const IS_STAGING = String(process.env.APP_ENV || '').toLowerCase() === 'staging'
 // default, because that is where it is being built
 const DASHBOARD_NEXT = String(process.env.DASHBOARD_NEXT || (IS_STAGING ? 'true' : 'false'))
     .trim().toLowerCase() === 'true';
+// reachable through /dashboard and nowhere else
+const DASHBOARD_PAGES = ['dashboard.html', 'dashboard-next.html'];
 
 function stagingRibbon() {
     if (!IS_STAGING) return '';
@@ -857,6 +859,15 @@ app.get('/reset-password', async (req, res) => {
     }
 });
 
+// The signed-in pages by their file name: not found.
+//
+// This has to be a route rather than a check inside the renderer, because when
+// the renderer declines, express.static is next in line and it will happily
+// serve any file in public/. /dashboard is the door and it checks the cookie.
+app.get(['/dashboard.html', '/dashboard-next.html'], (req, res) => {
+    return sendPage(res, req, '404.html', 404);
+});
+
 // Page requests go through the renderer above so the javascript-disabled notice
 // and the geo language land in the html. Assets fall straight through to
 // express.static below.
@@ -868,6 +879,12 @@ app.use((req, res, next) => {
     if (!/\.html$/i.test(file)) file += '.html';
     // stay inside public/: no traversal, no nested paths
     if (file.includes('/') || file.includes('\\') || file.includes('..')) return next();
+    // the signed-in pages have one door, and it is /dashboard, which checks the
+    // cookie first. asking for the file by name walked straight past that: the
+    // page itself is only markup and the api behind it refuses anyway, but a
+    // half-built product sitting on a public url is a thing people find, link
+    // to and screenshot.
+    if (DASHBOARD_PAGES.indexOf(file.toLowerCase()) !== -1) return next();
     const full = path.join(__dirname, 'public', file);
     if (!fsSync.existsSync(full)) return next();
     return sendPage(res, req, file);
