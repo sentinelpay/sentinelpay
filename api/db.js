@@ -432,13 +432,29 @@ function open(aad, blob) {
     }
 }
 
+// The current key and nothing else. Only a rotation needs this, and it needs it
+// for the one question `open` cannot answer: is this row still under the old
+// key? `open` tries both and so always says yes, which is the right answer for
+// serving a request and the wrong one for deciding that a rotation has
+// finished.
+function openCurrent(aad, blob) {
+    if (!ENCRYPTED) return String(blob == null ? '' : blob);
+    try {
+        const buf = Buffer.from(String(blob || ''), 'base64');
+        if (buf.length < 29 || buf[0] !== 1) return '';
+        return decryptWith(DATA_KEY, buf, aad);
+    } catch (err) {
+        return '';
+    }
+}
+
 module.exports = {
     insert, recent, count, remove, purge, forget, startRetention, status,
     available: () => Boolean(pool),
     // for tests and scripts: without this the pool keeps the process alive
     close: () => (pool ? pool.end() : Promise.resolve()),
     rotating: () => Boolean(DATA_KEY_PREVIOUS),
-    query, connect, seal, open, blindIndex,
+    query, connect, seal, open, openCurrent, blindIndex,
     indexKey: () => INDEX_KEY,
     encrypted: () => ENCRYPTED,
 };

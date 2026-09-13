@@ -12,7 +12,10 @@
 //   4. run this, with the same two variables set:
 //          node tools/rotate-key.js            # says what it would do
 //          node tools/rotate-key.js --write    # does it
-//   5. when it reports nothing left, remove SUBMISSIONS_KEY_PREVIOUS
+//   5. run it once more without --write. the line that decides this is
+//      "0 value(s) still under the previous key". the row count above it never
+//      falls to zero, because a row already under the new key is rewritten
+//      identically rather than skipped. only then remove SUBMISSIONS_KEY_PREVIOUS
 //
 // The blind index is not touched. It is keyed by SUBMISSIONS_INDEX_KEY, which is
 // a different key on purpose and rotating it would mean every lookup by address
@@ -78,6 +81,7 @@ async function main() {
 
     let touched = 0;
     let unreadable = 0;
+    let stale = 0;
 
     for (const job of WORK) {
         const cols = job.columns.map((c) => c.column);
@@ -119,6 +123,11 @@ async function main() {
                     unreadable++;
                     continue;
                 }
+                // the number that decides whether this is finished. a value the
+                // current key opens on its own is already rotated; one that
+                // needed the previous key is not, and while a single one of
+                // those is left SUBMISSIONS_KEY_PREVIOUS cannot be dropped.
+                if (!db.openCurrent(label, blob)) stale++;
                 args.push(db.seal(label, plain));
                 sets.push(spec.column + ' = $' + args.length);
             }
@@ -135,13 +144,16 @@ async function main() {
         touched += n;
     }
 
-    console.log(touched + ' row(s) ' + (WRITE ? 'rewritten' : 'to rewrite'));
+    console.log(touched + ' row(s) ' + (WRITE ? 'rewritten' : 'read'));
+    console.log(stale + ' value(s) still under the previous key.');
     if (unreadable) {
         console.error(unreadable + ' value(s) could not be opened with either key and were left alone.');
         console.error('That is data written under a key neither variable holds. Find that key before dropping anything.');
     }
-    if (WRITE && !unreadable) {
-        console.log('Done. Once this reports 0 rows, SUBMISSIONS_KEY_PREVIOUS can be removed.');
+    if (!unreadable) {
+        console.log(stale
+            ? 'Not finished: run again with --write, then run without it to check.'
+            : 'Finished: nothing is under the previous key, so SUBMISSIONS_KEY_PREVIOUS can be removed.');
     }
     process.exit(unreadable ? 2 : 0);
 }
