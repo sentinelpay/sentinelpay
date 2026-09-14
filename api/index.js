@@ -385,6 +385,7 @@ const DASHBOARD_PAGES = ['dashboard.html', 'dashboard-next.html'];
 
 function stagingRibbon() {
     if (!IS_STAGING) return '';
+    if (String(process.env.STAGING_RIBBON || '').toLowerCase() !== 'true') return '';
     const sha = String(process.env.RAILWAY_GIT_COMMIT_SHA || '').slice(0, 7);
     const branch = String(process.env.RAILWAY_GIT_BRANCH || '');
     const bits = ['staging', 'not production'];

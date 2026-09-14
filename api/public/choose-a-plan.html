@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="/fonts.2.css">
     <link rel="stylesheet" href="/style.27.css">
     <link rel="stylesheet" href="/landing.149.css">
-    <link rel="stylesheet" href="/corp.335.css">
+    <link rel="stylesheet" href="/corp.337.css">
     <style>
         #sp-loader{position:fixed;inset:0;z-index:99999;background:#050505;display:flex;align-items:center;justify-content:center;transition:opacity 0.55s ease;}
         #sp-loader.spl-done{opacity:0;pointer-events:none;}
@@ -105,8 +105,6 @@
         .pp-contact { margin: 1.4rem 0; padding: 1.3rem 1.5rem; border: 1px solid rgba(14,35,88,0.12); border-radius: 14px; background: rgba(255,255,255,0.6); }
         .pp-contact p { margin: 0.4rem 0; font-size: 0.98rem; }
         @media (max-width: 640px) {
-            .bad-net-mark { height: 36px; margin-right: 2.2rem; }
-            .bad-net-mark img { transform: scale(0.78); }
             .pp-title { font-size: 2rem; }
             .lp-section.pp { padding-top: 6.5rem; }
         }
@@ -336,16 +334,19 @@
         </div>
     </div>
     <div class="bad-fold">
-        <section class="lp-section lp-plans" id="choose-a-plan">
+        <section class="lp-section bad-demo lp-plans" id="choose-a-plan">
             <div class="lp-section-inner">
-                <span class="lp-eyebrow">Your account is ready</span>
-                <h2 class="lp-h2"><span class="lp-hl">Choose a plan</span> and start<br>screening straight away</h2>
-                <p class="lp-plans-sub">Start on the free trial if you want to see a real answer first. Nothing here needs a card, and you can move up whenever your volume does.</p>
+                <div class="lp-plans-head">
+                    <h1 class="bad-title">Choose a plan<br>and start screening</h1>
+                    <p class="bad-sub">Your account is ready. Start on the free trial if you want to see a real answer first, on a real address. Nothing here needs a card, and you can move up whenever your volume does.</p>
+                </div>
 
                 <svg class="lp-plan-defs" aria-hidden="true" focusable="false"><defs><linearGradient id="planGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00c8e6"/><stop offset="100%" stop-color="#a020f0"/></linearGradient></defs></svg>
 
                 <div class="lp-plan-grid">
                 <div class="lp-plan-card is-primary" data-plan="trial">
+                    <span class="lp-plan-dots" aria-hidden="true"></span>
+                    <span class="lp-plan-edge" aria-hidden="true"></span>
                     <div class="lp-plan-icon"><svg viewBox="0 0 24 24" fill="none" stroke="url(#planGrad)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4.5 12.5a1 1 0 0 0 .8 1.6H11l-1 8 8.5-10.5a1 1 0 0 0-.8-1.6H12z"/></svg></div>
                     <span class="lp-plan-badge">Start here</span>
                     <h3 class="lp-plan-name">Free trial</h3>
@@ -432,6 +433,11 @@
                     </div>
                 </div>
 
+                <div class="bad-divider bad-trial-divider"></div>
+                <div class="bad-trial">
+                    <span class="bad-trial-q">Would you rather be walked through it first?</span>
+                    <a href="/book-a-demo" class="bad-trial-btn">Book a demo</a>
+                </div>
                 <p class="lp-plans-foot">One trial per company. We check the domain of your work email against the website you give us, and open it straight away when they agree.</p>
             </div>
         </section>
@@ -583,7 +589,7 @@
     <script src="/auth-flow.40.js" defer></script>
     <script src="/auth-nav.5.js" defer></script>
     <script src="/navlift.2.js" defer></script>
-    <script src="/i18n.119.js" defer></script>
+    <script src="/i18n.120.js" defer></script>
     <script src="/choose-plan.3.js" defer></script>
 </body>
 </html>
