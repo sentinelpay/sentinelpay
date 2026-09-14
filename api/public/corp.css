@@ -4226,7 +4226,8 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
 .lp-plan-cur { font-size: 1rem; font-weight: 600; margin-right: 0.08em; align-self: flex-start; padding-top: 0.22em; }
 .lp-plan-unit { font-size: 0.76rem; font-weight: 600; color: rgba(14, 35, 88, 0.5); margin-left: 0.22rem; }
 .lp-plan-from { align-self: center; font-size: 0.66rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(14, 35, 88, 0.45); margin-right: 0.32rem; }
-.lp-plan-price-note { margin-top: 0.22rem; margin-bottom: 0.9rem; color: rgba(14, 35, 88, 0.5); font-size: 0.73rem; }
+.lp-plan-price-note { margin-top: 0.22rem; margin-bottom: 0.7rem; color: rgba(14, 35, 88, 0.5); font-size: 0.73rem; }
+.lp-plan-blurb { margin: 0 0 1rem; font-size: 0.8rem; line-height: 1.45; color: #5b6b8c; }
 
 .lp-plan-btn {
     width: 100%;
@@ -4304,6 +4305,7 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
     .lp-plans .lp-plan-head { padding: 0.95rem 1rem 0.9rem; }
     .lp-plans .lp-plan-trial { padding: 1rem 1.2rem; }
     .lp-plans .lp-plan-trial-list { margin: 0.7rem 0 0.8rem; gap: 0.25rem; }
+    .lp-plans .lp-plan-blurb { margin-bottom: 0.8rem; }
     .lp-plans .lp-plan-cell { min-height: 2.2rem; }
     .lp-plans-foot { margin-top: 0.7rem; }
 }
@@ -4314,6 +4316,7 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
     .lp-plans .lp-plan-trial { padding: 0.85rem 1.1rem; }
     .lp-plans .lp-plan-trial-list { margin: 0.55rem 0 0.7rem; }
     .lp-plans .lp-plan-trial-list li { font-size: 0.74rem; }
+    .lp-plans .lp-plan-blurb { font-size: 0.76rem; margin-bottom: 0.7rem; }
     .lp-plans .lp-plan-cell { min-height: 2rem; font-size: 0.8rem; }
     .lp-plans .lp-plan-btn { padding: 0.48rem 0.9rem; font-size: 0.8rem; }
     .lp-plans-foot { font-size: 0.72rem; }
