@@ -146,3 +146,6 @@ clean_bg.py
 *.db
 *.sqlite
 .secure/
+
+__pycache__/
+*.pyc
