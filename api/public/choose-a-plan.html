@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="/fonts.2.css">
     <link rel="stylesheet" href="/style.27.css">
     <link rel="stylesheet" href="/landing.149.css">
-    <link rel="stylesheet" href="/corp.345.css">
+    <link rel="stylesheet" href="/corp.348.css">
     <style>
         #sp-loader{position:fixed;inset:0;z-index:99999;background:#050505;display:flex;align-items:center;justify-content:center;transition:opacity 0.55s ease;}
         #sp-loader.spl-done{opacity:0;pointer-events:none;}
@@ -347,73 +347,92 @@
                 <div class="lp-plan-card is-primary" data-plan="trial">
                     <span class="lp-plan-dots" aria-hidden="true"></span>
                     <span class="lp-plan-edge" aria-hidden="true"></span>
-                    <span class="lp-plan-badge">Start here</span>
-                    <h3 class="lp-plan-name">Free trial</h3>
-                    <div class="lp-plan-price">Free</div>
-                    <div class="lp-plan-price-note">14 days, no card</div>
-                    <div class="lp-plan-stats">
+
+                    <div class="lp-plan-top">
+                        <span class="lp-plan-badge">Start here</span>
+                        <h3 class="lp-plan-name">Free trial</h3>
+                        <div class="lp-plan-price"><span class="lp-plan-fig">Free</span></div>
+                        <div class="lp-plan-price-note">14 days, no card</div>
+                    </div>
+                    <div class="lp-plan-body">
+                        <div class="lp-plan-stats">
                         <div class="lp-plan-stat"><b>1 + 1</b><span>checks to run</span></div>
                         <div class="lp-plan-stat"><b>14</b><span>days to decide</span></div>
                         <div class="lp-plan-stat"><b>1</b><span>seat</span></div>
+                        </div>
+                        <ul class="lp-plan-feats">
+                            <li class="lp-plan-feat">Against the live OFAC list</li>
+                            <li class="lp-plan-feat">Every check logged as evidence</li>
+                            <li class="lp-plan-feat">Verify your number to open the rest</li>
+                        </ul>
+                        <button class="lp-plan-btn lp-plan-btn-solid" type="button" data-plan-start="1">Start free trial</button>
                     </div>
-                    <ul class="lp-plan-feats">
-                        <li class="lp-plan-feat">Against the live OFAC list</li>
-                        <li class="lp-plan-feat">Every check logged as evidence</li>
-                        <li class="lp-plan-feat">Verify your number to open the rest</li>
-                    </ul>
-                    <button class="lp-plan-btn lp-plan-btn-solid" type="button" data-plan-start="1">Start free trial</button>
                 </div>
                 <div class="lp-plan-card" data-plan="starter">
-                    <span class="lp-plan-badge is-empty" aria-hidden="true"></span>
-                    <h3 class="lp-plan-name">Starter</h3>
-                    <div class="lp-plan-price"><span class="lp-plan-cur">&euro;</span>99<span class="lp-plan-unit">/month</span></div>
-                    <div class="lp-plan-price-note">Billed monthly, cancel anytime</div>
-                    <div class="lp-plan-stats">
+
+                    <div class="lp-plan-top">
+                        <span class="lp-plan-badge is-empty" aria-hidden="true"></span>
+                        <h3 class="lp-plan-name">Starter</h3>
+                        <div class="lp-plan-price"><span class="lp-plan-cur">&euro;</span><span class="lp-plan-fig">99</span><span class="lp-plan-unit">/month</span></div>
+                        <div class="lp-plan-price-note">Billed monthly, cancel anytime</div>
+                    </div>
+                    <div class="lp-plan-body">
+                        <div class="lp-plan-stats">
                         <div class="lp-plan-stat"><b>1,000</b><span>screenings a month</span></div>
                         <div class="lp-plan-stat"><b>100</b><span>addresses monitored</span></div>
                         <div class="lp-plan-stat"><b>3</b><span>seats</span></div>
+                        </div>
+                        <ul class="lp-plan-feats">
+                            <li class="lp-plan-feat">OFAC, EU, UK and UN sanctions</li>
+                            <li class="lp-plan-feat">Address and xpub screening</li>
+                            <li class="lp-plan-feat">Evidence export for your auditor</li>
+                        </ul>
+                        <a class="lp-plan-btn" href="/book-a-demo">Choose Starter</a>
                     </div>
-                    <ul class="lp-plan-feats">
-                        <li class="lp-plan-feat">OFAC, EU, UK and UN sanctions</li>
-                        <li class="lp-plan-feat">Address and xpub screening</li>
-                        <li class="lp-plan-feat">Evidence export for your auditor</li>
-                    </ul>
-                    <a class="lp-plan-btn" href="/book-a-demo">Choose Starter</a>
                 </div>
-                <div class="lp-plan-card" data-plan="growth">
-                    <span class="lp-plan-badge">Most teams start here</span>
-                    <h3 class="lp-plan-name">Growth</h3>
-                    <div class="lp-plan-price"><span class="lp-plan-cur">&euro;</span>399<span class="lp-plan-unit">/month</span></div>
-                    <div class="lp-plan-price-note">Billed monthly, cancel anytime</div>
-                    <div class="lp-plan-stats">
+                <div class="lp-plan-card is-pick" data-plan="growth">
+
+                    <div class="lp-plan-top">
+                        <span class="lp-plan-badge">Most teams start here</span>
+                        <h3 class="lp-plan-name">Growth</h3>
+                        <div class="lp-plan-price"><span class="lp-plan-cur">&euro;</span><span class="lp-plan-fig">399</span><span class="lp-plan-unit">/month</span></div>
+                        <div class="lp-plan-price-note">Billed monthly, cancel anytime</div>
+                    </div>
+                    <div class="lp-plan-body">
+                        <div class="lp-plan-stats">
                         <div class="lp-plan-stat"><b>10,000</b><span>screenings a month</span></div>
                         <div class="lp-plan-stat"><b>2,500</b><span>addresses monitored</span></div>
                         <div class="lp-plan-stat"><b>10</b><span>seats</span></div>
+                        </div>
+                        <ul class="lp-plan-feats">
+                            <li class="lp-plan-feat">Everything in Starter</li>
+                            <li class="lp-plan-feat">Continuous monitoring and alerts</li>
+                            <li class="lp-plan-feat">API access and your own thresholds</li>
+                        </ul>
+                        <a class="lp-plan-btn" href="/book-a-demo">Choose Growth</a>
                     </div>
-                    <ul class="lp-plan-feats">
-                        <li class="lp-plan-feat">Everything in Starter</li>
-                        <li class="lp-plan-feat">Continuous monitoring and alerts</li>
-                        <li class="lp-plan-feat">API access and your own thresholds</li>
-                    </ul>
-                    <a class="lp-plan-btn" href="/book-a-demo">Choose Growth</a>
                 </div>
                 <div class="lp-plan-card" data-plan="enterprise">
-                    <span class="lp-plan-badge is-empty" aria-hidden="true"></span>
-                    <h3 class="lp-plan-name">Enterprise</h3>
-                    <div class="lp-plan-from">From</div>
-                    <div class="lp-plan-price"><span class="lp-plan-cur">&euro;</span>1,490<span class="lp-plan-unit">/month</span></div>
-                    <div class="lp-plan-price-note">Contracted terms</div>
-                    <div class="lp-plan-stats">
-                        <div class="lp-plan-stat"><b>Unmetered</b><span>screenings</span></div>
-                        <div class="lp-plan-stat"><b>Unmetered</b><span>addresses</span></div>
-                        <div class="lp-plan-stat"><b>Unlimited</b><span>seats</span></div>
+
+                    <div class="lp-plan-top">
+                        <span class="lp-plan-badge is-empty" aria-hidden="true"></span>
+                        <h3 class="lp-plan-name">Enterprise</h3>
+                        <div class="lp-plan-price"><span class="lp-plan-from">From</span><span class="lp-plan-cur">&euro;</span><span class="lp-plan-fig">1,490</span><span class="lp-plan-unit">/month</span></div>
+                        <div class="lp-plan-price-note">Contracted terms</div>
                     </div>
-                    <ul class="lp-plan-feats">
-                        <li class="lp-plan-feat">Everything in Growth</li>
-                        <li class="lp-plan-feat">Four eyes on severe findings, enforced</li>
-                        <li class="lp-plan-feat">Data residency, SSO and an agreed response time</li>
-                    </ul>
-                    <a class="lp-plan-btn" href="/book-a-demo">Talk to us</a>
+                    <div class="lp-plan-body">
+                        <div class="lp-plan-stats">
+                        <div class="lp-plan-stat"><b>50,000</b><span>screenings a month</span></div>
+                        <div class="lp-plan-stat"><b>25,000</b><span>addresses monitored</span></div>
+                        <div class="lp-plan-stat"><b>25</b><span>seats</span></div>
+                        </div>
+                        <ul class="lp-plan-feats">
+                            <li class="lp-plan-feat">Everything in Growth</li>
+                            <li class="lp-plan-feat">Four eyes on severe findings, enforced</li>
+                            <li class="lp-plan-feat">Data residency, SSO and an agreed response time</li>
+                        </ul>
+                        <a class="lp-plan-btn" href="/book-a-demo">Talk to us</a>
+                    </div>
                 </div>
                 </div>
 
@@ -598,7 +617,7 @@
     <script src="/auth-flow.40.js" defer></script>
     <script src="/auth-nav.5.js" defer></script>
     <script src="/navlift.2.js" defer></script>
-    <script src="/i18n.123.js" defer></script>
+    <script src="/i18n.124.js" defer></script>
     <script src="/choose-plan.3.js" defer></script>
 </body>
 </html>
