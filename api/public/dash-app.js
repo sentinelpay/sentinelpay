@@ -1524,29 +1524,6 @@
         }
     }
 
-    function coverageLine() {
-        var c = (ENT && ENT.coverage) || {};
-        var box = el('p', 'dash-start-cov');
-        if (!c.addresses) {
-            box.textContent = t('The sanctions list has not loaded yet.');
-            return box;
-        }
-        box.textContent = t('Checked against') + ' ' + num(c.addresses) + ' ' +
-            t('sanctioned addresses from the OFAC list published') + ' ' + listDateText(c.listDate) + '.';
-        return box;
-    }
-
-    function stepRow(n, title, note, state) {
-        var row = el('div', 'dash-step dash-step-' + state);
-        var mark = el('div', 'dash-step-n');
-        mark.textContent = state === 'done' ? '✓' : String(n);
-        var body = el('div', 'dash-step-b');
-        body.appendChild(el('div', 'dash-step-t', title));
-        if (note) body.appendChild(el('div', 'dash-step-note', note));
-        row.appendChild(mark);
-        row.appendChild(body);
-        return row;
-    }
 
     function verdictCard(result) {
         var wrap = el('div', 'dash-result dash-result-' + (result.verdict || 'clear'));
@@ -1576,61 +1553,6 @@
         foot.textContent = t('Logged as check') + ' #' + (result.id || '?') + ' · ' + (result.digest || '');
         wrap.appendChild(foot);
         return wrap;
-    }
-
-    function scanBox(trial) {
-        var box = card('Check an address', trial.liveLeft + ' ' + t('of') + ' ' + trial.liveIncluded + ' ' + t('left'));
-        box.__count = box.querySelector('.dash-card-note');
-        var form = el('form', 'dash-scan');
-        var input = el('input', 'dash-scan-in');
-        input.type = 'text';
-        input.placeholder = t('Paste a wallet address');
-        input.setAttribute('spellcheck', 'false');
-        input.setAttribute('autocomplete', 'off');
-        var go = el('button', 'dash-btn dash-btn-primary', 'Check it');
-        go.type = 'submit';
-        form.appendChild(input);
-        form.appendChild(go);
-
-        var out = el('div', 'dash-scan-out');
-        var busy = false;
-
-        form.addEventListener('submit', function (e) {
-            e.preventDefault();
-            if (busy) return;
-            var value = input.value.trim();
-            if (!value) return;
-            busy = true;
-            go.disabled = true;
-            go.textContent = t('Checking');
-            out.innerHTML = '';
-
-            api('/v1/screen', { method: 'POST', body: { address: value } }).then(function (r) {
-                busy = false;
-                go.disabled = false;
-                go.textContent = t('Check it');
-                if (r.body.trial && ENT) ENT.trial = r.body.trial;
-                if (ENT && ENT.trial) {
-                    box.__count.textContent =
-                        ENT.trial.liveLeft + ' ' + t('of') + ' ' + ENT.trial.liveIncluded + ' ' + t('left');
-                    if (ENT.trial.liveLeft < 1) {
-                        input.disabled = true;
-                        go.disabled = true;
-                    }
-                }
-                if (!r.ok) {
-                    out.appendChild(el('div', 'dash-scan-err', r.body.error || 'That did not work'));
-                    return;
-                }
-                out.appendChild(verdictCard(r.body));
-                input.value = '';
-            });
-        });
-
-        box.appendChild(form);
-        box.appendChild(out);
-        box.appendChild(coverageLine());
-        return box;
     }
 
     function activateBox() {
@@ -1702,125 +1624,195 @@
         return box;
     }
 
-    function stepsCard(trial) {
-        var live = trial.state === 'starter' || trial.state === 'verified';
-        var box = card('How this goes', live
-            ? trial.daysLeft + ' ' + t('days left')
-            : t('About two minutes'));
-
-        box.appendChild(stepRow(1, 'Start your trial',
-            live ? trial.companyHost : t('Confirm your company and you are in'),
-            live ? 'done' : 'now'));
-
-        box.appendChild(stepRow(2, 'Run your first check',
-            !live ? t('One address, against the live sanctions list')
-                : (trial.liveUsed > 0 ? t('Done') : t('Paste any wallet address below')),
-            !live ? 'next' : (trial.liveUsed > 0 ? 'done' : 'now')));
-
-        box.appendChild(stepRow(3, 'Verify your number',
-            trial.phoneVerified
-                ? t('Your history is open')
-                : t('Opens your whole history, plus 10 live checks'),
-            trial.phoneVerified ? 'done' : 'next'));
-
-        box.appendChild(stepRow(4, 'Connect a public key',
-            t('We screen what already touched it, not just what comes next'), 'next'));
-
-        return box;
+    function trialMeta(trial) {
+        var bits = [];
+        if (trial.state === 'verified') bits.push(t('Verified'));
+        else bits.push(t('Trial'));
+        bits.push(trial.daysLeft + ' ' + t('days left'));
+        bits.push(trial.liveLeft + ' ' + t('of') + ' ' + trial.liveIncluded + ' ' + t('checks left'));
+        return bits.join('  ·  ');
     }
 
-    function whatYouGetCard() {
-        var box = card('What the trial includes', '');
-        var list = el('div', 'dash-facts');
-        [
-            ['1 + 1', 'One live check and one from your history, straight away'],
-            ['10', 'More live checks once your number is verified, and your history opens'],
-            ['14', 'Days, and no card'],
-        ].forEach(function (row) {
-            var r = el('div', 'dash-fact');
-            r.appendChild(el('b', 'dash-fact-n', row[0]));
-            r.appendChild(el('span', 'dash-fact-t', row[1]));
-            list.appendChild(r);
-        });
-        box.appendChild(list);
-        return box;
-    }
+    function consoleBox(trial) {
+        var box = el('div', 'dash-console');
+        var form = el('form', 'dash-console-form');
 
-    function coverageCard() {
-        var c = (ENT && ENT.coverage) || {};
-        var box = card('What we check against', '');
-        if (!c.addresses) {
-            box.appendChild(el('p', 'dash-start-p', 'The sanctions list has not loaded yet.'));
-            return box;
+        var input = el('input', 'dash-console-in');
+        input.type = 'text';
+        input.placeholder = t('Paste a wallet address');
+        input.setAttribute('spellcheck', 'false');
+        input.setAttribute('autocomplete', 'off');
+
+        var go = el('button', 'dash-btn dash-btn-primary dash-console-go', 'Check it');
+        go.type = 'submit';
+
+        if (trial.liveLeft < 1) {
+            input.disabled = true;
+            go.disabled = true;
         }
-        var list = el('div', 'dash-facts');
-        var one = el('div', 'dash-fact');
-        one.appendChild(el('b', 'dash-fact-n', num(c.addresses)));
-        one.appendChild(el('span', 'dash-fact-t', 'Sanctioned addresses on the OFAC list'));
-        list.appendChild(one);
-        var two = el('div', 'dash-fact');
-        two.appendChild(el('b', 'dash-fact-n', '6h'));
-        two.appendChild(el('span', 'dash-fact-t', 'How often we pull the list again'));
-        list.appendChild(two);
-        box.appendChild(list);
-        box.appendChild(el('p', 'dash-start-cov',
-            t('List published') + ' ' + listDateText(c.listDate) + '. ' +
-            t('Every check is kept with the list version it ran against.')));
+
+        form.appendChild(input);
+        form.appendChild(go);
+        box.appendChild(form);
+
+        var c = (ENT && ENT.coverage) || {};
+        var note = el('p', 'dash-console-note');
+        note.textContent = c.addresses
+            ? t('Checked against') + ' ' + num(c.addresses) + ' ' +
+              t('sanctioned addresses from the OFAC list published') + ' ' + listDateText(c.listDate) + '.'
+            : t('The sanctions list has not loaded yet.');
+        box.appendChild(note);
+
+        var out = el('div', 'dash-console-out');
+        box.appendChild(out);
+
+        var busy = false;
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (busy || input.disabled) return;
+            var value = input.value.trim();
+            if (!value) return;
+            busy = true;
+            go.disabled = true;
+            go.textContent = t('Checking');
+            out.textContent = '';
+
+            api('/v1/screen', { method: 'POST', body: { address: value } }).then(function (r) {
+                busy = false;
+                go.textContent = t('Check it');
+                if (r.body && r.body.trial && ENT) ENT.trial = r.body.trial;
+                var left = (ENT && ENT.trial) ? ENT.trial.liveLeft : 0;
+                go.disabled = left < 1;
+                input.disabled = left < 1;
+                var meta = document.querySelector('.dash-meta');
+                if (meta && ENT) meta.textContent = trialMeta(ENT.trial);
+                paintUsage();
+
+                if (!r.ok) {
+                    out.appendChild(el('div', 'dash-scan-err', (r.body && r.body.error) || 'That did not work'));
+                    return;
+                }
+                out.appendChild(verdictCard(r.body));
+                input.value = '';
+                var log = document.querySelector('.dash-log-body');
+                if (log) fillLog(log);
+            });
+        });
+
         return box;
+    }
+
+    function fillLog(body) {
+        body.textContent = '';
+        api('/v1/screenings').then(function (r) {
+            body.textContent = '';
+            var rows = (r.body && r.body.rows) || [];
+            if (!rows.length) {
+                body.appendChild(el('p', 'dash-empty', 'Nothing checked yet.'));
+                return;
+            }
+            var table = el('table', 'dash-table dash-table-log');
+            var hr = el('tr');
+            ['When', 'Chain', 'Address', 'Result'].forEach(function (h) { hr.appendChild(el('th', null, h)); });
+            table.appendChild(hr);
+            rows.forEach(function (row) {
+                var tr = el('tr', 'is-row');
+                tr.appendChild(el('td', 'dash-td-when', when(row.at)));
+                tr.appendChild(el('td', null, row.asset || '-'));
+                var a = el('td', 'dash-mono dash-td-addr');
+                a.textContent = row.address;
+                tr.appendChild(a);
+                var v = el('td');
+                var pill = el('span', row.verdict === 'severe' ? 'dash-v dash-v-bad' : 'dash-v dash-v-ok',
+                    row.verdict === 'severe' ? 'Sanctioned' : 'No match');
+                v.appendChild(pill);
+                tr.appendChild(v);
+                table.appendChild(tr);
+            });
+            body.appendChild(table);
+        });
+    }
+
+    function logCard() {
+        var box = card('Checks you have run', '');
+        var body = el('div', 'dash-log-body');
+        box.appendChild(body);
+        fillLog(body);
+        return box;
+    }
+
+    function activationGate() {
+        var wrap = el('div', 'dash-gate');
+        var name = ((ENT && ENT.name) || '').split(' ')[0];
+
+        var h = el('div', 'dash-gate-head');
+        h.appendChild(el('h1', 'dash-h1', name ? t('Welcome') + ', ' + name : 'Welcome'));
+        h.appendChild(el('p', 'dash-sub', 'One thing left before you can screen an address.'));
+        wrap.appendChild(h);
+
+        wrap.appendChild(activateBox());
+
+        var c = (ENT && ENT.coverage) || {};
+        if (c.addresses) {
+            wrap.appendChild(el('p', 'dash-gate-note',
+                t('Checked against') + ' ' + num(c.addresses) + ' ' +
+                t('sanctioned addresses from the OFAC list published') + ' ' + listDateText(c.listDate) + '.'));
+        }
+        return wrap;
     }
 
     function startScreen() {
-        var wrap = el('div');
         var trial = (ENT && ENT.trial) || { state: 'none' };
         var name = ((ENT && ENT.name) || '').split(' ')[0];
 
         if (trial.state === 'pending') {
-            wrap.appendChild(head('We are checking your company', 'Usually the same day'));
-            var waiting = card('Nothing for you to do', '');
+            var w1 = el('div', 'dash-gate');
+            var h1 = el('div', 'dash-gate-head');
+            h1.appendChild(el('h1', 'dash-h1', 'We are checking your company'));
+            h1.appendChild(el('p', 'dash-sub', 'Usually the same day. There is nothing for you to do.'));
+            w1.appendChild(h1);
+            var waiting = card('Why this happened', '');
             waiting.appendChild(el('p', 'dash-start-p',
                 'Your work email did not match the website you gave, so somebody here looks at it. We will email you the moment it opens.'));
-            wrap.appendChild(waiting);
-            return wrap;
+            w1.appendChild(waiting);
+            return w1;
         }
 
         if (trial.state === 'expired') {
-            wrap.appendChild(head('Your trial has ended', 'Fourteen days, and they went'));
+            var w2 = el('div', 'dash-gate');
+            var h2 = el('div', 'dash-gate-head');
+            h2.appendChild(el('h1', 'dash-h1', 'Your trial has ended'));
+            h2.appendChild(el('p', 'dash-sub', 'Fourteen days, and they went.'));
+            w2.appendChild(h2);
             var over = card('What happens now', '');
             over.appendChild(el('p', 'dash-start-p',
                 'Talk to us about the volume you actually need and we will shape a plan around it.'));
-            wrap.appendChild(over);
-            return wrap;
+            w2.appendChild(over);
+            return w2;
         }
 
-        var live = trial.state === 'starter' || trial.state === 'verified';
+        if (trial.state !== 'starter' && trial.state !== 'verified') return activationGate();
 
-        wrap.appendChild(head(
-            name ? t('Welcome') + ', ' + name : 'Find out what already touched your wallets',
-            live
-                ? 'Paste any wallet address and we check it against the live sanctions list.'
-                : 'Two minutes to set up, then you can screen your first address.'
-        ));
+        var wrap = el('div');
+        var top = el('div', 'dash-head');
+        var left = el('div');
+        left.appendChild(el('h1', 'dash-h1', name ? t('Welcome') + ', ' + name : 'Welcome'));
+        left.appendChild(el('p', 'dash-sub', 'Paste an address and we check it against the live sanctions list.'));
+        top.appendChild(left);
+        var meta = el('div', 'dash-meta');
+        meta.textContent = trialMeta(trial);
+        top.appendChild(meta);
+        wrap.appendChild(top);
 
-        var grid = el('div', 'dash-grid dash-grid-side');
-        var main = el('div', 'dash-stack');
-        var side = el('div', 'dash-stack');
+        wrap.appendChild(consoleBox(trial));
+        wrap.appendChild(logCard());
 
-        main.appendChild(stepsCard(trial));
-        main.appendChild(live ? scanBox(trial) : activateBox());
+        var next = el('p', 'dash-gate-note');
+        next.textContent = trial.historyOpen
+            ? t('Wallet monitoring is next. We will tell you the moment it opens.')
+            : t('Your full history and wallet monitoring are next. We will tell you the moment they open.');
+        wrap.appendChild(next);
 
-        if (live && !trial.historyOpen) {
-            var locked = card('Your history', 'Locked');
-            locked.appendChild(el('p', 'dash-start-p',
-                'The rest of your history is already there. Verify your number and it opens, along with 10 live checks.'));
-            main.appendChild(locked);
-        }
-
-        if (!live) side.appendChild(whatYouGetCard());
-        side.appendChild(coverageCard());
-
-        grid.appendChild(main);
-        grid.appendChild(side);
-        wrap.appendChild(grid);
         return wrap;
     }
 
@@ -1869,8 +1861,9 @@
         }
         var trial = ENT.trial || {};
         var live = trial.state === 'starter' || trial.state === 'verified';
-        box.hidden = !live;
-        if (!live || !search) return;
+        var onStart = !parse().name;
+        box.hidden = !live || onStart;
+        if (box.hidden || !search) return;
         search.placeholder = t('Screen an address');
         search.setAttribute('aria-label', t('Screen an address'));
     }
