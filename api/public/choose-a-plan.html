@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="/fonts.2.css">
     <link rel="stylesheet" href="/style.27.css">
     <link rel="stylesheet" href="/landing.149.css">
-    <link rel="stylesheet" href="/corp.350.css">
+    <link rel="stylesheet" href="/corp.354.css">
     <style>
         #sp-loader{position:fixed;inset:0;z-index:99999;background:#050505;display:flex;align-items:center;justify-content:center;transition:opacity 0.55s ease;}
         #sp-loader.spl-done{opacity:0;pointer-events:none;}
@@ -344,83 +344,125 @@
                 <div class="lp-plan-slab">
                     <span class="lp-plan-dots" aria-hidden="true"></span>
                     <span class="lp-plan-edge" aria-hidden="true"></span>
-                    <div class="lp-plan-cols">
-                    <div class="lp-plan-col is-first" data-plan="trial">
-                        <div class="lp-plan-top">
-                        <span class="lp-plan-badge">Start here</span>
+                    <div class="lp-plan-matrix">
+                        <div class="lp-plan-row is-head">
+                            <div class="lp-plan-cell is-label"></div>
+                        <div class="lp-plan-head is-first">
+                            <span class="lp-plan-badge">Start here</span>
                             <h3 class="lp-plan-name">Free trial</h3>
                             <div class="lp-plan-price"><span class="lp-plan-fig">Free</span></div>
                             <div class="lp-plan-price-note">14 days, no card</div>
+                            <button class="lp-plan-btn lp-plan-btn-solid" type="button" data-plan-start="1">Start free trial</button>
                         </div>
-                        <div class="lp-plan-stats">
-                            <div class="lp-plan-stat"><b>1 + 1</b><span>checks to run</span></div>
-                            <div class="lp-plan-stat"><b>14</b><span>days to decide</span></div>
-                            <div class="lp-plan-stat"><b>1</b><span>seat</span></div>
-                        </div>
-                        <ul class="lp-plan-feats">
-                            <li class="lp-plan-feat">Against the live OFAC list</li>
-                            <li class="lp-plan-feat">Every check logged as evidence</li>
-                            <li class="lp-plan-feat">Verify your number to open the rest</li>
-                        </ul>
-                        <button class="lp-plan-btn lp-plan-btn-solid" type="button" data-plan-start="1">Start free trial</button>
-                    </div>
-                    <div class="lp-plan-col" data-plan="starter">
-                        <div class="lp-plan-top">
-                        <span class="lp-plan-badge is-empty" aria-hidden="true"></span>
+                        <div class="lp-plan-head">
+                            <span class="lp-plan-badge is-empty" aria-hidden="true"></span>
                             <h3 class="lp-plan-name">Starter</h3>
                             <div class="lp-plan-price"><span class="lp-plan-cur">&euro;</span><span class="lp-plan-fig">99</span><span class="lp-plan-unit">/month</span></div>
-                            <div class="lp-plan-price-note">Billed monthly, cancel anytime</div>
+                            <div class="lp-plan-price-note">Billed monthly</div>
+                            <a class="lp-plan-btn" href="/book-a-demo">Choose Starter</a>
                         </div>
-                        <div class="lp-plan-stats">
-                            <div class="lp-plan-stat"><b>1,000</b><span>screenings a month</span></div>
-                            <div class="lp-plan-stat"><b>100</b><span>addresses monitored</span></div>
-                            <div class="lp-plan-stat"><b>3</b><span>seats</span></div>
-                        </div>
-                        <ul class="lp-plan-feats">
-                            <li class="lp-plan-feat">OFAC, EU, UK and UN sanctions</li>
-                            <li class="lp-plan-feat">Address and xpub screening</li>
-                            <li class="lp-plan-feat">Evidence export for your auditor</li>
-                        </ul>
-                        <a class="lp-plan-btn" href="/book-a-demo">Choose Starter</a>
-                    </div>
-                    <div class="lp-plan-col is-pick" data-plan="growth">
-                        <div class="lp-plan-top">
-                        <span class="lp-plan-badge">Most teams start here</span>
+                        <div class="lp-plan-head is-pick">
+                            <span class="lp-plan-badge">Most teams start here</span>
                             <h3 class="lp-plan-name">Growth</h3>
                             <div class="lp-plan-price"><span class="lp-plan-cur">&euro;</span><span class="lp-plan-fig">399</span><span class="lp-plan-unit">/month</span></div>
-                            <div class="lp-plan-price-note">Billed monthly, cancel anytime</div>
+                            <div class="lp-plan-price-note">Billed monthly</div>
+                            <a class="lp-plan-btn" href="/book-a-demo">Choose Growth</a>
                         </div>
-                        <div class="lp-plan-stats">
-                            <div class="lp-plan-stat"><b>10,000</b><span>screenings a month</span></div>
-                            <div class="lp-plan-stat"><b>2,500</b><span>addresses monitored</span></div>
-                            <div class="lp-plan-stat"><b>10</b><span>seats</span></div>
-                        </div>
-                        <ul class="lp-plan-feats">
-                            <li class="lp-plan-feat">Everything in Starter</li>
-                            <li class="lp-plan-feat">Continuous monitoring and alerts</li>
-                            <li class="lp-plan-feat">API access and your own thresholds</li>
-                        </ul>
-                        <a class="lp-plan-btn" href="/book-a-demo">Choose Growth</a>
-                    </div>
-                    <div class="lp-plan-col" data-plan="enterprise">
-                        <div class="lp-plan-top">
-                        <span class="lp-plan-badge is-empty" aria-hidden="true"></span>
+                        <div class="lp-plan-head">
+                            <span class="lp-plan-badge is-empty" aria-hidden="true"></span>
                             <h3 class="lp-plan-name">Enterprise</h3>
                             <div class="lp-plan-price"><span class="lp-plan-from">From</span><span class="lp-plan-cur">&euro;</span><span class="lp-plan-fig">1,490</span><span class="lp-plan-unit">/month</span></div>
                             <div class="lp-plan-price-note">Contracted terms</div>
+                            <a class="lp-plan-btn" href="/book-a-demo">Talk to us</a>
                         </div>
-                        <div class="lp-plan-stats">
-                            <div class="lp-plan-stat"><b>50,000</b><span>screenings a month</span></div>
-                            <div class="lp-plan-stat"><b>25,000</b><span>addresses monitored</span></div>
-                            <div class="lp-plan-stat"><b>25</b><span>seats</span></div>
                         </div>
-                        <ul class="lp-plan-feats">
-                            <li class="lp-plan-feat">Everything in Growth</li>
-                            <li class="lp-plan-feat">Four eyes on severe findings, enforced</li>
-                            <li class="lp-plan-feat">Data residency, SSO and an agreed response time</li>
-                        </ul>
-                        <a class="lp-plan-btn" href="/book-a-demo">Talk to us</a>
-                    </div>
+                        <div class="lp-plan-row is-group"><div class="lp-plan-cell is-label">What you get</div></div>
+                        <div class="lp-plan-row">
+                            <div class="lp-plan-cell is-label"><span>Screenings a month</span></div>
+                            <div class="lp-plan-cell is-first" data-plan="trial"><b>1 + 1</b></div>
+                            <div class="lp-plan-cell" data-plan="starter"><b>1,000</b></div>
+                            <div class="lp-plan-cell is-pick" data-plan="growth"><b>10,000</b></div>
+                            <div class="lp-plan-cell" data-plan="enterprise"><b>50,000</b></div>
+                        </div>
+                        <div class="lp-plan-row">
+                            <div class="lp-plan-cell is-label"><span>Addresses monitored</span></div>
+                            <div class="lp-plan-cell is-first" data-plan="trial"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
+                            <div class="lp-plan-cell" data-plan="starter"><b>100</b></div>
+                            <div class="lp-plan-cell is-pick" data-plan="growth"><b>2,500</b></div>
+                            <div class="lp-plan-cell" data-plan="enterprise"><b>25,000</b></div>
+                        </div>
+                        <div class="lp-plan-row">
+                            <div class="lp-plan-cell is-label"><span>Seats</span></div>
+                            <div class="lp-plan-cell is-first" data-plan="trial"><b>1</b></div>
+                            <div class="lp-plan-cell" data-plan="starter"><b>3</b></div>
+                            <div class="lp-plan-cell is-pick" data-plan="growth"><b>10</b></div>
+                            <div class="lp-plan-cell" data-plan="enterprise"><b>25</b></div>
+                        </div>
+                        <div class="lp-plan-row is-group"><div class="lp-plan-cell is-label">Every plan, no exceptions</div></div>
+                        <div class="lp-plan-row">
+                            <div class="lp-plan-cell is-label"><span>OFAC, EU, UK and UN sanctions</span><span class="lp-plan-hint">Others sell you the American list and charge for Europe.</span></div>
+                            <div class="lp-plan-cell is-first" data-plan="trial"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
+                            <div class="lp-plan-cell" data-plan="starter"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
+                            <div class="lp-plan-cell is-pick" data-plan="growth"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
+                            <div class="lp-plan-cell" data-plan="enterprise"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
+                        </div>
+                        <div class="lp-plan-row">
+                            <div class="lp-plan-cell is-label"><span>Evidence sealed with the list version it ran against</span><span class="lp-plan-hint">Your auditor checks the file. They do not have to trust us.</span></div>
+                            <div class="lp-plan-cell is-first" data-plan="trial"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
+                            <div class="lp-plan-cell" data-plan="starter"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
+                            <div class="lp-plan-cell is-pick" data-plan="growth"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
+                            <div class="lp-plan-cell" data-plan="enterprise"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
+                        </div>
+                        <div class="lp-plan-row">
+                            <div class="lp-plan-cell is-label"><span>A named reason, never a bare score</span><span class="lp-plan-hint">A number nobody can defend is worth nothing to a regulator.</span></div>
+                            <div class="lp-plan-cell is-first" data-plan="trial"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
+                            <div class="lp-plan-cell" data-plan="starter"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
+                            <div class="lp-plan-cell is-pick" data-plan="growth"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
+                            <div class="lp-plan-cell" data-plan="enterprise"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
+                        </div>
+                        <div class="lp-plan-row is-group"><div class="lp-plan-cell is-label">Where we pull ahead</div></div>
+                        <div class="lp-plan-row">
+                            <div class="lp-plan-cell is-label"><span>Re-screened when a list changes</span><span class="lp-plan-hint">Sanctions apply backwards. A wallet that was clean on Monday is not clean on Friday.</span></div>
+                            <div class="lp-plan-cell is-first" data-plan="trial"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
+                            <div class="lp-plan-cell" data-plan="starter"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
+                            <div class="lp-plan-cell is-pick" data-plan="growth"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
+                            <div class="lp-plan-cell" data-plan="enterprise"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
+                        </div>
+                        <div class="lp-plan-row">
+                            <div class="lp-plan-cell is-label"><span>History swept the moment you connect a key</span><span class="lp-plan-hint">Everyone else watches what comes next. We tell you what already happened.</span></div>
+                            <div class="lp-plan-cell is-first" data-plan="trial"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
+                            <div class="lp-plan-cell" data-plan="starter"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
+                            <div class="lp-plan-cell is-pick" data-plan="growth"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
+                            <div class="lp-plan-cell" data-plan="enterprise"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
+                        </div>
+                        <div class="lp-plan-row">
+                            <div class="lp-plan-cell is-label"><span>Continuous monitoring and alerts</span></div>
+                            <div class="lp-plan-cell is-first" data-plan="trial"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
+                            <div class="lp-plan-cell" data-plan="starter"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
+                            <div class="lp-plan-cell is-pick" data-plan="growth"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
+                            <div class="lp-plan-cell" data-plan="enterprise"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
+                        </div>
+                        <div class="lp-plan-row">
+                            <div class="lp-plan-cell is-label"><span>API access and your own thresholds</span></div>
+                            <div class="lp-plan-cell is-first" data-plan="trial"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
+                            <div class="lp-plan-cell" data-plan="starter"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
+                            <div class="lp-plan-cell is-pick" data-plan="growth"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
+                            <div class="lp-plan-cell" data-plan="enterprise"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
+                        </div>
+                        <div class="lp-plan-row">
+                            <div class="lp-plan-cell is-label"><span>Four eyes on severe findings, enforced</span><span class="lp-plan-hint">A rule in a document is a rule somebody breaks on a Friday.</span></div>
+                            <div class="lp-plan-cell is-first" data-plan="trial"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
+                            <div class="lp-plan-cell" data-plan="starter"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
+                            <div class="lp-plan-cell is-pick" data-plan="growth"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
+                            <div class="lp-plan-cell" data-plan="enterprise"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
+                        </div>
+                        <div class="lp-plan-row">
+                            <div class="lp-plan-cell is-label"><span>EU data residency and SSO</span></div>
+                            <div class="lp-plan-cell is-first" data-plan="trial"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
+                            <div class="lp-plan-cell" data-plan="starter"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
+                            <div class="lp-plan-cell is-pick" data-plan="growth"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
+                            <div class="lp-plan-cell" data-plan="enterprise"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
+                        </div>
                     </div>
                 </div>
 
@@ -605,7 +647,7 @@
     <script src="/auth-flow.40.js" defer></script>
     <script src="/auth-nav.5.js" defer></script>
     <script src="/navlift.2.js" defer></script>
-    <script src="/i18n.124.js" defer></script>
-    <script src="/choose-plan.4.js" defer></script>
+    <script src="/i18n.125.js" defer></script>
+    <script src="/choose-plan.5.js" defer></script>
 </body>
 </html>
