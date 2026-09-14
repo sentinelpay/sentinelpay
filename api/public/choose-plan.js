@@ -6,7 +6,7 @@
     }
 
     var gate = document.getElementById('lp-plan-gate');
-    var grid = document.querySelector('.lp-plan-grid');
+    var grid = document.querySelector('.lp-plan-cols');
     if (!gate || !grid) return;
 
     var who = document.getElementById('lp-plan-gate-who');
