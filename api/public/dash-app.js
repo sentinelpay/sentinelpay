@@ -141,11 +141,22 @@
             { route: 'settings', label: 'Settings', icon: 'cog' },
         ] },
     ];
+    var LIVE_NAV = [
+        { group: 'Work', items: [
+            { route: '', label: 'Start', icon: 'home' },
+            { route: 'screenings-log', label: 'Checks you have run', icon: 'search' },
+        ] },
+        { group: 'Account', items: [
+            { route: 'settings', label: 'Settings', icon: 'cog' },
+        ] },
+    ];
+
     function paintNav(current) {
         var nav = document.getElementById('dash-nav');
         if (!nav) return;
         nav.textContent = '';
-        NAV.forEach(function (g) {
+        var groups = (typeof demoMode === 'function' && demoMode()) ? NAV : LIVE_NAV;
+        groups.forEach(function (g) {
             nav.appendChild(el('div', 'dash-nav-group', g.group));
             g.items.forEach(function (it) {
                 var a = document.createElement('a');
@@ -167,11 +178,35 @@
     function paintLive() {
         var box = document.getElementById('dash-live');
         if (!box) return;
+        if (typeof demoMode === 'function' && !demoMode() && ENT) {
+            box.hidden = true;
+            return;
+        }
+        box.hidden = false;
         box.innerHTML = '<i></i><span>' + esc(t('Monitoring is running')) + '</span>';
     }
     function paintUsage() {
         var box = document.getElementById('dash-usage');
         if (!box) return;
+        if (typeof demoMode === 'function' && !demoMode() && ENT) {
+            var tr = ENT.trial || {};
+            if (tr.state !== 'starter' && tr.state !== 'verified') {
+                box.hidden = true;
+                return;
+            }
+            box.hidden = false;
+            var used = tr.liveUsed || 0;
+            var inc = tr.liveIncluded || 0;
+            var pc = inc ? Math.min(100, Math.round((used / inc) * 100)) : 0;
+            box.innerHTML =
+                '<div class="dash-usage-top"><span>' + esc(t('Checks')) + '</span>' +
+                '<b>' + esc(String(used)) + ' / ' + esc(String(inc)) + '</b></div>' +
+                '<div class="dash-usage-bar"><div class="dash-usage-fill" style="width:' + pc + '%"></div></div>' +
+                '<div class="dash-usage-note">' + esc(t('Trial')) + ' · ' +
+                esc(String(tr.daysLeft)) + ' ' + esc(t('days left')) + '</div>';
+            return;
+        }
+        box.hidden = false;
         var a = D.account;
         var pct = Math.min(100, Math.round((a.checksUsed / a.checksIncluded) * 100));
         box.innerHTML =
@@ -1453,6 +1488,283 @@
         setTimeout(function () { input.focus(); }, 30);
     }
 
+    var ENT = null;
+
+    function api(path, opts) {
+        var o = opts || {};
+        return fetch(path, {
+            method: o.method || 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: o.body ? JSON.stringify(o.body) : undefined
+        }).then(function (r) {
+            return r.json().catch(function () { return {}; }).then(function (j) {
+                return { status: r.status, ok: r.ok, body: j };
+            });
+        });
+    }
+
+    function loadEntitlement() {
+        return api('/v1/entitlement').then(function (r) {
+            ENT = r.ok ? r.body : null;
+            return ENT;
+        }).catch(function () { ENT = null; return null; });
+    }
+
+    function listDateText(raw) {
+        if (!raw) return '';
+        var p = String(raw).split('/');
+        if (p.length !== 3) return raw;
+        var d = new Date(Number(p[2]), Number(p[0]) - 1, Number(p[1]));
+        if (isNaN(d.getTime())) return raw;
+        try {
+            return d.toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' });
+        } catch (err) {
+            return raw;
+        }
+    }
+
+    function coverageLine() {
+        var c = (ENT && ENT.coverage) || {};
+        var box = el('p', 'dash-start-cov');
+        if (!c.addresses) {
+            box.textContent = t('The sanctions list has not loaded yet.');
+            return box;
+        }
+        box.textContent = t('Checked against') + ' ' + num(c.addresses) + ' ' +
+            t('sanctioned addresses from the OFAC list published') + ' ' + listDateText(c.listDate) + '.';
+        return box;
+    }
+
+    function stepRow(n, title, note, state) {
+        var row = el('div', 'dash-step dash-step-' + state);
+        var mark = el('div', 'dash-step-n');
+        mark.textContent = state === 'done' ? '✓' : String(n);
+        var body = el('div', 'dash-step-b');
+        body.appendChild(el('div', 'dash-step-t', title));
+        if (note) body.appendChild(el('div', 'dash-step-note', note));
+        row.appendChild(mark);
+        row.appendChild(body);
+        return row;
+    }
+
+    function verdictCard(result) {
+        var wrap = el('div', 'dash-result dash-result-' + (result.verdict || 'clear'));
+        var top = el('div', 'dash-result-top');
+        top.appendChild(el('span', 'dash-result-v',
+            result.verdict === 'severe' ? 'Sanctioned' : 'No sanctions match'));
+        if (result.chain) top.appendChild(el('span', 'dash-result-chain', result.chain));
+        wrap.appendChild(top);
+
+        var addr = el('div', 'dash-result-addr');
+        addr.textContent = result.address;
+        wrap.appendChild(addr);
+
+        (result.reasons || []).forEach(function (r) {
+            var line = el('div', 'dash-result-r');
+            line.appendChild(el('div', 'dash-result-rl', r.label));
+            if (r.entity) {
+                var who = el('div', 'dash-result-re');
+                who.textContent = r.entity + (r.programs && r.programs.length ? ' · ' + r.programs.join(', ') : '');
+                line.appendChild(who);
+            }
+            if (r.remarks) line.appendChild(el('div', 'dash-result-rm', r.remarks));
+            wrap.appendChild(line);
+        });
+
+        var foot = el('div', 'dash-result-foot');
+        foot.textContent = t('Logged as check') + ' #' + (result.id || '?') + ' · ' + (result.digest || '');
+        wrap.appendChild(foot);
+        return wrap;
+    }
+
+    function scanBox(trial) {
+        var box = card('Check an address', trial.liveLeft + ' ' + t('of') + ' ' + trial.liveIncluded + ' ' + t('left'));
+        box.__count = box.querySelector('.dash-card-note');
+        var form = el('form', 'dash-scan');
+        var input = el('input', 'dash-scan-in');
+        input.type = 'text';
+        input.placeholder = t('Paste a wallet address');
+        input.setAttribute('spellcheck', 'false');
+        input.setAttribute('autocomplete', 'off');
+        var go = el('button', 'dash-btn dash-btn-primary', 'Check it');
+        go.type = 'submit';
+        form.appendChild(input);
+        form.appendChild(go);
+
+        var out = el('div', 'dash-scan-out');
+        var busy = false;
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (busy) return;
+            var value = input.value.trim();
+            if (!value) return;
+            busy = true;
+            go.disabled = true;
+            go.textContent = t('Checking');
+            out.innerHTML = '';
+
+            api('/v1/screen', { method: 'POST', body: { address: value } }).then(function (r) {
+                busy = false;
+                go.disabled = false;
+                go.textContent = t('Check it');
+                if (r.body.trial && ENT) ENT.trial = r.body.trial;
+                if (ENT && ENT.trial) {
+                    box.__count.textContent =
+                        ENT.trial.liveLeft + ' ' + t('of') + ' ' + ENT.trial.liveIncluded + ' ' + t('left');
+                    if (ENT.trial.liveLeft < 1) {
+                        input.disabled = true;
+                        go.disabled = true;
+                    }
+                }
+                if (!r.ok) {
+                    out.appendChild(el('div', 'dash-scan-err', r.body.error || 'That did not work'));
+                    return;
+                }
+                out.appendChild(verdictCard(r.body));
+                input.value = '';
+            });
+        });
+
+        box.appendChild(form);
+        box.appendChild(out);
+        box.appendChild(coverageLine());
+        return box;
+    }
+
+    function activateBox() {
+        var box = card('Start your trial', 'One trial per company');
+        var form = el('form', 'dash-activate');
+
+        var who = el('p', 'dash-activate-who');
+        who.textContent = t('Signed in as') + ' ' + ((ENT && ENT.email) || '');
+        form.appendChild(who);
+
+        var lab = el('label', 'dash-field');
+        lab.appendChild(el('span', 'dash-field-l', 'Company website'));
+        var site = el('input', 'dash-field-in');
+        site.type = 'text';
+        site.placeholder = 'acme.com';
+        site.setAttribute('autocomplete', 'off');
+        var guess = String((ENT && ENT.email) || '').split('@').pop();
+        if (guess && guess.indexOf('.') !== -1) site.value = guess;
+        lab.appendChild(site);
+        lab.appendChild(el('span', 'dash-field-note', 'This has to match the domain of your work email.'));
+        form.appendChild(lab);
+
+        var checks = [
+            ['notGambling', 'This business is not an online casino, sportsbook or betting platform.'],
+            ['consent', 'I agree to the terms of service and to be contacted about this account.']
+        ];
+        var state = {};
+        checks.forEach(function (c) {
+            var row = el('label', 'dash-check');
+            var input = el('input');
+            input.type = 'checkbox';
+            input.addEventListener('change', function () { state[c[0]] = input.checked; });
+            row.appendChild(input);
+            row.appendChild(el('span', null, c[1]));
+            form.appendChild(row);
+        });
+
+        var err = el('div', 'dash-scan-err');
+        err.hidden = true;
+        var go = el('button', 'dash-btn dash-btn-primary', 'Start free trial');
+        go.type = 'submit';
+        form.appendChild(go);
+        form.appendChild(err);
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            err.hidden = true;
+            go.disabled = true;
+            api('/v1/trial/activate', {
+                method: 'POST',
+                body: {
+                    website: site.value.trim(),
+                    company: site.value.trim(),
+                    consent: state.consent === true,
+                    notGambling: state.notGambling === true
+                }
+            }).then(function (r) {
+                go.disabled = false;
+                if (!r.ok) {
+                    err.textContent = r.body.error || t('Could not start the trial');
+                    err.hidden = false;
+                    return;
+                }
+                return loadEntitlement().then(function () { renderStartInto(view); });
+            });
+        });
+
+        box.appendChild(form);
+        box.appendChild(coverageLine());
+        return box;
+    }
+
+    function startScreen() {
+        var wrap = el('div');
+        var trial = (ENT && ENT.trial) || { state: 'none' };
+        var name = ((ENT && ENT.name) || '').split(' ')[0];
+
+        wrap.appendChild(head(
+            name ? t('Welcome') + ', ' + name : 'Find out what already touched your wallets',
+            'Connect a key and we screen what has already happened, not just what comes next.'
+        ));
+
+        if (trial.state === 'none') {
+            wrap.appendChild(activateBox());
+            return wrap;
+        }
+
+        if (trial.state === 'pending') {
+            var waiting = card('We are checking your company', 'Usually the same day');
+            waiting.appendChild(el('p', 'dash-start-p',
+                'Your work email did not match the website you gave, so somebody here looks at it. We will email you the moment it opens.'));
+            wrap.appendChild(waiting);
+            return wrap;
+        }
+
+        if (trial.state === 'expired') {
+            var over = card('Your trial has ended', '');
+            over.appendChild(el('p', 'dash-start-p',
+                'Talk to us about the volume you actually need and we will shape a plan around it.'));
+            wrap.appendChild(over);
+            return wrap;
+        }
+
+        var steps = card('Getting set up', trial.daysLeft + ' ' + t('days left'));
+        steps.appendChild(stepRow(1, 'Trial active', trial.companyHost, 'done'));
+        steps.appendChild(stepRow(2, 'Run your first check',
+            trial.liveUsed > 0 ? t('Done') : t('Paste any wallet address below'),
+            trial.liveUsed > 0 ? 'done' : 'now'));
+        steps.appendChild(stepRow(3, 'Verify your number',
+            trial.phoneVerified
+                ? t('Your history is open')
+                : t('Opens your whole history, plus 10 live checks'),
+            trial.phoneVerified ? 'done' : 'next'));
+        steps.appendChild(stepRow(4, 'Connect a public key',
+            t('We screen what already touched it, not just what comes next'), 'next'));
+        wrap.appendChild(steps);
+
+        wrap.appendChild(scanBox(trial));
+
+        if (!trial.historyOpen) {
+            var locked = card('Your history', 'Locked');
+            locked.appendChild(el('p', 'dash-start-p',
+                'The rest of your history is already there. Verify your number and it opens, along with 10 live checks.'));
+            wrap.appendChild(locked);
+        }
+
+        return wrap;
+    }
+
+    function renderStartInto(host) {
+        while (host.firstChild) host.removeChild(host.firstChild);
+        host.appendChild(startScreen());
+    }
+
     var currentKeys = null;
     function parse() {
         var raw = (location.hash || '').replace(/^#\/?/, '');
@@ -1463,8 +1775,95 @@
     function go(route) {
         location.hash = '#/' + route;
     }
+    views.start = function () { return startScreen(); };
+
+    function demoMode() {
+        try {
+            return localStorage.getItem('sp-dash-demo') === '1';
+        } catch (err) {
+            return false;
+        }
+    }
+    function setDemo(on) {
+        try {
+            localStorage.setItem('sp-dash-demo', on ? '1' : '0');
+        } catch (err) {  }
+    }
+
+    function liveAccount() {
+        return ENT && ENT.trial && (ENT.trial.state === 'starter' || ENT.trial.state === 'verified');
+    }
+
+    function paintDemoChip() {
+        var chip = document.getElementById('dash-env');
+        if (!chip) return;
+        chip.hidden = false;
+        chip.textContent = demoMode() ? t('Demo workspace') : t('Your workspace');
+        chip.className = demoMode() ? 'dash-chip dash-chip-demo' : 'dash-chip';
+        chip.onclick = function () {
+            setDemo(!demoMode());
+            location.hash = '#/';
+            render();
+        };
+        chip.title = demoMode()
+            ? t('Sample data, not yours. Click to go back to your workspace.')
+            : t('Click to look around a workspace filled with sample data.');
+    }
+
+    var LIVE_ROUTES = { 'settings': 1, 'screenings-log': 1 };
+
+    views['screenings-log'] = function () {
+        var wrap = el('div');
+        wrap.appendChild(head('Checks you have run',
+            'Every check is kept with the list it was run against, so you can show what you knew and when.'));
+        var box = card('Your checks', '');
+        var body = el('div', 'dash-log-body', 'Loading');
+        box.appendChild(body);
+        wrap.appendChild(box);
+
+        api('/v1/screenings').then(function (r) {
+            body.textContent = '';
+            var rows = (r.body && r.body.rows) || [];
+            if (!rows.length) {
+                body.appendChild(el('p', 'dash-start-p', 'Nothing yet. Run your first check from the start screen.'));
+                return;
+            }
+            var table = el('table', 'dash-table');
+            var head2 = el('tr');
+            ['When', 'Chain', 'Address', 'Result'].forEach(function (h) {
+                head2.appendChild(el('th', null, h));
+            });
+            table.appendChild(head2);
+            rows.forEach(function (row) {
+                var tr = el('tr', 'is-row');
+                tr.appendChild(el('td', null, when(row.at)));
+                tr.appendChild(el('td', null, row.asset || '-'));
+                var a = el('td', 'dash-mono');
+                a.textContent = row.address;
+                tr.appendChild(a);
+                tr.appendChild(el('td', null, row.verdict === 'severe' ? 'Sanctioned' : 'No sanctions match'));
+                table.appendChild(tr);
+            });
+            body.appendChild(table);
+        });
+        return wrap;
+    };
+
     function render() {
         var r = parse();
+        var ownWorkspace = ENT && !demoMode();
+        if (ownWorkspace && !LIVE_ROUTES[r.name]) {
+            while (view.firstChild) view.removeChild(view.firstChild);
+            view.appendChild(startScreen());
+            paintNav('');
+            paintDemoChip();
+            paintLive();
+            paintUsage();
+            closeRail();
+            window.scrollTo(0, 0);
+            document.title = 'Sentinelpay · ' + t('Start');
+            return;
+        }
         var make = views[r.name] || views[''];
         var node;
         try {
@@ -1489,6 +1888,7 @@
         paintNav(r.name === 'screening' ? 'screenings' : r.name);
         paintLive();
         paintUsage();
+        paintDemoChip();
         closeRail();
         window.scrollTo(0, 0);
         var first = view.querySelector('h1');
@@ -1580,5 +1980,8 @@
             if (chip) chip.hidden = false;
         })
         .catch(function () {  });
-    render();
+
+    loadEntitlement().then(function () {
+        render();
+    });
 })();

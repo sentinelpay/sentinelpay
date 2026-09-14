@@ -592,3 +592,141 @@ a.dash-link:hover { border-bottom-color: var(--d-accent); }
     .dash-modal-top { padding-top: 8vh; }
     .dash-palette-list { max-height: 60vh; }
 }
+.dash-start-p {
+    margin: 0.2rem 0 0;
+    color: var(--d-ink-2);
+    line-height: 1.55;
+    max-width: 58ch;
+}
+.dash-start-cov {
+    margin: 0.9rem 0 0;
+    padding-top: 0.8rem;
+    border-top: 1px solid var(--d-line);
+    color: var(--d-ink-2);
+    font-size: 0.82rem;
+}
+
+.dash-step {
+    display: flex;
+    gap: 0.85rem;
+    align-items: flex-start;
+    padding: 0.7rem 0;
+    border-top: 1px solid var(--d-line);
+}
+.dash-step:first-of-type { border-top: 0; }
+.dash-step-n {
+    flex: 0 0 auto;
+    width: 1.55rem;
+    height: 1.55rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border: 1px solid var(--d-line);
+    color: var(--d-ink-2);
+    background: var(--d-card);
+}
+.dash-step-b { min-width: 0; }
+.dash-step-t { font-weight: 550; }
+.dash-step-note { color: var(--d-ink-2); font-size: 0.85rem; margin-top: 0.1rem; }
+.dash-step-done .dash-step-n { background: var(--d-low-bg); border-color: transparent; color: var(--d-low); }
+.dash-step-done .dash-step-t { color: var(--d-ink-2); }
+.dash-step-now .dash-step-n { background: var(--d-accent); border-color: transparent; color: #fff; }
+
+.dash-scan { display: flex; gap: 0.6rem; margin-top: 0.4rem; flex-wrap: wrap; }
+.dash-scan-in {
+    flex: 1 1 18rem;
+    min-width: 0;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--d-line);
+    border-radius: 8px;
+    background: var(--d-bg);
+    color: var(--d-ink);
+    font: inherit;
+    font-family: var(--d-mono);
+    font-size: 0.86rem;
+}
+.dash-scan-in:focus { outline: 2px solid var(--d-accent); outline-offset: 1px; }
+.dash-scan-out { margin-top: 0.9rem; }
+.dash-scan-err {
+    margin-top: 0.7rem;
+    color: var(--d-severe);
+    font-size: 0.88rem;
+}
+
+.dash-result {
+    border: 1px solid var(--d-line);
+    border-radius: 10px;
+    padding: 0.9rem 1rem;
+    background: var(--d-card);
+}
+.dash-result-severe { border-color: var(--d-severe); background: var(--d-severe-bg); }
+.dash-result-top { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+.dash-result-v { font-weight: 650; }
+.dash-result-severe .dash-result-v { color: var(--d-severe); }
+.dash-result-clear .dash-result-v { color: var(--d-low); }
+.dash-result-chain {
+    font-size: 0.75rem;
+    padding: 0.1rem 0.45rem;
+    border-radius: 99px;
+    border: 1px solid var(--d-line);
+    color: var(--d-ink-2);
+}
+.dash-result-addr {
+    margin-top: 0.45rem;
+    font-family: var(--d-mono);
+    font-size: 0.8rem;
+    word-break: break-all;
+    color: var(--d-ink-2);
+}
+.dash-result-r { margin-top: 0.7rem; }
+.dash-result-rl { font-size: 0.9rem; }
+.dash-result-re { font-size: 0.85rem; color: var(--d-ink-2); margin-top: 0.15rem; }
+.dash-result-rm { font-size: 0.8rem; color: var(--d-ink-2); margin-top: 0.15rem; font-style: italic; }
+.dash-result-foot {
+    margin-top: 0.8rem;
+    padding-top: 0.7rem;
+    border-top: 1px solid var(--d-line);
+    font-size: 0.72rem;
+    color: var(--d-ink-2);
+    word-break: break-all;
+}
+
+.dash-activate { display: block; }
+.dash-activate-who { margin: 0 0 0.9rem; color: var(--d-ink-2); font-size: 0.88rem; }
+.dash-field { display: block; margin-bottom: 0.9rem; }
+.dash-field-l { display: block; font-size: 0.85rem; font-weight: 550; margin-bottom: 0.3rem; }
+.dash-field-in {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--d-line);
+    border-radius: 8px;
+    background: var(--d-bg);
+    color: var(--d-ink);
+    font: inherit;
+    font-size: 0.9rem;
+}
+.dash-field-in:focus { outline: 2px solid var(--d-accent); outline-offset: 1px; }
+.dash-field-note { display: block; margin-top: 0.3rem; font-size: 0.8rem; color: var(--d-ink-2); }
+.dash-check {
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+    margin-bottom: 0.7rem;
+    font-size: 0.88rem;
+    line-height: 1.5;
+}
+.dash-check input { margin-top: 0.2rem; flex: 0 0 auto; }
+
+.dash-chip-demo {
+    background: var(--d-medium-bg));
+    border-color: var(--d-medium));
+    color: var(--d-medium));
+}
+#dash-env { cursor: pointer; }
+
+[hidden] { display: none !important; }
