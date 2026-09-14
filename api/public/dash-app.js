@@ -1699,7 +1699,73 @@
         });
 
         box.appendChild(form);
-        box.appendChild(coverageLine());
+        return box;
+    }
+
+    function stepsCard(trial) {
+        var live = trial.state === 'starter' || trial.state === 'verified';
+        var box = card('How this goes', live
+            ? trial.daysLeft + ' ' + t('days left')
+            : t('About two minutes'));
+
+        box.appendChild(stepRow(1, 'Start your trial',
+            live ? trial.companyHost : t('Confirm your company and you are in'),
+            live ? 'done' : 'now'));
+
+        box.appendChild(stepRow(2, 'Run your first check',
+            !live ? t('One address, against the live sanctions list')
+                : (trial.liveUsed > 0 ? t('Done') : t('Paste any wallet address below')),
+            !live ? 'next' : (trial.liveUsed > 0 ? 'done' : 'now')));
+
+        box.appendChild(stepRow(3, 'Verify your number',
+            trial.phoneVerified
+                ? t('Your history is open')
+                : t('Opens your whole history, plus 10 live checks'),
+            trial.phoneVerified ? 'done' : 'next'));
+
+        box.appendChild(stepRow(4, 'Connect a public key',
+            t('We screen what already touched it, not just what comes next'), 'next'));
+
+        return box;
+    }
+
+    function whatYouGetCard() {
+        var box = card('What the trial includes', '');
+        var list = el('div', 'dash-facts');
+        [
+            ['1 + 1', 'One live check and one from your history, straight away'],
+            ['10', 'More live checks once your number is verified, and your history opens'],
+            ['14', 'Days, and no card'],
+        ].forEach(function (row) {
+            var r = el('div', 'dash-fact');
+            r.appendChild(el('b', 'dash-fact-n', row[0]));
+            r.appendChild(el('span', 'dash-fact-t', row[1]));
+            list.appendChild(r);
+        });
+        box.appendChild(list);
+        return box;
+    }
+
+    function coverageCard() {
+        var c = (ENT && ENT.coverage) || {};
+        var box = card('What we check against', '');
+        if (!c.addresses) {
+            box.appendChild(el('p', 'dash-start-p', 'The sanctions list has not loaded yet.'));
+            return box;
+        }
+        var list = el('div', 'dash-facts');
+        var one = el('div', 'dash-fact');
+        one.appendChild(el('b', 'dash-fact-n', num(c.addresses)));
+        one.appendChild(el('span', 'dash-fact-t', 'Sanctioned addresses on the OFAC list'));
+        list.appendChild(one);
+        var two = el('div', 'dash-fact');
+        two.appendChild(el('b', 'dash-fact-n', '6h'));
+        two.appendChild(el('span', 'dash-fact-t', 'How often we pull the list again'));
+        list.appendChild(two);
+        box.appendChild(list);
+        box.appendChild(el('p', 'dash-start-cov',
+            t('List published') + ' ' + listDateText(c.listDate) + '. ' +
+            t('Every check is kept with the list version it ran against.')));
         return box;
     }
 
@@ -1708,18 +1774,9 @@
         var trial = (ENT && ENT.trial) || { state: 'none' };
         var name = ((ENT && ENT.name) || '').split(' ')[0];
 
-        wrap.appendChild(head(
-            name ? t('Welcome') + ', ' + name : 'Find out what already touched your wallets',
-            'Connect a key and we screen what has already happened, not just what comes next.'
-        ));
-
-        if (trial.state === 'none') {
-            wrap.appendChild(activateBox());
-            return wrap;
-        }
-
         if (trial.state === 'pending') {
-            var waiting = card('We are checking your company', 'Usually the same day');
+            wrap.appendChild(head('We are checking your company', 'Usually the same day'));
+            var waiting = card('Nothing for you to do', '');
             waiting.appendChild(el('p', 'dash-start-p',
                 'Your work email did not match the website you gave, so somebody here looks at it. We will email you the moment it opens.'));
             wrap.appendChild(waiting);
@@ -1727,42 +1784,51 @@
         }
 
         if (trial.state === 'expired') {
-            var over = card('Your trial has ended', '');
+            wrap.appendChild(head('Your trial has ended', 'Fourteen days, and they went'));
+            var over = card('What happens now', '');
             over.appendChild(el('p', 'dash-start-p',
                 'Talk to us about the volume you actually need and we will shape a plan around it.'));
             wrap.appendChild(over);
             return wrap;
         }
 
-        var steps = card('Getting set up', trial.daysLeft + ' ' + t('days left'));
-        steps.appendChild(stepRow(1, 'Trial active', trial.companyHost, 'done'));
-        steps.appendChild(stepRow(2, 'Run your first check',
-            trial.liveUsed > 0 ? t('Done') : t('Paste any wallet address below'),
-            trial.liveUsed > 0 ? 'done' : 'now'));
-        steps.appendChild(stepRow(3, 'Verify your number',
-            trial.phoneVerified
-                ? t('Your history is open')
-                : t('Opens your whole history, plus 10 live checks'),
-            trial.phoneVerified ? 'done' : 'next'));
-        steps.appendChild(stepRow(4, 'Connect a public key',
-            t('We screen what already touched it, not just what comes next'), 'next'));
-        wrap.appendChild(steps);
+        var live = trial.state === 'starter' || trial.state === 'verified';
 
-        wrap.appendChild(scanBox(trial));
+        wrap.appendChild(head(
+            name ? t('Welcome') + ', ' + name : 'Find out what already touched your wallets',
+            live
+                ? 'Paste any wallet address and we check it against the live sanctions list.'
+                : 'Two minutes to set up, then you can screen your first address.'
+        ));
 
-        if (!trial.historyOpen) {
+        var grid = el('div', 'dash-grid dash-grid-side');
+        var main = el('div', 'dash-stack');
+        var side = el('div', 'dash-stack');
+
+        main.appendChild(stepsCard(trial));
+        main.appendChild(live ? scanBox(trial) : activateBox());
+
+        if (live && !trial.historyOpen) {
             var locked = card('Your history', 'Locked');
             locked.appendChild(el('p', 'dash-start-p',
                 'The rest of your history is already there. Verify your number and it opens, along with 10 live checks.'));
-            wrap.appendChild(locked);
+            main.appendChild(locked);
         }
 
+        if (!live) side.appendChild(whatYouGetCard());
+        side.appendChild(coverageCard());
+
+        grid.appendChild(main);
+        grid.appendChild(side);
+        wrap.appendChild(grid);
         return wrap;
     }
 
     function renderStartInto(host) {
         while (host.firstChild) host.removeChild(host.firstChild);
         host.appendChild(startScreen());
+        paintUsage();
+        paintSearch();
     }
 
     var currentKeys = null;
@@ -1792,6 +1858,21 @@
 
     function liveAccount() {
         return ENT && ENT.trial && (ENT.trial.state === 'starter' || ENT.trial.state === 'verified');
+    }
+
+    function paintSearch() {
+        var box = document.querySelector('.dash-search');
+        if (!box) return;
+        if (demoMode() || !ENT) {
+            box.hidden = false;
+            return;
+        }
+        var trial = ENT.trial || {};
+        var live = trial.state === 'starter' || trial.state === 'verified';
+        box.hidden = !live;
+        if (!live || !search) return;
+        search.placeholder = t('Screen an address');
+        search.setAttribute('aria-label', t('Screen an address'));
     }
 
     function paintDemoChip() {
@@ -1857,6 +1938,7 @@
             view.appendChild(startScreen());
             paintNav('');
             paintDemoChip();
+        paintSearch();
             paintLive();
             paintUsage();
             closeRail();
@@ -1889,6 +1971,7 @@
         paintLive();
         paintUsage();
         paintDemoChip();
+        paintSearch();
         closeRail();
         window.scrollTo(0, 0);
         var first = view.querySelector('h1');
@@ -1906,6 +1989,17 @@
             if (e.key !== 'Enter') return;
             var q = search.value.trim();
             if (!q) return;
+            if (!demoMode() && ENT) {
+                search.blur();
+                search.value = '';
+                if (location.hash !== '#/' && location.hash !== '') location.hash = '#/';
+                var input = view.querySelector('.dash-scan-in');
+                if (!input) return;
+                input.value = q;
+                var form = input.closest('form');
+                if (form) form.dispatchEvent(new Event('submit', { cancelable: true }));
+                return;
+            }
             var hit = D.find(q);
             if (hit) {
                 search.blur();
