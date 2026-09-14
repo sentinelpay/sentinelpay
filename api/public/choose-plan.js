@@ -1,6 +1,10 @@
 (function () {
     'use strict';
 
+    if (location.hash && window.history && history.replaceState) {
+        history.replaceState(null, '', location.pathname + location.search);
+    }
+
     var gate = document.getElementById('lp-plan-gate');
     var grid = document.querySelector('.lp-plan-grid');
     if (!gate || !grid) return;
