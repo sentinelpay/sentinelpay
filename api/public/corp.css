@@ -3936,7 +3936,7 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
     border: 1px solid rgba(14, 35, 88, 0.1);
     border-radius: 26px;
     background: #ffffff;
-    padding: 1.9rem 1.7rem;
+    padding: 1.5rem 1.45rem;
     box-shadow: 0 24px 60px -34px rgba(14, 35, 88, 0.3), 0 2px 10px rgba(14, 35, 88, 0.04);
     transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
@@ -3951,8 +3951,11 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
 }
 .lp-plan-badge {
     align-self: flex-start;
-    margin-bottom: 0.9rem;
-    padding: 0.22rem 0.6rem;
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.35rem;
+    margin-bottom: 0.7rem;
+    padding: 0.1rem 0.6rem;
     border-radius: 999px;
     background: linear-gradient(120deg, rgba(37, 99, 235, 0.16), rgba(56, 189, 248, 0.18));
     color: #0e2358;
@@ -3961,17 +3964,23 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
     letter-spacing: 0.04em;
 }
 .lp-plan-name {
-    margin: 0 0 0.5rem;
-    font-size: 1.15rem;
+    margin: 0 0 0.3rem;
+    font-size: 1.28rem;
     font-weight: 700;
     letter-spacing: -0.02em;
     color: #0e2358;
 }
 .lp-plan-price {
-    font-size: 1.6rem;
+    font-size: 1.02rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: rgba(14, 35, 88, 0.72);
+    line-height: 1.25;
+}
+.lp-plan-card.is-primary .lp-plan-price {
+    font-size: 1.5rem;
     font-weight: 700;
     letter-spacing: -0.03em;
-    color: #0e2358;
     line-height: 1.1;
 }
 .lp-plan-price-note {
@@ -3980,25 +3989,25 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
     font-size: 0.78rem;
 }
 .lp-plan-desc {
-    margin: 1rem 0 1.1rem;
+    margin: 0.75rem 0 0.9rem;
     color: #16244a;
-    font-size: 0.92rem;
-    line-height: 1.55;
+    font-size: 0.88rem;
+    line-height: 1.5;
 }
 .lp-plan-feats {
     list-style: none;
-    margin: 0 0 1.6rem;
+    margin: 0 0 1.15rem;
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
+    gap: 0.45rem;
 }
 .lp-plan-feat {
     position: relative;
     padding-left: 1.3rem;
     color: #5b6b8c;
-    font-size: 0.87rem;
-    line-height: 1.5;
+    font-size: 0.83rem;
+    line-height: 1.45;
 }
 .lp-plan-feat::before {
     content: "";
@@ -4015,7 +4024,7 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 0.72rem 1.2rem;
+    padding: 0.62rem 1.2rem;
     border-radius: 50px;
     border: 1px solid rgba(16, 39, 91, 0.25);
     background: transparent;
@@ -4116,10 +4125,10 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
     .lp-plan-gate-inner { padding: 1.4rem 1.2rem; }
 }
 
-.lp-plans-head { max-width: 46rem; margin-bottom: 0.6rem; }
-.lp-plans .bad-title { font-size: 2.6rem; }
-.lp-plans .bad-sub { max-width: 56ch; }
-.lp-plans .lp-plan-grid { margin-top: 2.6rem; }
+.lp-plans-head { max-width: 62rem; margin-bottom: 0; }
+.lp-plans .bad-title { font-size: 2.25rem; margin-bottom: 0.7rem; }
+.lp-plans .bad-sub { max-width: 78ch; font-size: 0.96rem; }
+.lp-plans .lp-plan-grid { margin-top: 1.9rem; gap: 1rem; }
 
 .lp-plan-card .lp-plan-dots {
     position: absolute;
@@ -4153,16 +4162,20 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
 }
 .lp-plan-feat { padding-left: 1.5rem; }
 .lp-plan-card.is-primary .lp-plan-feat::before { background: linear-gradient(135deg, #00f0ff, #a675ff); }
-.lp-plans-foot { margin-top: 1.4rem; }
+.lp-plans-foot { margin-top: 0.75rem; font-size: 0.76rem; }
 
 .lp-plan-badge.is-empty { background: none; visibility: hidden; }
+.lp-plans .lp-section-inner { width: 100%; }
+.lp-plans.lp-section.bad-demo { padding-top: 4.9rem; padding-bottom: 0.7rem; }
+.lp-plans .bad-trial-divider { margin: 1.1rem 0 0.85rem; }
+
 
 .lp-plan-grid.is-dimmed .lp-plan-card:not(.is-primary) { opacity: 0.55; }
 .lp-plan-grid.is-dimmed .lp-plan-card { transition: opacity 0.2s ease; }
 
 .lp-plan-defs { position: absolute; width: 0; height: 0; pointer-events: none; }
-.lp-plan-icon { margin-bottom: 1.15rem; }
-.lp-plan-icon svg { width: 30px; height: 30px; display: block; }
+.lp-plan-icon { margin-bottom: 0.85rem; }
+.lp-plan-icon svg { width: 26px; height: 26px; display: block; }
 
 .lp-plan-card { overflow: hidden; }
 .lp-plan-card::after {
