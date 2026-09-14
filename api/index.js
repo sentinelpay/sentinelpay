@@ -554,8 +554,9 @@ app.get('/privacy', (req, res) => res.redirect(301, '/privacy-policy'));
 app.get('/tos', (req, res) => res.redirect(301, '/terms-of-service'));
 
 app.get('/dashboard', async (req, res, next) => {
+    let me;
     try {
-        const me = await currentUser(req);
+        me = await currentUser(req);
         if (!me) return res.redirect(302, '/?signin=1');
     } catch (err) {
         console.error('[dashboard guard]', err.message);
@@ -563,8 +564,35 @@ app.get('/dashboard', async (req, res, next) => {
     }
     res.set('Cache-Control', 'no-store, private');
 
-    if (DASHBOARD_NEXT) return sendPage(res, req, 'dashboard-next.html', 200, undefined, 'no-store, private');
+    if (DASHBOARD_NEXT) {
+        try {
+            const state = await trial.ensure(me.userId);
+            if (state.state === 'none') return res.redirect(302, '/choose-a-plan');
+        } catch (err) {
+            console.error('[dashboard trial]', err.message);
+        }
+        return sendPage(res, req, 'dashboard-next.html', 200, undefined, 'no-store, private');
+    }
     return next();
+});
+
+app.get('/choose-a-plan', async (req, res) => {
+    res.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
+    let me;
+    try {
+        me = await currentUser(req);
+        if (!me) return res.redirect(302, '/?signin=1');
+    } catch (err) {
+        console.error('[plans guard]', err.message);
+        return res.redirect(302, '/?signin=1');
+    }
+    try {
+        const state = await trial.ensure(me.userId);
+        if (state.state !== 'none') return res.redirect(302, '/dashboard');
+    } catch (err) {
+        console.error('[plans trial]', err.message);
+    }
+    return sendPage(res, req, 'choose-a-plan.html', 200, undefined, 'no-store, private');
 });
 
 app.get('/reset-password', async (req, res) => {
