@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="/fonts.2.css">
     <link rel="stylesheet" href="/style.27.css">
     <link rel="stylesheet" href="/landing.149.css">
-    <link rel="stylesheet" href="/corp.333.css">
+    <link rel="stylesheet" href="/corp.335.css">
     <style>
         #sp-loader{position:fixed;inset:0;z-index:99999;background:#050505;display:flex;align-items:center;justify-content:center;transition:opacity 0.55s ease;}
         #sp-loader.spl-done{opacity:0;pointer-events:none;}
@@ -342,8 +342,11 @@
                 <h2 class="lp-h2"><span class="lp-hl">Choose a plan</span> and start<br>screening straight away</h2>
                 <p class="lp-plans-sub">Start on the free trial if you want to see a real answer first. Nothing here needs a card, and you can move up whenever your volume does.</p>
 
+                <svg class="lp-plan-defs" aria-hidden="true" focusable="false"><defs><linearGradient id="planGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00c8e6"/><stop offset="100%" stop-color="#a020f0"/></linearGradient></defs></svg>
+
                 <div class="lp-plan-grid">
                 <div class="lp-plan-card is-primary" data-plan="trial">
+                    <div class="lp-plan-icon"><svg viewBox="0 0 24 24" fill="none" stroke="url(#planGrad)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4.5 12.5a1 1 0 0 0 .8 1.6H11l-1 8 8.5-10.5a1 1 0 0 0-.8-1.6H12z"/></svg></div>
                     <span class="lp-plan-badge">Start here</span>
                     <h3 class="lp-plan-name">Free trial</h3>
                     <div class="lp-plan-price">14 days</div>
@@ -358,6 +361,7 @@
                     <button class="lp-plan-btn lp-plan-btn-solid" type="button" data-plan-start="1">Start free trial</button>
                 </div>
                 <div class="lp-plan-card" data-plan="starter">
+                    <div class="lp-plan-icon"><svg viewBox="0 0 24 24" fill="none" stroke="url(#planGrad)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></div>
                     <span class="lp-plan-badge is-empty" aria-hidden="true"></span>
                     <h3 class="lp-plan-name">Starter</h3>
                     <div class="lp-plan-price">Talk to us</div>
@@ -372,6 +376,7 @@
                     <a class="lp-plan-btn" href="/book-a-demo">Talk to us</a>
                 </div>
                 <div class="lp-plan-card" data-plan="growth">
+                    <div class="lp-plan-icon"><svg viewBox="0 0 24 24" fill="none" stroke="url(#planGrad)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></div>
                     <span class="lp-plan-badge">Most teams start here</span>
                     <h3 class="lp-plan-name">Growth</h3>
                     <div class="lp-plan-price">Talk to us</div>
@@ -386,6 +391,7 @@
                     <a class="lp-plan-btn" href="/book-a-demo">Talk to us</a>
                 </div>
                 <div class="lp-plan-card" data-plan="enterprise">
+                    <div class="lp-plan-icon"><svg viewBox="0 0 24 24" fill="none" stroke="url(#planGrad)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M10 21v-6h4v6"/></svg></div>
                     <span class="lp-plan-badge is-empty" aria-hidden="true"></span>
                     <h3 class="lp-plan-name">Enterprise</h3>
                     <div class="lp-plan-price">Talk to us</div>
