@@ -4135,7 +4135,8 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
     align-items: stretch;
 }
 .lp-plan-cell {
-    padding: 0.5rem 1.05rem;
+    min-height: 2.6rem;
+    padding: 0.35rem 1.05rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -4148,26 +4149,51 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
 .lp-plan-cell b { font-weight: 700; color: #ffffff; letter-spacing: -0.01em; }
 .lp-plan-cell.is-label {
     justify-content: flex-start;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.12rem;
     border-left: 0;
     padding-left: 1.5rem;
-    color: rgba(214, 224, 245, 0.72);
-    line-height: 1.4;
+    color: rgba(214, 224, 245, 0.74);
+    line-height: 1.35;
 }
 .lp-plan-cell.is-pick { background: rgba(0, 240, 255, 0.055); }
 .lp-plan-row:not(.is-head):not(.is-foot):not(.is-group):hover { background: rgba(140, 170, 255, 0.045); }
 
-.lp-plan-hint {
-    font-size: 0.72rem;
-    line-height: 1.35;
-    color: rgba(214, 224, 245, 0.42);
+.lp-plan-cell.is-claims {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 1.25rem 1.5rem 1.2rem;
+}
+.lp-plan-claims-eyebrow {
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(123, 220, 255, 0.7);
+}
+.lp-plan-claim {
+    margin: 0;
+    position: relative;
+    padding-left: 0.85rem;
+    font-size: 0.79rem;
+    line-height: 1.45;
+    color: rgba(214, 224, 245, 0.62);
+}
+.lp-plan-claim::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.55em;
+    width: 0.3rem;
+    height: 0.3rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #00f0ff, #a675ff);
 }
 
-.lp-plan-row.is-group .lp-plan-cell {
-    padding-top: 0.95rem;
+.lp-plan-row.is-group .lp-plan-cell.is-label {
+    padding-top: 1rem;
     padding-bottom: 0.35rem;
+    min-height: 0;
     font-size: 0.68rem;
     font-weight: 700;
     letter-spacing: 0.13em;
@@ -4175,6 +4201,7 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
     color: rgba(123, 220, 255, 0.72);
 }
 .lp-plan-row.is-group { border-top: 1px solid rgba(140, 170, 255, 0.12); }
+.lp-plan-row.is-group .lp-plan-cell { min-height: 0; padding-top: 1rem; padding-bottom: 0.35rem; }
 .lp-plan-row.is-group:first-of-type { border-top: 0; }
 
 .lp-plan-yes {
@@ -4237,7 +4264,7 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
     .lp-plan-cell.is-label { padding-left: 1.1rem; }
     .lp-plan-head { padding-inline: 0.7rem; }
     .lp-plan-fig { font-size: 1.45rem; }
-    .lp-plan-hint { display: none; }
+    .lp-plan-claim { font-size: 0.74rem; }
 }
 @media (max-width: 820px) {
     .lp-plan-matrix { overflow-x: auto; scroll-snap-type: x proximity; }
