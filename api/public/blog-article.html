@@ -3,8 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- ios turns things like "1-10" and "51-200" into phone links, which made
-         the company-size options open the call sheet instead of selecting -->
     <meta name="format-detection" content="telephone=no">
     <meta name="robots" content="noindex, nofollow">
     <title>Sentinelpay | Blog | Why criminals target small businesses (and exactly how they do it)</title>
@@ -20,30 +18,19 @@
     <meta property="twitter:title" content="Why criminals target small businesses (and exactly how they do it)">
     <meta property="twitter:description" content="Criminals don't chase the big players with whole AML departments. They chase the easy path. Here is exactly how, with three real cases.">
     <meta property="twitter:image" content="https://blog.sentinelpay.org/covers/why-criminals.png">
-    <script>/* tab title before first paint; for articles this is the h1 translation */(function(){var T={"hr": "Sentinelpay | Blog | Zašto kriminalci ciljaju male tvrtke (i kako to točno rade)", "de": "Sentinelpay | Blog | Warum kriminelle kleine Unternehmen ins Visier nehmen (und wie genau)"},m=document.cookie.match(/(?:^|; )sp-lang=([^;]*)/),l=m?decodeURIComponent(m[1]):null;if(!l){try{l=localStorage.getItem("sp-lang")}catch(e){}}if(l!=="hr"&&l!=="de"&&l!=="en")l=document.documentElement.getAttribute("data-geo-lang");if(l!=="hr"&&l!=="de")return;document.documentElement.lang=l;if(!T)return;window.__SP_TITLE_SRC=document.title.replace(/\s+/g," ").trim();document.title=T[l];})();</script>
+    <script>(function(){var T={"hr": "Sentinelpay | Blog | Zašto kriminalci ciljaju male tvrtke (i kako to točno rade)", "de": "Sentinelpay | Blog | Warum kriminelle kleine Unternehmen ins Visier nehmen (und wie genau)"},m=document.cookie.match(/(?:^|; )sp-lang=([^;]*)/),l=m?decodeURIComponent(m[1]):null;if(!l){try{l=localStorage.getItem("sp-lang")}catch(e){}}if(l!=="hr"&&l!=="de"&&l!=="en")l=document.documentElement.getAttribute("data-geo-lang");if(l!=="hr"&&l!=="de")return;document.documentElement.lang=l;if(!T)return;window.__SP_TITLE_SRC=document.title.replace(/\s+/g," ").trim();document.title=T[l];})();</script>
     <script>document.documentElement.classList.add('theme-light');</script>
     <script>if(history.scrollRestoration)history.scrollRestoration='manual';window.scrollTo(0,0);</script>
     <link rel="icon" type="image/svg+xml" href="/logo.svg">
     <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/fonts/jakarta-latin.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="/fonts.1.css">
-    <link rel="stylesheet" href="/style.26.css">
-    <link rel="stylesheet" href="/landing.148.css">
-    <link rel="stylesheet" href="/corp.329.css">
+    <link rel="stylesheet" href="/fonts.2.css">
+    <link rel="stylesheet" href="/style.27.css">
+    <link rel="stylesheet" href="/landing.149.css">
+    <link rel="stylesheet" href="/corp.330.css">
     <style>
-        /* page loader: hold the page until everything is loaded (matches homepage) */
         #sp-loader{position:fixed;inset:0;z-index:99999;background:#050505;display:flex;align-items:center;justify-content:center;transition:opacity 0.55s ease;}
         #sp-loader.spl-done{opacity:0;pointer-events:none;}
-        /* nothing scrolls while the loader is up. the page behind it is already
-           laid out and a stray wheel or swipe used to move it, so the loader
-           lifted on a page halfway down itself. the gutter is held open so the
-           scrollbar coming back does not shift the whole layout sideways at the
-           exact moment the loader fades.
-
-           `:has` rather than a class toggled by script: the lock then ends the
-           moment the loader is marked done, and there is no state to leave
-           behind if the script never runs. where `:has` is not supported this
-           simply does nothing, which is how the page behaved before. */
         html:has(#sp-loader:not(.spl-done)),
         html:has(#sp-loader:not(.spl-done)) body { overflow: hidden; }
         html:has(#sp-loader:not(.spl-done)) { scrollbar-gutter: stable; }
@@ -58,7 +45,6 @@
             --accent-glow: rgba(0,145,200,0.12); --accent-light: #0091c8; --neon-blue: #0091c8;
         }
         html.theme-light body.lp-body { background: linear-gradient(180deg, #fbfcfd 0%, #eef0f3 100%) fixed; }
-        /* same scrollbar as sentinelpay.org (light-blue on light track) */
         html.theme-light, html.theme-light * { scrollbar-color: rgba(0,145,200,0.25) #f0f0f2; }
         html.theme-light::-webkit-scrollbar-track, html.theme-light ::-webkit-scrollbar-track { background: #f0f0f2; }
         html.theme-light::-webkit-scrollbar-thumb, html.theme-light ::-webkit-scrollbar-thumb { background: rgba(0,145,200,0.25); border: 1px solid rgba(0,145,200,0.15); }
@@ -67,10 +53,7 @@
         html.theme-light .lp-btn-ghost.auth-nav-btn { border-color: rgba(0,0,0,0.08) !important; }
         html.theme-light .lp-btn-ghost.auth-nav-btn:hover { background: rgba(0,0,0,0.04) !important; }
         .lp-nav-inner { display: flex !important; justify-content: space-between; align-items: center; }
-
-        /* reading progress bar */
         .read-progress { position: fixed; top: 0; left: 0; height: 3px; width: 0; z-index: 9999; background: rgba(14,35,88,0.55); transition: width 0.08s linear; }
-
         .article-shell { max-width: 720px; margin: 0 auto; padding: 0 1.4rem; }
         .lp-section.article { padding-top: 7rem; }
         .article-back {
@@ -83,8 +66,6 @@
         .article-back:hover { color: #0e2358; border-color: rgba(14,35,88,0.32); background: #fbfcfd; box-shadow: 0 6px 18px -10px rgba(14,35,88,0.35); }
         .article-back:hover svg { transform: translateX(-3px); }
         .article-title { margin: 0 0 1.4rem; font-size: 2.7rem; font-weight: 800; line-height: 1.14; letter-spacing: -0.02em; color: #0e2358; text-transform: none; }
-        /* show-original pill: only rendered on a translated article.
-           cut from the same pattern as .article-back so the two read as a set. */
         .article-original { margin-top: 1.5rem; }
         .article-original-btn {
             display: inline-flex; align-items: center; gap: 0.45rem;
@@ -103,7 +84,6 @@
         }
         .article-original-btn:hover svg { opacity: 1; }
         .article-original-btn:focus-visible { outline: 2px solid rgba(0,145,200,0.5); outline-offset: 3px; }
-        /* showing the original is a held state, so the pill fills in to say so */
         .article-original-btn.is-on {
             color: #0091c8;
             border-color: rgba(0,145,200,0.35);
@@ -113,8 +93,6 @@
         .article-original-btn.is-on:hover {
             color: #0e2358; border-color: rgba(0,145,200,0.55); background: rgba(0,145,200,0.1);
         }
-        /* the shared stylesheet stretches every button to full width below 600px,
-           which is right for form submits and wrong for a pill. opt out. */
         @media (max-width: 600px) {
             .article-original-btn { width: auto; }
         }
@@ -124,7 +102,6 @@
         .article-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 2; }
         .article-byline b { font-size: 0.92rem; font-weight: 700; color: #0e2358; }
         .article-byline small { display: block; font-size: 0.8rem; color: rgba(14,35,88,0.5); }
-
         .article-body { margin-top: 2.6rem; padding-bottom: 1rem; }
         .article-body > p { margin: 1.35rem 0; font-size: 1.13rem; line-height: 1.8; color: #2a3550; }
         .article-body > p.lead { font-size: 1.35rem; line-height: 1.6; font-weight: 500; color: #0e2358; }
@@ -136,17 +113,15 @@
             content: ''; position: absolute; left: 0.15rem; top: 0.68em; width: 5px; height: 5px; border-radius: 50%;
             background: rgba(14,35,88,0.45);
         }
-        /* monotone pull-quote: simple left rule, no colour */
+
         .article-callout {
             margin: 2rem 0; padding: 0.3rem 0 0.3rem 1.4rem; border-left: 3px solid rgba(14,35,88,0.22);
             font-size: 1.25rem; font-weight: 700; line-height: 1.5; color: #0e2358;
         }
-        /* case blocks: plain flow, sub-heading + text, no card */
         .article-example { margin: 1.6rem 0; padding: 0; background: none; border: none; box-shadow: none; }
         .article-example h3 { margin: 0 0 0.5rem; font-size: 1.2rem; font-weight: 700; color: #0e2358; text-transform: none; }
         .article-example p { margin: 0.7rem 0 0; font-size: 1.08rem; line-height: 1.75; color: #2a3550; }
         .article-example p:first-of-type { margin-top: 0; }
-
         @media (max-width: 640px) {
             .article-title { font-size: 2rem; }
             .lp-section.article { padding-top: 6rem; }
@@ -156,13 +131,7 @@
         }
     </style>
     <noscript><style>
-        /* scripting is off, so the loader is the final screen, not a stage on the
-           way somewhere. stop the pulse so it reads as a message, not a hang. */
-        /* theme-light is added by an inline script, which never runs here, so the
-           loader would sit on the dark default. force the light one. */
-        /* the loader covers the viewport, but the page behind it still has its full
-           height, so the window kept a scrollbar with nothing to scroll to. and
-           without theme-light that scrollbar renders in the dark theme's colours. */
+
         html, body { overflow: hidden !important; height: 100%; }
         #sp-loader { background: #fbfcfd !important; flex-direction: column; gap: 1.6rem; padding: 0 1.5rem; }
         #sp-loader .spl-logo-svg { animation: none; filter: none; opacity: 0.75; width: 96px; height: 96px; }
@@ -174,7 +143,7 @@
     </style></noscript>
 </head>
 <body class="lp-body">
-    <div id="sp-loader"><svg class="spl-logo-svg" viewBox="0 0 120 120" fill="none"><defs><linearGradient id="spl-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00ffff"/><stop offset="100%" stop-color="#a020f0"/></linearGradient><filter id="spl-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3.5" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#spl-glow)" fill="none" stroke="url(#spl-grad)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/><g class="spl-eye-blink"><path d="M38 60 Q 60 40 82 60 Q 60 80 38 60 Z"/><circle cx="60" cy="60" r="6"/><circle cx="60" cy="60" r="2" fill="url(#spl-grad)" stroke="none"/></g><path d="M60 15 V 30" stroke-width="2" opacity="0.6"/><path d="M60 90 V 105" stroke-width="2" opacity="0.6"/></g></svg><noscript><!--SP_NOSCRIPT--></noscript></div>
+    <div id="sp-loader"><svg class="spl-logo-svg" viewBox="0 0 120 120" fill="none"><defs><linearGradient id="spl-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00ffff"/><stop offset="100%" stop-color="#a020f0"/></linearGradient><filter id="spl-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3.5" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#spl-glow)" fill="none" stroke="url(#spl-grad)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/><g class="spl-eye-blink"><path d="M38 60 Q 60 40 82 60 Q 60 80 38 60 Z"/><circle cx="60" cy="60" r="6"/><circle cx="60" cy="60" r="2" fill="url(#spl-grad)" stroke="none"/></g><path d="M60 15 V 30" stroke-width="2" opacity="0.6"/><path d="M60 90 V 105" stroke-width="2" opacity="0.6"/></g></svg><noscript></noscript></div>
     <div class="read-progress" id="read-progress"></div>
     <nav class="lp-nav">
         <div class="lp-nav-inner">
@@ -408,7 +377,6 @@
             </div>
         </div>
     </div>
-
     <article class="lp-section article">
         <div class="article-shell">
             <a href="/" class="article-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>All articles</a>
@@ -419,13 +387,11 @@
             </div>
             <div class="article-original" data-original-toggle data-i18n-skip></div>
         </div>
-
         <div class="article-shell article-body" data-original-scope>
             <p class="lead">"We're too small to be worth targeting." I believed that too, right up until I started reading the wallet histories of businesses exactly like yours. The dirty money doesn't skip the small guys. It looks for them.</p>
             <p>Here is the part nobody tells you. A criminal moving illicit funds is not looking for the richest target. They are looking for the softest one. And softness has a very specific definition: can this business see where my money came from, or not.</p>
             <p>A large exchange can. It has an AML team, live screening on every deposit, analysts whose entire job is to pull the thread on a suspicious wallet. Moving money through them is slow and risky, and it usually gets caught.</p>
             <p>You are a different story. No screening tool watching your incoming payments. No analyst. Just you, trying to close deals and keep customers happy. To someone laundering money, that is not a small business. That is an open door with the lights off.</p>
-
             <h2>You're not collateral damage, you're the plan</h2>
             <p>This isn't a hunch. The firms that trace this for a living keep landing on the same conclusion. TRM labs has flagged that laundering techniques once reserved for banks are now being pointed at small operators, precisely because they are easier. Chainalysis says it flatly: smaller businesses lack the infrastructure to detect laundering, and that gap is exactly what makes them useful for pushing illicit funds back into the real economy.</p>
             <div class="article-callout">Useful. Sit with that word. You are not accidentally caught up in someone else's scheme. In the scheme, you are the wash cycle.</div>
@@ -438,7 +404,6 @@
                 <li>You move fast to win the deal, so you rarely stop to ask where the money has been</li>
             </ul>
             <p>Every one of those is a strength on a normal Tuesday. Put a laundering operation on the other side of the table and every one of them becomes the way in.</p>
-
             <h2>Three ways it actually plays out</h2>
             <p>These are not scare stories. They are the shapes that show up over and over in Chainalysis and Elliptic case work, rewritten as what they feel like from your side of the desk.</p>
             <div class="article-example">
@@ -456,13 +421,11 @@
                 <p>A client calls in a hurry. They need it now, they send the money immediately, they ask you to ship today. You are a good operator who delivers under pressure, so you do.</p>
                 <p>That payment traces to a ransomware payout. A hospital, a school, some business somewhere paid to get their files unlocked, and the funds moved straight to you. You didn't commit the crime. But on-chain, you are now the next hop in an extortion trail, and that trail has your name on it.</p>
             </div>
-
             <h2>Having a policy is not the same as being protected</h2>
             <p>Elliptic has a word for the thing that actually matters: operationalizing risk. Strip the jargon and it means acting on every single transaction, not writing a policy and filing it in a drawer. Complyadvantage makes the same point from the other end: almost nobody gets burned for lacking an AML policy. They get burned because the policy couldn't reach the payment that was sitting right in front of them.</p>
             <p>So forget the paperwork for a second. Two things actually change your odds.</p>
             <p><strong>Stop checking wallets by hand.</strong> Manual checks are slow, they are inconsistent, and they are the first thing to break the moment you get busy. You miss the one that mattered, your clean customers wait around for no reason, and none of it survives past a handful of payments a day.</p>
             <p><strong>Check before the money settles, not after.</strong> This is the whole game. After a bad payment lands you are doing damage control, freezes and lawyers and explanations. Before it lands you still have the one thing that matters: a choice.</p>
-
             <h2>Where Sentinelpay comes in</h2>
             <p>This is the exact gap we built Sentinelpay to close, and we kept it deliberately simple. You give us your public key. That is the whole setup.</p>
             <p>From there we scan every wallet that touches your business, historical and incoming: every transaction, every customer, every address, and crucially the addresses those addresses came from. One payment is a data point. The trail behind it is the truth.</p>
@@ -470,10 +433,8 @@
             <p><strong>Low score?</strong> Nothing happens to you. No friction, no extra step, your customer gets what they paid for and you never even feel the check run.</p>
             <p><strong>High score?</strong> You pause on that one payment before you commit and ask for what you'd want anyway: identity, source of funds, the wallet's history, a real KYC on that client. You investigate first, decide second, deliver third, instead of finding out three months later.</p>
             <p>That is the whole safety net. You stop shipping blind, and you stop accepting money from wallets you were never able to look at.</p>
-
             <h2>Bottom line</h2>
             <p>Criminals don't pick you because you did something wrong. They pick you because, until now, you had no way to see them coming. That is the entire reason, and it is the one thing on this whole page you can actually fix today.</p>
-
             <p class="article-sources-title">Sources</p>
             <ul class="article-sources">
                 <li><a href="https://www.chainalysis.com/reports/crypto-crime-2026/" rel="noopener noreferrer" target="_blank">Chainalysis, the 2026 crypto crime report</a></li>
@@ -485,7 +446,6 @@
             </ul>
         </div>
     </article>
-
     <footer class="lp-footer">
         <div class="lp-section-inner">
             <div class="lp-footer-top">
@@ -578,7 +538,6 @@
             </div>
         </div>
     </footer>
-
     <script>
         (function() {
             var bar = document.getElementById('read-progress');
@@ -591,19 +550,14 @@
             update();
         })();
     </script>
-    <script>/* the splash must clear whether or not the load event ever arrives. it waits
-   for every subresource including third party scripts, and one slow embed is
-   then a site nobody can see: the safety net below only ever started counting
-   after load, so it protected against a slow image and not against the thing
-   most likely to hang. this arms at dom ready instead and load simply gets
-   there first when it can. */(function(){var fired0=false;var run=function(){if(fired0)return;fired0=true;window.scrollTo(0,0);var l=document.getElementById('sp-loader');if(!l)return;var finish=function(){l.classList.add('spl-done');setTimeout(function(){l.remove();},620);};/* the load event does not wait for lazy images, and nearly every image on the site is lazy, so the loader used to clear while the first screen was still filling in. wait for the ones that will actually be visible: an image further down has not started loading yet and never would, so waiting for all of them would hold the loader open for ever. */var pending=[],im,r,i;for(i=0;i<document.images.length;i++){im=document.images[i];r=im.getBoundingClientRect();if(r.bottom<0||r.top>window.innerHeight*1.2)continue;if(im.complete&&im.naturalWidth>0)continue;pending.push(im);}if(!pending.length){finish();return;}var left=pending.length,fired=false;var one=function(){if(--left<=0&&!fired){fired=true;finish();}};pending.forEach(function(x){x.addEventListener('load',one,{once:true});x.addEventListener('error',one,{once:true});});/* a slow or broken image must never trap anybody behind the loader */setTimeout(function(){if(!fired){fired=true;finish();}},2500);};window.addEventListener('load',run);if(document.readyState!=='loading')setTimeout(run,3500);else document.addEventListener('DOMContentLoaded',function(){setTimeout(run,3500);});})();</script>
-    <script src="/img-fallback.2.js" defer></script>
-    <script src="/nav.1.js" defer></script>
-    <script src="/auth-modal.18.js" defer></script>
-    <script src="/auth-flow.39.js" defer></script>
-    <script src="/auth-nav.4.js" defer></script>
-    <script src="/toast.2.js" defer></script>
-    <script src="/navlift.1.js" defer></script>
-    <script src="/i18n.113.js" defer></script>
+    <script>(function(){var fired0=false;var run=function(){if(fired0)return;fired0=true;window.scrollTo(0,0);var l=document.getElementById('sp-loader');if(!l)return;var finish=function(){l.classList.add('spl-done');setTimeout(function(){l.remove();},620);};var pending=[],im,r,i;for(i=0;i<document.images.length;i++){im=document.images[i];r=im.getBoundingClientRect();if(r.bottom<0||r.top>window.innerHeight*1.2)continue;if(im.complete&&im.naturalWidth>0)continue;pending.push(im);}if(!pending.length){finish();return;}var left=pending.length,fired=false;var one=function(){if(--left<=0&&!fired){fired=true;finish();}};pending.forEach(function(x){x.addEventListener('load',one,{once:true});x.addEventListener('error',one,{once:true});});setTimeout(function(){if(!fired){fired=true;finish();}},2500);};window.addEventListener('load',run);if(document.readyState!=='loading')setTimeout(run,3500);else document.addEventListener('DOMContentLoaded',function(){setTimeout(run,3500);});})();</script>
+    <script src="/img-fallback.3.js" defer></script>
+    <script src="/nav.2.js" defer></script>
+    <script src="/auth-modal.19.js" defer></script>
+    <script src="/auth-flow.40.js" defer></script>
+    <script src="/auth-nav.5.js" defer></script>
+    <script src="/toast.3.js" defer></script>
+    <script src="/navlift.2.js" defer></script>
+    <script src="/i18n.116.js" defer></script>
 </body>
 </html>

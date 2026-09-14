@@ -1,95 +1,28 @@
-/* creating an account, front half.
-   ------------------------------------------------------------------------
-   the same code runs in the sign-in dialog and on /auth, because the two are
-   the same card in two places and a second copy of this would drift from the
-   first within a week. it attaches to any form marked data-auth="register" and
-   builds the rest of the flow around it.
-
-   the flow is: details, then a six digit code from the inbox, then the account.
-   nothing exists after the first step. that is the point of the second one, so
-   the panel makes it plain rather than pretending the account is already there.
-
-   what this file will not do: decide anything. it can be edited by whoever is
-   looking at it, so every rule that matters (has the code expired, how many are
-   left, does this address already have an account) is answered by the server and
-   simply displayed here. */
 (function () {
     var t = function (x) { return window.SentinelI18n ? window.SentinelI18n.t(x) : x; };
-
-    /* which language the reader is in, for the server to answer and to write mail
-       in.
-
-       this was called in four places in this file and defined in none of them.
-       every one of those calls threw a ReferenceError inside a promise chain,
-       where it became a rejection rather than a page error: nothing appeared in
-       the console, the catch treated it as a failed request, and the panel told
-       the reader we could not be reached. the forgot-password button never sent
-       a single request, in any language, for anybody, and it said so in a way
-       that pointed at the server.
-
-       the shape is the one demo-form.js and dashboard.js already use, and the
-       fallback is english rather than nothing, because the server validates this
-       against a list and a missing value would be a second failure a step
-       later. */
     var lang = function () {
         try {
             if (window.SentinelI18n && typeof window.SentinelI18n.lang === 'function') {
                 return window.SentinelI18n.lang() || 'en';
             }
-        } catch (e) { /* i18n not loaded: english is the file's own language */ }
+        } catch (e) {  }
         return 'en';
     };
-
-    /* the two resend windows, also taken out by the same edit.
-
-       both are used fifteen times between them and were declared nowhere, so the
-       code-verify resend and the reset resend threw the moment they were
-       reached, in the same silent way: a rejection inside a promise chain, shown
-       as a failed request.
-
-       they match the server, and it is the server's answer that counts: these
-       are only what the button counts down from before the first reply arrives.
-    */
     var RESEND_WAIT = 60;
     var RESET_RESEND_WAIT = 60;
 
-    /* run something once the splash is actually gone.
-
-       two versions of this were wrong in different ways and both are worth
-       keeping written down.
-
-       the first counted. it watched for the class and then waited six hundred
-       and sixty milliseconds, because that is roughly how long the fade and the
-       removal take. that is a guess dressed as a fix: the two timers are
-       independent, so on a busy frame the wait finishes first and the dialog
-       opens over a splash that is still half there. rarer, and harder to
-       reproduce, which is worse than plainly broken.
-
-       the second asked once a frame. that is honest about the state but wrong
-       about where it runs: a request animation frame loop stops in a background
-       tab, so a link opened in one never got its dialog at all, and the ceiling
-       was inside the same loop, so nothing rescued it.
-
-       this asks the same question, only when something has happened that could
-       change the answer: the splash element changing class, anything leaving the
-       document, and the fade itself ending. all three keep running when the tab
-       is not in front. no number decides anything; the only one here is the
-       ceiling, because a dialog that never opens because a splash never finished
-       is worse than one that opens over it. */
     function afterLoader(go) {
         var settled = false;
         var obs = null;
         var cap = null;
         var splash = document.getElementById('sp-loader');
-
         function gone() {
             var el = document.getElementById('sp-loader');
             if (!el) return true;
-            // still in the document: gone means faded out, not merely on its way
+
             if (!el.classList.contains('spl-done')) return false;
             return !(parseFloat(window.getComputedStyle(el).opacity) > 0.01);
         }
-
         function settle() {
             if (settled) return;
             settled = true;
@@ -103,37 +36,21 @@
 
         if (window.MutationObserver) {
             obs = new MutationObserver(look);
-            // the removal can happen anywhere under the root, the class only on
-            // the splash itself
             obs.observe(document.documentElement, { childList: true, subtree: true });
             if (splash) obs.observe(splash, { attributes: true, attributeFilter: ['class'] });
         }
         if (splash) splash.addEventListener('transitionend', look);
         cap = setTimeout(settle, 8000);
 
-        // it may already be over by the time this file runs
         look();
     }
 
-    // ---- the sign-up that is already under way -------------------------------
-    // a code lives for a quarter of an hour, and in that time somebody will close
-    // the dialog, read the terms, go and find the mail, come back. coming back
-    // must land on the box for the code, not on the empty form: the account is
-    // half made, and starting again would send a second code for no reason.
-    //
-    // it is remembered for as long as the page is open and no longer. a reload
-    // is a fresh start, and after one there is no trace of it anywhere: nothing
-    // in storage, nothing in a cookie, nothing left on a shared machine for the
-    // next person. the code itself keeps working, so anyone who does reload can
-    // sign up again and the same mail is waiting for them.
     var live = null;
-
     function pending() {
         if (!live) return null;
         if (Date.now() >= live.expires) { live = null; return null; }
         return live;
     }
-
     function remember(email, minutes, resendUntil) {
         live = {
             email: email,
@@ -141,54 +58,28 @@
             resendUntil: resendUntil || (Date.now() + RESEND_WAIT * 1000)
         };
     }
-
     function forgetPending() { live = null; }
 
-    // ---- reset links this browser has already asked for ----------------------
-    // closing the dialog and opening it again used to look like a way round the
-    // minute between links: the panel came back empty, the address went in
-    // again, and the envelope appeared as though a second mail had gone. it had
-    // not. the server refuses inside the minute and refuses atomically, and it
-    // does not touch the row it refuses, so the link already in the inbox keeps
-    // working. nothing was ever sent twice.
-    //
-    // but a screen that says "on its way" when nothing was sent is its own bug,
-    // and it is the one that makes somebody sit and wait. so the panel now
-    // remembers what this browser asked for and says the true thing.
-    //
-    // this is at module level because the dialog and the /auth card are two
-    // panels in front of one server: asking on one and then the other is still
-    // asking twice.
-    //
-    // in memory only, like the pending sign-up above and for the same reason: a
-    // reload starts clean and nothing is left on a shared machine. losing it
-    // costs nothing, because it was never the limit.
-    var RESET_MAX_ASKS = 3;    // the server's ceiling per address per hour
+    var RESET_MAX_ASKS = 3;
     var resetAsks = Object.create(null);
-
     function askKey(email) { return String(email || '').trim().toLowerCase(); }
-
     function resetWait(email) {
         var e = resetAsks[askKey(email)];
         if (!e) return 0;
         var left = Math.ceil((e.until - Date.now()) / 1000);
         return left > 0 ? left : 0;
     }
-
     function resetSpent(email) {
         var e = resetAsks[askKey(email)];
         return Boolean(e && e.asks >= RESET_MAX_ASKS && Date.now() < e.hourEnds);
     }
-
     function rememberAsk(email, seconds) {
         var k = askKey(email);
         var e = resetAsks[k];
-        // the hour runs from the first ask, the same way the server's does
         if (!e || Date.now() >= e.hourEnds) e = resetAsks[k] = { asks: 0, until: 0, hourEnds: Date.now() + 3600 * 1000 };
         e.asks++;
         e.until = Date.now() + (Number(seconds) || 60) * 1000;
     }
-
     function post(url, body) {
         return fetch(url, {
             method: 'POST',
@@ -199,15 +90,7 @@
                 if (r.ok) return data;
                 var err = new Error('http_' + r.status);
                 err.reason = data && data.error;
-                // whether the body is one of ours.
-                //
-                // every refusal we write carries `error`. a body without it is
-                // not from this application: a gateway timing out, an edge
-                // error page, a proxy that replaced the response. both end up
-                // showing the same one line to the reader, and that line then
-                // has to cover two completely different faults with nothing to
-                // tell them apart by. this is written to the console so the next
-                // report says which, instead of "there is some problem".
+
                 err.ours = Boolean(data && typeof data.error === 'string');
                 if (!r.ok) {
                     try {
@@ -217,47 +100,28 @@
                     } catch (e) {}
                 }
                 err.retryIn = data && data.retryIn;
-                // the reset endpoint says this when it refused because a link
-                // for that address is already in flight. it is a refusal the
-                // caller wants to treat as news rather than as a fault.
                 err.alreadySent = Boolean(data && data.alreadySent);
                 err.status = r.status;
                 throw err;
             });
         }, function (netErr) {
-            // the request never landed: dns, tls, offline, a tunnel cut. no
-            // status and no body, so it cannot be told apart from a 500 by the
-            // panel, only here.
+
             try { console.error('[auth] ' + url + ' -> no response (' + (netErr && netErr.message) + ')'); } catch (e) {}
             throw netErr;
         });
     }
 
-    // the message a failure should show. anything the server explained is shown
-    // as it explained it: "that code has expired" sends somebody to the resend
-    // button, "could not send" sends them to support for no reason.
     function reason(err) {
-        // 503 is included on purpose. it is not a crash, it is an answer we
-        // wrote: the database is down, or the mail provider refused. those say
-        // different things and send the reader somewhere different, and burying
-        // both under "could not reach us" is the panel guessing on the server's
-        // behalf. 500 stays generic, because a 500 is the one case where nobody
-        // decided what to say.
+
         if (err && err.reason && err.status && (err.status < 500 || err.status === 503)) return t(err.reason);
         return t('Could not reach us just now. Please try again in a moment.');
     }
-
     function el(tag, cls, text) {
         var n = document.createElement(tag);
         if (cls) n.className = cls;
         if (text != null) n.textContent = text;
         return n;
     }
-
-    // one labelled input, in the markup the card's own fields use. built here
-    // rather than written out four times: the panels this file adds have to look
-    // like the ones the html already carries, and the way to keep them looking
-    // like it is to have one place that decides what a field is.
     function field(idBase, label, type, autocomplete, placeholder, full) {
         var wrap = el('div', 'lp-demo-field');
         if (full) wrap.classList.add('lp-demo-field-full');
@@ -268,17 +132,11 @@
         input.id = id;
         input.type = type;
         input.autocomplete = autocomplete;
-        // the label is left in english for the dictionary's dom walk to pick up,
-        // the way every other panel here does it. a placeholder is an attribute
-        // rather than a text node, so it is asked for directly.
         input.placeholder = t(placeholder);
         wrap.appendChild(lab);
         wrap.appendChild(input);
         return { wrap: wrap, input: input, label: lab };
     }
-
-    // restart an animation: removing the class alone is not a change the browser
-    // can see, the element has to be laid out again in between
     function replay(node, cls) {
         if (!node) return;
         node.classList.remove(cls);
@@ -286,13 +144,6 @@
         node.classList.add(cls);
     }
 
-    // the panels are different heights, so the card is given the old height and
-    // then the new one and glides between the two. without it the dialog jumps,
-    // and on /auth the page under it reflows.
-    //
-    // this lives out here because both halves of the dialog move between panels
-    // now: the sign-up goes form -> code -> done, and the sign-in goes form ->
-    // reset -> sent. one implementation so the two feel like the same dialog.
     function glideOn(card, change) {
         var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         if (reduced) { change(); return; }
@@ -306,37 +157,12 @@
         void card.offsetHeight;
         card.classList.add('sp-auth-swapping');
         card.style.height = to + 'px';
-        // the height goes back to the content once it has arrived: a message
-        // appearing later must not be trapped inside a fixed box
         card.__spGlideTimer = setTimeout(function () {
             card.classList.remove('sp-auth-swapping');
             card.style.height = '';
         }, 320);
     }
 
-    // ---- the bot challenge, once, for every form that sends mail -------------
-    // both forms here can make us post a message to an address a stranger typed:
-    // the sign-up, and the reset link. that is the same problem twice, so it is
-    // the same widget twice rather than two of them drifting apart. each form
-    // gets its own instance: they are never on screen together, and a token is
-    // spent by the request that carries it. it is skipped when no site key is
-    // set, so the forms still work before the keys exist.
-    //
-    // two things this has to get right, and the first version got neither:
-    //
-    //   the widget is not rendered until the form is actually submitted. it is a
-    //   check on the send, not a field to fill in, so it has no business sitting
-    //   in the form while somebody types their name: it appears once the button
-    //   is pressed, and in the ordinary case it passes on its own and is gone
-    //   again before it is read. rendering it earlier also risked running it
-    //   inside a display:none dialog, where nobody can see or finish a challenge
-    //   that asks for a click.
-    //
-    //   the token is not reused. cloudflare gives it a few minutes and then
-    //   refuses it, so a page left open while somebody reads the pricing arrives
-    //   at the form with a token the server will not accept: the answer is
-    //   "verification failed" for a check the visitor passed. the token's age is
-    //   checked at submit, and a stale one is replaced before anything is sent.
     function makeTurnstile(form, beforeEl) {
         var turnstileToken = '';
         var turnstileAt = 0;
@@ -344,60 +170,38 @@
         var turnstileOn = Boolean(window.__TURNSTILE_SITEKEY);
         var waitingFor = null;
         var holder = null;
-        // cloudflare's own window is five minutes. four leaves room for a slow
-        // connection to still be inside it when the request lands.
-        var TOKEN_GOOD_FOR = 4 * 60 * 1000;
 
+        var TOKEN_GOOD_FOR = 4 * 60 * 1000;
         function tokenArrived(tok) {
             turnstileToken = tok || '';
             turnstileAt = tok ? Date.now() : 0;
             if (waitingFor) { var go = waitingFor; waitingFor = null; go(turnstileToken); }
         }
-
-        /* why the check failed, kept rather than thrown away.
-
-           every one of these paths used to end in the same empty token, and the
-           person got one sentence that did not distinguish between cloudflare
-           being blocked by an extension, the site key not being allowed on this
-           hostname, and a challenge that simply needed longer. that is a
-           support conversation with nothing in it. `sp.turnstileFault` holds
-           the last reason, and it is on `window` on purpose: it is the one
-           thing worth being able to ask a browser about from the other end of a
-           message. */
         var fault = '';
         function setFault(why) {
             fault = why;
-            try { window.sp = window.sp || {}; window.sp.turnstileFault = why; } catch (e) { /* sealed window */ }
+            try { window.sp = window.sp || {}; window.sp.turnstileFault = why; } catch (e) {  }
             if (why) console.error('[turnstile] ' + why);
         }
-
         function renderTurnstile() {
             if (!window.turnstile || turnstileId !== null || !holder) return;
             try {
                 turnstileId = window.turnstile.render(holder, {
                     sitekey: window.__TURNSTILE_SITEKEY,
-                    // the card is white now, and a dark widget on it read as a hole
                     theme: 'light',
                     callback: function (tok) { setFault(''); tokenArrived(tok); },
                     'expired-callback': function () { setFault('expired'); tokenArrived(''); },
-                    // cloudflare hands the callback a code. 400020 and its
-                    // neighbours mean the key is not allowed on this hostname,
-                    // which is a dashboard problem and not something the person
-                    // filling in the form can do anything about, and it is worth
-                    // being able to tell those apart without guessing.
+
                     'error-callback': function (code) { setFault('error-' + (code || 'unknown')); tokenArrived(''); }
                 });
             } catch (err) {
-                // a widget that will not render must not take the form down with it
                 setFault('render-threw:' + err.message);
             }
         }
-
         function scriptFailed() {
             setFault('script-blocked');
             tokenArrived('');
         }
-
         function loadTurnstile() {
             if (!turnstileOn) return;
             if (window.turnstile) { renderTurnstile(); return; }
@@ -412,31 +216,16 @@
             s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
             s.async = true; s.defer = true;
             s.onload = renderTurnstile;
-            // and answer straight away rather than letting the wait run out. a
-            // script that failed to load is not going to produce a token in
-            // twenty seconds any more than in one, and making somebody watch a
-            // spinner for a result already known is the rudest way to fail.
+
             s.onerror = scriptFailed;
-            // the case that produced no signal at all: the request never
-            // arrives, nothing throws, and the only evidence was nine seconds of
-            // nothing followed by a message about a check that had never
-            // started. an ad blocker or a network filter refusing
-            // challenges.cloudflare.com lands here.
+
             document.head.appendChild(s);
         }
-
         if (turnstileOn) {
             holder = el('div', 'sp-auth-turnstile');
-            // it keeps no room in the layout until it has something to show, so
-            // the form does not carry a 65px hole through the whole visit
             holder.hidden = true;
             form.insertBefore(holder, beforeEl);
         }
-
-        // hands back a token the server will still accept, replacing a stale one
-        // first. resolves with an empty string if the widget cannot produce one,
-        // and the caller says so plainly rather than sending a request that is
-        // going to be refused.
         function freshToken() {
             if (!turnstileOn) return Promise.resolve('');
             if (turnstileToken && Date.now() - turnstileAt < TOKEN_GOOD_FOR) {
@@ -448,17 +237,7 @@
                 waitingFor = resolve;
                 try {
                     if (turnstileId !== null) window.turnstile.reset(turnstileId);
-                } catch (err) { /* not rendered yet: the render itself will answer */ }
-                // a challenge that needs a click, or a network that is not there,
-                // must not leave the button spinning for ever.
-                //
-                // twenty seconds rather than nine. nine is comfortable for a
-                // widget that is already loaded and being reset, and it is not
-                // enough for the first one on a slow connection: the script has
-                // to be fetched, then the challenge itself, and an interactive
-                // one wants a click in the middle of that. giving up at nine
-                // turns a slow success into a failure with no explanation, and
-                // this is the last step before somebody has an account.
+                } catch (err) {  }
                 setTimeout(function () {
                     if (waitingFor !== resolve) return;
                     waitingFor = null;
@@ -467,40 +246,27 @@
                 }, 20000);
             });
         }
-
-
-            // the token is spent whether or not the request worked, so the next
-            // press starts by asking for a new one, and the widget goes back out of
-            // the layout until something asks again.
             function spend() {
                 tokenArrived('');
                 if (turnstileOn && turnstileId !== null) {
-                    try { window.turnstile.reset(turnstileId); } catch (err) { /* widget already gone */ }
+                    try { window.turnstile.reset(turnstileId); } catch (err) {  }
                 }
                 if (holder) holder.hidden = true;
             }
-
             return { on: turnstileOn, freshToken: freshToken, spend: spend, fault: function () { return fault; } };
         }
-
     function attach(form) {
         var card = form.closest('.lp-demo-card');
         if (!card || form.__spAuthFlow) return;
         form.__spAuthFlow = true;
-
         var root = card.closest('.sp-auth-stage') || card.closest('.sp-authm') || card;
         var tabs = card.querySelector('.sp-auth-tabs');
         var loginForm = card.querySelector('form[data-auth="login"]');
-        // the copy beside or above the card belongs to whichever panel is up, so
-        // it steps out of the way while the code is being entered
+
         var heads = root.querySelectorAll('.sp-authm-head, .sp-auth-h, .sp-auth-p');
         var submitBtn = form.querySelector('button[type="submit"]');
         var emailInput = form.querySelector('input[type="email"]');
 
-        // ---- the terms tick ---------------------------------------------------
-        // an unticked box is not an error worth a popup in the corner: the thing
-        // that needs attention is right there in the form, so the box says so
-        // itself and the message sits under it.
         var consentWrap = form.querySelector('.lp-demo-consent');
         var consentNote = null;
         if (consentWrap) {
@@ -514,7 +280,6 @@
                 });
             }
         }
-
         function markConsent(ok) {
             if (!consentWrap) return;
             consentWrap.classList.toggle('lp-demo-consent-err', !ok);
@@ -524,21 +289,12 @@
             consentNote.hidden = false;
             replay(consentNote, 'is-shown');
         }
-
         var ts = makeTurnstile(form, submitBtn);
-
-        // ---- what goes wrong, said where it went wrong -----------------------
-        // a message about this form belongs on this form. a toast in the corner
-        // of the screen is for something that happened elsewhere, or after the
-        // thing you were looking at has gone; here the form is right in front of
-        // the person reading, and a message that appears in it cannot be missed,
-        // cannot time out, and does not cover anything up.
         var fErr = el('p', 'sp-auth-verr');
         fErr.classList.add('sp-auth-ferr');
         fErr.hidden = true;
         fErr.setAttribute('role', 'alert');
         form.insertBefore(fErr, submitBtn);
-
         var formErrTimer = null;
         function formError(msg) {
             clearTimeout(formErrTimer);
@@ -547,16 +303,12 @@
             if (msg) replay(fErr, 'sp-auth-enter');
         }
 
-        // ---- the panels this file owns ---------------------------------------
-
         var verify = el('form', 'sp-auth-form');
         verify.classList.add('sp-auth-verify');
         verify.setAttribute('novalidate', '');
         verify.hidden = true;
-
         var vhead = el('div', 'sp-auth-vhead');
-        // the same mark the finished panel uses, so the two steps read as one
-        // piece of design rather than two screens that happen to follow
+
         var vmark = el('div', 'sp-auth-vmark');
         vmark.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
             'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
@@ -566,15 +318,11 @@
         vhead.appendChild(el('h3', null, 'Check your email'));
         var vsub = el('p');
         vsub.appendChild(document.createTextNode('We sent a 6 digit code to'));
-        // its own node with its own space: a translation that begins with
-        // punctuation renders with a gap in front of it, which is how the last
-        // one of these ended up reading "voditelja compliancea ."
         vsub.appendChild(document.createTextNode(' '));
         var vmail = el('b');
         vsub.appendChild(vmail);
         vhead.appendChild(vsub);
         verify.appendChild(vhead);
-
         var codeWrap = el('div', 'sp-auth-code');
         codeWrap.setAttribute('role', 'group');
         codeWrap.setAttribute('aria-label', t('Verification code'));
@@ -590,17 +338,14 @@
             boxes.push(box);
         }
         verify.appendChild(codeWrap);
-
         var vErr = el('p', 'sp-auth-verr');
         vErr.hidden = true;
         vErr.setAttribute('role', 'alert');
         verify.appendChild(vErr);
-
         var vBtn = el('button', 'lp-demo-submit', 'Verify and create account');
         vBtn.classList.add('sp-auth-submit');
         vBtn.type = 'submit';
         verify.appendChild(vBtn);
-
         var vfoot = el('div', 'sp-auth-vfoot');
         var resendBtn = el('button', 'sp-auth-linkbtn', 'Send a new code');
         resendBtn.classList.add('sp-auth-resend');
@@ -611,12 +356,6 @@
         vfoot.appendChild(backBtn);
         verify.appendChild(vfoot);
 
-        // the way back out of the code step, the same arrow the reset panel has.
-        // "Use a different email" in the footer says the same thing, but it is at
-        // the bottom and it is a sentence; the corner is where somebody who has
-        // decided they are in the wrong place already looks, because the cross
-        // taught them to. it belongs to the card rather than to the panel: one
-        // button, shown only while there is somewhere behind to go.
         var stepBack = el('button', 'sp-auth-stepback');
         stepBack.type = 'button';
         stepBack.hidden = true;
@@ -625,7 +364,6 @@
             'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
             '<path d="M15 5l-7 7 7 7"></path></svg>';
         card.insertBefore(stepBack, card.firstChild);
-
         var done = el('div', 'sp-auth-done');
         done.hidden = true;
         var mark = el('div', 'sp-auth-done-mark');
@@ -633,22 +371,12 @@
             'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>';
         done.appendChild(mark);
         done.appendChild(el('h3', null, 'Your account is ready'));
-        // said, and then done: the account exists, they are signed in, and the
-        // next screen follows on its own. the panel used to promise an email
-        // instead, which is what you write when there is nowhere to send anyone.
         done.appendChild(el('p', null, 'You are signed in. Taking you to your account…'));
-
         form.parentNode.insertBefore(verify, form.nextSibling);
         form.parentNode.insertBefore(done, verify.nextSibling);
 
-        // ---- moving between them ---------------------------------------------
-
         function glide(change) { glideOn(card, change); }
-
-        // what the headings looked like on the way in, so coming back restores the
-        // create-account copy rather than guessing which of the pair was showing
         var headState = null;
-
         function step(name) {
             glide(function () {
                 if (name !== 'register' && !headState) {
@@ -658,26 +386,20 @@
                 verify.hidden = name !== 'verify';
                 done.hidden = name !== 'done';
                 if (loginForm) loginForm.hidden = true;
-                // there is nothing to switch to in the middle of a sign-up, and an
-                // account half made is not a place to leave by the side door
+
                 if (tabs) tabs.hidden = name !== 'register';
                 for (var j = 0; j < heads.length; j++) {
                     heads[j].hidden = name === 'register' ? (headState ? headState[j] : heads[j].hidden) : true;
                 }
                 if (name === 'register') headState = null;
-                // only the code step has a way back. the account is made by the
-                // time 'done' is up, and 'register' is the beginning.
                 stepBack.hidden = name !== 'verify';
-                // the dialog reads this before it switches panels behind our back:
-                // reopening it mid sign-up must not put the empty form back
+
                 card.dataset.authStep = name;
             });
             var incoming = name === 'register' ? form : (name === 'verify' ? verify : done);
             incoming.style.setProperty('--sp-auth-dir', name === 'register' ? '-14px' : '14px');
             replay(incoming, 'sp-auth-enter');
         }
-
-        // ---- the six boxes ----------------------------------------------------
 
         function codeValue() {
             return boxes.map(function (b) { return b.value; }).join('');
@@ -689,11 +411,9 @@
         function markFilled() {
             boxes.forEach(function (b) { b.classList.toggle('is-filled', b.value !== ''); });
         }
-
         boxes.forEach(function (box, idx) {
             box.addEventListener('input', function () {
-                // a phone keyboard can deliver the whole code into one box, and so
-                // can a password manager: spread whatever arrived across the row
+
                 var digits = box.value.replace(/\D/g, '');
                 if (digits.length > 1) {
                     spread(digits, idx);
@@ -723,7 +443,6 @@
             });
             box.addEventListener('focus', function () { box.select(); });
         });
-
         function spread(digits, from) {
             for (var k = 0; k < 6 - from && k < digits.length; k++) boxes[from + k].value = digits[k];
             markFilled();
@@ -732,9 +451,6 @@
             boxes[next].focus();
             if (codeValue().length === 6) submitCode();
         }
-
-        // ---- resend, and the wait between ------------------------------------
-
         var tick = null;
         function holdResend(seconds) {
             clearInterval(tick);
@@ -747,8 +463,6 @@
                     return;
                 }
                 resendBtn.disabled = true;
-                // the wait is shown rather than the button simply not working: a
-                // dead button reads as a bug, a countdown reads as a rule
                 resendBtn.textContent = t('Send a new code in') + ' ' + left + 's';
                 left--;
             }
@@ -756,7 +470,6 @@
             paint();
             tick = setInterval(paint, 1000);
         }
-
         resendBtn.addEventListener('click', function () {
             if (resendBtn.disabled) return;
             holdResend(RESEND_WAIT);
@@ -765,16 +478,10 @@
                 remember(pendingEmail, data && data.expiresInMin, Date.now() + RESEND_WAIT * 1000);
                 watchExpiry();
             }).catch(function (err) {
-                // the server's own wait wins over ours, and it is shown as a
-                // countdown on the button rather than as a sentence nobody can act on
                 if (err.retryIn) holdResend(err.retryIn);
                 showError(reason(err));
             });
         });
-
-        // the footer sentence and the corner arrow do the same thing, so they are
-        // the same thing: a second copy of this is a second place for the code
-        // timer to be left running.
         function leaveVerify() {
             clearInterval(tick);
             clearTimeout(expiryTimer);
@@ -786,21 +493,14 @@
         }
         backBtn.addEventListener('click', leaveVerify);
         stepBack.addEventListener('click', leaveVerify);
-
         function showError(msg, kind) {
             vErr.textContent = msg || '';
             vErr.hidden = !msg;
-            // the same line carries good news and bad. it is the same place to
-            // look either way, and the colour is what tells them apart.
+
             vErr.classList.toggle('is-good', kind === 'good');
             if (msg) replay(vErr, 'sp-auth-enter');
         }
 
-        // ---- the life of the code --------------------------------------------
-        // fifteen minutes after it was sent the code is worth nothing, and a panel
-        // that still asks for it is asking for something that cannot work. when
-        // the time is up the form comes back, with a line saying why, rather than
-        // six boxes that will refuse whatever is typed into them.
         var expiryTimer = null;
         function watchExpiry() {
             clearTimeout(expiryTimer);
@@ -816,25 +516,17 @@
                 formError(t('That code has expired. Sign up again and we will send a new one.'));
             }, Math.max(0, state.expires - Date.now()));
         }
-
-        // ---- the two submits --------------------------------------------------
-
         var pendingEmail = '';
         var busy = false;
-
         form.addEventListener('submit', function (e) {
             e.preventDefault();
             if (busy) return;
-
             var data = {};
             new FormData(form).forEach(function (v, k) { data[k] = typeof v === 'string' ? v.trim() : v; });
-            // a password is the one field that must not be trimmed: a space is a
-            // character, and taking it off here means the account cannot be opened
             var pass = form.querySelector('input[type="password"]');
             if (pass) data.password = pass.value;
             form.querySelectorAll('input[type="checkbox"]').forEach(function (cb) { data[cb.name] = !!cb.checked; });
             data.lang = lang();
-
             if (!data.firstName || !data.lastName || !data.email) {
                 formError(t('Please fill in every field.'));
                 return;
@@ -855,8 +547,6 @@
             var label = submitBtn.textContent;
             submitBtn.textContent = t('Creating your account…');
 
-            // the check comes first, and it may have to run again: a page that has
-            // been open a while is holding a token the server will refuse
             ts.freshToken().then(function (tok) {
                 if (ts.on && !tok) {
                     var err = new Error('no_token');
@@ -877,20 +567,12 @@
                 setTimeout(function () { boxes[0].focus(); }, 340);
             }).catch(function (err) {
                 if (err.noToken) {
-                    // the two failures need different sentences, because they
-                    // need different things from the person reading. a blocked
-                    // script is theirs to fix and telling them to try again
-                    // wastes their time; anything else is worth one more go.
                     formError(t(ts.fault() === 'script-blocked'
                         ? 'The security check could not load. An ad blocker or network filter may be blocking it.'
                         : 'The check below did not finish. Please try again in a moment.'));
                     return;
                 }
-                // "a code was just sent" is an answer to the button that was
-                // pressed, so it belongs on the panel that button is on. this
-                // used to move them to the code panel and put the message
-                // there, which read as though the press had worked and then
-                // complained about itself once they had arrived.
+
                 formError(reason(err));
             }).then(function () {
                 busy = false;
@@ -899,7 +581,6 @@
                 ts.spend();
             });
         });
-
         function submitCode() {
             if (busy) return;
             var code = codeValue();
@@ -909,16 +590,11 @@
             var label = vBtn.textContent;
             vBtn.textContent = t('Checking…');
             showError('');
-
             post('/v1/auth/verify', { email: pendingEmail, code: code }).then(function (out) {
                 clearInterval(tick);
                 clearTimeout(expiryTimer);
                 forgetPending();
                 step('done');
-                // long enough to read the line and see the panel arrive, short
-                // enough that nobody wonders whether it is stuck. if the session
-                // could not be opened the account still exists, so they are sent
-                // to sign in rather than to a page that would turn them away.
                 setTimeout(function () {
                     location.replace(out && out.signedIn === false ? '/?signin=1' : '/dashboard');
                 }, 1400);
@@ -934,7 +610,6 @@
                 vBtn.textContent = label;
             });
         }
-
         verify.addEventListener('submit', function (e) {
             e.preventDefault();
             if (codeValue().length !== 6) {
@@ -944,14 +619,7 @@
             submitCode();
         });
     }
-
-    // ---- showing the password ------------------------------------------------
-    // a password nobody can read is a password typed twice, and on a phone
-    // keyboard it is typed twice wrong. the eye is off by default and goes back
-    // to hidden the moment the field is left, so a screen shared or a shoulder
-    // looked over does not keep it on show.
     var EYE = 'M1.6 12S5.3 5.5 12 5.5 22.4 12 22.4 12 18.7 18.5 12 18.5 1.6 12 1.6 12Z';
-
     function svg(paths, cut) {
         var s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         s.setAttribute('viewBox', '0 0 24 24');
@@ -970,7 +638,6 @@
         }
         return s;
     }
-
     function addEye(input) {
         if (input.__spEye) return;
         var field = input.closest('.lp-demo-field');
@@ -978,25 +645,15 @@
         input.__spEye = true;
         field.classList.add('sp-has-eye');
 
-        // the button is placed against the input itself rather than against the
-        // field, which also holds the label above it. anchored to the field it
-        // could only be positioned by a number measured off one input height,
-        // and it sat three pixels high the moment anything else was styled.
         var box = el('div', 'sp-eye-box');
         input.parentNode.insertBefore(box, input);
         box.appendChild(input);
-
-        // a revealed password is a plain text field, and the browser will offer
-        // to spellcheck and autocapitalise it: a red squiggle under somebody's
-        // passphrase, and a capital letter they did not type
         input.setAttribute('spellcheck', 'false');
         input.setAttribute('autocorrect', 'off');
         input.setAttribute('autocapitalize', 'off');
-
         var btn = el('button', 'sp-eye');
         btn.type = 'button';
         var shown = false;
-
         function paint() {
             btn.textContent = '';
             btn.appendChild(svg([EYE, 'M12 9.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6Z'], shown));
@@ -1005,59 +662,39 @@
             btn.setAttribute('title', label);
             btn.setAttribute('aria-pressed', shown ? 'true' : 'false');
         }
-
         function set(next) {
             shown = next;
             input.type = shown ? 'text' : 'password';
             paint();
         }
-
         btn.addEventListener('click', function () {
-            // the caret is put back where it was: switching the type moves it to
-            // the end, which is not where somebody mid-word left it
             var at = input.selectionStart;
             var to = input.selectionEnd;
             set(!shown);
             input.focus();
-            try { input.setSelectionRange(at, to); } catch (err) { /* not a text input yet */ }
+            try { input.setSelectionRange(at, to); } catch (err) {  }
         });
         input.addEventListener('blur', function () {
-            // pressing the eye blurs the field before the click is handled, and
-            // the handler puts the focus straight back, so the check waits and
-            // then asks where the focus actually ended up
             setTimeout(function () {
                 var here = document.activeElement;
                 if (shown && here !== btn && here !== input) set(false);
             }, 120);
         });
-
         paint();
         box.appendChild(btn);
     }
 
-    // ---- signing in ----------------------------------------------------------
-    // small enough to live here rather than in a file of its own, and it belongs
-    // next to the sign-up it shares a card with: the same inline errors, the same
-    // eye on the password, the same rule that a message about this form appears
-    // on this form.
     function attachLogin(form) {
         if (form.__spAuthLogin) return;
         form.__spAuthLogin = true;
-
         var submitBtn = form.querySelector('button[type="submit"]');
         if (!submitBtn) return;
-
         var err = el('p', 'sp-auth-verr');
         err.classList.add('sp-auth-ferr');
         err.hidden = true;
         err.setAttribute('role', 'alert');
         form.insertBefore(err, submitBtn);
 
-        // ---- forgetting the password ------------------------------------------
-        // the same two steps the sign-up takes, and deliberately the same shapes:
-        // a panel that asks for one thing, then the envelope saying where it went.
-        // somebody who has already made an account here has seen this once, and
-        // recognising it is most of what makes a reset feel safe.
         var loginCard = form.closest('.lp-demo-card');
         var forgotLink = form.querySelector('.sp-auth-link');
         if (loginCard && forgotLink) {
@@ -1069,7 +706,6 @@
             reset.classList.add('sp-auth-verify');
             reset.setAttribute('novalidate', '');
             reset.hidden = true;
-
             var rhead = el('div', 'sp-auth-vhead');
             var rmark = el('div', 'sp-auth-vmark');
             rmark.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
@@ -1080,7 +716,6 @@
             rhead.appendChild(el('h3', null, 'Reset your password'));
             rhead.appendChild(el('p', null, 'Enter the address on the account and we will send you a link to set a new password.'));
             reset.appendChild(rhead);
-
             var rField = el('div', 'lp-demo-field');
             rField.classList.add('lp-demo-field-full');
             var rLabel = el('label', null, 'Work email');
@@ -1095,28 +730,21 @@
             rField.appendChild(rLabel);
             rField.appendChild(rMail);
             reset.appendChild(rField);
-
             var rErr = el('p', 'sp-auth-verr');
             rErr.hidden = true;
             rErr.setAttribute('role', 'alert');
             reset.appendChild(rErr);
-
             var rBtn = el('button', 'lp-demo-submit', 'Send the reset link');
             rBtn.classList.add('sp-auth-submit');
             rBtn.type = 'submit';
             reset.appendChild(rBtn);
-
             var rts = makeTurnstile(reset, rBtn);
-
             var rFoot = el('div', 'sp-auth-vfoot');
             var rBack = el('button', 'sp-auth-linkbtn', 'Back to sign in');
             rBack.type = 'button';
             rFoot.appendChild(rBack);
             reset.appendChild(rFoot);
 
-            // the envelope. it never says whether the address has an account:
-            // answering that would turn this box into a way of asking who banks
-            // here, and the person who does have one cannot tell the difference.
             var sent = el('div', 'sp-auth-done');
             sent.hidden = true;
             var sMark = el('div', 'sp-auth-done-mark');
@@ -1132,18 +760,12 @@
             var sMail = el('b');
             sSub.appendChild(sMail);
             sent.appendChild(sSub);
-            // a resend can fail, and the panel it fails on is this one, so this
-            // is where it says so
+
             var sErr = el('p', 'sp-auth-verr');
             sErr.hidden = true;
             sErr.setAttribute('role', 'alert');
             sent.appendChild(sErr);
-
             var sFoot = el('div', 'sp-auth-vfoot');
-            // the same pair the sign-up's code panel offers, in the same order:
-            // send another, or go back. somebody who does not see the mail wants
-            // the first of those and should not have to retype the address to
-            // reach it.
             var sResend = el('button', 'sp-auth-linkbtn', 'Send a new link');
             sResend.classList.add('sp-auth-resend');
             sResend.type = 'button';
@@ -1152,14 +774,8 @@
             sFoot.appendChild(sResend);
             sFoot.appendChild(sBack);
             sent.appendChild(sFoot);
-
             form.parentNode.insertBefore(reset, form.nextSibling);
             form.parentNode.insertBefore(sent, reset.nextSibling);
-
-            // the way back, in the corner opposite the cross. it belongs to the
-            // card rather than to either panel: one button that appears when
-            // there is somewhere to go back to, in the place the eye already
-            // checks because the cross taught it to.
             var backArrow = el('button', 'sp-auth-stepback');
             backArrow.type = 'button';
             backArrow.hidden = true;
@@ -1170,21 +786,10 @@
             loginCard.insertBefore(backArrow, loginCard.firstChild);
             backArrow.addEventListener('click', function () { lStep('login'); });
 
-            // ---- arriving from the link in the mail ----------------------------
-            // the message used to open a page of its own. it opens this dialog
-            // now, over the site, because that is where every other thing you do
-            // with an account happens and a second screen that looked almost the
-            // same was a second screen to keep in step.
-            //
-            // one panel for both endings: an address with an account is setting a
-            // new password, an address without one is making the account. the
-            // server decides which, and the difference on screen is the two name
-            // fields and the terms tick.
             var setpw = el('form', 'sp-auth-form');
             setpw.classList.add('sp-auth-verify');
             setpw.setAttribute('novalidate', '');
             setpw.hidden = true;
-
             var pwHead = el('div', 'sp-auth-vhead');
             var pwMark = el('div', 'sp-auth-vmark');
             pwMark.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
@@ -1197,7 +802,6 @@
             pwHead.appendChild(pwTitle);
             pwHead.appendChild(pwSub);
             setpw.appendChild(pwHead);
-
             var pwNames = el('div', 'lp-demo-grid');
             pwNames.hidden = true;
             var pwFirst = field('sp-pw-first', 'First name', 'text', 'given-name', 'e.g. Alex');
@@ -1205,12 +809,10 @@
             pwNames.appendChild(pwFirst.wrap);
             pwNames.appendChild(pwLast.wrap);
             setpw.appendChild(pwNames);
-
             var pwOne = field('sp-pw-one', 'New password', 'password', 'new-password', 'At least 12 characters', true);
             var pwTwo = field('sp-pw-two', 'Repeat the password', 'password', 'new-password', 'At least 12 characters', true);
             setpw.appendChild(pwOne.wrap);
             setpw.appendChild(pwTwo.wrap);
-
             var pwConsent = el('label', 'lp-demo-consent');
             pwConsent.hidden = true;
             var pwTick = document.createElement('input');
@@ -1221,17 +823,14 @@
             pwConsent.appendChild(pwTick);
             pwConsent.appendChild(pwTerms);
             setpw.appendChild(pwConsent);
-
             var pwErr = el('p', 'sp-auth-verr');
             pwErr.hidden = true;
             pwErr.setAttribute('role', 'alert');
             setpw.appendChild(pwErr);
-
             var pwBtn = el('button', 'lp-demo-submit', 'Save the password');
             pwBtn.classList.add('sp-auth-submit');
             pwBtn.type = 'submit';
             setpw.appendChild(pwBtn);
-
             var pwDone = el('div', 'sp-auth-done');
             pwDone.hidden = true;
             var pwDoneMark = el('div', 'sp-auth-done-mark');
@@ -1241,14 +840,9 @@
             var pwDoneTitle = el('h3', null, 'Your password is set');
             pwDone.appendChild(pwDoneTitle);
             pwDone.appendChild(el('p', null, 'You are signed in. Taking you to your account…'));
-
             form.parentNode.insertBefore(setpw, sent.nextSibling);
             form.parentNode.insertBefore(pwDone, setpw.nextSibling);
-
-            // what the copy beside the card looked like on the way in, so coming
-            // back restores it rather than guessing which of the pair was showing
             var lHeadState = null;
-
             function lStep(name) {
                 glideOn(loginCard, function () {
                     if (name !== 'login' && !lHeadState) {
@@ -1259,15 +853,11 @@
                     sent.hidden = name !== 'sent';
                     setpw.hidden = name !== 'setpw';
                     pwDone.hidden = name !== 'setpwdone';
-                    // there is no second tab to reach from inside a reset, the
-                    // same way there is none in the middle of a sign-up
                     if (lTabs) lTabs.hidden = name !== 'login';
                     for (var k = 0; k < lHeads.length; k++) {
                         lHeads[k].hidden = name === 'login' ? (lHeadState ? lHeadState[k] : lHeads[k].hidden) : true;
                     }
                     if (name === 'login') lHeadState = null;
-                    // no way back from the link panels: the token is spent by
-                    // finishing and there is nothing behind them to return to
                     backArrow.hidden = name === 'login' || name === 'setpw' || name === 'setpwdone';
                     loginCard.dataset.authStep = name === 'login' ? '' : name;
                 });
@@ -1276,9 +866,6 @@
                 replay(into, 'sp-auth-enter');
             }
 
-            // a url can ask for this panel too: /?signin=reset, which is where
-            // the expired-link page sends people. the dialog opens on sign-in and
-            // steps here, the same journey the link below makes.
             window.SentinelAuthFlow = window.SentinelAuthFlow || {};
             window.SentinelAuthFlow.reset = function () {
                 var typed = form.querySelector('input[type="email"]');
@@ -1286,40 +873,26 @@
                 lStep('reset');
                 setTimeout(function () { rMail.focus(); }, 60);
             };
-
             forgotLink.addEventListener('click', function (e) {
                 e.preventDefault();
-                // carry over whatever they had already typed: retyping an address
-                // to be told an email is coming is a small insult
+
                 var typed = form.querySelector('input[type="email"]');
                 if (typed && typed.value.trim()) rMail.value = typed.value.trim();
                 lStep('reset');
                 setTimeout(function () { rMail.focus(); }, 60);
             });
-
             rBack.addEventListener('click', function () { lStep('login'); });
             sBack.addEventListener('click', function () { lStep('login'); });
 
-            // ---- sending another one ------------------------------------------
-            // the countdown is manners, not a limit. the limit is in the
-            // database, where asking again is one statement that refuses itself
-            // if the last one was less than a minute ago or there have been too
-            // many this hour; the button being grey is only so that somebody
-            // pressing it does not think the page is broken. editing this file
-            // in a console gets you nothing the server has not already allowed.
             var sTick = null;
             var sAddress = '';
 
-            // `note` marks the line as a rule rather than a fault. the same
-            // element says both, and they should not look the same: one is the
-            // panel explaining itself, the other is something going wrong.
             function sSay(msg, note) {
                 sErr.textContent = msg || '';
                 sErr.hidden = !msg;
                 sErr.classList.toggle('is-note', Boolean(msg && note));
                 if (msg) replay(sErr, 'sp-auth-enter');
             }
-
             function holdResendLink(seconds) {
                 clearInterval(sTick);
                 var left = seconds;
@@ -1331,9 +904,6 @@
                         return;
                     }
                     sResend.disabled = true;
-                    // the wait is shown rather than the button simply not
-                    // working: a dead button reads as a bug, a countdown reads
-                    // as a rule
                     sResend.textContent = t('Send a new link in') + ' ' + left + 's';
                     left--;
                 }
@@ -1342,9 +912,6 @@
                 sTick = setInterval(paint, 1000);
             }
 
-            // what the resend button should say for this address right now: the
-            // ceiling first, then the minute. both are what this browser has
-            // already done, so neither says anything about the address itself.
             function showResendState(address, seconds) {
                 if (resetSpent(address)) {
                     clearInterval(sTick);
@@ -1355,22 +922,16 @@
                 }
                 holdResendLink(seconds);
             }
-
             sResend.addEventListener('click', function () {
                 if (sResend.disabled || !sAddress) return;
                 if (resetWait(sAddress) || resetSpent(sAddress)) {
                     showResendState(sAddress, resetWait(sAddress) || RESET_RESEND_WAIT);
                     return;
                 }
-                // held before the request rather than after it: a double click
-                // must not turn into two presses while the first is in flight
                 holdResendLink(RESET_RESEND_WAIT);
                 rSay('');
                 rts.freshToken().then(function (tok) {
-                    // the same check the first send makes. without it a challenge
-                    // that could not run sends a request the server is bound to
-                    // refuse, and the person watches a countdown for a mail that
-                    // was never going to arrive.
+
                     if (rts.on && !tok) {
                         var noTok = new Error('no_token');
                         noTok.noToken = true;
@@ -1381,17 +942,9 @@
                     return post('/v1/auth/forgot', payload);
                 }).then(function (data) {
                     rememberAsk(sAddress, (data && data.resendIn) || RESET_RESEND_WAIT);
-                    // the server's number, not ours, if it sent one
                     showResendState(sAddress, (data && data.resendIn) || RESET_RESEND_WAIT);
                 }).catch(function (failed) {
-                    // it answers ok to everything it is willing to answer, so a
-                    // failure here is the network or the challenge. the message
-                    // goes on the panel, but the wait stands: a button that
-                    // frees itself on failure is a button somebody can free by
-                    // going offline.
-                    // the server refusing because one is already in flight is not
-                    // a failure to report: it is the countdown, said by the side
-                    // that actually knows
+
                     if (failed && failed.alreadySent) {
                         rememberAsk(sAddress, failed.retryIn || RESET_RESEND_WAIT);
                         showResendState(sAddress, failed.retryIn || RESET_RESEND_WAIT);
@@ -1404,33 +957,16 @@
                         : reason(failed));
                 }).then(function () { rts.spend(); });
             });
-
-            // ---- the panel the link opens -------------------------------------
-
             function pwSay(msg) {
                 pwErr.textContent = msg || '';
                 pwErr.hidden = !msg;
                 if (msg) replay(pwErr, 'sp-auth-enter');
             }
-
             function expired() { location.replace('/token-expired'); }
-
             var makingAccount = false;
             var pwBusy = false;
 
-            // which of the two this panel is. the address is not printed either
-            // way.
-            //
-            // whoever is on this panel arrived by opening a link sent to that
-            // address, so telling them which address it was is telling them
-            // something they already did. and this panel is reachable by anyone
-            // holding the link, which includes whoever is looking over a
-            // shoulder: a line that names an account is a line worth not drawing
-            // for nothing.
             function dressAsSignup() {
-                // no account on this address yet, and finishing here makes one.
-                // it has to carry what the sign-up form asks for, or it is an
-                // account with nobody's name on it and no record of the terms.
                 makingAccount = true;
                 pwNames.hidden = false;
                 pwConsent.hidden = false;
@@ -1438,39 +974,24 @@
                 pwSub.textContent = t('This address has no account yet. Choose a password and it is yours; the link you clicked is the proof the address is.');
                 pwBtn.textContent = t('Create account');
             }
-
             function focusFirstField() {
                 var coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
                 if (!coarse) (makingAccount ? pwFirst.input : pwOne.input).focus({ preventScroll: true });
             }
-
-            // the panel is shown once, already wearing the right copy.
-            //
-            // it used to open as "Set a new password" and change its own mind
-            // half a second later, when the answer landed: somebody with no
-            // account read a heading about a password of theirs, watched two name
-            // fields and a tick push the card taller, and only then got the
-            // screen meant for them. the question is asked the moment the file
-            // runs, in parallel with the splash, and the splash is the slower of
-            // the two almost every time, so the answer is in hand before there is
-            // anything on screen to correct.
             function showFromLink(out) {
                 if (out && !out.hasAccount) dressAsSignup();
                 lStep('setpw');
                 setpw.hidden = false;
                 focusFirstField();
             }
-
             pwTick.addEventListener('change', function () {
                 if (pwTick.checked) pwConsent.classList.remove('lp-demo-consent-err');
             });
-
             setpw.addEventListener('submit', function (e) {
                 e.preventDefault();
                 if (pwBusy) return;
                 var token = window.__SP_RESET_TOKEN || '';
                 if (!token) { expired(); return; }
-
                 var one = pwOne.input.value;
                 var two = pwTwo.input.value;
                 if (makingAccount && (!pwFirst.input.value.trim() || !pwLast.input.value.trim())) {
@@ -1479,8 +1000,7 @@
                     return;
                 }
                 if (!one || !two) { pwSay(t('Please fill in every field.')); return; }
-                // checked here as well as by the server, because the server is
-                // told one password and cannot see that the second box disagreed
+
                 if (one !== two) {
                     pwSay(t('The two passwords do not match.'));
                     pwTwo.input.value = '';
@@ -1492,13 +1012,11 @@
                     pwSay(t('Please accept the terms of service to continue.'));
                     return;
                 }
-
                 pwSay('');
                 pwBusy = true;
                 pwBtn.disabled = true;
                 var pwLabel = pwBtn.textContent;
                 pwBtn.textContent = t('Saving…');
-
                 post('/v1/auth/reset', {
                     token: token,
                     password: one,
@@ -1509,8 +1027,6 @@
                 }).then(function () {
                     try { delete window.__SP_RESET_TOKEN; } catch (e) { window.__SP_RESET_TOKEN = ''; }
                     lStep('setpwdone');
-                    // replace rather than assign: back must not return to a panel
-                    // whose token has just been spent
                     setTimeout(function () { location.replace('/dashboard'); }, 1100);
                 }).catch(function (failed) {
                     if (failed && failed.status === 410) { expired(); return; }
@@ -1524,22 +1040,12 @@
                 });
             });
 
-            // closing the dialog puts the reset away. a half-made sign-up is
-            // worth coming back to, which is why that one is remembered, but a
-            // reset is one field and one press: somebody who shuts the dialog
-            // and presses Log in again means Log in, and the dialog reopening on
-            // a panel they walked away from reads as being stuck.
-            //
-            // reset on the way out rather than on the way in: the dialog picks
-            // its panel before it is shown, so doing this on the way in would
-            // undo a press of Create account.
             var backdrop = loginCard.closest('.sp-authm-backdrop');
             if (backdrop && window.MutationObserver) {
                 var wasOpen = !backdrop.hidden;
                 new MutationObserver(function () {
                     var open = !backdrop.hidden;
                     if (wasOpen && !open && loginCard.dataset.authStep) {
-                        // no glide: nothing is on screen to move
                         form.hidden = false;
                         reset.hidden = true;
                         sent.hidden = true;
@@ -1554,7 +1060,6 @@
                         loginCard.dataset.authStep = '';
                         rSay('');
                         rMail.value = '';
-                        // the countdown belongs to a panel that is no longer up
                         clearInterval(sTick);
                         sAddress = '';
                         sSay('');
@@ -1563,78 +1068,44 @@
                 }).observe(backdrop, { attributes: true, attributeFilter: ['hidden'] });
             }
 
-            // "open the sign-in dialog", asked for by a url rather than a press.
-            //
-            // /dashboard redirects here when nobody is signed in, the navigation
-            // links point here when scripting is off, and the old /auth url ends
-            // here too. the flag was taken out of the address bar before anything
-            // else ran, so a reload is the plain homepage.
-            //
-            // it waits for the splash for the same reason the reset link does: a
-            // dialog that animates in over a loader that is still fading looks
-            // like two things fighting.
             if (backdrop && window.__SP_OPEN_SIGNIN && !window.__SP_RESET_TOKEN) {
                 var want = window.__SP_OPEN_SIGNIN;
                 try { delete window.__SP_OPEN_SIGNIN; } catch (e) { window.__SP_OPEN_SIGNIN = ''; }
                 afterLoader(function () {
                     if (!window.SentinelAuthModal) return;
                     window.SentinelAuthModal.open(want === 'create' ? 'create' : 'login');
-                    // "I forgot my password" as a url: the dialog opens on the
-                    // sign-in tab and then steps to the reset panel, which is the
-                    // same journey a press makes.
                     if (want === 'reset' && window.SentinelAuthFlow && window.SentinelAuthFlow.reset) {
                         window.SentinelAuthFlow.reset();
                     }
                 });
             }
 
-            // and the arrival itself. the token was taken out of the address bar
-            // by an inline script in the head before anything else ran, so by the
-            // time this fires the url already reads sentinelpay.org and nothing
-            // on the page has seen it.
             if (backdrop && window.__SP_RESET_TOKEN) {
                 var linkToken = window.__SP_RESET_TOKEN;
-
-                // asked now, not when the dialog opens. the splash and this
-                // request run against each other and the dialog waits for both,
-                // so the panel is painted right the first time it is painted.
                 var answer = null;
                 var failure = null;
                 var answered = false;
                 var loaderDone = false;
                 var shown = false;
                 var late = null;
-
                 function tell() {
                     if (shown || !answered || !loaderDone) return;
                     shown = true;
                     clearTimeout(late);
-                    // the link is spent or past its hour. there is no panel worth
-                    // opening for that, so the page goes where it says so.
                     if (failure && failure.status === 410) { expired(); return; }
                     arrive();
                     if (window.SentinelAuthModal) window.SentinelAuthModal.open('login');
                     showFromLink(answer);
-                    // us being unreachable rather than the link being gone. the
-                    // panel is open on the reset copy, which is the safe half of
-                    // the guess: it asks for a password and nothing else, and the
-                    // server decides what happens with it.
                     if (failure) pwSay(t('Could not reach us just now. Please try again in a moment.'));
                 }
-
                 post('/v1/auth/reset-check', { token: linkToken }).then(function (out) {
                     answer = out; answered = true; tell();
                 }, function (err) {
                     failure = err || {}; answered = true; tell();
                 });
-
                 afterLoader(function () {
                     loaderDone = true;
-                    // a check that is still in the air two seconds after the
-                    // splash has gone has kept somebody in front of a page with
-                    // nothing on it, which is worse than the panel arriving on the
-                    // reset copy. so it opens, and the answer is applied if it
-                    // ever lands.
+
                     if (!answered) {
                         late = setTimeout(function () {
                             if (shown) return;
@@ -1644,17 +1115,7 @@
                     }
                     tell();
                 });
-
                 function arrive() {
-                    // the class goes on before the dialog is opened, not after.
-                    //
-                    // open() puts is-open on and the transition starts in that
-                    // same frame, so a class added on the next line only changes
-                    // a duration something is already using: the slower arrival
-                    // was written, shipped, and never once played.
-                    //
-                    // and it comes off when the arrival is over, so pressing
-                    // Log in later gets the quick one a press deserves.
                     if (backdrop.classList) {
                         backdrop.classList.add('sp-authm-arrive');
                         var card = backdrop.querySelector('.sp-authm');
@@ -1668,13 +1129,11 @@
                     }
                 }
             }
-
             function rSay(msg) {
                 rErr.textContent = msg || '';
                 rErr.hidden = !msg;
                 if (msg) replay(rErr, 'sp-auth-enter');
             }
-
             var rBusy = false;
             reset.addEventListener('submit', function (e) {
                 e.preventDefault();
@@ -1685,26 +1144,13 @@
                     rMail.focus();
                     return;
                 }
-                // the same shape the server checks, checked here first. the
-                // sign-up form has always done this and this panel never did, so
-                // a mistyped address went all the way to the server and came back
-                // as a refusal a second later. it also settles a question when
-                // this goes wrong: if the message appears without a request being
-                // made, the address really is malformed; if the request is made
-                // and the server refuses it, something between here and there is
-                // changing it.
+
                 if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)) {
                     rSay(t('Please enter a valid email address.'));
                     rMail.focus();
                     return;
                 }
-
                 rSay('');
-
-                // already asked for this one, and the minute is not up. the
-                // server would refuse and answer as though it had not, so the
-                // request is not made at all: the panel shows the envelope it
-                // already earned, with the time left on it.
                 var waiting = resetWait(address);
                 if (waiting || resetSpent(address)) {
                     sMail.textContent = address;
@@ -1714,15 +1160,10 @@
                     lStep('sent');
                     return;
                 }
-
                 rBusy = true;
                 rBtn.disabled = true;
                 var rLabel = rBtn.textContent;
                 rBtn.textContent = t('Sending…');
-
-                // this button posts mail to an address a stranger typed, which is
-                // the same thing the sign-up button does, so it carries the same
-                // check
                 rts.freshToken().then(function (tok) {
                     if (rts.on && !tok) {
                         var noTok = new Error('no_token');
@@ -1746,9 +1187,6 @@
                             : 'The check below did not finish. Please try again in a moment.'));
                         return;
                     }
-                    // refused because one went out a moment ago. a link really is
-                    // in that inbox, so the envelope is the truthful screen, with
-                    // the server's own number on the button.
                     if (failed && failed.alreadySent) {
                         sMail.textContent = address;
                         sAddress = address;
@@ -1758,10 +1196,6 @@
                         lStep('sent');
                         return;
                     }
-                    // no status means the server never got to answer: either the
-                    // request did not leave the browser or nothing came back.
-                    // the panel is about to blame us for both, so the console
-                    // carries the difference.
                     try {
                         if (!(failed && failed.status)) {
                             console.error('[auth] forgot: no answer to show (' +
@@ -1778,39 +1212,15 @@
             });
         }
 
-        // ---- the form starts empty --------------------------------------------
-        // the browser's password manager fills these in the moment the page
-        // loads, whether or not anybody has asked it to, and the panel is then
-        // sitting there with somebody's address and password already in it. on a
-        // shared machine that is a sign-in waiting to be pressed by whoever sits
-        // down next, and it does it even while the panel is hidden behind the
-        // other tab, so nobody sees it happen.
-        //
-        // this empties them again, and it is not a fight with the manager: the
-        // fields keep their autocomplete hints, so clicking one still offers
-        // whatever is saved. the difference is that it is offered rather than
-        // already typed.
         var loginFields = [form.querySelector('input[type="email"]'), form.querySelector('input[type="password"]')]
             .filter(Boolean);
-
         function clearPrefill() {
             loginFields.forEach(function (field) { field.value = ''; });
         }
-
-        // once when the card is built, and again a moment later: chrome fills
-        // some forms after its own first pass, so a single clear on load misses
-        // it on exactly the machines where it matters
         clearPrefill();
         setTimeout(clearPrefill, 120);
         setTimeout(clearPrefill, 600);
-
-        // and every time the panel comes back into view, which is what happens
-        // when somebody switches to this tab or reopens the dialog
         if (window.MutationObserver) {
-            // two things can bring the panel back: the tab above it, and the
-            // dialog it sits in. reopening the dialog on the panel that was
-            // already showing does not touch the form's own hidden attribute,
-            // so watching only the form missed exactly that case.
             [form, form.closest('.sp-authm-backdrop')].filter(Boolean).forEach(function (node) {
                 var wasHidden = node.hidden;
                 new MutationObserver(function () {
@@ -1819,30 +1229,19 @@
                 }).observe(node, { attributes: true, attributeFilter: ['hidden'] });
             });
         }
-
         function say(msg) {
             err.textContent = msg || '';
             err.hidden = !msg;
             if (msg) replay(err, 'sp-auth-enter');
         }
-
         var lts = makeTurnstile(form, submitBtn);
-
-        // ---- the second factor -------------------------------------------------
-        // one more panel in the same card, shown when the password was right and
-        // the account has 2fa. it holds nothing of its own: the pending value it
-        // was handed is a five minute row on the server, and closing the dialog
-        // throws it away, which is the correct outcome for a sign-in somebody
-        // walked away from.
         var lCard = form.closest('.lp-demo-card');
         var lTabsEl = lCard ? lCard.querySelector('.sp-auth-tabs') : null;
         var pendingTotp = '';
-
         var totpPanel = el('form', 'sp-auth-form');
         totpPanel.classList.add('sp-auth-verify');
         totpPanel.setAttribute('novalidate', '');
         totpPanel.hidden = true;
-
         var tHead = el('div', 'sp-auth-vhead');
         var tMark = el('div', 'sp-auth-vmark');
         tMark.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
@@ -1853,7 +1252,6 @@
         tHead.appendChild(el('h3', null, 'Enter your code'));
         tHead.appendChild(el('p', null, 'Open your authenticator app and type the six digit code it is showing.'));
         totpPanel.appendChild(tHead);
-
         var tField = el('div', 'lp-demo-field');
         tField.classList.add('lp-demo-field-full', 'sp-auth-codefield');
         var tInput = document.createElement('input');
@@ -1865,17 +1263,14 @@
         tInput.setAttribute('aria-label', t('Verification code'));
         tField.appendChild(tInput);
         totpPanel.appendChild(tField);
-
         var tErr = el('p', 'sp-auth-verr');
         tErr.hidden = true;
         tErr.setAttribute('role', 'alert');
         totpPanel.appendChild(tErr);
-
         var tBtn = el('button', 'lp-demo-submit', 'Sign in');
         tBtn.classList.add('sp-auth-submit');
         tBtn.type = 'submit';
         totpPanel.appendChild(tBtn);
-
         var tFoot = el('div', 'sp-auth-vfoot');
         var tNote = el('p', 'sp-auth-hint', 'Lost the phone? A recovery code works here too.');
         tFoot.appendChild(tNote);
@@ -1883,15 +1278,12 @@
         tBack.type = 'button';
         tFoot.appendChild(tBack);
         totpPanel.appendChild(tFoot);
-
         form.parentNode.insertBefore(totpPanel, form.nextSibling);
-
         function tSay(msg) {
             tErr.textContent = msg || '';
             tErr.hidden = !msg;
             if (msg) replay(tErr, 'sp-auth-enter');
         }
-
         function showTotp(on) {
             glideOn(lCard || form, function () {
                 form.hidden = on;
@@ -1901,14 +1293,12 @@
             replay(on ? totpPanel : form, 'sp-auth-enter');
             if (on) setTimeout(function () { tInput.focus(); }, 320);
         }
-
         tBack.addEventListener('click', function () {
             pendingTotp = '';
             tInput.value = '';
             tSay('');
             showTotp(false);
         });
-
         var tBusy = false;
         totpPanel.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -1929,39 +1319,29 @@
                 tBtn.textContent = tLabel;
                 tInput.value = '';
                 tInput.focus();
-                // the row is spent after too many wrong codes, and after it
-                // expires. both answers tell the person to sign in again, and
-                // this is what puts them back where they can.
                 if (failed && (failed.status === 429 || failed.status === 401 && !pendingTotp)) {
                     setTimeout(function () { pendingTotp = ''; showTotp(false); }, 1800);
                 }
             });
         });
-
         var busy = false;
         form.addEventListener('submit', function (e) {
             e.preventDefault();
             if (busy) return;
-
             var emailInput = form.querySelector('input[type="email"]');
             var passInput = form.querySelector('input[type="password"]');
             var email = emailInput ? emailInput.value.trim() : '';
-            // never trimmed: a space is a character somebody chose
             var password = passInput ? passInput.value : '';
             if (!email || !password) {
                 say(t('Please fill in every field.'));
                 return;
             }
-
             say('');
             busy = true;
             submitBtn.disabled = true;
             var label = submitBtn.textContent;
             submitBtn.textContent = t('Signing you in…');
 
-            // the same check the sign-up form has had all along. this is the
-            // door a stolen password list is tried on, so it is the door that
-            // most needed something in front of it.
             lts.freshToken().then(function (tok) {
                 var body = { email: email, password: password };
                 if (lts.on && !tok) {
@@ -1973,8 +1353,6 @@
                 return post('/v1/auth/login', body);
             }).then(function (out) {
                 lts.spend();
-                // half way: the password was right and the account has a second
-                // factor. no session exists yet.
                 if (out && out.totp) {
                     pendingTotp = out.pending || '';
                     busy = false;
@@ -1984,8 +1362,6 @@
                     showTotp(true);
                     return;
                 }
-                // replace rather than assign: the back button should not come
-                // back to a sign-in form that is now signed in
                 location.replace('/dashboard');
             }).catch(function (failed) {
                 lts.spend();
@@ -2003,15 +1379,12 @@
             });
         });
     }
-
     function scan() {
         document.querySelectorAll('form[data-auth="register"]').forEach(attach);
         document.querySelectorAll('form[data-auth="login"]').forEach(attachLogin);
         document.querySelectorAll('.sp-auth-form input[type="password"]').forEach(addEye);
     }
 
-    // the dialog builds its markup when its own script runs, which may be after
-    // this one, so the page is scanned again once everything is parsed
     scan();
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', scan);
     else setTimeout(scan, 0);

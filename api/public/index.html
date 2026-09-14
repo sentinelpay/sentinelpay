@@ -3,28 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- ios turns things like "1-10" and "51-200" into phone links, which made
-         the company-size options open the call sheet instead of selecting -->
     <meta name="format-detection" content="telephone=no">
     <title>Sentinelpay</title>
-    <script>/* tab title before first paint; for articles this is the h1 translation */(function(){var T=null,f=document.documentElement.getAttribute("data-force-lang"),m=document.cookie.match(/(?:^|; )sp-lang=([^;]*)/),l=f||(m?decodeURIComponent(m[1]):null);if(!l){try{l=localStorage.getItem("sp-lang")}catch(e){}}if(l!=="hr"&&l!=="de"&&l!=="en")l=document.documentElement.getAttribute("data-geo-lang");if(l!=="hr"&&l!=="de")return;document.documentElement.lang=l;if(!T)return;window.__SP_TITLE_SRC=document.title.replace(/\s+/g," ").trim();document.title=T[l];})();</script>
+    <script>(function(){var T=null,f=document.documentElement.getAttribute("data-force-lang"),m=document.cookie.match(/(?:^|; )sp-lang=([^;]*)/),l=f||(m?decodeURIComponent(m[1]):null);if(!l){try{l=localStorage.getItem("sp-lang")}catch(e){}}if(l!=="hr"&&l!=="de"&&l!=="en")l=document.documentElement.getAttribute("data-geo-lang");if(l!=="hr"&&l!=="de")return;document.documentElement.lang=l;if(!T)return;window.__SP_TITLE_SRC=document.title.replace(/\s+/g," ").trim();document.title=T[l];})();</script>
     <meta name="description" content="Crypto AML and blockchain monitoring. Sentinelpay screens every transaction on 10+ blockchains in real time and alerts your team, with evidence, the moment funds trace back to a hack, a sanctioned address or a mixer.">
     <meta name="keywords" content="sentinelpay, blockchain monitoring, crypto aml, real-time risk detection, rpc listener, wallet screening">
     <meta name="google-site-verification" content="eJA6iy1k02Jx0DsiCQeXU9TvMZyPqaZaTVvOPop3hY8" />
-<!--SP_HREFLANG-->
-
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://sentinelpay.org">
     <meta property="og:title" content="Sentinelpay | Crypto AML and blockchain monitoring">
     <meta property="og:description" content="We screen every crypto transaction you touch. Real-time monitoring on 10+ blockchains, with an alert and the evidence the moment funds trace back to a hack, a sanctioned address or a mixer.">
     <meta property="og:image" content="https://sentinelpay.org/logo.png">
-
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://sentinelpay.org">
     <meta property="twitter:title" content="Sentinelpay | Crypto AML and blockchain monitoring">
     <meta property="twitter:description" content="We screen every crypto transaction you touch. Real-time monitoring on 10+ blockchains, with an alert and the evidence the moment funds trace back to a hack, a sanctioned address or a mixer.">
     <meta property="twitter:image" content="https://sentinelpay.org/logo.png">
-
     <script type="application/ld+json">{
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
@@ -33,51 +27,27 @@
       "applicationCategory": "SecurityApplication",
       "description": "Crypto AML and blockchain monitoring. Screens every transaction on 10+ blockchains in real time and alerts your compliance team, with evidence, the moment funds trace back to a hack, a sanctioned address or a mixer."
 }</script>
-
-    <script>/* a reset link lands here. the token comes out of the address bar before
-       anything else on the page runs, because everything after this point can read
-       location.href and a link that sets somebody's password is not a thing to hand
-       to a third party script. the url is left reading sentinelpay.org and the
-       dialog opens over it. */
+    <script>
     (function(){try{var m=location.search.match(/[?&]token=([^&]*)/);if(!m)return;window.__SP_RESET_TOKEN=decodeURIComponent(m[1]);if(history.replaceState)history.replaceState(null,'','/');}catch(e){window.__SP_RESET_TOKEN='';}})();</script>
-    <script>/* "open the sign-in dialog" arrives as a query, from /dashboard when nobody is
-       signed in, from the buttons in the navigation with scripting off, and from
-       the old /auth url. it is read here for the same reason the token above is:
-       once, before anything else, and taken out of the address bar so a reload
-       or a shared link is just the homepage.
-
-       the hash is read too, because /auth#create is in people's bookmarks and a
-       fragment survives a redirect. */
+    <script>
     (function(){try{var q=(location.search.match(/[?&]signin=([^&]*)/)||[])[1]||'';var h=(location.hash||'').replace('#','').toLowerCase();var want=decodeURIComponent(q).toLowerCase();if(h==='create'||h==='reset')want=h;if(!want)return;window.__SP_OPEN_SIGNIN=(want==='create'||want==='reset')?want:'login';if(history.replaceState)history.replaceState(null,'',location.pathname);}catch(e){}})();</script>
     <script>document.documentElement.classList.add('theme-light');</script>
     <script>(function(){try{var s=localStorage.getItem('sb-aivqwkgjdpklxxuvkxpy-auth-token');if(s){var d=JSON.parse(s);if(d&&d.expires_at&&Math.floor(Date.now()/1000)<d.expires_at){document.documentElement.classList.add('auth-session-present');}}}catch(e){}})();</script>
     <link rel="icon" type="image/svg+xml" href="/logo.svg">
     <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/fonts/jakarta-latin.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="/fonts.1.css">
-    <link rel="stylesheet" href="/style.26.css">
-    <link rel="stylesheet" href="/landing.148.css">
+    <link rel="stylesheet" href="/fonts.2.css">
+    <link rel="stylesheet" href="/style.27.css">
+    <link rel="stylesheet" href="/landing.149.css">
     <script>
         try{Object.keys(localStorage).forEach(function(k){if(k.indexOf('intercom')!==-1)localStorage.removeItem(k);});}catch(e){}
         window.intercomSettings={api_base:'https://api-iam.intercom.io',app_id:'obn3omwl',hide_default_launcher:true,language_override:'en'};
-        // Cloudflare Turnstile: paste your Turnstile SITE key here to turn on the bot challenge
-        // on the demo form (pair it with TURNSTILE_SECRET_KEY on the server). Empty = disabled.
         window.__TURNSTILE_SITEKEY='0x4AAAAAAD6yvLDIagSfULi7';
     </script>
     <script>(function(){var w=window;var ic=w.Intercom;if(typeof ic==="function"){ic('reattach_activator');ic('update',w.intercomSettings);}else{var d=document;var i=function(){i.c(arguments);};i.q=[];i.c=function(a){i.q.push(a);};w.Intercom=i;var l=function(){var s=d.createElement('script');s.type='text/javascript';s.async=true;s.src='https://widget.intercom.io/widget/obn3omwl';var x=d.getElementsByTagName('script')[0];x.parentNode.insertBefore(s,x);};if(document.readyState==='complete'){l();}else if(w.attachEvent){w.attachEvent('onload',l);}else{w.addEventListener('load',l,false);}}})()</script>
     <style>
         #sp-loader{position:fixed;inset:0;z-index:99999;background:#050505;display:flex;align-items:center;justify-content:center;transition:opacity 0.55s ease;}
         #sp-loader.spl-done{opacity:0;pointer-events:none;}
-        /* nothing scrolls while the loader is up. the page behind it is already
-           laid out and a stray wheel or swipe used to move it, so the loader
-           lifted on a page halfway down itself. the gutter is held open so the
-           scrollbar coming back does not shift the whole layout sideways at the
-           exact moment the loader fades.
-
-           `:has` rather than a class toggled by script: the lock then ends the
-           moment the loader is marked done, and there is no state to leave
-           behind if the script never runs. where `:has` is not supported this
-           simply does nothing, which is how the page behaved before. */
         html:has(#sp-loader:not(.spl-done)),
         html:has(#sp-loader:not(.spl-done)) body { overflow: hidden; }
         html:has(#sp-loader:not(.spl-done)) { scrollbar-gutter: stable; }
@@ -85,7 +55,6 @@
         @keyframes splPulse{from{filter:drop-shadow(0 0 6px rgba(0,255,255,0.3)) drop-shadow(0 0 14px rgba(160,32,240,0.2));}to{filter:drop-shadow(0 0 14px rgba(0,255,255,0.65)) drop-shadow(0 0 28px rgba(160,32,240,0.4));}}
         .spl-eye-blink{transform-origin:60px 60px;animation:splBlink 3.5s ease-in-out infinite;}
         @keyframes splBlink{0%,35%,55%,88%,100%{transform:scaleY(1);}45%{transform:scaleY(0.05);}93%{transform:scaleY(0.05);}}
-
         html.theme-light {
             --bg-dark: #f6f7f9;
             --bg-panel: rgba(255, 255, 255, 0.75);
@@ -328,7 +297,6 @@
             color: var(--text-main);
             background: rgba(0, 0, 0, 0.04);
         }
-        /* mobile menu is dark: style the auth buttons like the desktop nav buttons */
         html.theme-light .lp-mm-btn-ghost {
             background: rgba(255, 255, 255, 0.04);
             border-color: rgba(255, 255, 255, 0.18);
@@ -409,15 +377,8 @@
             border-color: rgba(255, 255, 255, 1);
         }
     </style>
-    <link rel="stylesheet" href="/corp.329.css">
+    <link rel="stylesheet" href="/corp.330.css">
     <noscript><style>
-        /* scripting is off, so the loader is the final screen, not a stage on the
-           way somewhere. stop the pulse so it reads as a message, not a hang. */
-        /* theme-light is added by an inline script, which never runs here, so the
-           loader would sit on the dark default. force the light one. */
-        /* the loader covers the viewport, but the page behind it still has its full
-           height, so the window kept a scrollbar with nothing to scroll to. and
-           without theme-light that scrollbar renders in the dark theme's colours. */
         html, body { overflow: hidden !important; height: 100%; }
         #sp-loader { background: #fbfcfd !important; flex-direction: column; gap: 1.6rem; padding: 0 1.5rem; }
         #sp-loader .spl-logo-svg { animation: none; filter: none; opacity: 0.75; width: 96px; height: 96px; }
@@ -429,18 +390,10 @@
     </style></noscript>
 </head>
 <body class="lp-body">
-    <div id="sp-loader"><svg class="spl-logo-svg" viewBox="0 0 120 120" fill="none"><defs><linearGradient id="spl-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00ffff"/><stop offset="100%" stop-color="#a020f0"/></linearGradient><filter id="spl-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3.5" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#spl-glow)" fill="none" stroke="url(#spl-grad)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/><g class="spl-eye-blink"><path d="M38 60 Q 60 40 82 60 Q 60 80 38 60 Z"/><circle cx="60" cy="60" r="6"/><circle cx="60" cy="60" r="2" fill="url(#spl-grad)" stroke="none"/></g><path d="M60 15 V 30" stroke-width="2" opacity="0.6"/><path d="M60 90 V 105" stroke-width="2" opacity="0.6"/></g></svg><noscript><!--SP_NOSCRIPT--></noscript></div>
-    <script>/* the splash must clear whether or not the load event ever arrives. it waits
-   for every subresource including third party scripts, and one slow embed is
-   then a site nobody can see: the safety net below only ever started counting
-   after load, so it protected against a slow image and not against the thing
-   most likely to hang. this arms at dom ready instead, and load simply gets
-   there first when it can. */(function(){var fired0=false;var run=function(){if(fired0)return;fired0=true;var l=document.getElementById('sp-loader');if(!l)return;var finish=function(){l.classList.add('spl-done');setTimeout(function(){l.remove();document.querySelectorAll('.lp-reveal:not(.lp-visible)').forEach(function(el){var q=el.getBoundingClientRect();if(q.top<window.innerHeight&&q.bottom>0){el.classList.add('lp-visible');}});},620);};/* the load event does not wait for lazy images, and nearly every image on the site is lazy, so the loader used to clear while the first screen was still filling in. wait for the ones that will actually be visible: an image further down has not started loading yet and never would, so waiting for all of them would hold the loader open for ever. */var pending=[],im,r,i;for(i=0;i<document.images.length;i++){im=document.images[i];r=im.getBoundingClientRect();if(r.bottom<0||r.top>window.innerHeight*1.2)continue;if(im.complete&&im.naturalWidth>0)continue;pending.push(im);}if(!pending.length){finish();return;}var left=pending.length,fired=false;var one=function(){if(--left<=0&&!fired){fired=true;finish();}};pending.forEach(function(x){x.addEventListener('load',one,{once:true});x.addEventListener('error',one,{once:true});});/* a slow or broken image must never trap anybody behind the loader */setTimeout(function(){if(!fired){fired=true;finish();}},2500);};window.addEventListener('load',run);if(document.readyState!=='loading')setTimeout(run,3500);else document.addEventListener('DOMContentLoaded',function(){setTimeout(run,3500);});})();</script>
-
-
+    <div id="sp-loader"><svg class="spl-logo-svg" viewBox="0 0 120 120" fill="none"><defs><linearGradient id="spl-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00ffff"/><stop offset="100%" stop-color="#a020f0"/></linearGradient><filter id="spl-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3.5" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#spl-glow)" fill="none" stroke="url(#spl-grad)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/><g class="spl-eye-blink"><path d="M38 60 Q 60 40 82 60 Q 60 80 38 60 Z"/><circle cx="60" cy="60" r="6"/><circle cx="60" cy="60" r="2" fill="url(#spl-grad)" stroke="none"/></g><path d="M60 15 V 30" stroke-width="2" opacity="0.6"/><path d="M60 90 V 105" stroke-width="2" opacity="0.6"/></g></svg><noscript></noscript></div>
+    <script>(function(){var fired0=false;var run=function(){if(fired0)return;fired0=true;var l=document.getElementById('sp-loader');if(!l)return;var finish=function(){l.classList.add('spl-done');setTimeout(function(){l.remove();document.querySelectorAll('.lp-reveal:not(.lp-visible)').forEach(function(el){var q=el.getBoundingClientRect();if(q.top<window.innerHeight&&q.bottom>0){el.classList.add('lp-visible');}});},620);};var pending=[],im,r,i;for(i=0;i<document.images.length;i++){im=document.images[i];r=im.getBoundingClientRect();if(r.bottom<0||r.top>window.innerHeight*1.2)continue;if(im.complete&&im.naturalWidth>0)continue;pending.push(im);}if(!pending.length){finish();return;}var left=pending.length,fired=false;var one=function(){if(--left<=0&&!fired){fired=true;finish();}};pending.forEach(function(x){x.addEventListener('load',one,{once:true});x.addEventListener('error',one,{once:true});});setTimeout(function(){if(!fired){fired=true;finish();}},2500);};window.addEventListener('load',run);if(document.readyState!=='loading')setTimeout(run,3500);else document.addEventListener('DOMContentLoaded',function(){setTimeout(run,3500);});})();</script>
     <div class="cyber-grid"></div>
     <div class="glow-orb lp-glow-orb"></div>
-
     <nav class="lp-nav">
         <div class="lp-nav-inner">
             <a href="/" class="lp-logo-link">
@@ -617,7 +570,6 @@
             </div>
         </div>
     </nav>
-
     <div class="lp-mobile-menu" id="lp-mobile-menu">
         <div class="lp-mobile-menu-inner">
             <div class="lp-mm-acc">
@@ -674,7 +626,6 @@
             </div>
         </div>
     </div>
-
     <section class="lp-hero">
         <div class="lp-hero-fx" aria-hidden="true">
             <span class="lp-fx-orb lp-fx-o1"></span>
@@ -682,18 +633,6 @@
             <span class="lp-fx-orb lp-fx-o3"></span>
             <span class="lp-fx-orb lp-fx-o4"></span>
         </div>
-        <!-- the scene behind the hero.
-             the reference plays a 4k video of a transaction graph on a receding
-             plane: flat discs for wallets, right angled traces between them, an
-             address label on a diamond, one amount on a chip, and a coloured
-             bloom underneath. this is that, drawn as vector rather than filmed.
-
-             svg rather than video or canvas, and that is the whole trick: it is
-             about six kilobytes of markup, it is crisp on any screen at any
-             zoom, it needs no javascript at all, and the pulses that travel the
-             traces are `stroke-dashoffset` in css, which the compositor animates
-             without waking the main thread. a video would be megabytes and a
-             canvas would be a script. -->
         <svg class="sp-hero-scene" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax meet" aria-hidden="true" focusable="false">
             <defs>
                 <linearGradient id="spShield" x1="0" y1="0" x2="0" y2="1">
@@ -713,9 +652,6 @@
                     <stop offset="0%" stop-color="#a020f0" stop-opacity="0.22"/>
                     <stop offset="100%" stop-color="#a020f0" stop-opacity="0"/>
                 </radialGradient>
-                <!-- one tile, tiled by the browser: two dots on a diamond pitch.
-                     34 units is the pitch the drift below moves by, and the two
-                     numbers have to stay equal or the loop shows a jump. -->
                 <pattern id="spGrid" width="34" height="34" patternUnits="userSpaceOnUse">
                     <circle cx="1.4" cy="1.4" r="1.4" fill="#9cc0ff" fill-opacity="0.75"/>
                     <circle cx="18.4" cy="18.4" r="1.4" fill="#9cc0ff" fill-opacity="0.75"/>
@@ -725,9 +661,6 @@
                     <stop offset="55%" stop-color="#ffffff" stop-opacity="0.4"/>
                     <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
                 </radialGradient>
-                <!-- the lattice is not cut off at the edges, it is faded out by a
-                     mask, which is why it reads as a surface disappearing into the
-                     dark rather than as a rectangle of dots on a page. -->
                 <mask id="spFade">
                     <rect x="-120" y="-120" width="1840" height="1140" fill="url(#spFadeG)"/>
                 </mask>
@@ -735,52 +668,27 @@
 
             <ellipse class="sp-scene-bloom sp-scene-bloom-a" cx="440" cy="660" rx="540" ry="350" fill="url(#spCore)"/>
             <ellipse class="sp-scene-bloom sp-scene-bloom-b" cx="1200" cy="250" rx="540" ry="350" fill="url(#spCoreB)"/>
-
             <g class="sp-rings">
                 <circle class="sp-ring sp-ring-a" cx="800" cy="470" r="430"/>
                 <circle class="sp-ring sp-ring-b" cx="800" cy="470" r="620"/>
                 <circle class="sp-ring sp-ring-c" cx="800" cy="470" r="830"/>
             </g>
-
-            <!-- our own mark, at the size of the screen and cropped on purpose:
-                 what is left is two long edges down either side of the copy, and
-                 the words sit inside the shield. -->
             <path class="sp-shield" d="M800 -260 L208 -7 V416 C208 838 631 1176 800 1260 C969 1176 1392 838 1392 416 V-7 Z"/>
-
             <g class="sp-sweep">
                 <line x1="800" y1="470" x2="800" y2="-420" stroke="url(#spSweep)" stroke-width="2"/>
             </g>
-
-            <!-- the weave. a lattice of dots on a diamond pitch, drifting by
-                 exactly one tile so the loop has no seam, with a second copy
-                 turned a degree and a half over it. two near identical grids at a
-                 slight angle interfere, and the interference is what makes it
-                 read as a surface with depth rather than as wallpaper. it is
-                 twenty lines of markup and one pattern the browser tiles itself. -->
             <g class="sp-weave" mask="url(#spFade)">
                 <rect class="sp-weave-a" x="-120" y="-120" width="1840" height="1140" fill="url(#spGrid)"/>
                 <rect class="sp-weave-b" x="-120" y="-120" width="1840" height="1140" fill="url(#spGrid)"/>
             </g>
-
-            <!-- the flow. long shallow curves through the composition, each with
-                 one pulse travelling it: `stroke-dashoffset` on a dashed stroke,
-                 which the compositor animates on its own. the paths follow the
-                 fall of the mark rather than crossing it, so the movement reads
-                 as something being carried through rather than at us. -->
             <g class="sp-flows">
                 <path class="sp-flow" style="--sp-tint: #5ad9ff; animation-duration: 13s; animation-delay: 0s" d="M-140 250 C 320 180, 620 420, 1010 330 S 1420 120, 1760 210"/>
                 <path class="sp-flow" style="--sp-tint: #7b6cff; animation-duration: 16s; animation-delay: -4s" d="M-140 560 C 380 520, 660 700, 1060 620 S 1440 430, 1760 520"/>
                 <path class="sp-flow" style="--sp-tint: #00f0ff; animation-duration: 19s; animation-delay: -9s" d="M-140 800 C 300 790, 700 880, 1080 810 S 1460 660, 1760 730"/>
                 <path class="sp-flow sp-flow-faint" style="--sp-tint: #a020f0; animation-duration: 22s; animation-delay: -6s" d="M-140 410 C 420 330, 700 560, 1120 470 S 1470 280, 1760 360"/>
             </g>
-
         <div class="sp-hero-veil" aria-hidden="true"></div>
-
         <div class="sp-hero-mid">
-            <!-- one whole sentence per line, one text node each. the accent is a
-                 gradient on the second line rather than on a word inside a sentence,
-                 because croatian and german do not keep our word order and a word
-                 level accent would land on the wrong word or on nothing. -->
             <h1 class="sp-hero-h1">
                 <span class="sp-hero-l1">Every transaction screened.</span>
                 <span class="sp-hero-l2">Dirty money never gets in.</span>
@@ -796,27 +704,9 @@
                 </a>
             </div>
         </div>
-
-        <!-- the device.
-
-             the reference under this is a bank showing a balance, which is what a
-             bank has to show. we are not a bank and a balance would be somebody
-             else's product on our first screen. what goes in here is the thing we
-             actually do: an address arrives, it is put through the chains, and it
-             comes back with a verdict that carries its own evidence.
-
-             built rather than filmed. a video of this would be megabytes, would
-             need a poster frame, and would sit behind the autoplay rules every
-             mobile browser has; this is markup and two keyframes. it also stops
-             on its own where somebody has asked for less motion. -->
         <div class="sp-phone" aria-hidden="true">
             <div class="sp-phone-glow"></div>
-            <!-- the frame, drawn rather than photographed.
 
-                 three shells: the outer edge, which catches the light the way a
-                 polished rail does, the black band inside it, and the screen. an
-                 image of a phone would be a quarter of a megabyte and wrong the
-                 day the phone changes; this is four divs and it scales. -->
             <div class="sp-phone-rail">
                 <div class="sp-phone-body">
                     <div class="sp-phone-screen"></div>
@@ -828,7 +718,6 @@
             <span class="sp-phone-btn sp-phone-btn-down"></span>
             <span class="sp-phone-btn sp-phone-btn-power"></span>
         </div>
-
     </section>
     <div class="lp-logo-bar">
         <div class="lp-net-marquee" aria-hidden="false">
@@ -856,7 +745,6 @@
             </div>
         </div>
     </div>
-
     <section class="lp-section lp-roles" id="who-its-for">
         <div class="lp-section-inner">
             <h2 class="lp-h2"><span class="lp-hl">One platform</span> for every team <br>that touches crypto risk</h2>
@@ -876,9 +764,6 @@
                     </div>
                 </div>
             </div>
-            <!-- the eight cards are stacked in one grid cell rather than shown
-                 and hidden, so the section is always as tall as the longest of
-                 them and nothing below it moves when the role changes. -->
             <div class="lp-roles-panels" id="lp-roles-panels">
                 <div class="lp-role-panel active" data-role="fi">
                     <div class="lp-role-feature">
@@ -963,19 +848,6 @@
             </div>
         </div>
     </section>
-
-    <!-- the proof band.
-
-         a dark panel on a white page that opens as you scroll into it. the hero
-         does the opposite: it starts full bleed and steps back into a card as
-         you leave it. this one starts as a card and widens as it arrives, so the
-         two ends of the page are the same gesture read in opposite directions.
-
-         the number that drives it comes from flair.js as --sp-open, nought when
-         the top of the panel is at the bottom of the window and one by the time
-         it is a quarter of the way up. nothing about it is essential: with the
-         script blocked the panel is simply open, because the fallback in the
-         css is 1. -->
     <section class="lp-proof" id="stats">
         <div class="lp-proof-panel">
             <div class="lp-proof-veil" aria-hidden="true"></div>
@@ -1002,41 +874,6 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- the wall.
-
-                     thirty asset marks laid out in rows, flush to the top, the
-                     right and the bottom of the panel, the way a photograph
-                     would be. it does not move: it is a picture of what we
-                     screen, and a picture that spins is a carousel.
-
-                     the marks are drawn here rather than loaded, which is a
-                     placeholder and is written down as one: they are simplified
-                     glyphs, not the real logos. each cell carries data-coin, so
-                     swapping in real files is one attribute per cell and no
-                     layout change.
-
-                     the selection rule stays whatever the marks are: every asset
-                     on this wall settles on a chain we actually screen. -->
-                <!-- the wall.
-
-                     twenty eight asset marks in rows, flush to the top, the
-                     right and the bottom of the panel the way a photograph
-                     would be. it does not move: it is a picture of what we
-                     screen, and a picture that spins is a carousel.
-
-                     the files are the real logos and they arrive in their own
-                     brand colours at every size from a 37 pixel viewbox to a
-                     4091 pixel one. they are used as masks rather than as
-                     images, so what lands on the page is the silhouette painted
-                     in one colour of ours: thirty brand palettes on one wall
-                     would fight each other and our two, and the picture is
-                     about the count rather than any one coin.
-
-                     twenty eight and not thirty. litecoin and monero came with
-                     the others and are not here: both are their own chains and
-                     we screen neither, and a coin on this wall is a claim that
-                     we do. -->
                 <div class="lp-proof-wall" aria-hidden="true">
                     <div class="sp-wall">
                     <span class="sp-wall-cell" data-coin="btc" title="Bitcoin"><img class="sp-wall-mark" src="/coins/btc.svg?v=2" alt="" loading="lazy" decoding="async" width="34" height="34"></span>
@@ -1072,7 +909,6 @@
             </div>
         </div>
     </section>
-
     <section class="lp-section lp-solutions" id="solutions">
         <div class="lp-section-inner">
             <h2 class="lp-h2"><span class="lp-hl">Everything you need</span> to see, <br>score and stop crypto risk</h2>
@@ -1174,15 +1010,9 @@
             </div>
         </div>
     </section>
-
-    <!-- the questions somebody asks before they will read anything else. the
-         operational ones (connecting, false positives, historical transactions)
-         belong on /faq when it exists; these four decide whether a visitor
-         keeps reading, so they are here. -->
     <section class="lp-section lp-faq" id="faq">
         <div class="lp-section-inner">
             <h2 class="lp-h2"><span class="lp-hl">Questions</span> people ask <br>before they get in touch</h2>
-
             <div class="lp-faq-list">
                 <div class="lp-faq-item">
                     <button type="button" class="lp-faq-q" aria-expanded="false">
@@ -1193,7 +1023,6 @@
                         <p>A screening layer that sits in front of your crypto business. Every wallet and every transaction is checked against sanctions lists, known bad actors and the patterns money launderers actually use, and you get a risk score with the reasons written out. It is a tool your compliance team runs, not a service that decides for you.</p>
                     </div>
                 </div>
-
                 <div class="lp-faq-item">
                     <button type="button" class="lp-faq-q" aria-expanded="false">
                         <span>Who is this for?</span>
@@ -1203,7 +1032,6 @@
                         <p>Exchanges, payment processors, OTC desks, custodians and any business that takes crypto and has to answer for where it came from. It is built for the small and mid sized ones, the teams of two or five who carry the same obligations as a bank without a bank's compliance department. We do not onboard gambling operators.</p>
                     </div>
                 </div>
-
                 <div class="lp-faq-item">
                     <button type="button" class="lp-faq-q" aria-expanded="false">
                         <span>Which chains do you support?</span>
@@ -1213,7 +1041,6 @@
                         <p>Ethereum, Bitcoin, Solana, BNB Chain, Polygon, Avalanche, Arbitrum, Optimism, Base and Tron, from one integration, with more added as our customers need them. If the chain you settle on is not on that list, tell us which one it is and we will say honestly whether it is close or far off.</p>
                     </div>
                 </div>
-
                 <div class="lp-faq-item">
                     <button type="button" class="lp-faq-q" aria-expanded="false">
                         <span>What happens when something is flagged?</span>
@@ -1223,7 +1050,6 @@
                         <p>You get an alert with a score and the named reasons behind it, before the funds settle rather than in a report a month later. What happens next is your decision and your policy: hold it, ask the customer, or let it through. Every check and every choice is logged, so when a regulator or a bank asks what you knew and when, you can show them.</p>
                     </div>
                 </div>
-
                 <div class="lp-faq-item">
                     <button type="button" class="lp-faq-q" aria-expanded="false">
                         <span>How much does it cost?</span>
@@ -1233,7 +1059,6 @@
                         <p>We have not published prices yet, and we would rather say that than invent a number. Plans are shaped around how much you actually screen, so tell us your volume and we will tell you where you land. The trial is free and does not need a card.</p>
                     </div>
                 </div>
-
                 <div class="lp-faq-item">
                     <button type="button" class="lp-faq-q" aria-expanded="false">
                         <span>Is my data safe, and where is it kept?</span>
@@ -1244,14 +1069,12 @@
                     </div>
                 </div>
             </div>
-
             <a class="lp-faq-all" href="/faq">
                 See all questions
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"></polyline></svg>
             </a>
         </div>
     </section>
-
     <section class="lp-section lp-demo" id="demo">
         <div class="lp-section-inner">
             <div class="lp-demo-card">
@@ -1265,7 +1088,6 @@
                     <form class="lp-demo-form" id="lp-demo-form" novalidate>
                         <div class="lp-demo-hp" aria-hidden="true"><label>Company URL<input type="text" name="company_url" tabindex="-1" autocomplete="off"></label></div>
                         <div class="lp-demo-formhead" id="lp-demo-formhead">Tell us about yourself</div>
-
                         <div class="lp-demo-step" data-step="1">
                             <div class="lp-demo-grid">
                                 <div class="lp-demo-field"><label>First name<i>*</i></label><input name="firstName" type="text" autocomplete="given-name"></div>
@@ -1274,7 +1096,6 @@
                                 <div class="lp-demo-field"><label>Work email<i>*</i></label><input name="email" type="email" autocomplete="email"></div>
                             </div>
                         </div>
-
                         <div class="lp-demo-step" data-step="2" hidden>
                             <div class="lp-demo-grid">
                                 <div class="lp-demo-field lp-demo-field-full"><label>Registered company name<i>*</i></label><input name="company" type="text" autocomplete="organization" placeholder="e.g. Sentinelpay Ltd."></div>
@@ -1324,7 +1145,6 @@
                                 </div>
                             </div>
                         </div>
-
                         <div class="lp-demo-step" data-step="3" hidden>
                             <div class="lp-demo-grid">
                                 <div class="lp-demo-field">
@@ -1376,7 +1196,6 @@
                                 </div>
                             </div>
                         </div>
-
                         <div class="lp-demo-step" data-step="4" hidden>
                             <div class="lp-demo-field lp-demo-field-full">
                                 <label>Anything specific you want to solve?</label>
@@ -1386,12 +1205,10 @@
                             <label class="lp-demo-consent"><input type="checkbox" name="consent"><span>I agree to be contacted about Sentinelpay.</span></label>
                             <div class="lp-demo-turnstile" id="lp-demo-turnstile"></div>
                         </div>
-
                         <div class="lp-demo-progress">
                             <span class="lp-demo-pct" id="lp-demo-pct">25%</span>
                             <div class="lp-demo-track"><div class="lp-demo-fill" id="lp-demo-fill"></div></div>
                         </div>
-
                         <div class="lp-demo-actions">
                             <button type="button" class="lp-demo-back" id="lp-demo-back" hidden>Back</button>
                             <button type="button" class="lp-demo-next" id="lp-demo-next">Next</button>
@@ -1412,7 +1229,6 @@
             </div>
         </div>
     </section>
-
     <footer class="lp-footer">
         <div class="lp-section-inner">
             <div class="lp-footer-top">
@@ -1505,12 +1321,10 @@
             </div>
         </div>
     </footer>
-
     <script>
         (function() {
             if (history.scrollRestoration) history.scrollRestoration = 'manual';
             window.scrollTo(0, 0);
-
             var pupil = document.getElementById('eye-pupil');
             if (pupil) {
                 document.addEventListener('mousemove', function(e) {
@@ -1521,7 +1335,6 @@
                     pupil.style.transform = 'translate(' + (ox * 3) + 'px, ' + (oy * 3) + 'px)';
                 });
             }
-
             function smoothScrollTo(id) {
                 var el = document.getElementById(id);
                 if (!el) return;
@@ -1542,7 +1355,6 @@
                 }
                 requestAnimationFrame(step);
             }
-
             document.querySelectorAll('a[href^="#"]').forEach(function(a) {
                 a.addEventListener('click', function(e) {
                     if (window._sentinelSnap && window._sentinelSnap.active) return;
@@ -1555,11 +1367,9 @@
                     }
                 });
             });
-
             function closeAllDropdowns() {
                 document.querySelectorAll('.lp-nav-dd-wrap.lp-dd-open').forEach(function(w) { w.classList.remove('lp-dd-open'); });
             }
-
             document.querySelectorAll('.lp-nav-dd-btn').forEach(function(btn) {
                 btn.addEventListener('click', function() {
                     var wrap = this.closest('.lp-nav-dd-wrap');
@@ -1568,19 +1378,16 @@
                     if (!isOpen) wrap.classList.add('lp-dd-open');
                 });
             });
-
             document.querySelectorAll('.lp-nav-dd a').forEach(function(a) {
                 a.addEventListener('click', function() {
                     closeAllDropdowns();
                 });
             });
-
             document.addEventListener('click', function(e) {
                 if (!e.target.closest('.lp-nav-dd-wrap')) {
                     closeAllDropdowns();
                 }
             });
-
             var hamburger = document.getElementById('lp-hamburger');
             var mobileMenu = document.getElementById('lp-mobile-menu');
             if (hamburger && mobileMenu) {
@@ -1610,7 +1417,6 @@
                         closeMobileMenu();
                     }
                 });
-
                 mobileMenu.querySelectorAll('.lp-mm-acc-btn').forEach(function(btn) {
                     btn.addEventListener('click', function() {
                         var acc = this.closest('.lp-mm-acc');
@@ -1620,12 +1426,10 @@
                     });
                 });
             }
-
             var badge = document.getElementById('diag-score-badge');
             var scoreNum = document.getElementById('diag-score-num');
             var scoreCat = document.getElementById('diag-score-cat');
             var emailToast = document.getElementById('diag-email-toast');
-
             function randomScore() {
                 var n = Math.floor(Math.random() * 101);
                 var cat, lvl;
@@ -1634,12 +1438,7 @@
                 else              { cat = 'Low risk';  lvl = 'low'; }
                 return { n: n, cat: cat, lvl: lvl };
             }
-
-            // the labels are built here rather than sitting in the markup, so they
-            // missed the translation pass the same way the guide titles did and
-            // stayed english on a translated page
             var rT = function (x) { return window.SentinelI18n ? window.SentinelI18n.t(x) : x; };
-
             function applyScore(r) {
                 scoreNum.textContent = r.n;
                 scoreCat.textContent = rT(r.cat);
@@ -1649,7 +1448,6 @@
                     emailToast.className = 'lp-diag-email-toast lp-risk-' + r.lvl;
                 }
             }
-
             if (badge) {
                 applyScore(randomScore());
                 badge.addEventListener('animationiteration', function() {
@@ -1658,7 +1456,7 @@
             }
         })();
     </script>
-    <script src="/toast.2.js" defer></script>
+    <script src="/toast.3.js" defer></script>
     <script>
         (function () {
             var CHAINS = [
@@ -1669,10 +1467,8 @@
                 { name: 'Polygon',   img: '/chain-logos/matic.png' },
                 { name: 'Avalanche', img: '/chain-logos/avax.png' }
             ];
-
             var body = document.getElementById('lp-scn-body');
             if (!body) return;
-
             CHAINS.forEach(function (chain, i) {
                 var row = document.createElement('div');
                 row.className = 'lp-scn-row';
@@ -1685,16 +1481,13 @@
                     '</div>';
                 body.appendChild(row);
             });
-
             var FLOW_DUR = 3500;
             var BEAM_HIT = Math.round(FLOW_DUR * 0.52);
-
             function spawnParticle(idx) {
                 var chain = CHAINS[idx];
                 var lane  = document.getElementById('lp-lane-' + idx);
                 var beam  = document.getElementById('lp-beam-' + idx);
                 if (!lane || !beam) return;
-
                 var rng = Math.random();
                 var outcome = rng < 0.62 ? 'pass' : rng < 0.87 ? 'warn' : 'fail';
 
@@ -1702,28 +1495,23 @@
                 p.className = 'lp-scn-particle';
                 p.style.backgroundImage = 'url(' + chain.img + ')';
                 lane.appendChild(p);
-
                 setTimeout(function () {
                     beam.className = 'lp-scn-beam lp-beam-' + outcome;
                     setTimeout(function () { beam.className = 'lp-scn-beam'; }, 480);
                 }, BEAM_HIT);
-
                 setTimeout(function () {
                     if (p.parentNode) p.parentNode.removeChild(p);
                 }, FLOW_DUR + 300);
             }
-
             function scheduleNext(idx) {
                 setTimeout(function () {
                     spawnParticle(idx);
                     scheduleNext(idx);
                 }, 1800 + Math.floor(Math.random() * 700));
             }
-
             var started = false;
             var scanner = document.getElementById('lp-scanner');
             if (!scanner) return;
-
             var obs = new IntersectionObserver(function (entries) {
                 if (entries[0].isIntersecting && !started) {
                     started = true;
@@ -1751,7 +1539,6 @@
                 });
             }, { threshold: 0.1, rootMargin: '0px 0px -10px 0px' });
             reveals.forEach(function(el) { revealObs.observe(el); });
-
             var meters = document.querySelectorAll('.lp-signal-card');
             var meterObs = new IntersectionObserver(function(entries) {
                 entries.forEach(function(e) {
@@ -1778,11 +1565,6 @@
                         var role = opt.getAttribute('data-role');
                         if (rolesLabel) rolesLabel.innerHTML = opt.innerHTML;
                         rolesDdMenu.querySelectorAll('.lp-roles-dd-opt').forEach(function(o) { o.classList.toggle('active', o === opt); });
-                        // the card and the quote beside it are switched by the
-                        // same click. both sets are stacked in one grid cell, so
-                        // this only changes which one is visible: nothing is
-                        // added to or taken out of the flow and nothing below
-                        // the section moves.
                         document.querySelectorAll('.lp-role-panel').forEach(function(p) {
                             p.classList.toggle('active', p.getAttribute('data-role') === role);
                         });
@@ -1790,7 +1572,6 @@
                     });
                 });
             }
-
             var statsxGrid = document.getElementById('lp-statsx-grid');
             if (statsxGrid) {
                 var animateStatNum = function(el) {
@@ -1819,7 +1600,6 @@
                 }, { threshold: 0.4 });
                 statsxObs.observe(statsxGrid);
             }
-
             var MAX_WAIT = 2200;
             var fallbackTimer = setTimeout(function() {
                 document.querySelectorAll('.lp-reveal:not(.lp-visible)').forEach(function(el) {
@@ -1834,7 +1614,6 @@
             }, { once: true });
         })();
     </script>
-
     <style>
         #sp-chat-btn {
             position: fixed;
@@ -1866,7 +1645,6 @@
         #sp-chat-btn .sp-chat-ico-close { opacity: 0; transform: rotate(-90deg) scale(0.5); }
         #sp-chat-btn.chat-open .sp-chat-ico-open { opacity: 0; transform: rotate(90deg) scale(0.5); }
         #sp-chat-btn.chat-open .sp-chat-ico-close { opacity: 1; transform: rotate(0) scale(1); }
-        /* we use our own #sp-chat-btn; never show intercom's default launcher */
         .intercom-lightweight-app-launcher, .intercom-launcher-frame, .intercom-launcher { display: none !important; }
         #sp-chat-badge {
             position: absolute;
@@ -1980,7 +1758,6 @@
             }, { threshold: 0.4, once: true });
             var t01 = document.getElementById('lp-terminal-step01');
             if (t01) step01obs.observe(t01);
-
             var logObs = new IntersectionObserver(function(entries) {
                 entries.forEach(function(e) {
                     if (e.isIntersecting) {
@@ -1991,7 +1768,6 @@
             }, { threshold: 0.35 });
             var logEl = document.getElementById('lp-log-lines-02');
             if (logEl) logObs.observe(logEl);
-
             var scoreObs = new IntersectionObserver(function(entries) {
                 entries.forEach(function(e) {
                     if (e.isIntersecting) {
@@ -2017,17 +1793,16 @@
             if (alertCard) scoreObs.observe(alertCard);
         })();
     </script>
-    <script src="/demo-form.24.js" defer></script>
-    <script src="/faq.1.js" defer></script>
-    <script src="/img-fallback.2.js" defer></script>
-    <!-- the sign-in dialog. loaded before i18n so its copy is translated too -->
-    <script src="/auth-modal.18.js" defer></script>
-    <script src="/auth-flow.39.js" defer></script>
-    <script src="/auth-nav.4.js" defer></script>
-    <script src="/flair.13.js" defer></script>
-    <script src="/reveal.6.js" defer></script>
-    <script src="/scroll.4.js" defer></script>
-    <script src="/navlift.1.js" defer></script>
-    <script src="/i18n.113.js" defer></script>
+    <script src="/demo-form.25.js" defer></script>
+    <script src="/faq.2.js" defer></script>
+    <script src="/img-fallback.3.js" defer></script>
+    <script src="/auth-modal.19.js" defer></script>
+    <script src="/auth-flow.40.js" defer></script>
+    <script src="/auth-nav.5.js" defer></script>
+    <script src="/flair.14.js" defer></script>
+    <script src="/reveal.7.js" defer></script>
+    <script src="/scroll.5.js" defer></script>
+    <script src="/navlift.2.js" defer></script>
+    <script src="/i18n.116.js" defer></script>
 </body>
 </html>

@@ -15,20 +15,12 @@ PUB = 'api/public'
 KEYS = set(json.load(open(sys.argv[1], encoding='utf-8')))
 
 SKIP_EXACT = {
-    # the company, its domain and its addresses. the brand is written Sentinelpay
-    # in prose now that the site is no longer all lowercase, and lowercase inside
-    # a domain, so both spellings are here.
     'sentinelpay', 'Sentinelpay', 'support@sentinelpay.org', 'privacy@sentinelpay.org',
     'yourcompany.com', 'sentinelpay.org',
-    # author bylines, alone or together: names, not copy
     'ceem', 'mind', 'chibby', 'mind, chibby', 'ceem, mind, chibby',
     'Ceem', 'Mind', 'Chibby', 'Mind, chibby', 'Ceem, mind, chibby',
-    # the companies in the logo strip. real names, the same in every language.
     'elektromaterijal', 'Elektromaterijal', 'racunala', 'Racunala',
     'traveler', 'Traveler', 'futura', 'Futura', 'majice', 'Majice',
-    # the thirty assets in the proof ring. the tooltip on each chip is the
-    # asset's name, and an asset's name is the same word in every language:
-    # nobody screens for 'Bitcoin' in english and something else in german.
     'Aave', 'ApeCoin', 'Arbitrum', 'Avalanche', 'BNB', 'Bitcoin',
     'Chainlink', 'Compound', 'Curve', 'Dai', 'Decentraland', 'ENS',
     'Ethereum', 'Jupiter', 'Lido', 'Maker', 'Optimism', 'PancakeSwap',
@@ -36,36 +28,19 @@ SKIP_EXACT = {
     'The Graph', 'The Sandbox', 'Tron', 'USD Coin', 'Uniswap',
     'Wrapped Bitcoin',
 }
-SKIP_RE = re.compile(r'^[\W\d\s]*$')          # punctuation / numbers only
-# an invented wallet address in the hero illustration. it is data, not copy, and
-# translating it would be meaningless in any language.
+SKIP_RE = re.compile(r'^[\W\d\s]*$')
 SKIP_RE_LIST = [
     re.compile(r'^0x[0-9a-f]{4}_[0-9a-f]{3}$'),
-    # amounts on the chips in the hero illustration: a number and a ticker. the
-    # ticker is the same in every language, and the number is not copy.
     re.compile(r'^[\d.,]+[km]? [A-Z]{3,5}$'),
 ]
 LOGOS = {'elektromaterijal', 'racunala.hr', 'traveler', 'majice.hr', 'futura'}
 
-# machine answers, not copy. these are returned by endpoints a panel never calls
-# or intercepted before anything is drawn, so nobody reads them in any language:
-#
-#   expired            the reset panel catches the 410 itself and swaps the
-#                      whole panel for the expired one; the string never lands
-#   forbidden          staff endpoints, answered to curl and not to a screen
-#   id required        the same
-#   unknown template   the same, for the mail previewer
-#   no database...     the same, for the account deleter
 SKIP_SERVER = {
     'expired', 'forbidden', 'id required', 'unknown template',
     'no database, so there is no row to delete',
 }
 
-# language codes. the scanner looks for strings a function returns, because that
-# is how the validation messages are written, and a function that answers "which
-# language is this" returns one of these. it is a tag, not a sentence.
 SKIP_LANG_CODE = re.compile(r'^(?:en|hr|de)$')
-
 
 def report(kind, path, strings):
     miss = []
@@ -90,7 +65,6 @@ def report(kind, path, strings):
             print('    ', json.dumps(m, ensure_ascii=False))
     return len(miss)
 
-
 total = 0
 for f in sorted(x for x in os.listdir(PUB) if x.endswith('.html')):
     raw = open(os.path.join(PUB, f), encoding='utf-8').read()
@@ -99,8 +73,6 @@ for f in sorted(x for x in os.listdir(PUB) if x.endswith('.html')):
     body = htmlmod.unescape(body)
     total += report('html-text', f, re.findall(r'>([^<>]+)<', body))
     attrs = []
-    # data-mail-* is the subject and body a mailto link is built from: copy the
-    # reader sees, just assembled at runtime rather than rendered in place.
     for a in ('placeholder', 'alt', 'title', 'aria-label', 'data-mail-subject', 'data-mail-body'):
         attrs += re.findall(a + r'="([^"]*)"', body)
     total += report('html-attr', f, attrs)
@@ -108,57 +80,24 @@ for f in sorted(x for x in os.listdir(PUB) if x.endswith('.html')):
 for f in sorted(x for x in os.listdir(PUB) if x.endswith('.js')):
     src = open(os.path.join(PUB, f), encoding='utf-8').read()
     if f in ('i18n.js', 'i18n-title.js'):
-        continue                                   # the dictionary itself
+        continue
     if f in ('hero3d.js',):
-        # the raymarched hero background. every string in it is glsl source for
-        # the gpu, not a word anybody reads, so there is nothing here to
-        # translate and every literal would be a false positive.
         continue
     if f in ('dash-data.js',):
-        # the dashboard's sample data. every string in it is invented content
-        # standing in for what the engine will answer with: verdicts, reasons,
-        # rule sentences, case titles. it is english on purpose and it is not
-        # translated, because it is deleted the day the engine is wired in and
-        # the real text then comes from the server, in the language the caller
-        # asked for. the dashboard's own labels and headings are in dash-app.js
-        # and they are checked like everything else.
         continue
     if f in ('inbox.js',):
-        # the staff inbox. english on purpose and not translated: it is an
-        # internal tool for three people who all read english, and the three
-        # dictionaries are for the site visitors see. it is skipped here rather
-        # than half translated, so a real miss on a real page still stands out.
         continue
     lits = []
-    # these two are also filtered by CODEY below: a function that returns markup
-    # or a shell command is returning code, and a string with a tag or a
-    # backslash in it has never been a sentence anybody reads.
     lits += [x for x in re.findall(r"return\s+'((?:[^'\\]|\\.)*)'", src)]
     lits += [x for x in re.findall(r"textContent\s*=\s*'((?:[^'\\]|\\.)*)'", src)]
     lits += re.findall(r"\.show\(\s*'((?:[^'\\]|\\.)*)'", src)
     lits += re.findall(r"alert\(\s*'((?:[^'\\]|\\.)*)'", src)
-    # a label in a config object is copy, and a single word escapes the sweep
-    # below because that one needs a space to tell prose from a class name. the
-    # dashboard's navigation is a list of these, and every one of them was
-    # invisible to this audit until it was looked for by name.
     lits += re.findall(r"\b(?:label|title|heading|placeholder|group|name)\s*:\s*'((?:[^'\\]|\\.)+)'", src)
 
-    # a string wrapped in t('…') is looked up at runtime, so it still has to be
-    # in the dictionary. check those too rather than trusting the wrapper.
     lits += re.findall(r"[^a-zA-Z_.]t\(\s*'((?:[^'\\]|\\.)*)'", src)
-    # strings sitting in a config object reach the user too. the step headings did,
-    # and none of the patterns above saw them because they are neither returned nor
-    # assigned. take every literal that reads like a sentence and drop the ones that
-    # are plainly code: selectors, class and event names, urls, attributes.
-    # prose starts with a letter and carries no code punctuation. that alone
-    # separates copy from selectors, regex fragments and concatenation stubs.
     CODEY = re.compile(r'^[^a-zA-Z]|[\\\[\]{}<>=()]|^https?:|\bdata-|\baria-')
-    # a list of class names reads like two short words and is not prose. the
-    # test is that every word is lowercase, and at least one carries a hyphen:
-    # "dash-grid dash-grid-3" is a class list, "sign in" is a sentence.
     CLASSY = re.compile(r'^[a-z0-9-]+(?: [a-z0-9-]+)*$')
     def codey(lit):
-        # the brand and a separator, which is what a tab title is built from
         if lit.strip() in ('Sentinelpay ·', 'Sentinelpay'):
             return True
         if CODEY.search(lit):
@@ -174,24 +113,9 @@ for f in sorted(x for x in os.listdir(PUB) if x.endswith('.js')):
     lits = [x for x in lits if not codey(x)]
     total += report('js-literal', f, lits)
 
-# 4. the answers the server writes.
-#
-#    this was the hole. every message the api returns for a 4xx is handed to the
-#    panel and put on screen through the same t() the rest of the page uses, so
-#    an english sentence there is an english sentence in front of a croatian
-#    reader. the audit only ever walked api/public, so those were invisible to
-#    it: a password rule that said "password must be at least 12 characters" sat
-#    untranslated in the reset dialog for as long as it existed.
-#
-#    only what can reach a screen is checked. a 5xx is swallowed by the client
-#    and replaced with one generic line, so the text of a 500 never shows;
-#    503 does, because the panel is written to pass it through. anything not
-#    inside a res.status(...).json({ error: ... }) is a log line, and log lines
-#    are for us.
 SERVER = ['api/index.js', 'api/accounts.js']
 SERVER_ERR = re.compile(
     r"status\(\s*(\d{3})\s*\)[\s\S]{0,40}?\{\s*error:\s*(['\"])((?:\\.|(?!\2).)*)\2")
-# the password rules are returned as plain strings and put in the same place
 PW_RULE = re.compile(r"return\s+'((?:\\.|[^'])*[a-z] [a-z][^']*)';")
 
 for f in SERVER:

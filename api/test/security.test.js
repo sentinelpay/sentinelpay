@@ -1,23 +1,11 @@
 'use strict';
 
-// The tests that exist because these are the things that must not quietly break.
-//
-// Two halves. The first needs nothing but node and runs everywhere, including
-// on a laptop with no database: the maths, the key handling, the address
-// masking. The second needs a postgres and covers the flows, and it skips
-// rather than fails when DATABASE_URL is not set, so `npm test` on a fresh
-// clone still tells you something true.
-//
-// What is deliberately not here: anything that asserts on wording. A test that
-// breaks when a sentence is reworded teaches people to stop running tests.
-
 const test = require('node:test');
 const assert = require('node:assert');
 const crypto = require('crypto');
 
 process.env.SUBMISSIONS_KEY = process.env.SUBMISSIONS_KEY ||
     crypto.randomBytes(32).toString('base64');
-// the breach check talks to the internet; the flow tests are not about it
 process.env.BREACH_CHECK = 'false';
 
 const totp = require('../totp');
@@ -25,12 +13,7 @@ const { ipKey } = require('../rate-store');
 const db = require('../db');
 const accounts = require('../accounts');
 
-// ---------------------------------------------------------------------------
-// one time passwords
-// ---------------------------------------------------------------------------
-
 test('totp matches the published test vectors', () => {
-    // RFC 6238, appendix B: the ascii secret "12345678901234567890", sha-1.
     const secret = totp.base32Encode(Buffer.from('12345678901234567890', 'ascii'));
     assert.strictEqual(totp.codeFor(secret, Math.floor(59 / 30)), '287082');
     assert.strictEqual(totp.codeFor(secret, Math.floor(1111111109 / 30)), '081804');
@@ -61,15 +44,9 @@ test('recovery codes are unique and readable', () => {
     for (const c of codes) assert.match(c, /^\d{5}-\d{5}$/);
 });
 
-// ---------------------------------------------------------------------------
-// keys
-// ---------------------------------------------------------------------------
-
 test('a sealed value opens again, and only with its own label', () => {
     const blob = db.seal('label-a:1', 'ana@primjer.hr');
     assert.strictEqual(db.open('label-a:1', blob), 'ana@primjer.hr');
-    // the label is authenticated, so the wrong one does not decrypt to
-    // something else, it does not decrypt at all
     assert.strictEqual(db.open('label-b:1', blob), '');
 });
 
@@ -89,22 +66,13 @@ test('the blind index is stable, keyed, and not reversible by shape', () => {
     assert.notStrictEqual(a, db.blindIndex('ana@primjer.de'));
 });
 
-// ---------------------------------------------------------------------------
-// rate limit keys
-// ---------------------------------------------------------------------------
-
 test('ipv6 is counted by network and ipv4 by address', () => {
     assert.strictEqual(ipKey('1.2.3.4'), '1.2.3.4');
     assert.strictEqual(ipKey('::ffff:1.2.3.4'), '1.2.3.4');
     assert.strictEqual(ipKey('2a01:4f8:c17:b8f::1'), '2a01:4f8:c17:b8f::/64');
     assert.strictEqual(ipKey('2a01:4f8:c17:b8f:1:2:3:4'), '2a01:4f8:c17:b8f::/64');
-    // two addresses in one /64 must land in the same bucket
     assert.strictEqual(ipKey('2a01:4f8:c17:b8f::dead'), ipKey('2a01:4f8:c17:b8f::beef'));
 });
-
-// ---------------------------------------------------------------------------
-// passwords
-// ---------------------------------------------------------------------------
 
 test('a password verifies against its own hash and nothing else', async () => {
     const hash = await accounts.hashPassword('a-very-long-password-1');
@@ -121,15 +89,9 @@ test('a broken hash is a no, not a crash', async () => {
     }
 });
 
-// ---------------------------------------------------------------------------
-// the flows, when there is a database to run them against
-// ---------------------------------------------------------------------------
-
 const haveDb = Boolean(process.env.DATABASE_URL);
 const flow = { skip: haveDb ? false : 'no DATABASE_URL' };
 
-// the code is never stored, so a test that wants to finish a sign-up has to
-// find it the way an attacker would have to: by trying all million.
 async function codeFor(emailHash) {
     const row = await db.query('SELECT code_hash FROM signup_codes WHERE email_hash = $1', [emailHash]);
     const target = row.rows[0].code_hash;
@@ -174,8 +136,6 @@ test('the sign-in throttle follows the address, account or not', flow, async () 
     assert.strictEqual(last.reason, 'too-many-attempts');
     assert.ok(last.retryIn > 0);
 
-    // an address nobody has must be slowed down the same way, or the throttle
-    // itself says which addresses exist
     const unknown = freshEmail('nobody');
     let u = null;
     for (let i = 0; i < 7; i++) u = await accounts.signIn(unknown, 'wrong-password-here');
@@ -201,7 +161,6 @@ test('two-factor: enrolling, signing in, reuse, and recovery', flow, async () =>
     const secret = await accounts.startTotp(userId);
     assert.ok(secret);
 
-    // an account is not protected until the app has proved it works
     let signIn = await accounts.signIn(email, 'a-very-long-password-1');
     assert.strictEqual(signIn.ok, true, 'an unconfirmed secret must not lock anybody out');
 
@@ -211,12 +170,10 @@ test('two-factor: enrolling, signing in, reuse, and recovery', flow, async () =>
     assert.strictEqual(confirmed.ok, true);
     assert.strictEqual(confirmed.codes.length, 10);
 
-    // now the password alone is not enough
     signIn = await accounts.signIn(email, 'a-very-long-password-1');
     assert.strictEqual(signIn.reason, 'totp-required');
     assert.ok(signIn.pending);
 
-    // the code that switched it on has been used and must not work again
     assert.strictEqual((await accounts.finishTotp(signIn.pending, totp.codeFor(secret, step))).reason, 'code-used');
     assert.strictEqual((await accounts.finishTotp(signIn.pending, '000000')).reason, 'bad-code');
 
@@ -224,7 +181,6 @@ test('two-factor: enrolling, signing in, reuse, and recovery', flow, async () =>
     assert.strictEqual(next.ok, true);
     assert.ok(next.session);
 
-    // and a recovery code works once
     const again = await accounts.signIn(email, 'a-very-long-password-1');
     const rescued = await accounts.finishTotp(again.pending, confirmed.codes[0]);
     assert.strictEqual(rescued.ok, true);
@@ -304,7 +260,6 @@ test('the audit trail records the flow and names nobody', flow, async () => {
     await accounts.verifySignup(email, await codeFor(db.blindIndex(email)), started.origin);
     await accounts.signIn(email, 'wrong-password-here');
 
-    // the writes are deliberately not awaited by the code that triggers them
     await new Promise((r) => setTimeout(r, 600));
 
     const rows = await accounts.recentAudit({ limit: 100, subject: db.blindIndex(email) });
@@ -317,9 +272,127 @@ test('the audit trail records the flow and names nobody', flow, async () => {
     await accounts.forget(email);
 });
 
+const sanctions = require('../sanctions');
+const screening = require('../screening');
+const trial = require('../trial');
+
+const SDN_SAMPLE = `<?xml version="1.0" standalone="yes"?>
+<sdnList>
+  <publshInformation><Publish_Date>09/10/2026</Publish_Date><Record_Count>2</Record_Count></publshInformation>
+  <sdnEntry>
+    <uid>4632</uid>
+    <lastName>TEST ENTITY LTD</lastName>
+    <sdnType>Entity</sdnType>
+    <remarks>(Linked To: SOMETHING)</remarks>
+    <programList><program>IRAN</program><program>SDGT</program></programList>
+    <idList>
+      <id><uid>1</uid><idType>Email Address</idType><idNumber>x@y.z</idNumber></id>
+      <id><uid>2</uid><idType>Digital Currency Address - XBT</idType><idNumber>1CounterFeitAddressForTests000000</idNumber></id>
+      <id><uid>3</uid><idType>Digital Currency Address - ETH</idType><idNumber>0x00000000000000000000000000000000DeadBeef</idNumber></id>
+    </idList>
+  </sdnEntry>
+  <sdnEntry>
+    <uid>99</uid>
+    <lastName>NO ADDRESSES HERE</lastName>
+    <sdnType>Entity</sdnType>
+    <idList><id><uid>4</uid><idType>Passport</idType><idNumber>A123</idNumber></id></idList>
+  </sdnEntry>
+</sdnList>`;
+
+test('the sanctions parser takes only digital currency addresses, and keeps who they belong to', () => {
+    const parsed = sanctions.parseSdn(SDN_SAMPLE);
+    assert.strictEqual(parsed.listDate, '09/10/2026');
+    assert.strictEqual(parsed.rows.length, 2, 'the passport and the email address are not addresses');
+    const eth = parsed.rows.find((r) => r.asset === 'ETH');
+    assert.strictEqual(eth.name, 'TEST ENTITY LTD');
+    assert.strictEqual(eth.programs, 'IRAN,SDGT');
+    assert.strictEqual(eth.key, eth.address.toLowerCase(), 'lookups are case insensitive');
+});
+
+test('an address is recognised by shape without asking anyone', () => {
+    assert.strictEqual(screening.identify('0x8589427373D6D84E98730D7795D8f6f8731FDA16').asset, 'ETH');
+    assert.strictEqual(screening.identify('TNiq9AXBp9EjUqhDhrwrfvAA8U3GUQZH81').asset, 'TRX');
+    assert.strictEqual(screening.identify('bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq').asset, 'XBT');
+    assert.strictEqual(screening.identify('not an address'), null);
+});
+
+test('a new account has no plan and no quota until a trial is activated', { skip: !db.available() }, async () => {
+    const email = 'trial-' + crypto.randomBytes(6).toString('hex') + '@primjer-firma.hr';
+    const hash = db.blindIndex(email);
+    const res = await db.query(
+        `INSERT INTO users (email_hash, email_enc, name_enc, password_hash, lang)
+         VALUES ($1, $2, $3, 'x', 'hr') RETURNING id`,
+        [hash, db.seal('signup-email:' + hash, email), db.seal('signup-name:' + hash, 'T')]
+    );
+    const userId = res.rows[0].id;
+
+    const fresh = await trial.ensure(userId);
+    assert.strictEqual(fresh.state, 'none');
+    assert.strictEqual(fresh.liveIncluded, 0, 'nothing is included before a trial exists');
+
+    const refused = await trial.spend(userId, 'live');
+    assert.strictEqual(refused.ok, false);
+    assert.strictEqual(refused.reason, 'no-trial');
+
+    const halfway = await trial.activate(userId, {
+        email, website: 'primjer-firma.hr', consent: true, notGambling: false,
+    });
+    assert.strictEqual(halfway.reason, 'both-confirmations-required');
+
+    const mismatch = await trial.activate(userId, {
+        email: 'someone@gmail.com', website: 'primjer-firma.hr', consent: true, notGambling: true,
+    });
+    assert.strictEqual(mismatch.state, 'pending', 'a free address does not open a trial by itself');
+
+    const started = await trial.activate(userId, {
+        email, website: 'https://www.primjer-firma.hr/o-nama', consent: true, notGambling: true,
+    });
+    assert.strictEqual(started.state, 'starter');
+    assert.strictEqual(started.liveLeft, 1);
+    assert.strictEqual(started.historyLeft, 1);
+    assert.strictEqual(started.historyOpen, false, 'the history stays locked until the number is verified');
+
+    assert.strictEqual((await trial.spend(userId, 'live')).liveLeft, 0);
+    assert.strictEqual((await trial.spend(userId, 'live')).reason, 'out-of-checks');
+    await trial.spend(userId, 'history');
+    assert.strictEqual((await trial.spend(userId, 'history')).reason, 'history-locked');
+
+    const verified = await trial.markPhoneVerified(userId, '+38591' + crypto.randomBytes(3).toString('hex'));
+    assert.strictEqual(verified.state, 'verified');
+    assert.strictEqual(verified.historyOpen, true);
+    assert.ok(verified.liveLeft > 0, 'verifying the number adds live checks');
+
+    await db.query('DELETE FROM users WHERE id = $1', [userId]);
+});
+
+test('one trial per company', { skip: !db.available() }, async () => {
+    const host = 'firma-' + crypto.randomBytes(4).toString('hex') + '.hr';
+    const ids = [];
+    for (const who of ['ana', 'ivo']) {
+        const email = who + '@' + host;
+        const hash = db.blindIndex(email);
+        const res = await db.query(
+            `INSERT INTO users (email_hash, email_enc, name_enc, password_hash, lang)
+             VALUES ($1, $2, $3, 'x', 'hr') RETURNING id`,
+            [hash, db.seal('signup-email:' + hash, email), db.seal('signup-name:' + hash, who)]
+        );
+        ids.push({ id: res.rows[0].id, email });
+    }
+    const first = await trial.activate(ids[0].id, {
+        email: ids[0].email, website: host, consent: true, notGambling: true,
+    });
+    assert.strictEqual(first.state, 'starter');
+
+    const second = await trial.activate(ids[1].id, {
+        email: ids[1].email, website: host, consent: true, notGambling: true,
+    });
+    assert.strictEqual(second.ok, false);
+    assert.strictEqual(second.reason, 'company-already-has-a-trial');
+
+    for (const u of ids) await db.query('DELETE FROM users WHERE id = $1', [u.id]);
+});
+
 test.after(async () => {
-    // the connection pool keeps the process alive otherwise, and a test run that
-    // never exits looks exactly like a test run that hung
     await new Promise((r) => setTimeout(r, 250));
     await db.close();
 });

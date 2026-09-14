@@ -3,8 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- ios turns things like "1-10" and "51-200" into phone links, which made
-         the company-size options open the call sheet instead of selecting -->
     <meta name="format-detection" content="telephone=no">
     <meta name="robots" content="noindex, nofollow">
     <title>Sentinelpay | Blog | You shouldn't have to become a bank to stay compliant</title>
@@ -20,30 +18,19 @@
     <meta property="twitter:title" content="You shouldn't have to become a bank to stay compliant">
     <meta property="twitter:description" content="Small crypto businesses get two options: ignore compliance until a bank freezes you, or build a department you can't afford. Here is the third option.">
     <meta property="twitter:image" content="https://blog.sentinelpay.org/covers/compliance-bank.png">
-    <script>/* tab title before first paint; for articles this is the h1 translation */(function(){var T={"hr": "Sentinelpay | Blog | Ne morate postati banka da biste bili u skladu s propisima", "de": "Sentinelpay | Blog | Sie sollten keine Bank werden müssen, um Compliant zu bleiben"},m=document.cookie.match(/(?:^|; )sp-lang=([^;]*)/),l=m?decodeURIComponent(m[1]):null;if(!l){try{l=localStorage.getItem("sp-lang")}catch(e){}}if(l!=="hr"&&l!=="de"&&l!=="en")l=document.documentElement.getAttribute("data-geo-lang");if(l!=="hr"&&l!=="de")return;document.documentElement.lang=l;if(!T)return;window.__SP_TITLE_SRC=document.title.replace(/\s+/g," ").trim();document.title=T[l];})();</script>
+    <script>(function(){var T={"hr": "Sentinelpay | Blog | Ne morate postati banka da biste bili u skladu s propisima", "de": "Sentinelpay | Blog | Sie sollten keine Bank werden müssen, um Compliant zu bleiben"},m=document.cookie.match(/(?:^|; )sp-lang=([^;]*)/),l=m?decodeURIComponent(m[1]):null;if(!l){try{l=localStorage.getItem("sp-lang")}catch(e){}}if(l!=="hr"&&l!=="de"&&l!=="en")l=document.documentElement.getAttribute("data-geo-lang");if(l!=="hr"&&l!=="de")return;document.documentElement.lang=l;if(!T)return;window.__SP_TITLE_SRC=document.title.replace(/\s+/g," ").trim();document.title=T[l];})();</script>
     <script>document.documentElement.classList.add('theme-light');</script>
     <script>if(history.scrollRestoration)history.scrollRestoration='manual';window.scrollTo(0,0);</script>
     <link rel="icon" type="image/svg+xml" href="/logo.svg">
     <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/fonts/jakarta-latin.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="/fonts.1.css">
-    <link rel="stylesheet" href="/style.26.css">
-    <link rel="stylesheet" href="/landing.148.css">
-    <link rel="stylesheet" href="/corp.329.css">
+    <link rel="stylesheet" href="/fonts.2.css">
+    <link rel="stylesheet" href="/style.27.css">
+    <link rel="stylesheet" href="/landing.149.css">
+    <link rel="stylesheet" href="/corp.330.css">
     <style>
-        /* page loader: hold the page until everything is loaded (matches homepage) */
         #sp-loader{position:fixed;inset:0;z-index:99999;background:#050505;display:flex;align-items:center;justify-content:center;transition:opacity 0.55s ease;}
         #sp-loader.spl-done{opacity:0;pointer-events:none;}
-        /* nothing scrolls while the loader is up. the page behind it is already
-           laid out and a stray wheel or swipe used to move it, so the loader
-           lifted on a page halfway down itself. the gutter is held open so the
-           scrollbar coming back does not shift the whole layout sideways at the
-           exact moment the loader fades.
-
-           `:has` rather than a class toggled by script: the lock then ends the
-           moment the loader is marked done, and there is no state to leave
-           behind if the script never runs. where `:has` is not supported this
-           simply does nothing, which is how the page behaved before. */
         html:has(#sp-loader:not(.spl-done)),
         html:has(#sp-loader:not(.spl-done)) body { overflow: hidden; }
         html:has(#sp-loader:not(.spl-done)) { scrollbar-gutter: stable; }
@@ -58,7 +45,6 @@
             --accent-glow: rgba(0,145,200,0.12); --accent-light: #0091c8; --neon-blue: #0091c8;
         }
         html.theme-light body.lp-body { background: linear-gradient(180deg, #fbfcfd 0%, #eef0f3 100%) fixed; }
-        /* same scrollbar as sentinelpay.org (light-blue on light track) */
         html.theme-light, html.theme-light * { scrollbar-color: rgba(0,145,200,0.25) #f0f0f2; }
         html.theme-light::-webkit-scrollbar-track, html.theme-light ::-webkit-scrollbar-track { background: #f0f0f2; }
         html.theme-light::-webkit-scrollbar-thumb, html.theme-light ::-webkit-scrollbar-thumb { background: rgba(0,145,200,0.25); border: 1px solid rgba(0,145,200,0.15); }
@@ -67,10 +53,7 @@
         html.theme-light .lp-btn-ghost.auth-nav-btn { border-color: rgba(0,0,0,0.08) !important; }
         html.theme-light .lp-btn-ghost.auth-nav-btn:hover { background: rgba(0,0,0,0.04) !important; }
         .lp-nav-inner { display: flex !important; justify-content: space-between; align-items: center; }
-
-        /* reading progress bar */
         .read-progress { position: fixed; top: 0; left: 0; height: 3px; width: 0; z-index: 9999; background: rgba(14,35,88,0.55); transition: width 0.08s linear; }
-
         .article-shell { max-width: 720px; margin: 0 auto; padding: 0 1.4rem; }
         .lp-section.article { padding-top: 7rem; }
         .article-back {
@@ -83,8 +66,6 @@
         .article-back:hover { color: #0e2358; border-color: rgba(14,35,88,0.32); background: #fbfcfd; box-shadow: 0 6px 18px -10px rgba(14,35,88,0.35); }
         .article-back:hover svg { transform: translateX(-3px); }
         .article-title { margin: 0 0 1.4rem; font-size: 2.7rem; font-weight: 800; line-height: 1.14; letter-spacing: -0.02em; color: #0e2358; text-transform: none; }
-        /* show-original pill: only rendered on a translated article.
-           cut from the same pattern as .article-back so the two read as a set. */
         .article-original { margin-top: 1.5rem; }
         .article-original-btn {
             display: inline-flex; align-items: center; gap: 0.45rem;
@@ -103,7 +84,6 @@
         }
         .article-original-btn:hover svg { opacity: 1; }
         .article-original-btn:focus-visible { outline: 2px solid rgba(0,145,200,0.5); outline-offset: 3px; }
-        /* showing the original is a held state, so the pill fills in to say so */
         .article-original-btn.is-on {
             color: #0091c8;
             border-color: rgba(0,145,200,0.35);
@@ -113,8 +93,6 @@
         .article-original-btn.is-on:hover {
             color: #0e2358; border-color: rgba(0,145,200,0.55); background: rgba(0,145,200,0.1);
         }
-        /* the shared stylesheet stretches every button to full width below 600px,
-           which is right for form submits and wrong for a pill. opt out. */
         @media (max-width: 600px) {
             .article-original-btn { width: auto; }
         }
@@ -124,7 +102,6 @@
         .article-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 2; }
         .article-byline b { font-size: 0.92rem; font-weight: 700; color: #0e2358; }
         .article-byline small { display: block; font-size: 0.8rem; color: rgba(14,35,88,0.5); }
-
         .article-body { margin-top: 2.6rem; padding-bottom: 1rem; }
         .article-body > p { margin: 1.35rem 0; font-size: 1.13rem; line-height: 1.8; color: #2a3550; }
         .article-body > p.lead { font-size: 1.35rem; line-height: 1.6; font-weight: 500; color: #0e2358; }
@@ -138,17 +115,14 @@
             content: ''; position: absolute; left: 0.15rem; top: 0.68em; width: 5px; height: 5px; border-radius: 50%;
             background: rgba(14,35,88,0.45);
         }
-        /* monotone pull-quote: simple left rule, no colour */
         .article-callout {
             margin: 2rem 0; padding: 0.3rem 0 0.3rem 1.4rem; border-left: 3px solid rgba(14,35,88,0.22);
             font-size: 1.25rem; font-weight: 700; line-height: 1.5; color: #0e2358;
         }
-        /* case blocks: plain flow, sub-heading + text, no card */
         .article-example { margin: 1.6rem 0; padding: 0; background: none; border: none; box-shadow: none; }
         .article-example h3 { margin: 0 0 0.5rem; font-size: 1.2rem; font-weight: 700; color: #0e2358; text-transform: none; }
         .article-example p { margin: 0.7rem 0 0; font-size: 1.08rem; line-height: 1.75; color: #2a3550; }
         .article-example p:first-of-type { margin-top: 0; }
-
         @media (max-width: 640px) {
             .article-title { font-size: 2rem; }
             .lp-section.article { padding-top: 6rem; }
@@ -158,13 +132,7 @@
         }
     </style>
     <noscript><style>
-        /* scripting is off, so the loader is the final screen, not a stage on the
-           way somewhere. stop the pulse so it reads as a message, not a hang. */
-        /* theme-light is added by an inline script, which never runs here, so the
-           loader would sit on the dark default. force the light one. */
-        /* the loader covers the viewport, but the page behind it still has its full
-           height, so the window kept a scrollbar with nothing to scroll to. and
-           without theme-light that scrollbar renders in the dark theme's colours. */
+
         html, body { overflow: hidden !important; height: 100%; }
         #sp-loader { background: #fbfcfd !important; flex-direction: column; gap: 1.6rem; padding: 0 1.5rem; }
         #sp-loader .spl-logo-svg { animation: none; filter: none; opacity: 0.75; width: 96px; height: 96px; }
@@ -176,7 +144,7 @@
     </style></noscript>
 </head>
 <body class="lp-body">
-    <div id="sp-loader"><svg class="spl-logo-svg" viewBox="0 0 120 120" fill="none"><defs><linearGradient id="spl-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00ffff"/><stop offset="100%" stop-color="#a020f0"/></linearGradient><filter id="spl-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3.5" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#spl-glow)" fill="none" stroke="url(#spl-grad)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/><g class="spl-eye-blink"><path d="M38 60 Q 60 40 82 60 Q 60 80 38 60 Z"/><circle cx="60" cy="60" r="6"/><circle cx="60" cy="60" r="2" fill="url(#spl-grad)" stroke="none"/></g><path d="M60 15 V 30" stroke-width="2" opacity="0.6"/><path d="M60 90 V 105" stroke-width="2" opacity="0.6"/></g></svg><noscript><!--SP_NOSCRIPT--></noscript></div>
+    <div id="sp-loader"><svg class="spl-logo-svg" viewBox="0 0 120 120" fill="none"><defs><linearGradient id="spl-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00ffff"/><stop offset="100%" stop-color="#a020f0"/></linearGradient><filter id="spl-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3.5" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#spl-glow)" fill="none" stroke="url(#spl-grad)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/><g class="spl-eye-blink"><path d="M38 60 Q 60 40 82 60 Q 60 80 38 60 Z"/><circle cx="60" cy="60" r="6"/><circle cx="60" cy="60" r="2" fill="url(#spl-grad)" stroke="none"/></g><path d="M60 15 V 30" stroke-width="2" opacity="0.6"/><path d="M60 90 V 105" stroke-width="2" opacity="0.6"/></g></svg><noscript></noscript></div>
     <div class="read-progress" id="read-progress"></div>
     <nav class="lp-nav">
         <div class="lp-nav-inner">
@@ -410,7 +378,6 @@
             </div>
         </div>
     </div>
-
     <article class="lp-section article">
         <div class="article-shell">
             <a href="/" class="article-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>All articles</a>
@@ -421,35 +388,28 @@
             </div>
             <div class="article-original" data-original-toggle data-i18n-skip></div>
         </div>
-
         <div class="article-shell article-body" data-original-scope>
             <p class="lead">I want to be straight about why we are building Sentinelpay, because the reason is also the thing that is broken. Right now, if you run a small crypto business, the market hands you two ways to stay compliant, and both of them are bad.</p>
             <p><strong>Option one: do nothing serious.</strong> No screening, no records, no real process. You tell yourself you are too small to matter. This works right up until the morning a bank closes your account, or Tether freezes funds already sitting in your wallet. Then you find out you were never too small. You were just unprepared.</p>
             <p><strong>Option two: build compliance the way a bank builds it.</strong> Hire people. Buy enterprise tools priced for institutions. Stand up a department. This actually works, and it is completely out of reach for a business doing real volume with a small team. Everyone selling it knows that.</p>
             <div class="article-callout">Ignore the problem until it bites, or spend like an institution to avoid it. Most small crypto businesses are stuck between those two, and stuck is exactly where the risk grows.</div>
-
             <h2>The gap nobody built for</h2>
             <p>Here is what got to me. The tools to actually assess crypto risk already exist. Sanctions data, chain analysis, wallet scoring, all of it is real and it works. But it was built, priced, and packaged for banks and exchanges that have compliance teams to operate it.</p>
             <p>Nobody built the version for the business that has none of that. The payment processor. The OTC desk. The small exchange. The shop taking USDT. You carry the same exposure a bank does, because a wallet is just as dirty whether it pays you or a tier-one exchange, but you were never handed a tool you could actually turn on and use.</p>
             <p>That is the gap. It was never a lack of technology. It was a lack of anyone pointing it at you.</p>
-
             <h2>What we actually believe</h2>
             <p>Compliance should be a feature you switch on, not a department you cannot afford. That is the whole thesis behind Sentinelpay, and every decision we make comes back to it.</p>
             <p>It is why the setup is one step. You connect your public key. You do not integrate for a month, you do not hire someone to run it, you do not learn a new profession. The point is to give a small team the thing a bank's analyst gives a bank, without needing the bank.</p>
             <p>It is why we score instead of block. We are not trying to freeze your customers or turn your platform into a checkpoint. 99% of transactions are fine and should move like it. Our job is to surface the few that are not, with enough context that you make the call yourself. You stay in control. We just make sure you are not deciding blind.</p>
             <p>And it is why we keep a record of every scan. Not because paperwork is the goal, but because the day someone asks what you did, "we checked, and here is exactly what we saw and when" is a very different conversation than a shrug.</p>
-
             <h2>This isn't us being generous</h2>
             <p>I am not going to pretend this is charity. We think there are a lot of these businesses, and we think they were ignored by an industry that only knew how to sell to institutions. Building the tool they actually need is a real business, and that is the point: our incentives and yours end up pointing the same way. We only win if turning this on genuinely protects you.</p>
             <p>What I will promise is that we are not going to sell you fear, or a compliance department wearing a trench coat. The product is meant to be simple, honest, and something you can afford before you have a problem instead of after.</p>
-
             <h2>Where we are</h2>
             <p>Sentinelpay is being built right now. It is not fully live yet, and I would rather tell you that plainly than dress it up. What is coming is the thing I wish had existed the first time I watched a small business get frozen over a wallet nobody warned them about: connect your key, get a risk score on every wallet that touches you, decide with your eyes open.</p>
             <p>If that is the option you have been missing, follow along and get early access when we launch at <a href="https://sentinelpay.org">sentinelpay.org</a>. We are building it for you specifically, and we would rather build it with you watching.</p>
-
             <h2>Bottom line</h2>
             <p>You should not have to choose between ignoring compliance and becoming a bank. That we all quietly accepted those as the only two options is the real problem. Sentinelpay is the third one.</p>
-
             <p class="article-sources-title">Sources</p>
             <ul class="article-sources">
                 <li><a href="https://eur-lex.europa.eu/eli/reg/2023/1114/2024-01-09/eng" rel="noopener noreferrer" target="_blank">MiCA, regulation (EU) 2023/1114, consolidated text</a></li>
@@ -460,7 +420,6 @@
             </ul>
         </div>
     </article>
-
     <footer class="lp-footer">
         <div class="lp-section-inner">
             <div class="lp-footer-top">
@@ -553,7 +512,6 @@
             </div>
         </div>
     </footer>
-
     <script>
         (function() {
             var bar = document.getElementById('read-progress');
@@ -566,19 +524,14 @@
             update();
         })();
     </script>
-    <script>/* the splash must clear whether or not the load event ever arrives. it waits
-   for every subresource including third party scripts, and one slow embed is
-   then a site nobody can see: the safety net below only ever started counting
-   after load, so it protected against a slow image and not against the thing
-   most likely to hang. this arms at dom ready instead and load simply gets
-   there first when it can. */(function(){var fired0=false;var run=function(){if(fired0)return;fired0=true;window.scrollTo(0,0);var l=document.getElementById('sp-loader');if(!l)return;var finish=function(){l.classList.add('spl-done');setTimeout(function(){l.remove();},620);};/* the load event does not wait for lazy images, and nearly every image on the site is lazy, so the loader used to clear while the first screen was still filling in. wait for the ones that will actually be visible: an image further down has not started loading yet and never would, so waiting for all of them would hold the loader open for ever. */var pending=[],im,r,i;for(i=0;i<document.images.length;i++){im=document.images[i];r=im.getBoundingClientRect();if(r.bottom<0||r.top>window.innerHeight*1.2)continue;if(im.complete&&im.naturalWidth>0)continue;pending.push(im);}if(!pending.length){finish();return;}var left=pending.length,fired=false;var one=function(){if(--left<=0&&!fired){fired=true;finish();}};pending.forEach(function(x){x.addEventListener('load',one,{once:true});x.addEventListener('error',one,{once:true});});/* a slow or broken image must never trap anybody behind the loader */setTimeout(function(){if(!fired){fired=true;finish();}},2500);};window.addEventListener('load',run);if(document.readyState!=='loading')setTimeout(run,3500);else document.addEventListener('DOMContentLoaded',function(){setTimeout(run,3500);});})();</script>
-    <script src="/img-fallback.2.js" defer></script>
-    <script src="/nav.1.js" defer></script>
-    <script src="/auth-modal.18.js" defer></script>
-    <script src="/auth-flow.39.js" defer></script>
-    <script src="/auth-nav.4.js" defer></script>
-    <script src="/toast.2.js" defer></script>
-    <script src="/navlift.1.js" defer></script>
-    <script src="/i18n.113.js" defer></script>
+    <script>(function(){var fired0=false;var run=function(){if(fired0)return;fired0=true;window.scrollTo(0,0);var l=document.getElementById('sp-loader');if(!l)return;var finish=function(){l.classList.add('spl-done');setTimeout(function(){l.remove();},620);};var pending=[],im,r,i;for(i=0;i<document.images.length;i++){im=document.images[i];r=im.getBoundingClientRect();if(r.bottom<0||r.top>window.innerHeight*1.2)continue;if(im.complete&&im.naturalWidth>0)continue;pending.push(im);}if(!pending.length){finish();return;}var left=pending.length,fired=false;var one=function(){if(--left<=0&&!fired){fired=true;finish();}};pending.forEach(function(x){x.addEventListener('load',one,{once:true});x.addEventListener('error',one,{once:true});});setTimeout(function(){if(!fired){fired=true;finish();}},2500);};window.addEventListener('load',run);if(document.readyState!=='loading')setTimeout(run,3500);else document.addEventListener('DOMContentLoaded',function(){setTimeout(run,3500);});})();</script>
+    <script src="/img-fallback.3.js" defer></script>
+    <script src="/nav.2.js" defer></script>
+    <script src="/auth-modal.19.js" defer></script>
+    <script src="/auth-flow.40.js" defer></script>
+    <script src="/auth-nav.5.js" defer></script>
+    <script src="/toast.3.js" defer></script>
+    <script src="/navlift.2.js" defer></script>
+    <script src="/i18n.116.js" defer></script>
 </body>
 </html>

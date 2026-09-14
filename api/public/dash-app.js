@@ -1,66 +1,34 @@
-/* The dashboard.
- *
- * One page, ten views, rendered here rather than as ten html files. The site
- * already has eighteen pages that are half the same bytes, and a tool with a
- * rail down the side is the worst possible thing to copy that way: every screen
- * would carry its own copy of the navigation and they would drift apart by the
- * second week.
- *
- * Routing is the hash. No history api, no server routes to keep in step, and a
- * link somebody pastes into a message opens the same screen they were looking
- * at. The server serves this page for anything under /dashboard and the view is
- * decided here.
- *
- * Everything it shows comes from dash-data.js, which is invented. The shapes are
- * the shapes the engine will answer with; when it does, the fetch replaces the
- * lookup and the views do not change.
- */
 (function () {
     'use strict';
-
     var D = window.SentinelDashData;
     var view = document.getElementById('dash-view');
     if (!D || !view) return;
-
     var t = function (x) { return window.SentinelI18n ? window.SentinelI18n.t(x) : x; };
-
-    // who is deciding. filled in from the session below; until then the screens
-    // say nothing rather than guessing a name.
     var me = { name: '' };
-    // and the second approver comes from the team list rather than from a
-    // literal, because a name typed into the code is a name nobody updates
     function anotherApprover() {
         var hit = null;
         (D.team || []).forEach(function (m) { if (!hit && m.name !== me.name) hit = m; });
         return hit ? hit.name : '';
     }
-
-    // ---- small helpers ------------------------------------------------------
-
     function el(tag, cls, text) {
         var n = document.createElement(tag);
         if (cls) n.className = cls;
         if (text != null) n.textContent = t(text);
         return n;
     }
-
     function esc(s) {
         return String(s == null ? '' : s).replace(/[<>&"']/g, function (c) {
             return ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' })[c];
         });
     }
-
     function lang() {
         return (window.SentinelI18n && window.SentinelI18n.lang && window.SentinelI18n.lang()) || 'en';
     }
-
     function locale() {
         var l = lang();
         return l === 'hr' ? 'hr-HR' : (l === 'de' ? 'de-DE' : 'en-GB');
     }
 
-    // "4 minutes ago", in the page's language. Intl does the grammar, which is
-    // the half of this that is easy to get wrong in croatian.
     function since(iso) {
         var then = new Date(iso).getTime();
         if (isNaN(then)) return '';
@@ -76,7 +44,6 @@
             return new Date(iso).toISOString().slice(0, 10);
         }
     }
-
     function when(iso, withTime) {
         var d = new Date(iso);
         if (isNaN(d.getTime())) return '';
@@ -86,26 +53,21 @@
                 : { dateStyle: 'medium' });
         } catch (e) { return d.toISOString().slice(0, 10); }
     }
-
     function num(n) {
         try { return Number(n).toLocaleString(locale()); } catch (e) { return String(n); }
     }
-
     function short(addr) {
         var s = String(addr || '');
         return s.length > 18 ? s.slice(0, 8) + '…' + s.slice(-6) : s;
     }
-
     function bandName(key) {
         return { severe: t('Severe'), high: t('High'), medium: t('Medium'), low: t('Low') }[key] || key;
     }
-
     function bandTag(key) {
         var n = el('span', 'dash-band dash-band-' + key);
         n.textContent = bandName(key);
         return n;
     }
-
     function catLabel(key) {
         var hit = null;
         D.categories.forEach(function (c) { if (c.key === key) hit = c; });
@@ -117,21 +79,18 @@
         D.categories.forEach(function (c) { if (c.key === key) hit = c; });
         return hit ? hit.tone : 'medium';
     }
-
     function toneColour(tone) {
         return ({
             severe: 'var(--d-severe)', high: 'var(--d-high)',
             medium: 'var(--d-medium)', low: 'var(--d-low)',
         })[tone] || 'var(--d-ink-3)';
     }
-
     function decisionWord(d) {
         if (d === 'approved') return t('Approved');
         if (d === 'rejected') return t('Rejected');
         if (d === 'escalated') return t('Escalated');
         return t('Not decided');
     }
-
     var ICONS = {
         home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/>',
         search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/>',
@@ -153,15 +112,11 @@
         shield: '<path d="M12 3.5 5 6.5v5c0 5 4.4 8.4 7 9.2 2.6-.8 7-4.2 7-9.2v-5Z"/>',
         clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
     };
-
     function icon(name, cls) {
         return '<svg class="' + (cls || '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
             'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
             (ICONS[name] || '') + '</svg>';
     }
-
-    // ---- the rail -----------------------------------------------------------
-
     var NAV = [
         { group: 'Work', items: [
             { route: '', label: 'Overview', icon: 'home' },
@@ -186,12 +141,22 @@
             { route: 'settings', label: 'Settings', icon: 'cog' },
         ] },
     ];
+    var LIVE_NAV = [
+        { group: 'Work', items: [
+            { route: '', label: 'Start', icon: 'home' },
+            { route: 'screenings-log', label: 'Checks you have run', icon: 'search' },
+        ] },
+        { group: 'Account', items: [
+            { route: 'settings', label: 'Settings', icon: 'cog' },
+        ] },
+    ];
 
     function paintNav(current) {
         var nav = document.getElementById('dash-nav');
         if (!nav) return;
         nav.textContent = '';
-        NAV.forEach(function (g) {
+        var groups = (typeof demoMode === 'function' && demoMode()) ? NAV : LIVE_NAV;
+        groups.forEach(function (g) {
             nav.appendChild(el('div', 'dash-nav-group', g.group));
             g.items.forEach(function (it) {
                 var a = document.createElement('a');
@@ -210,18 +175,38 @@
             });
         });
     }
-
-    // the rail carries one live thing: whether monitoring is actually running.
-    // a tool that watches something should say so without being asked.
     function paintLive() {
         var box = document.getElementById('dash-live');
         if (!box) return;
+        if (typeof demoMode === 'function' && !demoMode() && ENT) {
+            box.hidden = true;
+            return;
+        }
+        box.hidden = false;
         box.innerHTML = '<i></i><span>' + esc(t('Monitoring is running')) + '</span>';
     }
-
     function paintUsage() {
         var box = document.getElementById('dash-usage');
         if (!box) return;
+        if (typeof demoMode === 'function' && !demoMode() && ENT) {
+            var tr = ENT.trial || {};
+            if (tr.state !== 'starter' && tr.state !== 'verified') {
+                box.hidden = true;
+                return;
+            }
+            box.hidden = false;
+            var used = tr.liveUsed || 0;
+            var inc = tr.liveIncluded || 0;
+            var pc = inc ? Math.min(100, Math.round((used / inc) * 100)) : 0;
+            box.innerHTML =
+                '<div class="dash-usage-top"><span>' + esc(t('Checks')) + '</span>' +
+                '<b>' + esc(String(used)) + ' / ' + esc(String(inc)) + '</b></div>' +
+                '<div class="dash-usage-bar"><div class="dash-usage-fill" style="width:' + pc + '%"></div></div>' +
+                '<div class="dash-usage-note">' + esc(t('Trial')) + ' · ' +
+                esc(String(tr.daysLeft)) + ' ' + esc(t('days left')) + '</div>';
+            return;
+        }
+        box.hidden = false;
         var a = D.account;
         var pct = Math.min(100, Math.round((a.checksUsed / a.checksIncluded) * 100));
         box.innerHTML =
@@ -231,9 +216,6 @@
             '<div class="dash-usage-note">' + esc(t('Plan')) + ': ' + esc(a.plan) + ' · ' +
             esc(t('renews')) + ' ' + esc(when(a.renews)) + '</div>';
     }
-
-    // ---- building blocks ----------------------------------------------------
-
     function card(title, note) {
         var c = el('div', 'dash-card');
         if (title) {
@@ -244,7 +226,6 @@
         }
         return c;
     }
-
     function head(title, sub, actions) {
         var wrap = el('div', 'dash-head');
         var left = el('div');
@@ -258,7 +239,6 @@
         }
         return wrap;
     }
-
     function button(label, kind, onClick, iconName) {
         var b = el('button', 'dash-btn' + (kind ? ' dash-btn-' + kind : ''));
         b.type = 'button';
@@ -266,9 +246,6 @@
         if (onClick) b.addEventListener('click', onClick);
         return b;
     }
-
-    // A table that can be walked with the keyboard. Rows carry their own action,
-    // so j/k/Enter work the same on every screen without each view wiring it.
     function table(columns, rows, onOpen) {
         var wrap = el('div', 'dash-table-wrap');
         var tb = el('table', 'dash-table');
@@ -281,7 +258,6 @@
         });
         thead.appendChild(tr);
         tb.appendChild(thead);
-
         var body = el('tbody');
         if (!rows.length) {
             var only = el('tr');
@@ -310,7 +286,6 @@
         wrap.appendChild(tb);
         return wrap;
     }
-
     function facts(pairs) {
         var dl = el('dl', 'dash-facts');
         pairs.forEach(function (p) {
@@ -326,8 +301,6 @@
         return dl;
     }
 
-    // A segmented filter. The chosen one goes in the hash, so a filtered list is
-    // a link somebody can send.
     function segmented(options, current, onPick) {
         var wrap = el('div', 'dash-seg');
         options.forEach(function (o) {
@@ -345,9 +318,6 @@
         });
         return wrap;
     }
-
-    // A number against the one before it. The arrow is the point: a figure on
-    // its own says nothing about whether today is a normal day.
     function trend(now, before) {
         var d = before ? Math.round(((now - before) / before) * 100) : 0;
         var kind = d > 2 ? 'up' : (d < -2 ? 'down' : 'flat');
@@ -355,10 +325,6 @@
         n.textContent = (d > 0 ? '+' : '') + d + '%';
         return n;
     }
-
-    // Thirty numbers and a shape. No axes, no grid, no library: an overview
-    // chart answers "is this normal" and anything more belongs on a page of its
-    // own.
     function sparkline(points, w, h) {
         var max = Math.max.apply(null, points) || 1;
         var step = w / Math.max(1, points.length - 1);
@@ -382,9 +348,6 @@
         box.innerHTML = svg;
         return box;
     }
-
-    // An address is copied far more often than it is read. On a phone,
-    // selecting one by hand is most of a minute.
     function copyButton(text) {
         var b = el('button', 'dash-copy');
         b.type = 'button';
@@ -396,13 +359,10 @@
             e.stopPropagation();
             try {
                 navigator.clipboard.writeText(text).then(function () { toast(t('Copied')); });
-            } catch (err) { /* an old browser without the api: the text is still on screen */ }
+            } catch (err) {  }
         });
         return b;
     }
-
-    // Said once, in the corner, and gone. A decision that changes a screen
-    // should still say out loud that it happened.
     var toastEl = null;
     var toastTimer = null;
     function toast(message) {
@@ -418,14 +378,11 @@
         clearTimeout(toastTimer);
         toastTimer = setTimeout(function () { toastEl.classList.remove('is-on'); }, 2600);
     }
-
-    // How many rows there are, and which of them these are.
     function footRow(shown, total, label) {
         var f = el('div', 'dash-foot');
         f.textContent = t('Showing') + ' ' + shown + ' ' + t('of') + ' ' + total + ' ' + t(label);
         return f;
     }
-
     function crumbs(trail) {
         var c = el('div', 'dash-crumbs');
         trail.forEach(function (step, i) {
@@ -440,17 +397,12 @@
         });
         return c;
     }
-
     function sampleChip() {
         var s = el('span', 'dash-sample');
         s.textContent = t('Sample data');
         return s;
     }
-
-    // ---- views --------------------------------------------------------------
-
     var views = {};
-
     views[''] = function () {
         var page = el('div');
         var open = D.alerts.filter(function (a) { return a.state === 'open'; });
@@ -460,12 +412,10 @@
         var yesterday = series.length > 1 ? series[series.length - 2].checks : 0;
         var week = series.slice(-7).reduce(function (n, x) { return n + x.checks; }, 0);
         var weekBefore = series.slice(-14, -7).reduce(function (n, x) { return n + x.checks; }, 0);
-
         page.appendChild(head('Overview',
             'Everything that needs a person, and nothing that does not.',
             [button('Run a check', 'primary', function () { focusSearch(); }, 'search')]));
 
-        // the three numbers, each against the one before it
         var stats = el('div', 'dash-grid dash-grid-3');
         [
             { n: num(open.length), label: t('Open alerts'),
@@ -488,11 +438,8 @@
             stats.appendChild(c);
         });
         page.appendChild(stats);
-
         var grid = el('div', 'dash-grid dash-grid-side dash-gap');
         var main = el('div');
-
-        // what needs a person, first, because that is what this screen is for
         var attention = card('Needs your attention', open.length ? '' : t('All clear'));
         attention.appendChild(table(
             [{ label: 'Risk' }, { label: 'Subject' }, { label: 'Why' }, { label: 'When', num: true }],
@@ -510,13 +457,9 @@
             function (a) { go(a.screening ? 'screening/' + a.screening : 'alerts'); }
         ));
         main.appendChild(attention);
-
-        // the shape of the month. thirty numbers, no axes: this answers "is
-        // today normal" and nothing else.
         var chart = card('Checks', t('last 30 days') + ' · ' + t('today') + ': ' + num(today));
         chart.appendChild(sparkline(series.map(function (x) { return x.checks; }), 600, 46));
         main.appendChild(chart);
-
         var mix = card('How this month came out', t('by risk band'));
         var total = (D.riskMix || []).reduce(function (n, x) { return n + x.count; }, 0) || 1;
         var bar = el('div', 'dash-mix');
@@ -541,7 +484,6 @@
         mix.appendChild(key);
         main.appendChild(mix);
         grid.appendChild(main);
-
         var side = el('div');
         var recent = card('Recent checks');
         recent.appendChild(table(
@@ -558,7 +500,6 @@
             function (sc) { go('screening/' + sc.id); }
         ));
         side.appendChild(recent);
-
         var lists = card('Sanctions lists', t('checked before every screening'));
         var ul = el('dl', 'dash-facts');
         D.policy.lists.forEach(function (l) {
@@ -572,11 +513,9 @@
         lists.appendChild(ul);
         side.appendChild(lists);
         grid.appendChild(side);
-
         page.appendChild(grid);
         return page;
     };
-
     views.screenings = function (filter) {
         var page = el('div');
         var all = D.screenings;
@@ -591,7 +530,6 @@
             if (which === 'flagged') return x.band === 'severe' || x.band === 'high';
             return true;
         });
-
         page.appendChild(head('Screenings', 'Every check this account has run, newest first.', [
             segmented([
                 { key: 'all', label: 'All', count: counts.all },
@@ -599,7 +537,6 @@
                 { key: 'flagged', label: 'Flagged', count: counts.flagged },
             ], which, function (k) { go('screenings/' + k); }),
         ]));
-
         var c = card();
         c.appendChild(table(
             [{ label: 'Subject' }, { label: 'Chain' }, { label: 'Risk' }, { label: 'Decision' }, { label: 'By' }, { label: 'When', num: true }],
@@ -623,9 +560,6 @@
         page.appendChild(keyboardHelp());
         return page;
     };
-
-    // The screen the product is. Everything else on this rail exists to get
-    // somebody here, or to prove afterwards that they were.
     views.screening = function (id) {
         var s = D.byId(id);
         var page = el('div');
@@ -633,7 +567,6 @@
             page.appendChild(head('Screening', 'That check is not in this account.'));
             return page;
         }
-
         page.appendChild(crumbs([
             { label: t('Screenings'), route: 'screenings' },
             { label: short(s.subject) },
@@ -642,13 +575,10 @@
             s.chain + ' · ' + t('run') + ' ' + since(s.at) + ' · ' + t('by') + ' ' + s.by, [
                 button('Download report', null, function () { window.print(); }, 'download'),
             ]));
-
-        // what a printed report needs and the screen does not
         var ph = el('div', 'dash-print-head');
         ph.innerHTML = '<h1>' + esc(t('Screening report')) + '</h1><p>Sentinelpay · ' +
             esc(when(s.at, true)) + ' · ' + esc(t('Reference')) + ' ' + esc(s.id) + '</p>';
         page.appendChild(ph);
-
         var verdict = card();
         verdict.classList.add('dash-verdict');
         var top = el('div', 'dash-verdict-top');
@@ -661,7 +591,6 @@
         top.appendChild(sampleChip());
         verdict.appendChild(top);
         verdict.appendChild(el('p', 'dash-verdict-line', s.verdict));
-
         var acts = el('div', 'dash-verdict-acts');
         var decided = el('span', 'dash-tiny dash-muted');
 
@@ -678,15 +607,12 @@
                 s.reason = reason;
                 s.decidedBy = me.name;
                 s.decidedAt = new Date().toISOString();
-                // The policy says two people for a severe finding, so the screen
-                // says it too. A rule that lives only in a document is a rule
-                // somebody breaks on a Friday afternoon without noticing.
+
                 s.secondApproval = null;
                 paint();
                 toast(needsTwo(s) ? t('Waiting for a second approval') : t('Decision recorded') + ': ' + decisionWord(d));
             });
         }
-
         function needsTwo(sc) {
             return sc.band === 'severe' && sc.decision === 'approved' && !sc.secondApproval;
         }
@@ -722,11 +648,8 @@
         paint();
         verdict.appendChild(acts);
         page.appendChild(verdict);
-
         var grid = el('div', 'dash-grid dash-grid-side dash-gap');
         var main = el('div');
-
-        // why
         var why = card('Why this rating');
         s.reasons.forEach(function (r) {
             var row = el('div', 'dash-reason');
@@ -747,8 +670,6 @@
             why.appendChild(row);
         });
         main.appendChild(why);
-
-        // exposure
         var expo = card('Where the money came from', t('share of everything received'));
         var bar = el('div', 'dash-expo');
         var key = el('div', 'dash-expo-key');
@@ -758,7 +679,6 @@
             seg.style.background = toneColour(catTone(e.key));
             seg.title = catLabel(e.key) + ' ' + e.share + '%';
             bar.appendChild(seg);
-
             var k = el('div');
             var dot = document.createElement('i');
             dot.style.background = toneColour(catTone(e.key));
@@ -772,8 +692,6 @@
         expo.appendChild(bar);
         expo.appendChild(key);
         main.appendChild(expo);
-
-        // the path
         if (s.path && s.path.length) {
             var pathCard = card('How it reached this address', t('shortest path we found'));
             s.path.forEach(function (h) {
@@ -794,8 +712,6 @@
             });
             main.appendChild(pathCard);
         }
-
-        // transactions
         var txCard = card('Transactions behind this', t('the ones the findings rest on'));
         txCard.appendChild(table(
             [{ label: 'Direction' }, { label: 'Amount', num: true }, { label: 'Counterparty' }, { label: 'Category' }, { label: 'When', num: true }],
@@ -814,8 +730,6 @@
         ));
         main.appendChild(txCard);
         grid.appendChild(main);
-
-        // the facts column
         var side = el('div');
         var about = card('The address');
         about.appendChild(facts([
@@ -828,7 +742,6 @@
             [t('Last seen'), when(s.lastSeen)],
         ]));
         side.appendChild(about);
-
         var meta = card('This check');
         meta.appendChild(facts([
             [t('Reference'), s.id],
@@ -846,15 +759,6 @@
             meta.appendChild(why2);
         }
         side.appendChild(meta);
-
-        // The evidence lock.
-        //
-        // A screening is a statement about the world at a moment, so the moment
-        // is recorded and sealed: which list versions were in hand, how far we
-        // looked, which block we had reached, and a digest over the answer. The
-        // report carries the digest. A bank handed a pdf by a supplier can check
-        // it against ours rather than take it on trust, and that is the
-        // difference between a document and a screenshot.
         if (s.evidence) {
             var ev = card('Evidence', t('sealed when this check ran'));
             ev.appendChild(facts(
@@ -875,13 +779,6 @@
             ev.appendChild(digest);
             side.appendChild(ev);
         }
-
-        // What changed since the decision.
-        //
-        // The question a compliance review actually asks is not what you know
-        // now, it is what you knew then, and whether the decision was reasonable
-        // on the day. So the screen keeps the two apart instead of quietly
-        // rewriting history with today's data.
         if (s.changedSince && s.changedSince.length) {
             var ch = card('Since this check ran', t('what we did not know at the time'));
             s.changedSince.forEach(function (c) {
@@ -898,10 +795,7 @@
             side.appendChild(ch);
         }
         grid.appendChild(side);
-
         page.appendChild(grid);
-
-        // the decision keys, on this screen only
         page.__keys = function (e) {
             if (s.decision) return;
             var k = e.key.toLowerCase();
@@ -912,7 +806,6 @@
         };
         return page;
     };
-
     views.alerts = function (filter) {
         var page = el('div');
         var all = D.alerts;
@@ -922,7 +815,6 @@
             if (which === 'closed') return a.state === 'closed';
             return true;
         });
-
         page.appendChild(head('Alerts',
             'What monitoring found while nobody was looking. Every alert says which rule produced it.', [
                 segmented([
@@ -931,7 +823,6 @@
                     { key: 'closed', label: 'Closed', count: all.filter(function (a) { return a.state === 'closed'; }).length },
                 ], which, function (k) { go('alerts/' + k); }),
             ]));
-
         var c = card();
         c.appendChild(table(
             [{ label: 'Risk' }, { label: 'Subject' }, { label: 'Rule' }, { label: 'What happened' }, { label: 'State' }, { label: 'When', num: true }],
@@ -955,22 +846,12 @@
         page.appendChild(keyboardHelp());
         return page;
     };
-
     views.monitoring = function (arg) {
-        // one route, two screens: /monitoring and /monitoring/connect. the
-        // alternative is a second top level entry in the rail for something
-        // that is a step inside monitoring rather than a place of its own.
         if (arg === 'connect') return views.connect();
         var page = el('div');
         page.appendChild(head('Monitoring',
             'What we watch, where it came from, and the rules that decide when you hear about it.',
             [button('Connect a wallet', 'primary', function () { go('monitoring/connect'); }, 'eye')]));
-
-        // Sources, not addresses.
-        //
-        // A customer does not have a list of addresses, they have a wallet. If we
-        // ask for the list, it is stale the day after they paste it, and every
-        // invoice they raise afterwards is unwatched.
         var sources = card('Wallet sources', t('one paste, and it keeps deriving'));
         sources.appendChild(table(
             [{ label: 'Source' }, { label: 'Kind' }, { label: 'Chain' }, { label: 'Addresses', num: true },
@@ -1013,7 +894,6 @@
             })
         ));
         page.appendChild(sources);
-
         var watched = card('Addresses', t('derived from the sources above'));
         watched.appendChild(table(
             [{ label: 'Label' }, { label: 'Address' }, { label: 'Chain' }, { label: 'Risk' }, { label: 'Rules', num: true }, { label: 'Last check', num: true }],
@@ -1032,7 +912,6 @@
             })
         ));
         page.appendChild(watched);
-
         var rules = card('Rules', t('written the way they will be read back to an auditor'));
         D.rules.forEach(function (r) {
             var row = el('div', 'dash-rule');
@@ -1057,19 +936,12 @@
         page.appendChild(rules);
         return page;
     };
-
-    // Connecting a wallet, which is the whole onboarding. Three ways in, and the
-    // one that matters is the first: an extended public key covers every address
-    // the wallet will ever make, which is why a customer can be live in a minute
-    // rather than after an afternoon of pasting.
     views.connect = function () {
         var page = el('div');
         page.appendChild(crumbs([{ label: t('Monitoring'), route: 'monitoring' }, { label: t('Connect a wallet') }]));
         page.appendChild(head('Connect a wallet', 'Paste one thing. We derive the addresses and keep deriving as the wallet grows.'));
-
         var grid = el('div', 'dash-grid dash-grid-side');
         var main = el('div');
-
         [
             { kind: 'xpub', title: 'Extended public key', best: true,
               body: 'For Bitcoin and anything else with an address chain. Covers every address the wallet has used and every one it will use. It cannot move funds: it is a public key.',
@@ -1102,10 +974,6 @@
             main.appendChild(c);
         });
         grid.appendChild(main);
-
-        // The honest panel. An extended key is the most sensitive thing a
-        // customer can hand over, and a vendor who does not say so before asking
-        // for it is a vendor who has not thought about it.
         var side = el('div');
         var safe = card('What happens to what you paste');
         [
@@ -1120,7 +988,6 @@
             safe.appendChild(row);
         });
         side.appendChild(safe);
-
         var cov = card('What we can see', t('stated, not buried'));
         cov.appendChild(el('p', 'dash-tiny dash-muted', D.coverage.depthNote));
         var list = el('dl', 'dash-facts');
@@ -1135,25 +1002,12 @@
         cov.appendChild(list);
         side.appendChild(cov);
         grid.appendChild(side);
-
         page.appendChild(grid);
         return page;
     };
-
-    // ---- triage -------------------------------------------------------------
-    //
-    // The queue is the job. Everything else on this rail is either how work
-    // arrives or how it is proved afterwards; this is the screen somebody has
-    // open for an hour at a time.
-    //
-    // So it is built like a mail client rather than a report: one item fills the
-    // screen, the decision is three keys away, and the next one arrives without
-    // a click. Competitors make you go back to a list after every item, which
-    // costs two seconds and all of the rhythm.
     views.triage = function () {
         var page = el('div');
         var queue = D.alerts.filter(function (a) { return a.state === 'open'; });
-
         page.appendChild(head('Triage', 'One at a time, decided and gone. The queue is what monitoring found and nobody has answered yet.'));
 
         if (!queue.length) {
@@ -1165,7 +1019,6 @@
             page.appendChild(done);
             return page;
         }
-
         var at = 0;
         var body = el('div');
         page.appendChild(body);
@@ -1178,7 +1031,6 @@
                 return;
             }
             var sc = a.screening ? D.byId(a.screening) : null;
-
             var bar = el('div', 'dash-queue-bar');
             bar.appendChild(el('span', null, t('In the queue') + ': ' + (at + 1) + ' / ' + queue.length));
             var prog = el('div', 'dash-queue-prog');
@@ -1187,10 +1039,8 @@
             prog.appendChild(fill);
             bar.appendChild(prog);
             body.appendChild(bar);
-
             var c = card();
             c.classList.add('dash-verdict');
-
             var top = el('div', 'dash-verdict-top');
             top.appendChild(bandTag(a.band));
             var chain = el('span', 'dash-tag');
@@ -1200,9 +1050,7 @@
             top.appendChild(copyButton(a.subject));
             top.appendChild(sampleChip());
             c.appendChild(top);
-
             c.appendChild(el('p', 'dash-verdict-line', a.summary));
-
             var why = el('p', 'dash-tiny dash-muted');
             why.textContent = t('Raised by') + ': ' + a.rule + ' · ' + since(a.at);
             c.appendChild(why);
@@ -1215,7 +1063,6 @@
                 lw.appendChild(link);
                 c.appendChild(lw);
             }
-
             var acts = el('div', 'dash-verdict-acts dash-gap');
             [
                 ['Approve', 'good', 'approved', 'check', 'A'],
@@ -1232,12 +1079,10 @@
             c.appendChild(acts);
             body.appendChild(c);
         }
-
         function move(by) {
             at = Math.max(0, Math.min(queue.length - 1, at + by));
             draw();
         }
-
         function decide(alert, value) {
             askReason(value, function (reason) {
                 alert.state = 'closed';
@@ -1258,7 +1103,6 @@
                 paintNav('triage');
             });
         }
-
         page.__keys = function (e) {
             var k = e.key.toLowerCase();
             if (k === 'a') { decide(queue[at], 'approved'); return true; }
@@ -1268,16 +1112,11 @@
             if (k === 'k' || e.key === 'ArrowUp') { move(-1); return true; }
             return false;
         };
-
         draw();
         page.appendChild(keyboardHelp());
         return page;
     };
 
-    // A decision without a reason is a decision nobody can defend six months
-    // later, and "we treat like cases alike" is provable only if the reasons are
-    // written down. One line, and the ones already given are offered back so the
-    // common cases cost a click.
     function askReason(value, done) {
         var known = {
             approved: [
@@ -1296,12 +1135,10 @@
                 'Legal should see this before the payment moves.',
             ],
         }[value] || [];
-
         var back = el('div', 'dash-modal-back');
         var box = el('div', 'dash-modal');
         box.appendChild(el('h2', 'dash-modal-t', decisionWord(value)));
         box.appendChild(el('p', 'dash-modal-d', 'One line on why. It goes in the record and it is what an auditor reads.'));
-
         var field = el('div', 'lp-demo-field lp-demo-field-full');
         var input = document.createElement('input');
         input.type = 'text';
@@ -1309,7 +1146,6 @@
         input.placeholder = t('Why');
         field.appendChild(input);
         box.appendChild(field);
-
         var quick = el('div', 'dash-chips');
         known.forEach(function (text) {
             var b = el('button', 'dash-reason-chip');
@@ -1319,7 +1155,6 @@
             quick.appendChild(b);
         });
         box.appendChild(quick);
-
         var acts = el('div', 'dash-row dash-gap');
         var ok = button('Record it', 'primary', function () {
             var reason = input.value.trim();
@@ -1330,7 +1165,6 @@
         acts.appendChild(ok);
         acts.appendChild(button('Cancel', null, function () { close(); }));
         box.appendChild(acts);
-
         function close() {
             back.remove();
             document.removeEventListener('keydown', esc, true);
@@ -1341,7 +1175,6 @@
         }
         document.addEventListener('keydown', esc, true);
         back.addEventListener('click', function (e) { if (e.target === back) close(); });
-
         back.appendChild(box);
         document.body.appendChild(back);
         setTimeout(function () { input.focus(); }, 40);
@@ -1371,13 +1204,11 @@
         page.appendChild(c);
         return page;
     };
-
     views.policy = function () {
         var page = el('div');
         page.appendChild(head('Policy',
             'What this company treats as acceptable. It is a document as much as a setting: export it and it is the annex your bank asks for.',
             [button('Export the policy', null, function () { window.print(); }, 'download')]));
-
         var meta = card();
         meta.appendChild(facts([
             [t('Version'), String(D.policy.version)],
@@ -1386,7 +1217,6 @@
             [t('Jurisdictions'), D.policy.jurisdictions.join(', ')],
         ]));
         page.appendChild(meta);
-
         var thresholds = card('Thresholds');
         thresholds.appendChild(table(
             [{ label: 'Finding' }, { label: 'Level' }, { label: 'What happens' }],
@@ -1403,18 +1233,11 @@
         ));
         page.appendChild(thresholds);
 
-        // What a change would have done.
-        //
-        // A threshold is an abstraction until somebody shows you the payments it
-        // would have stopped, and the ones it would have stopped for nothing. An
-        // MLRO is choosing between missing something and drowning their team,
-        // and that trade is invisible on every settings page I have ever seen.
         var sim = card('If you changed a threshold', t('measured against') + ' ' + t(D.simulation.window));
         sim.appendChild(el('p', 'dash-tiny dash-muted',
             t('Today') + ': ' + num(D.simulation.current.blocked) + ' ' + t('blocked') + ', ' +
             num(D.simulation.current.held) + ' ' + t('held for review') + ', ' +
             num(D.simulation.current.allowed) + ' ' + t('allowed')));
-
         D.simulation.proposals.forEach(function (pr) {
             var row = el('div', 'dash-sim');
             var headRow = el('div', 'dash-sim-h');
@@ -1427,7 +1250,6 @@
             headRow.appendChild(delta);
             row.appendChild(headRow);
             row.appendChild(el('div', 'dash-sim-note', pr.note));
-
             var act = el('div', 'dash-row');
             act.appendChild(button('Apply this', null, function () {
                 toast(t('Sample data: the policy is not changed.'));
@@ -1437,7 +1259,6 @@
             sim.appendChild(row);
         });
         page.appendChild(sim);
-
         var approvals = card('Who may approve what');
         approvals.appendChild(table(
             [{ label: 'Action' }, { label: 'Approval needed' }],
@@ -1446,7 +1267,6 @@
             })
         ));
         page.appendChild(approvals);
-
         var cov = card('What we can see', t('stated, not buried'));
         cov.appendChild(el('p', 'dash-tiny dash-muted', D.coverage.depthNote));
         cov.appendChild(table(
@@ -1458,7 +1278,6 @@
             })
         ));
         page.appendChild(cov);
-
         var lists = card('Lists we check against');
         lists.appendChild(table(
             [{ label: 'List' }, { label: 'Last updated', num: true }],
@@ -1469,7 +1288,6 @@
         page.appendChild(lists);
         return page;
     };
-
     views.reports = function () {
         var page = el('div');
         page.appendChild(head('Reports', 'One document per month: what was checked, what was flagged, what was stopped.'));
@@ -1494,7 +1312,6 @@
         page.appendChild(c);
         return page;
     };
-
     views.activity = function () {
         var page = el('div');
         page.appendChild(head('Activity', 'Who did what, and when. This is the record an auditor asks for.'));
@@ -1515,11 +1332,9 @@
         page.appendChild(c);
         return page;
     };
-
     views.api = function () {
         var page = el('div');
         page.appendChild(head('API keys', 'Screen an address from your own code. The answer is the same one this dashboard shows.'));
-
         var keys = card('Keys');
         keys.appendChild(table(
             [{ label: 'Label' }, { label: 'Key' }, { label: 'Calls', num: true }, { label: 'Last used', num: true }],
@@ -1536,7 +1351,6 @@
             })
         ));
         page.appendChild(keys);
-
         var ex = card('One call');
         var pre = document.createElement('pre');
         pre.className = 'dash-mono';
@@ -1551,7 +1365,6 @@
         page.appendChild(ex);
         return page;
     };
-
     views.team = function () {
         var page = el('div');
         page.appendChild(head('Team', 'Who can see this account, and what they can do.'));
@@ -1574,11 +1387,6 @@
         page.appendChild(c);
         return page;
     };
-
-    // Settings is the only view whose markup is in the html, because it is the
-    // one part of this page that is real: the password, the sessions, the second
-    // factor and the erasure all talk to endpoints that exist. Rebuilding it
-    // here would mean two copies of a thing that already works.
     views.settings = function () {
         var page = el('div');
         page.appendChild(head('Settings', 'Your account, and the way you get into it.'));
@@ -1589,7 +1397,6 @@
         }
         return page;
     };
-
     function keyboardHelp() {
         var d = el('div', 'dash-kbd-help');
         d.innerHTML =
@@ -1600,16 +1407,9 @@
         return d;
     }
 
-    // ---- the command palette --------------------------------------------------
-    //
-    // Every tool people live in has one, and for the same reason: after a week
-    // you know where you are going and the mouse is in the way. It searches two
-    // things at once, the screens and the data, because "alerts" and an address
-    // are the same kind of intent typed into the same box.
     function palette() {
         var back = el('div', 'dash-modal-back dash-modal-top');
         var box = el('div', 'dash-palette');
-
         var field = el('div', 'dash-palette-field');
         field.innerHTML = icon('search');
         var input = document.createElement('input');
@@ -1618,10 +1418,8 @@
         input.setAttribute('aria-label', t('Go to a screen, or paste an address'));
         field.appendChild(input);
         box.appendChild(field);
-
         var list = el('div', 'dash-palette-list');
         box.appendChild(list);
-
         var items = [];
         NAV.forEach(function (g) {
             g.items.forEach(function (it) {
@@ -1632,10 +1430,8 @@
         D.screenings.slice(0, 6).forEach(function (sc) {
             items.push({ label: short(sc.subject), hint: sc.chain + ' · ' + bandName(sc.band), icon: 'search', go: 'screening/' + sc.id });
         });
-
         var shown = items.slice();
         var at = 0;
-
         function draw() {
             list.textContent = '';
             shown.slice(0, 8).forEach(function (it, i) {
@@ -1657,7 +1453,6 @@
                 list.appendChild(none);
             }
         }
-
         function filter() {
             var q = input.value.trim().toLowerCase();
             shown = !q ? items.slice() : items.filter(function (it) {
@@ -1666,7 +1461,6 @@
             at = 0;
             draw();
         }
-
         input.addEventListener('input', filter);
         input.addEventListener('keydown', function (e) {
             if (e.key === 'ArrowDown') { e.preventDefault(); at = Math.min(at + 1, Math.min(shown.length, 8) - 1); draw(); }
@@ -1681,7 +1475,6 @@
                 if (hit) go('screening/' + hit.id);
             } else if (e.key === 'Escape') { close(); }
         });
-
         function close() {
             back.remove();
             document.removeEventListener('keydown', esc, true);
@@ -1689,17 +1482,290 @@
         function esc(e) { if (e.key === 'Escape') { e.stopPropagation(); close(); } }
         document.addEventListener('keydown', esc, true);
         back.addEventListener('click', function (e) { if (e.target === back) close(); });
-
         back.appendChild(box);
         document.body.appendChild(back);
         draw();
         setTimeout(function () { input.focus(); }, 30);
     }
 
-    // ---- routing ------------------------------------------------------------
+    var ENT = null;
+
+    function api(path, opts) {
+        var o = opts || {};
+        return fetch(path, {
+            method: o.method || 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: o.body ? JSON.stringify(o.body) : undefined
+        }).then(function (r) {
+            return r.json().catch(function () { return {}; }).then(function (j) {
+                return { status: r.status, ok: r.ok, body: j };
+            });
+        });
+    }
+
+    function loadEntitlement() {
+        return api('/v1/entitlement').then(function (r) {
+            ENT = r.ok ? r.body : null;
+            return ENT;
+        }).catch(function () { ENT = null; return null; });
+    }
+
+    function listDateText(raw) {
+        if (!raw) return '';
+        var p = String(raw).split('/');
+        if (p.length !== 3) return raw;
+        var d = new Date(Number(p[2]), Number(p[0]) - 1, Number(p[1]));
+        if (isNaN(d.getTime())) return raw;
+        try {
+            return d.toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' });
+        } catch (err) {
+            return raw;
+        }
+    }
+
+    function coverageLine() {
+        var c = (ENT && ENT.coverage) || {};
+        var box = el('p', 'dash-start-cov');
+        if (!c.addresses) {
+            box.textContent = t('The sanctions list has not loaded yet.');
+            return box;
+        }
+        box.textContent = t('Checked against') + ' ' + num(c.addresses) + ' ' +
+            t('sanctioned addresses from the OFAC list published') + ' ' + listDateText(c.listDate) + '.';
+        return box;
+    }
+
+    function stepRow(n, title, note, state) {
+        var row = el('div', 'dash-step dash-step-' + state);
+        var mark = el('div', 'dash-step-n');
+        mark.textContent = state === 'done' ? '✓' : String(n);
+        var body = el('div', 'dash-step-b');
+        body.appendChild(el('div', 'dash-step-t', title));
+        if (note) body.appendChild(el('div', 'dash-step-note', note));
+        row.appendChild(mark);
+        row.appendChild(body);
+        return row;
+    }
+
+    function verdictCard(result) {
+        var wrap = el('div', 'dash-result dash-result-' + (result.verdict || 'clear'));
+        var top = el('div', 'dash-result-top');
+        top.appendChild(el('span', 'dash-result-v',
+            result.verdict === 'severe' ? 'Sanctioned' : 'No sanctions match'));
+        if (result.chain) top.appendChild(el('span', 'dash-result-chain', result.chain));
+        wrap.appendChild(top);
+
+        var addr = el('div', 'dash-result-addr');
+        addr.textContent = result.address;
+        wrap.appendChild(addr);
+
+        (result.reasons || []).forEach(function (r) {
+            var line = el('div', 'dash-result-r');
+            line.appendChild(el('div', 'dash-result-rl', r.label));
+            if (r.entity) {
+                var who = el('div', 'dash-result-re');
+                who.textContent = r.entity + (r.programs && r.programs.length ? ' · ' + r.programs.join(', ') : '');
+                line.appendChild(who);
+            }
+            if (r.remarks) line.appendChild(el('div', 'dash-result-rm', r.remarks));
+            wrap.appendChild(line);
+        });
+
+        var foot = el('div', 'dash-result-foot');
+        foot.textContent = t('Logged as check') + ' #' + (result.id || '?') + ' · ' + (result.digest || '');
+        wrap.appendChild(foot);
+        return wrap;
+    }
+
+    function scanBox(trial) {
+        var box = card('Check an address', trial.liveLeft + ' ' + t('of') + ' ' + trial.liveIncluded + ' ' + t('left'));
+        box.__count = box.querySelector('.dash-card-note');
+        var form = el('form', 'dash-scan');
+        var input = el('input', 'dash-scan-in');
+        input.type = 'text';
+        input.placeholder = t('Paste a wallet address');
+        input.setAttribute('spellcheck', 'false');
+        input.setAttribute('autocomplete', 'off');
+        var go = el('button', 'dash-btn dash-btn-primary', 'Check it');
+        go.type = 'submit';
+        form.appendChild(input);
+        form.appendChild(go);
+
+        var out = el('div', 'dash-scan-out');
+        var busy = false;
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (busy) return;
+            var value = input.value.trim();
+            if (!value) return;
+            busy = true;
+            go.disabled = true;
+            go.textContent = t('Checking');
+            out.innerHTML = '';
+
+            api('/v1/screen', { method: 'POST', body: { address: value } }).then(function (r) {
+                busy = false;
+                go.disabled = false;
+                go.textContent = t('Check it');
+                if (r.body.trial && ENT) ENT.trial = r.body.trial;
+                if (ENT && ENT.trial) {
+                    box.__count.textContent =
+                        ENT.trial.liveLeft + ' ' + t('of') + ' ' + ENT.trial.liveIncluded + ' ' + t('left');
+                    if (ENT.trial.liveLeft < 1) {
+                        input.disabled = true;
+                        go.disabled = true;
+                    }
+                }
+                if (!r.ok) {
+                    out.appendChild(el('div', 'dash-scan-err', r.body.error || 'That did not work'));
+                    return;
+                }
+                out.appendChild(verdictCard(r.body));
+                input.value = '';
+            });
+        });
+
+        box.appendChild(form);
+        box.appendChild(out);
+        box.appendChild(coverageLine());
+        return box;
+    }
+
+    function activateBox() {
+        var box = card('Start your trial', 'One trial per company');
+        var form = el('form', 'dash-activate');
+
+        var who = el('p', 'dash-activate-who');
+        who.textContent = t('Signed in as') + ' ' + ((ENT && ENT.email) || '');
+        form.appendChild(who);
+
+        var lab = el('label', 'dash-field');
+        lab.appendChild(el('span', 'dash-field-l', 'Company website'));
+        var site = el('input', 'dash-field-in');
+        site.type = 'text';
+        site.placeholder = 'acme.com';
+        site.setAttribute('autocomplete', 'off');
+        var guess = String((ENT && ENT.email) || '').split('@').pop();
+        if (guess && guess.indexOf('.') !== -1) site.value = guess;
+        lab.appendChild(site);
+        lab.appendChild(el('span', 'dash-field-note', 'This has to match the domain of your work email.'));
+        form.appendChild(lab);
+
+        var checks = [
+            ['notGambling', 'This business is not an online casino, sportsbook or betting platform.'],
+            ['consent', 'I agree to the terms of service and to be contacted about this account.']
+        ];
+        var state = {};
+        checks.forEach(function (c) {
+            var row = el('label', 'dash-check');
+            var input = el('input');
+            input.type = 'checkbox';
+            input.addEventListener('change', function () { state[c[0]] = input.checked; });
+            row.appendChild(input);
+            row.appendChild(el('span', null, c[1]));
+            form.appendChild(row);
+        });
+
+        var err = el('div', 'dash-scan-err');
+        err.hidden = true;
+        var go = el('button', 'dash-btn dash-btn-primary', 'Start free trial');
+        go.type = 'submit';
+        form.appendChild(go);
+        form.appendChild(err);
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            err.hidden = true;
+            go.disabled = true;
+            api('/v1/trial/activate', {
+                method: 'POST',
+                body: {
+                    website: site.value.trim(),
+                    company: site.value.trim(),
+                    consent: state.consent === true,
+                    notGambling: state.notGambling === true
+                }
+            }).then(function (r) {
+                go.disabled = false;
+                if (!r.ok) {
+                    err.textContent = r.body.error || t('Could not start the trial');
+                    err.hidden = false;
+                    return;
+                }
+                return loadEntitlement().then(function () { renderStartInto(view); });
+            });
+        });
+
+        box.appendChild(form);
+        box.appendChild(coverageLine());
+        return box;
+    }
+
+    function startScreen() {
+        var wrap = el('div');
+        var trial = (ENT && ENT.trial) || { state: 'none' };
+        var name = ((ENT && ENT.name) || '').split(' ')[0];
+
+        wrap.appendChild(head(
+            name ? t('Welcome') + ', ' + name : 'Find out what already touched your wallets',
+            'Connect a key and we screen what has already happened, not just what comes next.'
+        ));
+
+        if (trial.state === 'none') {
+            wrap.appendChild(activateBox());
+            return wrap;
+        }
+
+        if (trial.state === 'pending') {
+            var waiting = card('We are checking your company', 'Usually the same day');
+            waiting.appendChild(el('p', 'dash-start-p',
+                'Your work email did not match the website you gave, so somebody here looks at it. We will email you the moment it opens.'));
+            wrap.appendChild(waiting);
+            return wrap;
+        }
+
+        if (trial.state === 'expired') {
+            var over = card('Your trial has ended', '');
+            over.appendChild(el('p', 'dash-start-p',
+                'Talk to us about the volume you actually need and we will shape a plan around it.'));
+            wrap.appendChild(over);
+            return wrap;
+        }
+
+        var steps = card('Getting set up', trial.daysLeft + ' ' + t('days left'));
+        steps.appendChild(stepRow(1, 'Trial active', trial.companyHost, 'done'));
+        steps.appendChild(stepRow(2, 'Run your first check',
+            trial.liveUsed > 0 ? t('Done') : t('Paste any wallet address below'),
+            trial.liveUsed > 0 ? 'done' : 'now'));
+        steps.appendChild(stepRow(3, 'Verify your number',
+            trial.phoneVerified
+                ? t('Your history is open')
+                : t('Opens your whole history, plus 10 live checks'),
+            trial.phoneVerified ? 'done' : 'next'));
+        steps.appendChild(stepRow(4, 'Connect a public key',
+            t('We screen what already touched it, not just what comes next'), 'next'));
+        wrap.appendChild(steps);
+
+        wrap.appendChild(scanBox(trial));
+
+        if (!trial.historyOpen) {
+            var locked = card('Your history', 'Locked');
+            locked.appendChild(el('p', 'dash-start-p',
+                'The rest of your history is already there. Verify your number and it opens, along with 10 live checks.'));
+            wrap.appendChild(locked);
+        }
+
+        return wrap;
+    }
+
+    function renderStartInto(host) {
+        while (host.firstChild) host.removeChild(host.firstChild);
+        host.appendChild(startScreen());
+    }
 
     var currentKeys = null;
-
     function parse() {
         var raw = (location.hash || '').replace(/^#\/?/, '');
         var parts = raw.split('/').filter(Boolean);
@@ -1709,9 +1775,95 @@
     function go(route) {
         location.hash = '#/' + route;
     }
+    views.start = function () { return startScreen(); };
+
+    function demoMode() {
+        try {
+            return localStorage.getItem('sp-dash-demo') === '1';
+        } catch (err) {
+            return false;
+        }
+    }
+    function setDemo(on) {
+        try {
+            localStorage.setItem('sp-dash-demo', on ? '1' : '0');
+        } catch (err) {  }
+    }
+
+    function liveAccount() {
+        return ENT && ENT.trial && (ENT.trial.state === 'starter' || ENT.trial.state === 'verified');
+    }
+
+    function paintDemoChip() {
+        var chip = document.getElementById('dash-env');
+        if (!chip) return;
+        chip.hidden = false;
+        chip.textContent = demoMode() ? t('Demo workspace') : t('Your workspace');
+        chip.className = demoMode() ? 'dash-chip dash-chip-demo' : 'dash-chip';
+        chip.onclick = function () {
+            setDemo(!demoMode());
+            location.hash = '#/';
+            render();
+        };
+        chip.title = demoMode()
+            ? t('Sample data, not yours. Click to go back to your workspace.')
+            : t('Click to look around a workspace filled with sample data.');
+    }
+
+    var LIVE_ROUTES = { 'settings': 1, 'screenings-log': 1 };
+
+    views['screenings-log'] = function () {
+        var wrap = el('div');
+        wrap.appendChild(head('Checks you have run',
+            'Every check is kept with the list it was run against, so you can show what you knew and when.'));
+        var box = card('Your checks', '');
+        var body = el('div', 'dash-log-body', 'Loading');
+        box.appendChild(body);
+        wrap.appendChild(box);
+
+        api('/v1/screenings').then(function (r) {
+            body.textContent = '';
+            var rows = (r.body && r.body.rows) || [];
+            if (!rows.length) {
+                body.appendChild(el('p', 'dash-start-p', 'Nothing yet. Run your first check from the start screen.'));
+                return;
+            }
+            var table = el('table', 'dash-table');
+            var head2 = el('tr');
+            ['When', 'Chain', 'Address', 'Result'].forEach(function (h) {
+                head2.appendChild(el('th', null, h));
+            });
+            table.appendChild(head2);
+            rows.forEach(function (row) {
+                var tr = el('tr', 'is-row');
+                tr.appendChild(el('td', null, when(row.at)));
+                tr.appendChild(el('td', null, row.asset || '-'));
+                var a = el('td', 'dash-mono');
+                a.textContent = row.address;
+                tr.appendChild(a);
+                tr.appendChild(el('td', null, row.verdict === 'severe' ? 'Sanctioned' : 'No sanctions match'));
+                table.appendChild(tr);
+            });
+            body.appendChild(table);
+        });
+        return wrap;
+    };
 
     function render() {
         var r = parse();
+        var ownWorkspace = ENT && !demoMode();
+        if (ownWorkspace && !LIVE_ROUTES[r.name]) {
+            while (view.firstChild) view.removeChild(view.firstChild);
+            view.appendChild(startScreen());
+            paintNav('');
+            paintDemoChip();
+            paintLive();
+            paintUsage();
+            closeRail();
+            window.scrollTo(0, 0);
+            document.title = 'Sentinelpay · ' + t('Start');
+            return;
+        }
         var make = views[r.name] || views[''];
         var node;
         try {
@@ -1721,10 +1873,9 @@
             node.appendChild(head('Something went wrong', 'This screen could not be drawn. The rest of the dashboard still works.'));
             if (window.console) console.error('[dashboard]', err);
         }
-        // settings lives in the document, so it must be put back rather than
-        // thrown away with the rest of the view
+
         var settings = document.getElementById('dash-settings');
-        if (settings && settings.parentNode === view.firstChild) { /* handled below */ }
+        if (settings && settings.parentNode === view.firstChild) {  }
         while (view.firstChild) {
             if (settings && view.firstChild.contains && view.firstChild.contains(settings)) {
                 settings.hidden = true;
@@ -1737,24 +1888,19 @@
         paintNav(r.name === 'screening' ? 'screenings' : r.name);
         paintLive();
         paintUsage();
+        paintDemoChip();
         closeRail();
         window.scrollTo(0, 0);
         var first = view.querySelector('h1');
         if (first) document.title = 'Sentinelpay · ' + first.textContent;
     }
-
     window.addEventListener('hashchange', render);
-
-    // ---- search -------------------------------------------------------------
-
     var search = document.getElementById('dash-search-input');
-
     function focusSearch() {
         if (!search) return;
         search.focus();
         search.select();
     }
-
     if (search) {
         search.addEventListener('keydown', function (e) {
             if (e.key !== 'Enter') return;
@@ -1768,25 +1914,18 @@
         });
     }
 
-    // ---- keyboard -----------------------------------------------------------
-    // A tool people keep open earns keys. The rule is that nothing here fires
-    // while something is being typed into.
     document.addEventListener('keydown', function (e) {
         var tag = (e.target.tagName || '').toLowerCase();
         var typing = tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable;
         if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); palette(); return; }
         if (e.metaKey || e.ctrlKey || e.altKey) return;
-
         if (e.key === '/' && !typing) { e.preventDefault(); focusSearch(); return; }
         if (e.key === 'Escape') { if (typing) e.target.blur(); closeRail(); return; }
         if (typing) return;
-
         if (currentKeys && currentKeys(e)) { e.preventDefault(); return; }
-
         var rows = Array.prototype.slice.call(view.querySelectorAll('tr.is-row'));
         if (!rows.length) return;
         var at = rows.indexOf(view.querySelector('tr.is-cursor'));
-
         if (e.key === 'j' || e.key === 'ArrowDown') {
             e.preventDefault();
             move(rows, at, Math.min(at + 1, rows.length - 1) === -1 ? 0 : Math.min(at < 0 ? 0 : at + 1, rows.length - 1));
@@ -1809,13 +1948,9 @@
             }
         }
     }
-
-    // ---- the rail on a phone ------------------------------------------------
-
     var rail = document.getElementById('dash-side');
     var scrim = document.getElementById('dash-scrim');
     var burger = document.getElementById('dash-burger');
-
     function closeRail() {
         if (rail) rail.classList.remove('is-open');
         if (scrim) scrim.classList.remove('is-on');
@@ -1828,9 +1963,6 @@
         });
     }
     if (scrim) scrim.addEventListener('click', closeRail);
-
-    // ---- who is signed in ---------------------------------------------------
-
     fetch('/v1/auth/me', { credentials: 'same-origin' })
         .then(function (r) { return r.json(); })
         .then(function (who) {
@@ -1843,13 +1975,13 @@
                 avatar.title = who.name || '';
                 avatar.setAttribute('aria-label', who.name || t('Your account'));
             }
-            // the sample-data chip is not decoration: everything on these screens
-            // is invented until the engine is wired in, and nobody should be able
-            // to mistake one for the other
+
             var chip = document.getElementById('dash-env');
             if (chip) chip.hidden = false;
         })
-        .catch(function () { /* the page is already drawn; a failed call is not a reason to empty it */ });
+        .catch(function () {  });
 
-    render();
+    loadEntitlement().then(function () {
+        render();
+    });
 })();

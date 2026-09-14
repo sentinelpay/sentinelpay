@@ -3,11 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- ios turns things like "1-10" and "51-200" into phone links, which made
-         the company-size options open the call sheet instead of selecting -->
     <meta name="format-detection" content="telephone=no">
     <title>Sentinelpay | Page not found</title>
-    <script>/* tab title before first paint; for articles this is the h1 translation */(function(){var T={"hr": "Sentinelpay | Stranica nije pronađena", "de": "Sentinelpay | Seite nicht gefunden"},m=document.cookie.match(/(?:^|; )sp-lang=([^;]*)/),l=m?decodeURIComponent(m[1]):null;if(!l){try{l=localStorage.getItem("sp-lang")}catch(e){}}if(l!=="hr"&&l!=="de"&&l!=="en")l=document.documentElement.getAttribute("data-geo-lang");if(l!=="hr"&&l!=="de")return;document.documentElement.lang=l;if(!T)return;window.__SP_TITLE_SRC=document.title.replace(/\s+/g," ").trim();document.title=T[l];})();</script>
+    <script>(function(){var T={"hr": "Sentinelpay | Stranica nije pronađena", "de": "Sentinelpay | Seite nicht gefunden"},m=document.cookie.match(/(?:^|; )sp-lang=([^;]*)/),l=m?decodeURIComponent(m[1]):null;if(!l){try{l=localStorage.getItem("sp-lang")}catch(e){}}if(l!=="hr"&&l!=="de"&&l!=="en")l=document.documentElement.getAttribute("data-geo-lang");if(l!=="hr"&&l!=="de")return;document.documentElement.lang=l;if(!T)return;window.__SP_TITLE_SRC=document.title.replace(/\s+/g," ").trim();document.title=T[l];})();</script>
         <meta name="description" content="That page does not exist. Head back to Sentinelpay.">
     <script>document.documentElement.classList.add('theme-light');</script>
     <script>if(history.scrollRestoration)history.scrollRestoration='manual';window.scrollTo(0,0);</script>
@@ -17,24 +15,13 @@
     <link rel="icon" type="image/svg+xml" href="/logo.svg">
     <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/fonts/jakarta-latin.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="/fonts.1.css">
-    <link rel="stylesheet" href="/style.26.css">
-    <link rel="stylesheet" href="/landing.148.css">
-    <link rel="stylesheet" href="/corp.329.css">
+    <link rel="stylesheet" href="/fonts.2.css">
+    <link rel="stylesheet" href="/style.27.css">
+    <link rel="stylesheet" href="/landing.149.css">
+    <link rel="stylesheet" href="/corp.330.css">
     <style>
-        /* page loader */
         #sp-loader{position:fixed;inset:0;z-index:99999;background:#050505;display:flex;align-items:center;justify-content:center;transition:opacity 0.55s ease;}
         #sp-loader.spl-done{opacity:0;pointer-events:none;}
-        /* nothing scrolls while the loader is up. the page behind it is already
-           laid out and a stray wheel or swipe used to move it, so the loader
-           lifted on a page halfway down itself. the gutter is held open so the
-           scrollbar coming back does not shift the whole layout sideways at the
-           exact moment the loader fades.
-
-           `:has` rather than a class toggled by script: the lock then ends the
-           moment the loader is marked done, and there is no state to leave
-           behind if the script never runs. where `:has` is not supported this
-           simply does nothing, which is how the page behaved before. */
         html:has(#sp-loader:not(.spl-done)),
         html:has(#sp-loader:not(.spl-done)) body { overflow: hidden; }
         html:has(#sp-loader:not(.spl-done)) { scrollbar-gutter: stable; }
@@ -43,8 +30,6 @@
         @keyframes splPulse{from{filter:drop-shadow(0 0 6px rgba(0,255,255,0.3)) drop-shadow(0 0 14px rgba(160,32,240,0.2));}to{filter:drop-shadow(0 0 14px rgba(0,255,255,0.65)) drop-shadow(0 0 28px rgba(160,32,240,0.4));}}
         .spl-eye-blink{transform-origin:60px 60px;animation:splBlink 3.5s ease-in-out infinite;}
         @keyframes splBlink{0%,35%,55%,88%,100%{transform:scaleY(1);}45%{transform:scaleY(0.05);}93%{transform:scaleY(0.05);}}
-
-        /* theme-light base (mirrors the homepage) */
         html.theme-light {
             --bg-dark: #f6f7f9; --bg-panel: rgba(255,255,255,0.75);
             --border-glass: rgba(20,20,30,0.08); --text-main: #15161a; --text-muted: #82828c;
@@ -55,8 +40,6 @@
         html.theme-light::-webkit-scrollbar-track, html.theme-light ::-webkit-scrollbar-track { background: #f0f0f2; }
         html.theme-light::-webkit-scrollbar-thumb, html.theme-light ::-webkit-scrollbar-thumb { background: rgba(0,145,200,0.25); border: 1px solid rgba(0,145,200,0.15); }
         html.theme-light::-webkit-scrollbar-thumb:hover, html.theme-light ::-webkit-scrollbar-thumb:hover { background: rgba(0,145,200,0.5); box-shadow: 0 0 10px rgba(0,145,200,0.3); }
-
-        /* homepage nav in theme-light */
         html.theme-light .lp-nav { background: rgba(255,255,255,0.85); border-bottom-color: rgba(0,0,0,0.06); }
         html.theme-light .lp-logo-text, html.theme-light .lp-h1, html.theme-light .lp-h2 {
             background: linear-gradient(160deg, #15161a 0%, #5a5a66 100%);
@@ -76,10 +59,7 @@
         html.theme-light .lp-mm-btn-ghost:hover { background: rgba(255,255,255,0.09); border-color: rgba(255,255,255,0.3); color: #fff; }
         html.theme-light .lp-mm-btn-solid { background: #fff; color: #0a0a0f; }
         html.theme-light .lp-mm-btn-solid:hover { background: #f0f0f2; }
-        /* whenever the hamburger shows, hide the desktop auth buttons */
         @media (max-width: 1280px) { #auth-nav-container .lp-desktop-auth { display: none !important; } }
-
-        /* floating live-chat button (same as homepage) */
         #sp-chat-btn { position: fixed; bottom: 24px; right: 24px; width: 52px; height: 52px; border-radius: 50%; background: rgba(5,5,8,0.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(0,240,255,0.25); box-shadow: 0 0 20px rgba(0,240,255,0.1), 0 8px 32px rgba(0,0,0,0.5); cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 99998; transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease; color: #00f0ff; padding: 0; }
         #sp-chat-btn:hover { border-color: rgba(0,240,255,0.55); box-shadow: 0 0 28px rgba(0,240,255,0.22), 0 8px 32px rgba(0,0,0,0.6); }
         #sp-chat-btn:active { transform: translateY(0) scale(0.95); }
@@ -87,7 +67,6 @@
         #sp-chat-btn .sp-chat-ico-close { opacity: 0; transform: rotate(-90deg) scale(0.5); }
         #sp-chat-btn.chat-open .sp-chat-ico-open { opacity: 0; transform: rotate(90deg) scale(0.5); }
         #sp-chat-btn.chat-open .sp-chat-ico-close { opacity: 1; transform: rotate(0) scale(1); }
-        /* we use our own #sp-chat-btn; never show intercom's default launcher */
         .intercom-lightweight-app-launcher, .intercom-launcher-frame, .intercom-launcher { display: none !important; }
         #sp-chat-badge { position: absolute; top: 5px; right: 5px; width: 9px; height: 9px; border-radius: 50%; background: #00f0ff; box-shadow: 0 0 8px rgba(0,240,255,0.8); display: none; border: 1.5px solid rgba(5,5,8,1); pointer-events: none; }
         html.theme-light #sp-chat-btn { background: rgba(255,255,255,0.85); border-color: rgba(0,145,200,0.25); box-shadow: 0 0 20px rgba(0,145,200,0.08), 0 8px 32px rgba(0,0,0,0.08); color: var(--accent-light); }
@@ -97,58 +76,45 @@
             #sp-chat-btn { width: 44px !important; height: 44px !important; bottom: 16px !important; right: 16px !important; }
             html.lp-scroll-lock #sp-chat-btn { display: none !important; }
         }
-
-        /* privacy content */
         .pp-shell { max-width: 820px; margin: 0 auto; padding: 0 1.4rem; }
         .lp-section.pp { padding-top: 8rem; }
         .pp-title { margin: 0 0 0.8rem; font-size: 2.8rem; font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; color: #0e2358; text-transform: none; }
         .pp-meta { font-size: 0.9rem; color: rgba(14,35,88,0.5); }
         .pp-intro { margin: 2rem 0 0; font-size: 1.18rem; line-height: 1.7; font-weight: 500; color: #0e2358; }
-
         .pp-body { margin-top: 1rem; padding-bottom: 1rem; }
         .pp-body h2 { margin: 3rem 0 1rem; font-size: 1.5rem; font-weight: 800; line-height: 1.3; letter-spacing: -0.01em; color: #0e2358; text-transform: none; }
         .pp-body p { margin: 1.1rem 0; font-size: 1.02rem; line-height: 1.8; color: #2a3550; }
         .pp-body strong { font-weight: 700; color: #0e2358; }
         .pp-body a { color: #0091c8; text-decoration: none; border-bottom: 1px solid rgba(0,145,200,0.35); }
         .pp-body a:hover { border-bottom-color: #0091c8; }
-
         .pp-dl { margin: 1.3rem 0; display: grid; gap: 0.85rem; }
         .pp-dl-row { padding: 1rem 1.2rem; border: 1px solid rgba(14,35,88,0.1); border-radius: 12px; background: rgba(255,255,255,0.55); }
         .pp-dl-row b { display: block; font-size: 1rem; font-weight: 700; color: #0e2358; margin-bottom: 0.25rem; }
         .pp-dl-row span { font-size: 0.98rem; line-height: 1.7; color: #2a3550; }
-
         .pp-body ul { margin: 1.1rem 0; padding: 0; list-style: none; }
         .pp-body ul li { position: relative; padding-left: 1.4rem; margin-bottom: 0.65rem; font-size: 1.02rem; line-height: 1.65; color: #2a3550; }
         .pp-body ul li::before { content: ''; position: absolute; left: 0.15rem; top: 0.62em; width: 5px; height: 5px; border-radius: 50%; background: rgba(14,35,88,0.45); }
-
         .pp-table-wrap { overflow-x: auto; margin: 1.4rem 0; border: 1px solid rgba(14,35,88,0.12); border-radius: 12px; }
         .pp-table { width: 100%; border-collapse: collapse; min-width: 560px; font-size: 0.95rem; }
         .pp-table th { text-align: left; padding: 0.85rem 1rem; background: rgba(0,145,200,0.06); color: #0e2358; font-weight: 700; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid rgba(14,35,88,0.12); }
         .pp-table td { padding: 0.85rem 1rem; vertical-align: top; color: #2a3550; line-height: 1.55; border-bottom: 1px solid rgba(14,35,88,0.08); }
         .pp-table tr:last-child td { border-bottom: none; }
         .pp-table td:first-child { color: #0e2358; font-weight: 600; }
-
         .pp-callout { margin: 2rem 0; padding: 1.1rem 1.4rem; border-left: 3px solid rgba(0,145,200,0.4); background: linear-gradient(90deg, rgba(0,145,200,0.06), transparent); border-radius: 0 10px 10px 0; font-size: 0.98rem; line-height: 1.7; color: #0e2358; }
         .pp-contact { margin: 1.4rem 0; padding: 1.3rem 1.5rem; border: 1px solid rgba(14,35,88,0.12); border-radius: 14px; background: rgba(255,255,255,0.6); }
         .pp-contact p { margin: 0.4rem 0; font-size: 0.98rem; }
-
         @media (max-width: 640px) {
             .bad-net-mark { height: 36px; margin-right: 2.2rem; }
             .bad-net-mark img { transform: scale(0.78); }
             .pp-title { font-size: 2rem; }
             .lp-section.pp { padding-top: 6.5rem; }
         }
-
-        /* book-a-demo page: copy sits on the page (like the reference), only the
-           form lives in a card, and the card keeps our homepage dot/edge pattern */
         .lp-section.bad-demo { padding-top: 8rem; }
         .bad-grid { display: grid; grid-template-columns: 1fr 1.05fr; gap: 4rem; align-items: stretch; }
         .bad-copy { padding-top: 0.5rem; }
         .bad-title { margin: 0 0 1.2rem; font-size: 2.9rem; font-weight: 800; line-height: 1.08; letter-spacing: -0.02em; color: #0e2358; text-transform: none; }
         .bad-sub { margin: 0; font-size: 1rem; line-height: 1.7; color: rgba(14,35,88,0.62); max-width: 44ch; }
         .bad-form-card { grid-template-columns: 1fr !important; padding: 2.4rem 2.6rem !important; }
-        /* the shared form pins every step to 316px so the card never jumps. here the
-           card sits in the fold, so let it hug its content instead of holding a gap. */
         .bad-form-card .lp-demo-step { height: auto !important; min-height: 0 !important; max-height: none !important; }
         .bad-form-card .lp-demo-form { padding-top: 8px; }
         .bad-form-card .lp-demo-progress { margin-top: 1.6rem; }
@@ -158,19 +124,13 @@
             -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") center / 12px no-repeat;
             mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") center / 12px no-repeat; }
         .bad-smallprint { margin-top: 1.6rem; font-size: 0.82rem; line-height: 1.65; color: rgba(14,35,88,0.5); }
-        /* first screen: nav + demo block + logo strip, nothing peeking from below */
-        /* nav is fixed and overlays the top, so the fold is a full viewport tall
-           and the demo section's own top padding clears the nav */
         .bad-fold { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
         .bad-fold .lp-section.bad-demo { flex: 1 0 auto; display: flex; align-items: center; padding-top: 6.5rem; padding-bottom: 2.5rem; }
         .bad-fold .lp-section-inner { width: 100%; }
         .bad-logo-bar { flex-shrink: 0; padding: 1.9rem 0; }
-        /* moving company strip, same mechanic as the homepage network marquee */
         .bad-net-track { display: flex; align-items: center; width: max-content; animation: badNetScroll 55s linear infinite; will-change: transform; }
         @keyframes badNetScroll { from { transform: translate3d(-25%, 0, 0); } to { transform: translate3d(0, 0, 0); } }
         .bad-net-track:has(.bad-net-mark:hover) { animation-play-state: paused; }
-        /* these logos run from 1:1 icons to 6.6:1 wordmarks. one shared box makes the
-           wide ones render short and unreadable, so each gets its own optical height. */
         .bad-net-mark { display: inline-flex; align-items: center; justify-content: center; height: 48px; margin-right: 3.6rem; filter: grayscale(1); opacity: 0.55; transition: filter 0.3s ease, opacity 0.3s ease; }
         .bad-net-mark img { width: auto; object-fit: contain; display: block; }
         .bad-net-mark img[data-logo="traveler"] { height: 46px; }
@@ -188,16 +148,6 @@
             .bad-title { font-size: 2.1rem; }
             .bad-form-card { padding: 1.9rem 1.4rem !important; }
         }
-
-
-        /* 404: the shield stands in for the zero, same as the old page did, but in
-           the light theme the rest of the site now uses.
-
-           the block owns exactly one screen, so the footer sits below the fold and
-           has to be scrolled to. sizing asks the device itself rather than guessing
-           from a user agent: dvh follows the real visible height once mobile browser
-           chrome slides away, and clamp() ties type and spacing to the viewport so
-           the same layout holds from a 320px phone to a 4k display. */
         .nf-main {
             min-height: 100vh;
             min-height: 100dvh;
@@ -205,7 +155,6 @@
             align-items: center;
             justify-content: center;
             box-sizing: border-box;
-            /* top padding clears the fixed nav, which overlays rather than pushes */
             padding: clamp(5.5rem, 11vh, 8rem) clamp(1.1rem, 5vw, 2rem) clamp(2rem, 6vh, 4rem);
         }
         .nf-inner { text-align: center; max-width: 34rem; width: 100%; }
@@ -214,23 +163,16 @@
         .nf-digit {
             font-family: var(--sp-text); font-weight: 800; line-height: 1; letter-spacing: -0.04em;
             font-size: clamp(3.2rem, 13vw, 7rem);
-            /* the site's headline gradient is grey; here it sits right above a navy
-               title, so tint it navy instead and the two read as one mark */
             background: linear-gradient(160deg, #0e2358 0%, #46567f 100%);
             -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
         }
-
         .nf-title { margin: 0 0 clamp(0.55rem, 1.6vh, 1rem); font-size: clamp(1.45rem, 5.2vw, 2.3rem); font-weight: 800; line-height: 1.12; letter-spacing: -0.02em; color: #0e2358; text-transform: none; }
         .nf-sub { margin: 0 auto; font-size: clamp(0.92rem, 2.6vw, 1rem); line-height: 1.65; color: rgba(14,35,88,0.62); max-width: 30rem; }
-
         .nf-actions { margin-top: clamp(1.4rem, 3.6vh, 2.2rem); display: flex; align-items: center; justify-content: center; gap: 0.75rem; flex-wrap: wrap; }
-
-        /* narrow phones: stack the buttons instead of letting them wrap unevenly */
         @media (max-width: 420px) {
             .nf-actions { flex-direction: column; align-items: stretch; }
             .nf-actions a { justify-content: center; text-align: center; }
         }
-        /* landscape phones and short windows: nothing may spill past one screen */
         @media (max-height: 520px) {
             .nf-main { padding-top: 4.6rem; padding-bottom: 1.2rem; }
             .nf-code { margin-bottom: 0.7rem; }
@@ -241,13 +183,7 @@
         }
     </style>
     <noscript><style>
-        /* scripting is off, so the loader is the final screen, not a stage on the
-           way somewhere. stop the pulse so it reads as a message, not a hang. */
-        /* theme-light is added by an inline script, which never runs here, so the
-           loader would sit on the dark default. force the light one. */
-        /* the loader covers the viewport, but the page behind it still has its full
-           height, so the window kept a scrollbar with nothing to scroll to. and
-           without theme-light that scrollbar renders in the dark theme's colours. */
+
         html, body { overflow: hidden !important; height: 100%; }
         #sp-loader { background: #fbfcfd !important; flex-direction: column; gap: 1.6rem; padding: 0 1.5rem; }
         #sp-loader .spl-logo-svg { animation: none; filter: none; opacity: 0.75; width: 96px; height: 96px; }
@@ -259,8 +195,7 @@
     </style></noscript>
 </head>
 <body class="lp-body">
-    <div id="sp-loader"><svg class="spl-logo-svg" viewBox="0 0 120 120" fill="none"><defs><linearGradient id="spl-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00ffff"/><stop offset="100%" stop-color="#a020f0"/></linearGradient><filter id="spl-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3.5" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#spl-glow)" fill="none" stroke="url(#spl-grad)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/><g class="spl-eye-blink"><path d="M38 60 Q 60 40 82 60 Q 60 80 38 60 Z"/><circle cx="60" cy="60" r="6"/><circle cx="60" cy="60" r="2" fill="url(#spl-grad)" stroke="none"/></g><path d="M60 15 V 30" stroke-width="2" opacity="0.6"/><path d="M60 90 V 105" stroke-width="2" opacity="0.6"/></g></svg><noscript><!--SP_NOSCRIPT--></noscript></div>
-
+    <div id="sp-loader"><svg class="spl-logo-svg" viewBox="0 0 120 120" fill="none"><defs><linearGradient id="spl-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00ffff"/><stop offset="100%" stop-color="#a020f0"/></linearGradient><filter id="spl-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3.5" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#spl-glow)" fill="none" stroke="url(#spl-grad)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/><g class="spl-eye-blink"><path d="M38 60 Q 60 40 82 60 Q 60 80 38 60 Z"/><circle cx="60" cy="60" r="6"/><circle cx="60" cy="60" r="2" fill="url(#spl-grad)" stroke="none"/></g><path d="M60 15 V 30" stroke-width="2" opacity="0.6"/><path d="M60 90 V 105" stroke-width="2" opacity="0.6"/></g></svg><noscript></noscript></div>
     <nav class="lp-nav">
         <div class="lp-nav-inner">
             <a href="https://sentinelpay.org" class="lp-logo-link">
@@ -422,7 +357,6 @@
             </div>
         </div>
     </nav>
-
     <div class="lp-mobile-menu" id="lp-mobile-menu">
         <div class="lp-mobile-menu-inner">
             <div class="lp-mm-acc">
@@ -472,20 +406,16 @@
             </div>
         </div>
     </div>
-
     <main class="nf-main">
         <div class="nf-inner">
             <div class="nf-code"><span class="nf-digit">404</span></div>
-
             <h1 class="nf-title">This page isn't here</h1>
             <p class="nf-sub">The link is broken, or the page has moved.</p>
-
             <div class="nf-actions">
                 <a href="/" class="lp-cta-primary">Back to homepage</a>
             </div>
         </div>
     </main>
-
     <footer class="lp-footer">
         <div class="lp-section-inner">
             <div class="lp-footer-top">
@@ -552,7 +482,6 @@
             </div>
         </div>
     </footer>
-
     <script>
         (function() {
             function closeAllDropdowns() {
@@ -568,7 +497,6 @@
             });
             document.querySelectorAll('.lp-nav-dd a').forEach(function(a){ a.addEventListener('click', closeAllDropdowns); });
             document.addEventListener('click', function(e){ if (!e.target.closest('.lp-nav-dd-wrap')) closeAllDropdowns(); });
-
             var hamburger = document.getElementById('lp-hamburger');
             var mobileMenu = document.getElementById('lp-mobile-menu');
             if (hamburger && mobileMenu) {
@@ -628,17 +556,11 @@
             });
         })();
     </script>
-    <script>/* the splash must clear whether or not the load event ever arrives. it waits
-   for every subresource including third party scripts, and one slow embed is
-   then a site nobody can see: the safety net below only ever started counting
-   after load, so it protected against a slow image and not against the thing
-   most likely to hang. this arms at dom ready instead and load simply gets
-   there first when it can. */(function(){var fired0=false;var run=function(){if(fired0)return;fired0=true;window.scrollTo(0,0);var l=document.getElementById('sp-loader');if(!l)return;var finish=function(){l.classList.add('spl-done');setTimeout(function(){l.remove();},620);};/* the load event does not wait for lazy images, and nearly every image on the site is lazy, so the loader used to clear while the first screen was still filling in. wait for the ones that will actually be visible: an image further down has not started loading yet and never would, so waiting for all of them would hold the loader open for ever. */var pending=[],im,r,i;for(i=0;i<document.images.length;i++){im=document.images[i];r=im.getBoundingClientRect();if(r.bottom<0||r.top>window.innerHeight*1.2)continue;if(im.complete&&im.naturalWidth>0)continue;pending.push(im);}if(!pending.length){finish();return;}var left=pending.length,fired=false;var one=function(){if(--left<=0&&!fired){fired=true;finish();}};pending.forEach(function(x){x.addEventListener('load',one,{once:true});x.addEventListener('error',one,{once:true});});/* a slow or broken image must never trap anybody behind the loader */setTimeout(function(){if(!fired){fired=true;finish();}},2500);};window.addEventListener('load',run);if(document.readyState!=='loading')setTimeout(run,3500);else document.addEventListener('DOMContentLoaded',function(){setTimeout(run,3500);});})();</script>
-    <!-- the sign-in dialog. loaded before i18n so its copy is translated too -->
-    <script src="/auth-modal.18.js" defer></script>
-    <script src="/auth-flow.39.js" defer></script>
-    <script src="/auth-nav.4.js" defer></script>
-    <script src="/navlift.1.js" defer></script>
-    <script src="/i18n.113.js" defer></script>
+    <script>(function(){var fired0=false;var run=function(){if(fired0)return;fired0=true;window.scrollTo(0,0);var l=document.getElementById('sp-loader');if(!l)return;var finish=function(){l.classList.add('spl-done');setTimeout(function(){l.remove();},620);};var pending=[],im,r,i;for(i=0;i<document.images.length;i++){im=document.images[i];r=im.getBoundingClientRect();if(r.bottom<0||r.top>window.innerHeight*1.2)continue;if(im.complete&&im.naturalWidth>0)continue;pending.push(im);}if(!pending.length){finish();return;}var left=pending.length,fired=false;var one=function(){if(--left<=0&&!fired){fired=true;finish();}};pending.forEach(function(x){x.addEventListener('load',one,{once:true});x.addEventListener('error',one,{once:true});});setTimeout(function(){if(!fired){fired=true;finish();}},2500);};window.addEventListener('load',run);if(document.readyState!=='loading')setTimeout(run,3500);else document.addEventListener('DOMContentLoaded',function(){setTimeout(run,3500);});})();</script>
+    <script src="/auth-modal.19.js" defer></script>
+    <script src="/auth-flow.40.js" defer></script>
+    <script src="/auth-nav.5.js" defer></script>
+    <script src="/navlift.2.js" defer></script>
+    <script src="/i18n.116.js" defer></script>
 </body>
 </html>

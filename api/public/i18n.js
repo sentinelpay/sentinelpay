@@ -1,20 +1,6 @@
-/* sentinelpay i18n.
-   the site is static html, so instead of templating every page we key translations
-   off the english source text and swap matching text nodes / placeholders at load.
-   adding a string later means one dictionary entry, no markup changes.
-   choice is stored in a cookie scoped to .sentinelpay.org so it follows the visitor
-   onto blog.sentinelpay.org too, with localStorage as a same-origin fallback. */
 (function () {
-    // the names as they appear in the picker. capitalised because they are
-    // labels standing on their own rather than words inside a sentence: these
-    // are built here rather than written into the html, which is the only
-    // reason they survived the pass that recased the rest of the site.
     var LANGS = { en: 'English', hr: 'Hrvatski', de: 'Deutsch' };
     var COOKIE = 'sp-lang';
-
-    /* localised, not transliterated: industry terms croatians and germans actually
-       use stay in english (compliance, blockchain, wallet, threat intelligence),
-       and marketing lines are rewritten for the language rather than word-for-word. */
     var T = {
         hr: {
             "See all questions": "Sva pitanja",
@@ -306,6 +292,75 @@
             "Website domain must match your work email domain": "Domena weba mora se poklapati s domenom vašeg poslovnog maila",
             "We do not onboard gambling operators": "Ne radimo s operaterima kockanja",
             "Too many requests, please try again later": "Previše pokušaja, pokušajte kasnije",
+            "Checks you have run": "Provjere koje ste pokrenuli",
+            "Trial": "Proba",
+            "Every check is kept with the list it was run against, so you can show what you knew and when.": "Svaka provjera se čuva zajedno s listom protiv koje je pokrenuta, da možete pokazati što ste znali i kada.",
+            "Your checks": "Vaše provjere",
+            "Nothing yet. Run your first check from the start screen.": "Još ništa. Pokrenite prvu provjeru s početnog ekrana.",
+            "Find out what already touched your wallets": "Saznajte što je već diralo vaše novčanike",
+            "The sanctions list has not loaded yet.": "Lista sankcija još nije učitana.",
+            "Checked against": "Provjereno protiv",
+            "sanctioned addresses from the OFAC list published": "sankcioniranih adresa s OFAC liste objavljene",
+            "Logged as check": "Zabilježeno kao provjera",
+            "left": "preostalo",
+            "Paste a wallet address": "Zalijepite adresu novčanika",
+            "Checking": "Provjeravam",
+            "Check it": "Provjeri",
+            "Signed in as": "Prijavljeni ste kao",
+            "Welcome": "Dobrodošli",
+            "days left": "dana preostalo",
+            "Done": "Gotovo",
+            "Paste any wallet address below": "Zalijepite bilo koju adresu novčanika ispod",
+            "Your history is open": "Vaša povijest je otvorena",
+            "Opens your whole history, plus 10 live checks": "Otvara cijelu vašu povijest, plus 10 live provjera",
+            "We screen what already touched it, not just what comes next": "Provjeravamo što ga je već diralo, ne samo ono što tek dolazi",
+            "Demo workspace": "Demo radni prostor",
+            "Your workspace": "Vaš radni prostor",
+            "Sample data, not yours. Click to go back to your workspace.": "Ogledni podaci, ne vaši. Kliknite za povratak u svoj radni prostor.",
+            "Click to look around a workspace filled with sample data.": "Kliknite da razgledate radni prostor pun oglednih podataka.",
+            "Start": "Početak",
+            "No sanctions match": "Nema poklapanja sa sankcijama",
+            "Check an address": "Provjerite adresu",
+            "That did not work": "To nije uspjelo",
+            "Start your trial": "Pokrenite probu",
+            "One trial per company": "Jedna proba po tvrtki",
+            "This has to match the domain of your work email.": "Ovo se mora poklapati s domenom vašeg poslovnog maila.",
+            "This business is not an online casino, sportsbook or betting platform.": "Ovaj posao nije online kasino, kladionica ni platforma za klađenje.",
+            "I agree to the terms of service and to be contacted about this account.": "Prihvaćam uvjete korištenja i da me se kontaktira u vezi ovog računa.",
+            "Connect a key and we screen what has already happened, not just what comes next.": "Spojite ključ i provjerimo što se već dogodilo, ne samo ono što tek dolazi.",
+            "We are checking your company": "Provjeravamo vašu tvrtku",
+            "Usually the same day": "Obično isti dan",
+            "Your work email did not match the website you gave, so somebody here looks at it. We will email you the moment it opens.": "Vaš poslovni mail se nije poklopio sa stranicom koju ste naveli, pa to netko kod nas pregledava. Javit ćemo vam mailom čim se otvori.",
+            "Talk to us about the volume you actually need and we will shape a plan around it.": "Razgovarajmo o volumenu koji vam stvarno treba pa ćemo plan oblikovati oko njega.",
+            "Getting set up": "Postavljanje",
+            "Trial active": "Proba je aktivna",
+            "Run your first check": "Pokrenite prvu provjeru",
+            "Verify your number": "Potvrdite svoj broj",
+            "Connect a public key": "Spojite javni ključ",
+            "Your history": "Vaša povijest",
+            "The rest of your history is already there. Verify your number and it opens, along with 10 live checks.": "Ostatak vaše povijesti je već tamo. Potvrdite broj i otvara se, zajedno s 10 live provjera.",
+            "Sign in first": "Prvo se prijavite",
+            "Paste an address first": "Prvo zalijepite adresu",
+            "That is too long to be an address": "To je predugo da bi bila adresa",
+            "That does not look like an address": "Ovo ne izgleda kao adresa",
+            "Not a screening": "Nije provjera",
+            "Not found": "Nije pronađeno",
+            "Start your trial first": "Prvo pokrenite probu",
+            "Your trial is waiting on us, we will email you": "Vaša proba čeka nas, javit ćemo se mailom",
+            "Your trial has ended": "Vaša proba je završila",
+            "No checks left on this trial": "Nema više provjera na ovoj probi",
+            "Verify your number to open your history": "Potvrdite broj da otvorite povijest",
+            "Both confirmations are required": "Obje potvrde su obavezne",
+            "That does not look like a company website": "Ovo ne izgleda kao web stranica tvrtke",
+            "Your account address is not usable for this": "Adresa vašeg računa nije upotrebljiva za ovo",
+            "This company already has a trial. Ask a colleague for access.": "Ova tvrtka već ima probu. Zatražite pristup od kolege.",
+            "Not available right now": "Trenutno nije dostupno",
+            "Could not start the trial": "Proba se nije mogla pokrenuti",
+            "Not available on this trial": "Nije dostupno na ovoj probi",
+            "The check could not be completed": "Provjera se nije mogla dovršiti",
+            "Could not read the account": "Račun se nije mogao pročitati",
+            "Could not read the log": "Zapisnik se nije mogao pročitati",
+            "Could not read it": "Nije se moglo pročitati",
             "Too many requests, please slow down": "Previše zahtjeva, usporite malo",
             "Verification failed, please try again": "Provjera nije prošla, pokušajte ponovno",
             "Please enter a valid email address.": "Upišite ispravnu email adresu.",
@@ -1588,6 +1643,75 @@
             "Website domain must match your work email domain": "Die Domain der Website muss zur Domain Ihrer Arbeits-E-Mail passen",
             "We do not onboard gambling operators": "Wir nehmen keine Glücksspielanbieter auf",
             "Too many requests, please try again later": "Zu viele Versuche, bitte später erneut probieren",
+            "Checks you have run": "Von Ihnen durchgeführte Prüfungen",
+            "Trial": "Testphase",
+            "Every check is kept with the list it was run against, so you can show what you knew and when.": "Jede Prüfung wird mit der Liste aufbewahrt, gegen die sie lief, damit Sie zeigen können, was Sie wann wussten.",
+            "Your checks": "Ihre Prüfungen",
+            "Nothing yet. Run your first check from the start screen.": "Noch nichts. Führen Sie Ihre erste Prüfung vom Startbildschirm aus durch.",
+            "Find out what already touched your wallets": "Finden Sie heraus, was Ihre Wallets bereits berührt hat",
+            "The sanctions list has not loaded yet.": "Die Sanktionsliste ist noch nicht geladen.",
+            "Checked against": "Geprüft gegen",
+            "sanctioned addresses from the OFAC list published": "sanktionierte Adressen aus der OFAC-Liste veröffentlicht am",
+            "Logged as check": "Protokolliert als Prüfung",
+            "left": "übrig",
+            "Paste a wallet address": "Wallet-Adresse einfügen",
+            "Checking": "Wird geprüft",
+            "Check it": "Prüfen",
+            "Signed in as": "Angemeldet als",
+            "Welcome": "Willkommen",
+            "days left": "Tage übrig",
+            "Done": "Erledigt",
+            "Paste any wallet address below": "Fügen Sie unten eine beliebige Wallet-Adresse ein",
+            "Your history is open": "Ihr Verlauf ist offen",
+            "Opens your whole history, plus 10 live checks": "Öffnet Ihren gesamten Verlauf, plus 10 Live-Prüfungen",
+            "We screen what already touched it, not just what comes next": "Wir prüfen, was ihn bereits berührt hat, nicht nur was noch kommt",
+            "Demo workspace": "Demo-Arbeitsbereich",
+            "Your workspace": "Ihr Arbeitsbereich",
+            "Sample data, not yours. Click to go back to your workspace.": "Beispieldaten, nicht Ihre. Klicken Sie, um zu Ihrem Arbeitsbereich zurückzukehren.",
+            "Click to look around a workspace filled with sample data.": "Klicken Sie, um sich in einem Arbeitsbereich mit Beispieldaten umzusehen.",
+            "Start": "Start",
+            "No sanctions match": "Kein Sanktionstreffer",
+            "Check an address": "Adresse prüfen",
+            "That did not work": "Das hat nicht funktioniert",
+            "Start your trial": "Testphase starten",
+            "One trial per company": "Eine Testphase pro Unternehmen",
+            "This has to match the domain of your work email.": "Das muss zur Domain Ihrer Arbeits-E-Mail passen.",
+            "This business is not an online casino, sportsbook or betting platform.": "Dieses Unternehmen ist kein Online-Casino, Sportwettenanbieter oder Wettportal.",
+            "I agree to the terms of service and to be contacted about this account.": "Ich stimme den Nutzungsbedingungen zu und damit, zu diesem Konto kontaktiert zu werden.",
+            "Connect a key and we screen what has already happened, not just what comes next.": "Verbinden Sie einen Schlüssel und wir prüfen, was bereits passiert ist, nicht nur was noch kommt.",
+            "We are checking your company": "Wir prüfen Ihr Unternehmen",
+            "Usually the same day": "Meist am selben Tag",
+            "Your work email did not match the website you gave, so somebody here looks at it. We will email you the moment it opens.": "Ihre Arbeits-E-Mail passte nicht zur angegebenen Website, deshalb sieht sich das jemand bei uns an. Wir melden uns per E-Mail, sobald es freigeschaltet ist.",
+            "Talk to us about the volume you actually need and we will shape a plan around it.": "Sprechen Sie mit uns über das Volumen, das Sie wirklich brauchen, und wir gestalten einen Plan darum.",
+            "Getting set up": "Einrichtung",
+            "Trial active": "Testphase aktiv",
+            "Run your first check": "Führen Sie Ihre erste Prüfung durch",
+            "Verify your number": "Bestätigen Sie Ihre Nummer",
+            "Connect a public key": "Öffentlichen Schlüssel verbinden",
+            "Your history": "Ihr Verlauf",
+            "The rest of your history is already there. Verify your number and it opens, along with 10 live checks.": "Der Rest Ihres Verlaufs ist bereits da. Bestätigen Sie Ihre Nummer und er öffnet sich, zusammen mit 10 Live-Prüfungen.",
+            "Sign in first": "Bitte zuerst anmelden",
+            "Paste an address first": "Fügen Sie zuerst eine Adresse ein",
+            "That is too long to be an address": "Das ist zu lang für eine Adresse",
+            "That does not look like an address": "Das sieht nicht nach einer Adresse aus",
+            "Not a screening": "Keine Prüfung",
+            "Not found": "Nicht gefunden",
+            "Start your trial first": "Starten Sie zuerst Ihre Testphase",
+            "Your trial is waiting on us, we will email you": "Ihre Testphase wartet auf uns, wir melden uns per E-Mail",
+            "Your trial has ended": "Ihre Testphase ist beendet",
+            "No checks left on this trial": "Keine Prüfungen mehr in dieser Testphase",
+            "Verify your number to open your history": "Bestätigen Sie Ihre Nummer, um den Verlauf zu öffnen",
+            "Both confirmations are required": "Beide Bestätigungen sind erforderlich",
+            "That does not look like a company website": "Das sieht nicht nach einer Unternehmenswebsite aus",
+            "Your account address is not usable for this": "Die Adresse Ihres Kontos ist dafür nicht verwendbar",
+            "This company already has a trial. Ask a colleague for access.": "Dieses Unternehmen hat bereits eine Testphase. Fragen Sie eine Kollegin oder einen Kollegen nach Zugang.",
+            "Not available right now": "Derzeit nicht verfügbar",
+            "Could not start the trial": "Die Testphase konnte nicht gestartet werden",
+            "Not available on this trial": "In dieser Testphase nicht verfügbar",
+            "The check could not be completed": "Die Prüfung konnte nicht abgeschlossen werden",
+            "Could not read the account": "Das Konto konnte nicht gelesen werden",
+            "Could not read the log": "Das Protokoll konnte nicht gelesen werden",
+            "Could not read it": "Konnte nicht gelesen werden",
             "Too many requests, please slow down": "Zu viele Anfragen, bitte etwas langsamer",
             "Verification failed, please try again": "Die Prüfung ist fehlgeschlagen, bitte erneut versuchen",
             "Please enter a valid email address.": "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
@@ -2581,22 +2705,18 @@
             "Sales, product & support": "Vertrieb, Produkt und support",
         },
     };
-
     function readCookie(n) {
         var m = document.cookie.match(new RegExp('(?:^|; )' + n + '=([^;]*)'));
         return m ? decodeURIComponent(m[1]) : null;
     }
     function writeCookie(n, v) {
         var host = location.hostname;
-        // share the choice across sentinelpay.org and its subdomains (blog, help)
+
         var domain = /(^|\.)sentinelpay\.org$/.test(host) ? '; domain=.sentinelpay.org' : '';
         var secure = location.protocol === 'https:' ? '; secure' : '';
         document.cookie = n + '=' + encodeURIComponent(v) + '; path=/; max-age=31536000; samesite=lax' + domain + secure;
     }
     function current() {
-        // /hr, /de and /en are explicit requests for a language, so they win over a
-        // stored preference and are then saved: navigating on to any other page
-        // stays in the language the visitor asked for.
         var forced = document.documentElement.getAttribute('data-force-lang');
         if (LANGS[forced]) {
             if (readCookie(COOKIE) !== forced) persist(forced);
@@ -2605,9 +2725,6 @@
         var v = readCookie(COOKIE);
         if (!v) { try { v = localStorage.getItem(COOKIE); } catch (e) {} }
         if (LANGS[v]) return v;
-        // nothing saved yet: fall back to the country the server resolved from the
-        // ip. deliberately not written to the cookie, so a guess never hardens into
-        // a stored preference and the switcher still shows nothing was chosen.
         var geo = document.documentElement.getAttribute('data-geo-lang');
         return LANGS[geo] ? geo : 'en';
     }
@@ -2615,60 +2732,28 @@
         writeCookie(COOKIE, v);
         try { localStorage.setItem(COOKIE, v); } catch (e) {}
     }
-
     var norm = function (s) { return s.replace(/\s+/g, ' ').trim(); };
-
-    /* the translation starts the way the english it replaces starts.
-    
-       the page is always fresh: its html is served no-cache and revalidated.
-       the dictionary is a separate file with a year of cache on it, and a
-       proxy or a browser that hands back an older copy of it hands back older
-       spellings with it. that is how "Log in" came out as "prijava" on one host
-       and "Prijava" on another, from identical html: two different vintages of
-       one file, and nothing in the page able to tell.
-    
-       so the case is not taken from the dictionary any more. the dictionary
-       supplies the words; the source supplies whether the first one carries a
-       capital. an old dictionary now renders correctly, and the only thing a
-       stale copy can cost is a phrase that has since been rewritten, rather
-       than a navigation bar in the wrong case. */
     var LETTER = /[A-Za-zÀ-ÖØ-öø-ÿČĆŽŠĐčćžšđ]/;
     function matchCase(source, translated) {
         var si = source.search(LETTER);
         var ti = translated.search(LETTER);
         if (si < 0 || ti < 0) return translated;
-        // only when the first letter is genuinely the first thing in the string.
-        // "August 23, 2026" opens with a letter and its croatian is "23. kolovoza
-        // 2026.", which opens with a digit: the first letters are not the same
-        // position in a sentence, and forcing one onto the other produced "23.
-        // Kolovoza", which is a date croatian does not write. a capital here has
-        // to be a sentence start in both, or it is not the same capital.
+
         if (si !== 0 || ti !== 0) return translated;
         var want = source.charAt(si);
         var has = translated.charAt(ti);
-        // german capitalises nouns wherever they fall, so a capital in the
-        // translation that the english does not have may be correct and is left
-        // alone. a missing capital never is.
+
         if (want === want.toUpperCase() && want !== want.toLowerCase() && has === has.toLowerCase()) {
             return translated.slice(0, ti) + has.toUpperCase() + translated.slice(ti + 1);
         }
         return translated;
     }
-
-    // an inline script in <head> sets the tab title before first paint, so it is
-    // already translated here. it leaves the english original behind for us; if
-    // it did not run, document.title is still english and works as the key.
-    // for articles the dictionary entry is the h1 translation with the
-    // "sentinelpay | blog | " prefix, so tab and headline always read the same.
     var sourceTitle = window.__SP_TITLE_SRC || norm(document.title);
-
     function translate(lang) {
         var dict = T[lang];
         document.documentElement.lang = lang;
-        // the tab title lives in <head>, so the body walker never sees it
         document.title = (dict && dict[sourceTitle]) || sourceTitle;
         if (!dict) return;
-        // text nodes
         var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
             acceptNode: function (n) {
                 var p = n.parentNode;
@@ -2683,37 +2768,22 @@
         nodes.forEach(function (node) {
             var hit = dict[norm(node.nodeValue)];
             if (!hit) return;
-            // an article can be flipped back to the english it was written in, so
-            // remember what each node said before we replaced it. only inside the
-            // article: nothing else on the page offers that toggle.
             if (node.parentNode && node.parentNode.closest('[data-original-scope]')) {
                 originals.push({ node: node, text: node.nodeValue });
             }
             node.nodeValue = node.nodeValue.replace(/\S[\s\S]*\S|\S/, matchCase(norm(node.nodeValue), hit));
         });
-        // text the walker cannot reach: it lives in attributes, not in nodes.
-        // alt and title surface when an image fails or on hover, aria-label is
-        // all a screen reader gets.
         ['placeholder', 'alt', 'title', 'aria-label'].forEach(function (attr) {
             document.querySelectorAll('[' + attr + ']').forEach(function (el) {
                 if (el.closest('[data-i18n-skip]')) return;
                 var raw = norm(el.getAttribute(attr));
                 var hit = dict[raw];
-                // the same rule as the text nodes: the words come from the
-                // dictionary, the case comes from the page
                 if (hit) el.setAttribute(attr, matchCase(raw, hit));
             });
         });
     }
-
-    // --- show the original ---------------------------------------------------
-    // articles are written in english and translated like the rest of the site.
-    // a reader who wants the author's own words can flip one article back without
-    // leaving their language: the site chrome, the nav and every other page stay
-    // exactly as they were.
     var originals = [];
     var showingOriginal = false;
-
     function setOriginal(on) {
         if (on === showingOriginal) return;
         originals.forEach(function (entry) {
@@ -2721,8 +2791,6 @@
             entry.node.nodeValue = entry.text;
             entry.text = shown;
         });
-        // an article's tab title is its headline, and that rule holds here too:
-        // flip the headline to english and the tab follows it.
         var english = window.__SP_TITLE_SRC;
         if (english) {
             if (on) { translatedTitle = document.title; document.title = english; }
@@ -2732,16 +2800,7 @@
     }
     var translatedTitle = '';
 
-    // The control is a pill, cut from the same pattern as the "all articles"
-    // button above it: same height, same radius, same border weight. It carries an
-    // icon so it reads as an action at a glance, and it flips to a filled state
-    // when the original is showing, so the current state is never in doubt.
-    // The status banner carries its own copy for each language as attributes,
-    // written by the server. It is not looked up in the dictionary: an incident is
-    // wording someone types today, not shipped copy, so it cannot be a key. English
-    // is already in the element, so anything without a variant simply stays as-is.
     var STATUS_DISMISSED = 'sp-status-dismissed';
-
     function paintStatusBanner(lang) {
         var bar = document.querySelector('.sp-status');
         if (!bar) return;
@@ -2754,30 +2813,21 @@
             var label = x.getAttribute('data-sp-label-' + lang);
             if (label) x.setAttribute('aria-label', label);
         }
-
-        // a message the visitor already closed should not come back on every page.
-        // keyed on the message itself, so the next incident is a new message and
-        // shows again even though the last one was dismissed.
         var text = bar.querySelector('.sp-status-text');
         var key = text ? text.textContent.replace(/\s+/g, ' ').trim() : '';
         var seen = '';
         try { seen = sessionStorage.getItem(STATUS_DISMISSED) || ''; } catch (e) {}
         if (key && seen === key) { hideStatusBanner(bar, true); return; }
-
         if (x) {
             x.addEventListener('click', function () {
                 try { sessionStorage.setItem(STATUS_DISMISSED, key); } catch (e) {}
                 hideStatusBanner(bar, false);
             });
         }
-
         fitStatusBanner(bar);
         revealStatusBanner(bar);
     }
 
-    // Takes the bar out and gives the page back the space it was holding. the
-    // custom property is what the nav offset and the fold pages are built on, so
-    // setting it to zero is the whole reversal.
     function hideStatusBanner(bar, immediate) {
         var done = function () {
             bar.remove();
@@ -2790,8 +2840,6 @@
         setTimeout(done, 220);
     }
 
-    // The loader sits over the page until everything has loaded. releasing the bar
-    // as that starts to fade reads as one movement rather than two.
     function revealStatusBanner(bar) {
         bar.classList.add('sp-status-armed');
         var show = function () {
@@ -2802,11 +2850,6 @@
         if (document.readyState === 'complete') show();
         else window.addEventListener('load', show, { once: true });
     }
-
-    // The bar's height is a custom property because the fixed nav and the fold pages
-    // are both offset by it. A fixed number cannot fit every message, language and
-    // screen width, and guessing high leaves a half-empty bar while guessing low
-    // pushes the button through the border. So measure what is actually there.
     function fitStatusBanner(bar) {
         var inner = bar.querySelector('.sp-status-inner');
         if (!inner) return;
@@ -2818,7 +2861,6 @@
             document.documentElement.style.setProperty('--sp-status-h', height + 'px');
         };
         apply();
-        // fonts land after first paint and change how the message wraps
         if (document.fonts && document.fonts.ready) document.fonts.ready.then(apply);
         var timer;
         window.addEventListener('resize', function () {
@@ -2826,32 +2868,20 @@
             timer = setTimeout(apply, 120);
         });
     }
-
     function buildOriginalToggle(lang) {
-        // english readers are already reading the original
         if (lang === 'en') return;
         var scopes = document.querySelectorAll('[data-original-scope]');
         if (!scopes.length || !originals.length) return;
         var host = document.querySelector('[data-original-toggle]');
         if (!host) return;
-
-        // the language is named in brackets so it is clear what "the original"
-        // actually is before anyone clicks
         var LABEL = {
-            // croatian keeps a language name lowercase inside a sentence, so
-            // only the first word is capitalised here. german capitalises the
-            // language name wherever it stands.
             hr: { show: 'Pročitaj izvornik (engleski)', back: 'Prikaži prijevod' },
             de: { show: 'Original lesen (Englisch)', back: 'Übersetzung anzeigen' },
         }[lang] || { show: 'Read the original (English)', back: 'Show the translation' };
-
         var btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'article-original-btn';
-        // chrome, not article text: it must never flip with the body
         btn.setAttribute('data-i18n-skip', '');
-        // the standard translate glyph, the one every translate control uses: a
-        // latin letter beside a cjk character. a globe would have read as "region".
         btn.innerHTML =
             '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
             '<path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17' +
@@ -2859,14 +2889,11 @@
             'l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12z' +
             'm-2.62 7l1.62-4.33L19.12 17h-3.24z"></path>' +
             '</svg><span></span>';
-
         var label = btn.querySelector('span');
-
         function paint() {
             label.textContent = showingOriginal ? LABEL.back : LABEL.show;
             btn.setAttribute('aria-pressed', showingOriginal ? 'true' : 'false');
             btn.classList.toggle('is-on', showingOriginal);
-            // the article itself changes language, so say so for screen readers
             scopes.forEach(function (el) {
                 el.setAttribute('lang', showingOriginal ? 'en' : lang);
             });
@@ -2878,29 +2905,20 @@
         paint();
         host.appendChild(btn);
     }
-
     function buildSwitcher(lang) {
         if (document.querySelector('.sp-lang')) return;
         var footer = document.querySelector('.lp-footer');
         if (!footer) return;
-        // sit under the brand blurb so the footer keeps its original shape; the
-        // simpler blog/article footer has no brand column, so fall back to it.
         var host = footer.querySelector('.lp-footer-brand') || footer.querySelector('.lp-section-inner');
         if (!host) return;
-
         var wrap = document.createElement('div');
         wrap.className = 'sp-lang';
         wrap.setAttribute('data-i18n-skip', '');
-
         var label = document.createElement('span');
         label.className = 'sp-lang-label';
         label.textContent = { en: 'Language', hr: 'Jezik', de: 'Sprache' }[lang] || 'Language';
-
-        // a native <select> renders its option list with os chrome we cannot style,
-        // so the control is our own button + menu that mirrors the field styling.
         var dd = document.createElement('div');
         dd.className = 'sp-lang-dd';
-
         var btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'sp-lang-btn';
@@ -2909,11 +2927,9 @@
         btn.innerHTML = '<span class="sp-lang-value"></span>'
             + '<svg class="sp-lang-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>';
         btn.querySelector('.sp-lang-value').textContent = LANGS[lang];
-
         var menu = document.createElement('div');
         menu.className = 'sp-lang-menu';
         menu.setAttribute('role', 'listbox');
-
         function close() { dd.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
 
         Object.keys(LANGS).forEach(function (code) {
@@ -2926,9 +2942,6 @@
             opt.addEventListener('click', function () {
                 if (code === lang) { close(); return; }
                 persist(code);
-                // on a language url the path itself pins the language, so reloading
-                // would land back on the one we just switched away from. move to the
-                // matching url instead; everywhere else a reload is right.
                 if (document.documentElement.getAttribute('data-force-lang')) {
                     location.assign('/' + code);
                 } else {
@@ -2937,44 +2950,30 @@
             });
             menu.appendChild(opt);
         });
-
         btn.addEventListener('click', function (e) {
             e.stopPropagation();
             var open = dd.classList.toggle('open');
             btn.setAttribute('aria-expanded', open ? 'true' : 'false');
             if (open) {
-                // open downward by default, flip up only when the viewport would clip it
                 var space = window.innerHeight - btn.getBoundingClientRect().bottom;
                 dd.classList.toggle('up', space < menu.scrollHeight + 16);
             }
         });
         document.addEventListener('click', function (e) { if (!dd.contains(e.target)) close(); });
         document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
-
         dd.appendChild(btn); dd.appendChild(menu);
         wrap.appendChild(label); wrap.appendChild(dd);
         host.appendChild(wrap);
     }
 
-    // scripts that write text at runtime (button labels while a form submits) miss
-    // the one-shot pass above, so let them look a string up the same way we do.
     window.SentinelI18n = {
         lang: current,
         t: function (s) {
             var dict = T[current()];
             var hit = dict && dict[norm(s)];
-            // the same rule the page-load pass uses: the case comes from the
-            // string being looked up rather than from the dictionary. the
-            // caller's string is whatever the server or the script just
-            // produced, and this file is cached for a year, so when the two
-            // disagree the fresh one is the one to believe.
             return hit ? matchCase(s, hit) : s;
         }
     };
-
-    // a mailto's subject and body are copy like any other, but frozen in the href
-    // they would stay english on a translated page. carry them as source text on
-    // the link and assemble the href here, so they follow the page language.
     function buildMailtos(lang) {
         var dict = T[lang] || null;
         var pick = function (src) {
@@ -2990,7 +2989,6 @@
                 (body ? '&body=' + encodeURIComponent(body) : ''));
         });
     }
-
     function init() {
         var lang = current();
         if (lang !== 'en') translate(lang);

@@ -1,39 +1,14 @@
 'use strict';
 
-// Re-encrypt everything under a new key.
-//
-// How a rotation goes:
-//
-//   1. generate a key:  node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
-//   2. on the host, set SUBMISSIONS_KEY_PREVIOUS to the key that is in
-//      SUBMISSIONS_KEY today, and put the new key in SUBMISSIONS_KEY
-//   3. restart. nothing breaks: rows written under the old key are still read,
-//      because db.js tries the current key and then the previous one
-//   4. run this, with the same two variables set:
-//          node tools/rotate-key.js            # says what it would do
-//          node tools/rotate-key.js --write    # does it
-//   5. when it reports nothing left, remove SUBMISSIONS_KEY_PREVIOUS
-//
-// The blind index is not touched. It is keyed by SUBMISSIONS_INDEX_KEY, which is
-// a different key on purpose and rotating it would mean every lookup by address
-// stops working until every row is rewritten in the same instant. If that key
-// ever has to change, it is a different and much more careful job than this one.
-//
-// Safe to run twice, safe to stop halfway: a row that is already under the new
-// key is written back identically, and one that is not is fixed the next time.
-
 const path = require('path');
 const db = require(path.join(__dirname, '..', 'api', 'db.js'));
 
 const WRITE = process.argv.includes('--write');
 
-// what to rewrite: a table, its key column, and the sealed columns with the
-// label each one was sealed under
 const WORK = [
     {
         table: 'submissions',
         id: 'id',
-        // the submissions payload is sealed to the row id
         columns: [{ column: 'payload', label: (row) => 'submission:' + row.id }],
         where: 'encrypted = true',
     },
@@ -78,6 +53,7 @@ async function main() {
 
     let touched = 0;
     let unreadable = 0;
+    let stale = 0;
 
     for (const job of WORK) {
         const cols = job.columns.map((c) => c.column);
@@ -88,10 +64,12 @@ async function main() {
                 'SELECT ' + select.join(', ') + ' FROM ' + job.table +
                 (job.where ? ' WHERE ' + job.where : ''), []);
         } catch (err) {
-            // a table that does not exist yet is not an error: the schema is
-            // created on boot by whichever module owns it
-            console.log('  ' + job.table + ': skipped (' + err.message + ')');
-            continue;
+            if (err.code === '42P01') {
+                console.log('  ' + job.table + ': not present yet, skipped');
+                continue;
+            }
+            console.error('  ' + job.table + ': ' + err.message);
+            throw err;
         }
 
         let n = 0;
@@ -104,12 +82,10 @@ async function main() {
                 const label = spec.label(row);
                 const plain = db.open(label, blob);
                 if (!plain) {
-                    // neither key opened it. that is a row written under a key
-                    // that is gone, and this tool must never quietly replace it
-                    // with an empty string.
                     unreadable++;
                     continue;
                 }
+                if (!db.openCurrent(label, blob)) stale++;
                 args.push(db.seal(label, plain));
                 sets.push(spec.column + ' = $' + args.length);
             }
@@ -126,13 +102,16 @@ async function main() {
         touched += n;
     }
 
-    console.log(touched + ' row(s) ' + (WRITE ? 'rewritten' : 'to rewrite'));
+    console.log(touched + ' row(s) ' + (WRITE ? 'rewritten' : 'read'));
+    console.log(stale + ' value(s) still under the previous key.');
     if (unreadable) {
         console.error(unreadable + ' value(s) could not be opened with either key and were left alone.');
         console.error('That is data written under a key neither variable holds. Find that key before dropping anything.');
     }
-    if (WRITE && !unreadable) {
-        console.log('Done. Once this reports 0 rows, SUBMISSIONS_KEY_PREVIOUS can be removed.');
+    if (!unreadable) {
+        console.log(stale
+            ? 'Not finished: run again with --write, then run without it to check.'
+            : 'Finished: nothing is under the previous key, so SUBMISSIONS_KEY_PREVIOUS can be removed.');
     }
     process.exit(unreadable ? 2 : 0);
 }

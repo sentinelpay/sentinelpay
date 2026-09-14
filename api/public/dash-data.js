@@ -1,35 +1,9 @@
-/* Everything the dashboard shows, before any of it is real.
- *
- * This file exists so that the screens can be designed, argued about and shown
- * to somebody in a meeting while the engine behind them is still being built.
- * Every value in here is invented. The addresses are valid in shape and belong
- * to nobody; the entity names are either public facts a five second search
- * confirms (the OFAC list is public) or obvious placeholders.
- *
- * Two rules while this file is the source of truth:
- *
- *   1. nothing in here is presented to a visitor as a real finding. the shell
- *      carries a sample-data marker on every screen, and it is removed in the
- *      same commit that removes this file.
- *   2. the shapes are the shapes we intend to build. when the engine arrives it
- *      answers with these fields, and the views do not change. that is the whole
- *      point of writing it down now: the api has to be designed by what the
- *      screen needs, not the other way round.
- */
 (function () {
     'use strict';
-
     var now = Date.now();
     var hour = 3600 * 1000;
     var day = 24 * hour;
-
     function ago(ms) { return new Date(now - ms).toISOString(); }
-
-    // ---- the risk bands -----------------------------------------------------
-    // Four, not a hundred point score. A number pretends to a precision nobody
-    // can defend in a meeting; a band is a decision. The score is kept alongside
-    // because some customers' own policies are written against one, and because
-    // an api that only answers in words is hard to threshold against.
     var BANDS = {
         severe: { key: 'severe', label: 'Severe', score: 95 },
         high: { key: 'high', label: 'High', score: 78 },
@@ -37,9 +11,6 @@
         low: { key: 'low', label: 'Low', score: 8 },
     };
 
-    // ---- exposure categories ------------------------------------------------
-    // What the money on the other side was doing. Ordered worst first, because
-    // that is the order a person reads them in.
     var CATEGORIES = [
         { key: 'sanctions', label: 'Sanctioned entity', tone: 'severe' },
         { key: 'stolen', label: 'Stolen funds', tone: 'severe' },
@@ -53,7 +24,6 @@
         { key: 'merchant', label: 'Merchant services', tone: 'low' },
     ];
 
-    // ---- the screenings -----------------------------------------------------
     var SCREENINGS = [
         {
             id: 'scr_8f21a4',
@@ -70,7 +40,6 @@
             lastSeen: ago(6 * day),
             txCount: 1284,
             counterparties: 37,
-            // the one sentence the whole screen is built around
             verdict: 'This address received 4,200 USDT from an address on the OFAC sanctions list, two hops away, six days ago.',
             reasons: [
                 {
@@ -111,14 +80,6 @@
                 { hop: 1, label: 'Intermediate address', ref: '0x1c88…9dF2', note: 'No attribution', amount: '4,200 USDT', at: ago(7 * day), tone: 'medium' },
                 { hop: 2, label: 'This address', ref: '0x9A7c…8d0A', note: 'The address you screened', amount: '4,200 USDT', at: ago(6 * day), tone: 'high' },
             ],
-            // The evidence record.
-            //
-            // A screening is not an opinion, it is a statement about the world at
-            // a moment. So the moment is recorded: which list versions were in
-            // hand, how far we looked, and a digest over the whole answer. The
-            // report carries the digest, and anybody holding the report can check
-            // it against ours. A bank asked to accept a pdf from a supplier can
-            // then verify it rather than trust it.
             evidence: {
                 hash: 'a4f19c7b2e8d6015',
                 lists: [
@@ -130,9 +91,6 @@
                 hops: 5,
                 chainTip: 23481902,
             },
-            // What changed since. The most important question in any compliance
-            // review is not what you know now, it is what you knew then, and
-            // whether the decision was reasonable on the day it was made.
             changedSince: [
                 { at: ago(3 * day), what: 'The intermediate address 0x1c88…9dF2 was attributed to a mixing service. It had no attribution when this check ran.' },
             ],
@@ -233,12 +191,6 @@
             path: [], transactions: [{ id: 'tx_ee3344', dir: 'in', amount: '25,000.00 USDT', from: 'TXk1…9mQ2', at: ago(4 * day), tag: 'merchant' }],
         },
     ];
-
-    // ---- alerts -------------------------------------------------------------
-    // What monitoring found while nobody was looking. An alert is a thing that
-    // needs a decision, so every one of them carries the rule that produced it:
-    // "why am I seeing this" is the first question and it should not need a
-    // click.
     var ALERTS = [
         { id: 'alr_5521', at: ago(40 * 60 * 1000), band: 'severe', subject: '0x9A7c4F2b8E1d6c3A5b0F8e2D4c7A9b1E3f5C8d0A', chain: 'Ethereum', rule: 'Any exposure to a sanctioned address', summary: 'Received 4,200 USDT two hops from an OFAC-listed address.', screening: 'scr_8f21a4', state: 'open' },
         { id: 'alr_5518', at: ago(3 * hour), band: 'high', subject: '0xE1a7C3b5D9f2A4c6E8b0D2f4A6c8E0b2D4f6A8c0', chain: 'Ethereum', rule: 'Darknet exposure above 25%', summary: '61% of incoming value came directly from an attributed darknet cluster.', screening: 'scr_920fd1', state: 'open' },
@@ -247,8 +199,6 @@
         { id: 'alr_5497', at: ago(2 * day), band: 'low', subject: 'TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE', chain: 'Tron', rule: 'New counterparty', summary: 'First transfer from an address never seen before.', screening: 'scr_77aa10', state: 'closed' },
         { id: 'alr_5488', at: ago(4 * day), band: 'high', subject: '0x71bE3C9a2D4f6B8e0A2c4E6d8F0b2A4c6E8d0F2b', chain: 'Arbitrum', rule: 'Mixer exposure above 10%', summary: '22% of incoming value came out of a mixing service.', screening: null, state: 'closed' },
     ];
-
-    // ---- what is being watched ---------------------------------------------
     var WATCHED = [
         { id: 'wat_01', label: 'Treasury, hot wallet', address: '0x9A7c4F2b8E1d6c3A5b0F8e2D4c7A9b1E3f5C8d0A', chain: 'Ethereum', since: ago(120 * day), rules: 3, lastCheck: ago(40 * 60 * 1000), band: 'severe' },
         { id: 'wat_02', label: 'Settlement, BTC', address: 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq', chain: 'Bitcoin', since: ago(200 * day), rules: 2, lastCheck: ago(2 * hour), band: 'low' },
@@ -256,10 +206,6 @@
         { id: 'wat_04', label: 'Merchant float, TRON', address: 'TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE', chain: 'Tron', since: ago(64 * day), rules: 2, lastCheck: ago(5 * hour), band: 'low' },
         { id: 'wat_05', label: 'Cold storage', address: 'bc1q9h6mq4f2c8v3x7k1p5n0y8t2r4w6e9u1i3o5a', chain: 'Bitcoin', since: ago(320 * day), rules: 1, lastCheck: ago(6 * hour), band: 'low' },
     ];
-
-    // ---- rules, written as sentences ---------------------------------------
-    // The whole point of this screen: a rule a compliance officer can read back
-    // to their auditor without a translator.
     var RULES = [
         { id: 'rul_01', on: true, text: 'Alert me if any watched address receives value from a sanctioned address, at any distance.', band: 'severe', hits: 2 },
         { id: 'rul_02', on: true, text: 'Alert me if darknet exposure goes above 25% of incoming value.', band: 'high', hits: 1 },
@@ -268,18 +214,12 @@
         { id: 'rul_05', on: true, text: 'Alert me if a single transfer is worth more than 50,000 EUR.', band: 'medium', hits: 1 },
         { id: 'rul_06', on: false, text: 'Alert me the first time value arrives from an address we have never seen.', band: 'low', hits: 0 },
     ];
-
-    // ---- cases --------------------------------------------------------------
     var CASES = [
         { id: 'case_0042', title: 'Sanctions exposure, treasury hot wallet', opened: ago(2 * hour), state: 'open', owner: 'Vibor Sumic', band: 'severe', items: 3, note: 'Two hops from an OFAC listing. Payment held pending legal.' },
         { id: 'case_0041', title: 'Darknet exposure, customer 9920', opened: ago(2 * day), state: 'review', owner: 'Josip Družianić', band: 'high', items: 5, note: 'Account frozen, awaiting customer explanation.' },
         { id: 'case_0038', title: 'Unattributed flow, customer 4471', opened: ago(6 * day), state: 'review', owner: 'Vibor Sumic', band: 'medium', items: 2, note: 'Pass-through pattern. Watching for a week before deciding.' },
         { id: 'case_0031', title: 'Large inbound, cold storage', opened: ago(14 * day), state: 'closed', owner: 'Josip Družianić', band: 'low', items: 1, note: 'Source confirmed as the customer own exchange account. No action.' },
     ];
-
-    // ---- the policy ---------------------------------------------------------
-    // Read as a document, because it is one: this is what gets exported and
-    // attached to the bank questionnaire.
     var POLICY = {
         updated: ago(11 * day),
         by: 'Vibor Sumic',
@@ -305,15 +245,11 @@
             { name: 'UK OFSI list', updated: ago(14 * hour) },
         ],
     };
-
-    // ---- reports ------------------------------------------------------------
     var REPORTS = [
         { id: 'rep_2026_08', title: 'August 2026, monthly screening report', period: 'August 2026', made: ago(12 * day), checks: 1841, flagged: 26, blocked: 4 },
         { id: 'rep_2026_07', title: 'July 2026, monthly screening report', period: 'July 2026', made: ago(43 * day), checks: 1622, flagged: 19, blocked: 2 },
         { id: 'rep_2026_06', title: 'June 2026, monthly screening report', period: 'June 2026', made: ago(73 * day), checks: 1480, flagged: 22, blocked: 5 },
     ];
-
-    // ---- activity -----------------------------------------------------------
     var ACTIVITY = [
         { at: ago(40 * 60 * 1000), who: 'Monitoring', what: 'Alert raised on Treasury, hot wallet', kind: 'alert' },
         { at: ago(2 * hour), who: 'Vibor Sumic', what: 'Screened 0x9A7c…8d0A', kind: 'screening' },
@@ -324,20 +260,6 @@
         { at: ago(11 * day), who: 'Vibor Sumic', what: 'Changed the mixer threshold to 10%', kind: 'policy' },
     ];
 
-    // ---- where the addresses come from --------------------------------------
-    //
-    // The thing nobody else models properly. Competitors ask for a list of
-    // addresses, which is fine until the customer has a wallet that mints a new
-    // one per invoice, and then their list is stale the day after they upload it.
-    //
-    // A source is the thing the customer actually has: an extended public key, a
-    // list, a read only key at their custodian. We derive from it and keep
-    // deriving. One paste, and monitoring stays correct as the wallet grows.
-    //
-    // An xpub is also the most sensitive thing a customer can hand over: it is
-    // their entire history and every future address. That is why the screen says
-    // out loud how it is stored, and why the fingerprint rather than the key is
-    // what is shown back.
     var SOURCES = [
         {
             id: 'src_01', kind: 'xpub', label: 'Treasury, BTC',
@@ -364,13 +286,6 @@
             state: 'backfilling', band: null, backfill: '68%', encrypted: true,
         },
     ];
-
-    // ---- what we can and cannot see ------------------------------------------
-    //
-    // Written down and shown, rather than buried in a sales conversation. A
-    // compliance officer has to document the limits of their tooling anyway; a
-    // vendor who states them is doing half their paperwork, and a vendor who
-    // hides them is a vendor they will be embarrassed by in an audit.
     var COVERAGE = {
         chains: [
             { name: 'Bitcoin', depth: 'full', note: 'clustering and attribution' },
@@ -386,12 +301,6 @@
         hops: 5,
         refresh: 'Sanctions lists every six hours. Chain data within one block.',
     };
-
-    // ---- what a change to the policy would have done --------------------------
-    //
-    // A threshold is an abstraction until somebody shows you the payments it
-    // would have stopped. This is the number that turns a settings page into a
-    // decision, and it is the one thing on this product nobody else offers.
     var SIMULATION = {
         window: 'the last 30 days',
         current: { blocked: 4, held: 26, allowed: 1254 },
@@ -407,11 +316,6 @@
               note: 'Thirty five more held, thirty four of which were fine. That is an hour a day for one extra finding.' },
         ],
     };
-
-    // ---- usage and keys -----------------------------------------------------
-    // Thirty days of checks, for the shape rather than the numbers: a chart on
-    // an overview answers "is this normal" and nothing else, so it is drawn
-    // small, without axes, and the only figure that gets read out is today's.
     var SERIES = [];
     (function () {
         var base = 42;
@@ -421,15 +325,12 @@
             SERIES.push({ at: ago(i * day), checks: Math.max(4, n), flagged: Math.max(0, Math.round(n * 0.06)) });
         }
     })();
-
-    // How the month's checks came out, for the bar on the overview
     var RISK_MIX = [
         { band: 'severe', count: 6 },
         { band: 'high', count: 21 },
         { band: 'medium', count: 148 },
         { band: 'low', count: 1109 },
     ];
-
     var ACCOUNT = {
         plan: 'Growth',
         checksUsed: 1284,
@@ -443,13 +344,11 @@
         { id: 'key_live_01', label: 'Production', prefix: 'sp_live_9f2a', created: ago(90 * day), lastUsed: ago(20 * 60 * 1000), calls: 41200 },
         { id: 'key_test_01', label: 'Sandbox', prefix: 'sp_test_4c71', created: ago(90 * day), lastUsed: ago(3 * day), calls: 980 },
     ];
-
     var TEAM = [
         { name: 'Vibor Sumic', role: 'MLRO', email: 'vibor@sentinelpay.org', twofa: true, last: ago(20 * 60 * 1000) },
         { name: 'Josip Družianić', role: 'Analyst', email: 'josip@sentinelpay.org', twofa: true, last: ago(28 * hour) },
         { name: 'Vitali Friesen', role: 'Read only', email: 'vitali@sentinelpay.org', twofa: false, last: ago(4 * day) },
     ];
-
     window.SentinelDashData = {
         sample: true,
         bands: BANDS,
@@ -470,11 +369,6 @@
         riskMix: RISK_MIX,
         keys: KEYS,
         team: TEAM,
-
-        // Anything typed into the search box gets an answer, because a demo where
-        // the box only works for five addresses is a demo that ends early. An
-        // address we do not have is answered with a low-risk screening built on
-        // the spot and marked as a sample like everything else here.
         find: function (query) {
             var q = String(query || '').trim();
             if (!q) return null;
@@ -492,7 +386,6 @@
             SCREENINGS.unshift(made);
             return made;
         },
-
         byId: function (id) {
             var hit = null;
             SCREENINGS.forEach(function (s) { if (s.id === id) hit = s; });

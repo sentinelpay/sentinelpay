@@ -1,19 +1,6 @@
 #!/usr/bin/env node
 'use strict';
 
-// Refreshes the two mailbox lists the forms tag submissions against.
-//
-//     node tools/refresh-mail-domains.js
-//
-// Run it monthly. It rewrites two files, prints what changed, and touches
-// nothing else. Neither list decides whether a submission is accepted: that is
-// the domain match, and it applies to everybody. These only decide what a
-// submission is tagged with, so a bad entry costs a wrong tag, never a lost lead.
-//
-// The upstream free list turns out to contain the whole disposable list, so the
-// two are separated here: a domain is one or the other, never both, and a tag
-// therefore says exactly one thing.
-
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
@@ -23,9 +10,6 @@ const SOURCES = {
     disposable: 'https://raw.githubusercontent.com/disposable-email-domains/disposable-email-domains/main/disposable_email_blocklist.conf',
 };
 
-// Providers the international lists do not carry. Croatian consumer mailboxes
-// are the ones that matter to us and none of them are upstream, so they live
-// here and survive every refresh.
 const EXTRA_FREE = [
     'net.hr', 'gmail.hr', 'vip.hr', 'hi.t-com.hr', 'a1.hr', 'optinet.hr',
     'inet.hr', 'email.t-com.hr', 'globalnet.hr', 'zg.t-com.hr', 'kr.t-com.hr',
@@ -38,8 +22,6 @@ const FILES = {
     disposable: path.join(OUT_DIR, 'disposable-email-domains.txt'),
 };
 
-// curl rather than fetch: outbound https here goes through a proxy that node's
-// own client does not pick up from the environment on its own.
 function get(url) {
     return execFileSync('curl', ['-sSL', '--max-time', '90', url], {
         encoding: 'utf8',
@@ -51,7 +33,6 @@ function clean(list) {
     const out = new Set();
     for (const raw of list) {
         const d = String(raw || '').trim().toLowerCase();
-        // a domain, nothing else: no comments, no wildcards, no addresses
         if (!d || d.startsWith('#')) continue;
         if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(d)) continue;
         out.add(d);
@@ -86,7 +67,6 @@ function summarise(name, before, after) {
         name.padEnd(12) + String(after.size).padStart(6) + ' domains' +
         '   +' + added.length + ' -' + removed.length
     );
-    // a handful is enough to see the shape of the change without drowning the log
     if (added.length) console.log('   added:   ' + added.slice(0, 8).join(', ') + (added.length > 8 ? ' …' : ''));
     if (removed.length) console.log('   removed: ' + removed.slice(0, 8).join(', ') + (removed.length > 8 ? ' …' : ''));
 }
@@ -104,7 +84,6 @@ function summarise(name, before, after) {
 
     const disposable = clean(dispRaw);
     const free = clean(freeRaw.concat(EXTRA_FREE));
-    // upstream files the disposables under free as well. one domain, one meaning.
     for (const d of disposable) free.delete(d);
 
     if (free.size < 1000 || disposable.size < 1000) {
