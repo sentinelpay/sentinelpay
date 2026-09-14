@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="/fonts.2.css">
     <link rel="stylesheet" href="/style.27.css">
     <link rel="stylesheet" href="/landing.149.css">
-    <link rel="stylesheet" href="/corp.361.css">
+    <link rel="stylesheet" href="/corp.365.css">
     <style>
         #sp-loader{position:fixed;inset:0;z-index:99999;background:#050505;display:flex;align-items:center;justify-content:center;transition:opacity 0.55s ease;}
         #sp-loader.spl-done{opacity:0;pointer-events:none;}
@@ -346,30 +346,31 @@
                     <span class="lp-plan-edge" aria-hidden="true"></span>
                     <div class="lp-plan-matrix">
                         <div class="lp-plan-row is-head">
-                            <div class="lp-plan-cell is-label is-corner"></div>
-                        <div class="lp-plan-head is-free">
-                            <span class="lp-plan-badge is-empty" aria-hidden="true"></span>
-                            <h3 class="lp-plan-name">Free trial</h3>
-                            <div class="lp-plan-price"><span class="lp-plan-fig">Free</span></div>
-                            <div class="lp-plan-price-note">14 days, no card</div>
-                            <button class="lp-plan-btn lp-plan-btn-solid" type="button" data-plan-start="1">Start free trial</button>
-                        </div>
+                            <div class="lp-plan-cell is-label is-corner">
+                            <div class="lp-plan-trial">
+                                <h3 class="lp-plan-trial-name">Free trial</h3>
+                                <div class="lp-plan-trial-price">Free<span>14 days, no card</span></div>
+                                <ul class="lp-plan-trial-list">
+                                <li>One live check and one from your history</li>
+                                <li>Against the live OFAC list</li>
+                                <li>No card, nothing to cancel</li>
+                                </ul>
+                                <button type="button" class="lp-plan-btn lp-plan-btn-light" data-plan-start="1">Start free trial</button>
+                            </div>
+                            </div>
                         <div class="lp-plan-head">
-                            <span class="lp-plan-badge is-empty" aria-hidden="true"></span>
                             <h3 class="lp-plan-name">Starter</h3>
                             <div class="lp-plan-price"><span class="lp-plan-cur">&euro;</span><span class="lp-plan-fig">99</span><span class="lp-plan-unit">/month</span></div>
                             <div class="lp-plan-price-note">Billed monthly</div>
                             <a class="lp-plan-btn" href="/book-a-demo">Choose Starter</a>
                         </div>
                         <div class="lp-plan-head is-pick">
-                            <span class="lp-plan-badge is-empty" aria-hidden="true"></span>
                             <h3 class="lp-plan-name">Growth</h3>
                             <div class="lp-plan-price"><span class="lp-plan-cur">&euro;</span><span class="lp-plan-fig">399</span><span class="lp-plan-unit">/month</span></div>
                             <div class="lp-plan-price-note">Billed monthly</div>
-                            <a class="lp-plan-btn" href="/book-a-demo">Choose Growth</a>
+                            <a class="lp-plan-btn lp-plan-btn-solid" href="/book-a-demo">Choose Growth</a>
                         </div>
                         <div class="lp-plan-head">
-                            <span class="lp-plan-badge is-empty" aria-hidden="true"></span>
                             <h3 class="lp-plan-name">Enterprise</h3>
                             <div class="lp-plan-price"><span class="lp-plan-from">From</span><span class="lp-plan-cur">&euro;</span><span class="lp-plan-fig">1,490</span><span class="lp-plan-unit">/month</span></div>
                             <div class="lp-plan-price-note">Contracted terms</div>
@@ -378,70 +379,60 @@
                         </div>
                         <div class="lp-plan-row is-group">
                             <div class="lp-plan-cell is-label">What you get</div>
-                            <div class="lp-plan-cell is-free"></div>
                             <div class="lp-plan-cell"></div>
                             <div class="lp-plan-cell is-pick"></div>
                             <div class="lp-plan-cell"></div>
                         </div>
                         <div class="lp-plan-row">
                             <div class="lp-plan-cell is-label">Screenings a month</div>
-                            <div class="lp-plan-cell is-free" data-plan="trial"><b>1 + 1</b></div>
                             <div class="lp-plan-cell" data-plan="starter"><b>1,000</b></div>
                             <div class="lp-plan-cell is-pick" data-plan="growth"><b>10,000</b></div>
                             <div class="lp-plan-cell" data-plan="enterprise"><b>&ge; 50,000</b></div>
                         </div>
                         <div class="lp-plan-row">
                             <div class="lp-plan-cell is-label">Addresses monitored</div>
-                            <div class="lp-plan-cell is-free" data-plan="trial"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
                             <div class="lp-plan-cell" data-plan="starter"><b>100</b></div>
                             <div class="lp-plan-cell is-pick" data-plan="growth"><b>2,500</b></div>
                             <div class="lp-plan-cell" data-plan="enterprise"><b>&ge; 25,000</b></div>
                         </div>
                         <div class="lp-plan-row">
                             <div class="lp-plan-cell is-label">Seats</div>
-                            <div class="lp-plan-cell is-free" data-plan="trial"><b>1</b></div>
                             <div class="lp-plan-cell" data-plan="starter"><b>3</b></div>
                             <div class="lp-plan-cell is-pick" data-plan="growth"><b>10</b></div>
                             <div class="lp-plan-cell" data-plan="enterprise"><b>&ge; 25</b></div>
                         </div>
                         <div class="lp-plan-row is-group">
                             <div class="lp-plan-cell is-label">Where we pull ahead</div>
-                            <div class="lp-plan-cell is-free"></div>
                             <div class="lp-plan-cell"></div>
                             <div class="lp-plan-cell is-pick"></div>
                             <div class="lp-plan-cell"></div>
                         </div>
                         <div class="lp-plan-row">
                             <div class="lp-plan-cell is-label">Re-screened when a list changes</div>
-                            <div class="lp-plan-cell is-free" data-plan="trial"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
                             <div class="lp-plan-cell" data-plan="starter"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
                             <div class="lp-plan-cell is-pick" data-plan="growth"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
                             <div class="lp-plan-cell" data-plan="enterprise"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
                         </div>
                         <div class="lp-plan-row">
                             <div class="lp-plan-cell is-label">History swept when you connect a key</div>
-                            <div class="lp-plan-cell is-free" data-plan="trial"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
                             <div class="lp-plan-cell" data-plan="starter"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
                             <div class="lp-plan-cell is-pick" data-plan="growth"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
                             <div class="lp-plan-cell" data-plan="enterprise"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
                         </div>
                         <div class="lp-plan-row">
                             <div class="lp-plan-cell is-label">Continuous monitoring and alerts</div>
-                            <div class="lp-plan-cell is-free" data-plan="trial"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
                             <div class="lp-plan-cell" data-plan="starter"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
                             <div class="lp-plan-cell is-pick" data-plan="growth"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
                             <div class="lp-plan-cell" data-plan="enterprise"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
                         </div>
                         <div class="lp-plan-row">
                             <div class="lp-plan-cell is-label">API and your own thresholds</div>
-                            <div class="lp-plan-cell is-free" data-plan="trial"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
                             <div class="lp-plan-cell" data-plan="starter"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
                             <div class="lp-plan-cell is-pick" data-plan="growth"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
                             <div class="lp-plan-cell" data-plan="enterprise"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
                         </div>
                         <div class="lp-plan-row">
                             <div class="lp-plan-cell is-label">Four eyes, EU residency and SSO</div>
-                            <div class="lp-plan-cell is-free" data-plan="trial"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
                             <div class="lp-plan-cell" data-plan="starter"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
                             <div class="lp-plan-cell is-pick" data-plan="growth"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
                             <div class="lp-plan-cell" data-plan="enterprise"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
@@ -625,7 +616,7 @@
     <script src="/auth-flow.40.js" defer></script>
     <script src="/auth-nav.5.js" defer></script>
     <script src="/navlift.2.js" defer></script>
-    <script src="/i18n.127.js" defer></script>
+    <script src="/i18n.128.js" defer></script>
     <script src="/choose-plan.5.js" defer></script>
 </body>
 </html>
