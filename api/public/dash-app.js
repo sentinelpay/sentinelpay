@@ -46,6 +46,7 @@
         flask: '<path d="M10 3.5v6L5.5 18a1.5 1.5 0 0 0 1.3 2.2h10.4A1.5 1.5 0 0 0 18.5 18L14 9.5v-6"/><path d="M9 3.5h6M7.8 14.5h8.4"/>',
         users: '<circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><path d="M16 6.2A3 3 0 0 1 16 13M20.5 19c0-2.3-1.4-3.8-3.2-4.5"/>',
         card: '<path d="M3.5 6.5h17v11h-17Z"/><path d="M3.5 10.5h17"/><path d="M7 14.5h3"/>',
+        panel: '<path d="M4.5 5.5h15v13h-15Z"/><path d="M10 5.5v13"/>',
         cog: '<circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2 5.5 5.5"/>'
     };
 
@@ -178,23 +179,13 @@
         pop.id = 'sidectl-pop';
         pop.setAttribute('role', 'menu');
 
-        var head = document.createElement('div');
-        head.className = 'sidectl-h';
-        head.textContent = t('Sidebar control');
-        pop.appendChild(head);
-
         SIDE_MODES.forEach(function (m) {
             var b = document.createElement('button');
             b.type = 'button';
             b.className = 'sidectl-opt';
             b.setAttribute('role', 'menuitemradio');
             b.setAttribute('data-side-mode', m.key);
-            var dot = document.createElement('span');
-            dot.className = 'sidectl-dot';
-            b.appendChild(dot);
-            var txt = document.createElement('span');
-            txt.textContent = t(m.label);
-            b.appendChild(txt);
+            b.textContent = t(m.label);
             b.addEventListener('click', function () {
                 setSideMode(m.key);
                 openPop(false);
@@ -204,15 +195,16 @@
 
         var btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'sidectl-btn';
+        btn.className = 'nav-btn sidectl-btn';
         btn.id = 'sidectl-btn';
         btn.setAttribute('aria-haspopup', 'menu');
         btn.setAttribute('aria-expanded', 'false');
         btn.setAttribute('aria-controls', 'sidectl-pop');
-        btn.setAttribute('aria-label', t('Sidebar control'));
-        btn.innerHTML = '<svg class="nav-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
-            'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-            '<path d="M4.5 5.5h15v13h-15Z"/><path d="M10 5.5v13"/></svg>';
+        btn.innerHTML = icon('panel');
+        var btnText = document.createElement('span');
+        btnText.className = 'nav-t';
+        btnText.textContent = t('Sidebar control');
+        btn.appendChild(btnText);
 
         function isOpen() {
             return wrap.classList.contains('is-open');
