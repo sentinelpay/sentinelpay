@@ -4228,25 +4228,6 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
 .lp-plans.lp-section.bad-demo { padding-top: var(--sp-nav-h, 64px); padding-bottom: 0; }
 .lp-plans .bad-trial-divider { margin: 0.9rem 0 0.7rem; }
 
-@media (max-height: 920px) {
-    .lp-plans .lp-plans-title { font-size: 2rem; }
-    .lp-plans .lp-plan-grid { margin-top: 1.5rem; gap: 0.9rem; }
-    .lp-plans .lp-plan-card { padding: 1.25rem 1.2rem 1.35rem; }
-    .lp-plans .lp-plan-icon { margin-bottom: 0.7rem; }
-    .lp-plans .lp-plan-tagline { margin-bottom: 0.85rem; }
-    .lp-plans .lp-plan-rule { margin: 1rem 0 0.9rem; }
-    .lp-plans .lp-plan-feats { gap: 0.45rem; }
-    .lp-plans-foot { margin-top: 0.8rem; }
-}
-@media (max-height: 830px) {
-    .lp-plans .lp-plans-title { font-size: 1.8rem; }
-    .lp-plans .lp-plan-fig { font-size: 1.55rem; }
-    .lp-plans .lp-plan-name { font-size: 1.15rem; }
-    .lp-plans .lp-plan-feat { font-size: 0.79rem; line-height: 1.4; }
-    .lp-plans .lp-plan-btn { padding: 0.7rem 1rem; font-size: 0.82rem; }
-    .lp-plans-foot { font-size: 0.74rem; }
-}
-
 .lp-plans-head { max-width: 46rem; margin: 0 auto; text-align: center; }
 .lp-plans-title {
     margin: 0 0 0.7rem;
@@ -4265,6 +4246,85 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
 .lp-plans-foot a { color: #10275b; text-decoration: none; border-bottom: 1px solid rgba(16, 39, 91, 0.3); }
 .lp-plans-foot a:hover { border-bottom-color: #10275b; }
 .lp-plans.lp-section { padding-top: calc(var(--sp-nav-h, 64px) + 2.6rem); padding-bottom: 4rem; }
+
+@media (max-height: 1040px) and (min-width: 1081px) {
+    .lp-plans.lp-section { padding-top: calc(var(--sp-nav-h, 64px) + 1.8rem); padding-bottom: 2.6rem; }
+    .lp-plans .lp-plans-title { font-size: 2.4rem; }
+    .lp-plans .lp-bill-switch { margin-top: 1.15rem; }
+    .lp-plans .lp-plan-grid { margin-top: 1.7rem; }
+}
+@media (max-height: 1000px) and (min-width: 1081px) {
+    .lp-plans.lp-section { padding-top: calc(var(--sp-nav-h, 64px) + 1.2rem); padding-bottom: 2rem; }
+    .lp-plans .lp-plans-title { font-size: 2rem; }
+    .lp-plans .lp-plan-btn { font-size: 0.83rem; }
+    .lp-plans-foot { font-size: 0.75rem; }
+    .lp-plans .lp-plans-sub { font-size: 0.92rem; }
+    .lp-plans .lp-bill-switch { margin-top: 0.95rem; }
+    .lp-plans .lp-plan-grid { margin-top: 1.3rem; gap: 0.9rem; }
+    .lp-plans .lp-plan-card { padding: 1.15rem 1.2rem 1.25rem; }
+    .lp-plans .lp-plan-icon { margin-bottom: 0.6rem; }
+    .lp-plans .lp-plan-tagline { margin-bottom: 0.75rem; }
+    .lp-plans .lp-plan-rule { margin: 0.85rem 0 0.75rem; }
+    .lp-plans .lp-plan-feats { gap: 0.4rem; }
+    .lp-plans .lp-plan-feat { font-size: 0.78rem; line-height: 1.38; }
+    .lp-plans-foot { margin-top: 0.7rem; }
+}
+@media (max-height: 860px) and (min-width: 1081px) {
+    .lp-plans.lp-section { padding-top: calc(var(--sp-nav-h, 64px) + 0.9rem); padding-bottom: 1.6rem; }
+    .lp-plans .lp-plans-title { font-size: 1.78rem; margin-bottom: 0.45rem; }
+    .lp-plans .lp-plans-sub { font-size: 0.87rem; }
+    .lp-plans .lp-bill-switch { margin-top: 0.8rem; }
+    .lp-plans .lp-bill-seg { padding: 0.44rem 1rem; font-size: 0.82rem; }
+    .lp-plans .lp-plan-grid { margin-top: 1.05rem; }
+    .lp-plans .lp-plan-card { padding: 1rem 1.1rem 1.05rem; }
+    .lp-plans .lp-plan-icon { margin-bottom: 0.45rem; }
+    .lp-plans .lp-plan-icon svg { width: 24px; height: 24px; }
+    .lp-plans .lp-plan-name { font-size: 1.08rem; }
+    .lp-plans .lp-plan-tagline { margin-bottom: 0.6rem; }
+    .lp-plans .lp-plan-fig { font-size: 1.42rem; }
+    .lp-plans .lp-plan-price-note { margin-bottom: 0.85rem; }
+    .lp-plans .lp-plan-btn { padding: 0.6rem 1rem; }
+    .lp-plans .lp-plan-rule { margin: 0.7rem 0 0.6rem; }
+    .lp-plans .lp-plan-inherits { margin-bottom: 0.55rem; }
+    .lp-plans .lp-plan-feats { gap: 0.34rem; }
+    .lp-plans .lp-plan-feat { font-size: 0.76rem; line-height: 1.35; padding-left: 1.3rem; }
+}
+@media (max-height: 790px) and (min-width: 1081px) {
+    .lp-plans.lp-section { padding-top: calc(var(--sp-nav-h, 64px) + 0.7rem); padding-bottom: 1.2rem; }
+    .lp-plans .lp-plans-title { font-size: 1.6rem; margin-bottom: 0.35rem; }
+    .lp-plans .lp-plans-sub { font-size: 0.83rem; }
+    .lp-plans .lp-bill-switch { margin-top: 0.65rem; }
+    .lp-plans .lp-plan-grid { margin-top: 0.85rem; gap: 0.8rem; }
+    .lp-plans .lp-plan-card { padding: 0.9rem 1rem 0.95rem; }
+    .lp-plans .lp-plan-tagline { margin-bottom: 0.5rem; }
+    .lp-plans .lp-plan-fig { font-size: 1.32rem; }
+    .lp-plans .lp-plan-price-note { margin-bottom: 0.7rem; }
+    .lp-plans .lp-plan-rule { margin: 0.6rem 0 0.5rem; }
+    .lp-plans .lp-plan-feats { gap: 0.28rem; }
+    .lp-plans .lp-plan-feat { font-size: 0.74rem; line-height: 1.32; }
+    .lp-plans-foot { margin-top: 0.6rem; }
+}
+@media (max-height: 745px) and (min-width: 1081px) {
+    .lp-plans.lp-section { padding-top: calc(var(--sp-nav-h, 64px) + 0.55rem); padding-bottom: 0.9rem; }
+    .lp-plans .lp-plans-title { font-size: 1.46rem; margin-bottom: 0.3rem; }
+    .lp-plans .lp-plans-sub { font-size: 0.79rem; line-height: 1.45; }
+    .lp-plans .lp-bill-switch { margin-top: 0.55rem; padding: 0.22rem; }
+    .lp-plans .lp-bill-seg { padding: 0.38rem 0.9rem; font-size: 0.79rem; }
+    .lp-plans .lp-plan-grid { margin-top: 0.7rem; gap: 0.7rem; }
+    .lp-plans .lp-plan-card { padding: 0.8rem 0.9rem 0.85rem; }
+    .lp-plans .lp-plan-icon { margin-bottom: 0.35rem; }
+    .lp-plans .lp-plan-icon svg { width: 22px; height: 22px; }
+    .lp-plans .lp-plan-name { font-size: 1.02rem; }
+    .lp-plans .lp-plan-tagline { margin-bottom: 0.42rem; }
+    .lp-plans .lp-plan-fig { font-size: 1.24rem; }
+    .lp-plans .lp-plan-price-note { margin-bottom: 0.58rem; }
+    .lp-plans .lp-plan-btn { padding: 0.54rem 0.9rem; }
+    .lp-plans .lp-plan-rule { margin: 0.5rem 0 0.42rem; }
+    .lp-plans .lp-plan-inherits { margin-bottom: 0.45rem; }
+    .lp-plans .lp-plan-feats { gap: 0.24rem; }
+    .lp-plans .lp-plan-feat { font-size: 0.72rem; line-height: 1.3; }
+    .lp-plans-foot { margin-top: 0.5rem; font-size: 0.72rem; }
+}
 
 .lp-compare { padding-top: 1rem; padding-bottom: 6rem; }
 .lp-cmp-title {
