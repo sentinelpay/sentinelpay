@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="/fonts.2.css">
     <link rel="stylesheet" href="/style.27.css">
     <link rel="stylesheet" href="/landing.149.css">
-    <link rel="stylesheet" href="/corp.370.css">
+    <link rel="stylesheet" href="/corp.372.css">
     <style>
         #sp-loader{position:fixed;inset:0;z-index:99999;background:#050505;display:flex;align-items:center;justify-content:center;transition:opacity 0.55s ease;}
         #sp-loader.spl-done{opacity:0;pointer-events:none;}
@@ -334,151 +334,86 @@
         </div>
     </div>
     <div class="bad-fold">
-        <section class="lp-section bad-demo lp-plans" id="choose-a-plan">
+        <section class="lp-section lp-plans" id="choose-a-plan">
             <div class="lp-section-inner">
                 <div class="lp-plans-head">
-                    <h1 class="bad-title">Choose a plan<br>and start screening</h1>
-                    <p class="bad-sub">Your account is ready. Start free and screen a real address, or talk to us about volume.</p>
+                    <h1 class="lp-plans-title">Choose a plan</h1>
+                    <p class="lp-plans-sub">Your account is ready. Start free and screen a real address, or talk to us about volume.</p>
                 </div>
 
-                <div class="lp-plan-trial">
-                    <div class="lp-plan-trial-copy">
-                        <h3 class="lp-plan-trial-name">Free trial</h3>
-                        <p class="lp-plan-trial-lead">Connect one key and we sweep its whole history, once, free.</p>
-                    </div>
-                    <ul class="lp-plan-trial-list">
-                            <li>Every counterparty that ever touched it, screened against OFAC, EU, UK and UN</li>
-                            <li>An evidence file you keep, even if you never pay us</li>
-                            <li>14 days, no card, nothing to cancel</li>
+                <svg class="lp-plan-defs" aria-hidden="true" focusable="false"><defs><linearGradient id="planGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00c8e6"/><stop offset="100%" stop-color="#a020f0"/></linearGradient></defs></svg>
+
+                <div class="lp-plan-grid">
+                <div class="lp-plan-card" data-plan="trial">
+                    <div class="lp-plan-icon"><svg viewBox="0 0 24 24" fill="none" stroke="url(#planGrad)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4.5 12.5a1 1 0 0 0 .8 1.6H11l-1 8 8.5-10.5a1 1 0 0 0-.8-1.6H12z"/></svg></div>
+                    <h3 class="lp-plan-name">Free trial</h3>
+                    <p class="lp-plan-tagline">Try Sentinelpay</p>
+                    <div class="lp-plan-price"><span class="lp-plan-fig">0</span><span class="lp-plan-cur">&euro;</span></div>
+                    <p class="lp-plan-price-note">Free for 14 days, no card</p>
+                    <button class="lp-plan-btn" type="button" data-plan-start="1">Start free trial</button>
+                    <div class="lp-plan-rule"></div>
+                    <ul class="lp-plan-feats">
+                        <li class="lp-plan-feat">Connect one key and we sweep its whole history, once</li>
+                        <li class="lp-plan-feat">Every counterparty screened against OFAC, EU, UK and UN</li>
+                        <li class="lp-plan-feat">An answer in under a second, with the evidence attached</li>
+                        <li class="lp-plan-feat">An evidence file you keep, even if you never pay us</li>
                     </ul>
-                    <button type="button" class="lp-plan-btn" data-plan-start="1">Start free trial</button>
                 </div>
-
-                <div class="lp-plan-slab">
-                    <span class="lp-plan-dots" aria-hidden="true"></span>
-                    <span class="lp-plan-edge" aria-hidden="true"></span>
-                    <div class="lp-plan-matrix">
-                        <div class="lp-plan-row is-head">
-                            <div class="lp-plan-cell is-label is-corner"></div>
-                        <div class="lp-plan-head">
-                            <h3 class="lp-plan-name">Starter</h3>
-                            <div class="lp-plan-price"><span class="lp-plan-cur">&euro;</span><span class="lp-plan-fig">99</span><span class="lp-plan-unit">/month</span></div>
-                            <div class="lp-plan-price-note">Billed monthly</div>
-                            <p class="lp-plan-blurb">One compliance team, screening at onboarding.</p>
-                            <a class="lp-plan-btn" href="/book-a-demo">Choose Starter</a>
-                        </div>
-                        <div class="lp-plan-head is-pick">
-                            <h3 class="lp-plan-name">Growth</h3>
-                            <div class="lp-plan-price"><span class="lp-plan-cur">&euro;</span><span class="lp-plan-fig">399</span><span class="lp-plan-unit">/month</span></div>
-                            <div class="lp-plan-price-note">Billed monthly</div>
-                            <p class="lp-plan-blurb">Screening every day, with your wallets watched.</p>
-                            <a class="lp-plan-btn lp-plan-btn-solid" href="/book-a-demo">Choose Growth</a>
-                        </div>
-                        <div class="lp-plan-head">
-                            <h3 class="lp-plan-name">Enterprise</h3>
-                            <div class="lp-plan-price"><span class="lp-plan-from">From</span><span class="lp-plan-cur">&euro;</span><span class="lp-plan-fig">1,490</span><span class="lp-plan-unit">/month</span></div>
-                            <div class="lp-plan-price-note">Contracted terms</div>
-                            <p class="lp-plan-blurb">Banks and exchanges with their own rules and audit.</p>
-                            <a class="lp-plan-btn" href="/book-a-demo">Talk to us</a>
-                        </div>
-                        </div>
-                        <div class="lp-plan-row is-group">
-                            <div class="lp-plan-cell is-label">What you get</div>
-                            <div class="lp-plan-cell"></div>
-                            <div class="lp-plan-cell is-pick"></div>
-                            <div class="lp-plan-cell"></div>
-                        </div>
-                        <div class="lp-plan-row">
-                            <div class="lp-plan-cell is-label">Screenings a month</div>
-                            <div class="lp-plan-cell" data-plan="starter"><b>1,000</b></div>
-                            <div class="lp-plan-cell is-pick" data-plan="growth"><b>10,000</b></div>
-                            <div class="lp-plan-cell" data-plan="enterprise"><b>&ge; 50,000</b></div>
-                        </div>
-                        <div class="lp-plan-row">
-                            <div class="lp-plan-cell is-label">Addresses monitored</div>
-                            <div class="lp-plan-cell" data-plan="starter"><b>100</b></div>
-                            <div class="lp-plan-cell is-pick" data-plan="growth"><b>2,500</b></div>
-                            <div class="lp-plan-cell" data-plan="enterprise"><b>&ge; 25,000</b></div>
-                        </div>
-                        <div class="lp-plan-row">
-                            <div class="lp-plan-cell is-label">Seats</div>
-                            <div class="lp-plan-cell" data-plan="starter"><b>3</b></div>
-                            <div class="lp-plan-cell is-pick" data-plan="growth"><b>10</b></div>
-                            <div class="lp-plan-cell" data-plan="enterprise"><b>&ge; 25</b></div>
-                        </div>
-                        <div class="lp-plan-row is-group">
-                            <div class="lp-plan-cell is-label">Where we pull ahead</div>
-                            <div class="lp-plan-cell"></div>
-                            <div class="lp-plan-cell is-pick"></div>
-                            <div class="lp-plan-cell"></div>
-                        </div>
-                        <div class="lp-plan-row">
-                            <div class="lp-plan-cell is-label">An answer in under a second, evidence attached</div>
-                            <div class="lp-plan-cell" data-plan="starter"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
-                            <div class="lp-plan-cell is-pick" data-plan="growth"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
-                            <div class="lp-plan-cell" data-plan="enterprise"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
-                        </div>
-                        <div class="lp-plan-row">
-                            <div class="lp-plan-cell is-label">Re-screened the moment a list changes</div>
-                            <div class="lp-plan-cell" data-plan="starter"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
-                            <div class="lp-plan-cell is-pick" data-plan="growth"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
-                            <div class="lp-plan-cell" data-plan="enterprise"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
-                        </div>
-                        <div class="lp-plan-row">
-                            <div class="lp-plan-cell is-label">Any verdict reproducible a year later</div>
-                            <div class="lp-plan-cell" data-plan="starter"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
-                            <div class="lp-plan-cell is-pick" data-plan="growth"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
-                            <div class="lp-plan-cell" data-plan="enterprise"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
-                        </div>
-                        <div class="lp-plan-row">
-                            <div class="lp-plan-cell is-label">Ten chains from one key, not ten integrations</div>
-                            <div class="lp-plan-cell" data-plan="starter"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
-                            <div class="lp-plan-cell is-pick" data-plan="growth"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
-                            <div class="lp-plan-cell" data-plan="enterprise"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
-                        </div>
-                        <div class="lp-plan-row">
-                            <div class="lp-plan-cell is-label">History swept the moment you connect a key</div>
-                            <div class="lp-plan-cell" data-plan="starter"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
-                            <div class="lp-plan-cell is-pick" data-plan="growth"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
-                            <div class="lp-plan-cell" data-plan="enterprise"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
-                        </div>
-                        <div class="lp-plan-row">
-                            <div class="lp-plan-cell is-label">Continuous monitoring and alerts</div>
-                            <div class="lp-plan-cell" data-plan="starter"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
-                            <div class="lp-plan-cell is-pick" data-plan="growth"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
-                            <div class="lp-plan-cell" data-plan="enterprise"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
-                        </div>
-                        <div class="lp-plan-row">
-                            <div class="lp-plan-cell is-label">See what a threshold would have caught before you set it</div>
-                            <div class="lp-plan-cell" data-plan="starter"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
-                            <div class="lp-plan-cell is-pick" data-plan="growth"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
-                            <div class="lp-plan-cell" data-plan="enterprise"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
-                        </div>
-                        <div class="lp-plan-row">
-                            <div class="lp-plan-cell is-label">API and your own rules</div>
-                            <div class="lp-plan-cell" data-plan="starter"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
-                            <div class="lp-plan-cell is-pick" data-plan="growth"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
-                            <div class="lp-plan-cell" data-plan="enterprise"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
-                        </div>
-                        <div class="lp-plan-row">
-                            <div class="lp-plan-cell is-label">Four eyes on severe findings, enforced</div>
-                            <div class="lp-plan-cell" data-plan="starter"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
-                            <div class="lp-plan-cell is-pick" data-plan="growth"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
-                            <div class="lp-plan-cell" data-plan="enterprise"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
-                        </div>
-                        <div class="lp-plan-row">
-                            <div class="lp-plan-cell is-label">EU data residency, SSO and an agreed response time</div>
-                            <div class="lp-plan-cell" data-plan="starter"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
-                            <div class="lp-plan-cell is-pick" data-plan="growth"><span class="lp-plan-no" aria-label="Not included">&ndash;</span></div>
-                            <div class="lp-plan-cell" data-plan="enterprise"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
-                        </div>
-                        <div class="lp-plan-row">
-                            <div class="lp-plan-cell is-label">Your data leaves with you, in full, on request</div>
-                            <div class="lp-plan-cell" data-plan="starter"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
-                            <div class="lp-plan-cell is-pick" data-plan="growth"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
-                            <div class="lp-plan-cell" data-plan="enterprise"><span class="lp-plan-yes" role="img" aria-label="Included"></span></div>
-                        </div>
-                    </div>
+                <div class="lp-plan-card" data-plan="starter">
+                    <div class="lp-plan-icon"><svg viewBox="0 0 24 24" fill="none" stroke="url(#planGrad)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></div>
+                    <h3 class="lp-plan-name">Starter</h3>
+                    <p class="lp-plan-tagline">For one compliance team</p>
+                    <div class="lp-plan-price"><span class="lp-plan-fig">99</span><span class="lp-plan-cur">&euro;</span></div>
+                    <p class="lp-plan-price-note">Per month, billed monthly, cancel anytime</p>
+                    <a class="lp-plan-btn" href="/book-a-demo">Choose Starter</a>
+                    <div class="lp-plan-rule"></div>
+                    <p class="lp-plan-inherits">Everything in the trial, plus:</p>
+                    <ul class="lp-plan-feats">
+                        <li class="lp-plan-feat">1,000 screenings a month</li>
+                        <li class="lp-plan-feat">100 addresses monitored</li>
+                        <li class="lp-plan-feat">3 seats</li>
+                        <li class="lp-plan-feat">Re-screened the moment a list changes</li>
+                        <li class="lp-plan-feat">Any verdict reproducible a year later</li>
+                        <li class="lp-plan-feat">Your data leaves with you, in full, on request</li>
+                    </ul>
+                </div>
+                <div class="lp-plan-card is-pick" data-plan="growth">
+                    <div class="lp-plan-icon"><svg viewBox="0 0 24 24" fill="none" stroke="url(#planGrad)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></div>
+                    <h3 class="lp-plan-name">Growth</h3>
+                    <p class="lp-plan-tagline">For teams screening every day</p>
+                    <div class="lp-plan-price"><span class="lp-plan-fig">399</span><span class="lp-plan-cur">&euro;</span></div>
+                    <p class="lp-plan-price-note">Per month, billed monthly, cancel anytime</p>
+                    <a class="lp-plan-btn" href="/book-a-demo">Choose Growth</a>
+                    <div class="lp-plan-rule"></div>
+                    <p class="lp-plan-inherits">Everything in Starter, plus:</p>
+                    <ul class="lp-plan-feats">
+                        <li class="lp-plan-feat">10,000 screenings a month</li>
+                        <li class="lp-plan-feat">2,500 addresses monitored</li>
+                        <li class="lp-plan-feat">10 seats</li>
+                        <li class="lp-plan-feat">History swept the moment you connect a key</li>
+                        <li class="lp-plan-feat">Ten chains from one key, not ten integrations</li>
+                        <li class="lp-plan-feat">Continuous monitoring and alerts</li>
+                        <li class="lp-plan-feat">See what a threshold would have caught before you set it</li>
+                        <li class="lp-plan-feat">API access and your own rules</li>
+                    </ul>
+                </div>
+                <div class="lp-plan-card" data-plan="enterprise">
+                    <div class="lp-plan-icon"><svg viewBox="0 0 24 24" fill="none" stroke="url(#planGrad)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M10 21v-6h4v6"/></svg></div>
+                    <h3 class="lp-plan-name">Enterprise</h3>
+                    <p class="lp-plan-tagline">For banks and exchanges</p>
+                    <div class="lp-plan-price"><span class="lp-plan-from">From</span><span class="lp-plan-fig">1,490</span><span class="lp-plan-cur">&euro;</span></div>
+                    <p class="lp-plan-price-note">Per month, contracted terms</p>
+                    <a class="lp-plan-btn" href="/book-a-demo">Talk to us</a>
+                    <div class="lp-plan-rule"></div>
+                    <p class="lp-plan-inherits">Everything in Growth, plus:</p>
+                    <ul class="lp-plan-feats">
+                        <li class="lp-plan-feat">50,000 screenings a month and up</li>
+                        <li class="lp-plan-feat">25,000 addresses monitored and up</li>
+                        <li class="lp-plan-feat">25 seats and up</li>
+                        <li class="lp-plan-feat">Four eyes on severe findings, enforced</li>
+                        <li class="lp-plan-feat">EU data residency, SSO and an agreed response time</li>
+                    </ul>
+                </div>
                 </div>
 
                 <div class="lp-plan-gate" id="lp-plan-gate" hidden>
@@ -506,7 +441,7 @@
                     </div>
                 </div>
 
-                <p class="lp-plans-foot">One trial per company, matched on your work email domain. Would you rather be walked through it first? <a href="/book-a-demo">Book a demo</a>.</p>
+                <p class="lp-plans-foot">One trial per company, matched on your work email domain. Prices exclude VAT. Would you rather be walked through it first? <a href="/book-a-demo">Book a demo</a>.</p>
             </div>
         </section>
     </div>
@@ -657,7 +592,7 @@
     <script src="/auth-flow.40.js" defer></script>
     <script src="/auth-nav.5.js" defer></script>
     <script src="/navlift.2.js" defer></script>
-    <script src="/i18n.130.js" defer></script>
-    <script src="/choose-plan.6.js" defer></script>
+    <script src="/i18n.131.js" defer></script>
+    <script src="/choose-plan.8.js" defer></script>
 </body>
 </html>
