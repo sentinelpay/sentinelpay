@@ -8,7 +8,24 @@ const TRIAL_DAYS = Number(process.env.TRIAL_DAYS || 14);
 const QUOTA = {
     starter: { liveChecks: 1, historyScans: 1, historyOpen: false },
     verified: { liveChecks: 10, historyScans: 0, historyOpen: true },
+    enterprise: { liveChecks: 1000000, historyScans: 0, historyOpen: true },
 };
+
+const IS_STAGING = String(process.env.APP_ENV || '').toLowerCase() === 'staging';
+const DEV_PLAN_EMAILS = new Set(
+    String(process.env.DEV_PLAN_EMAILS || '')
+        .split(',')
+        .map((v) => v.trim().toLowerCase())
+        .filter(Boolean)
+);
+const DEV_PLAN_ON = IS_STAGING && DEV_PLAN_EMAILS.size > 0;
+
+if (DEV_PLAN_EMAILS.size && !IS_STAGING) {
+    console.error('[trial] DEV_PLAN_EMAILS is set but APP_ENV is not staging. Refusing to grant anything.');
+}
+if (DEV_PLAN_ON) {
+    console.warn('[trial] staging dev grant active for ' + DEV_PLAN_EMAILS.size + ' address(es)');
+}
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS trials (
@@ -102,8 +119,37 @@ async function get(userId) {
     return shape(res.rows[0] || null);
 }
 
-async function ensure(userId) {
+async function devGrant(userId, email) {
+    if (!DEV_PLAN_ON) return false;
+    const who = String(email || '').trim().toLowerCase();
+    if (!who || !DEV_PLAN_EMAILS.has(who)) return false;
+    if (!(await init())) return false;
+    const res = await db.query(
+        `INSERT INTO trials (user_id, state, started_at, expires_at, note)
+         VALUES ($1, 'enterprise', now(), now() + interval '365 days', 'staging dev grant')
+         ON CONFLICT (user_id) DO UPDATE
+            SET state = 'enterprise',
+                started_at = COALESCE(trials.started_at, now()),
+                expires_at = now() + interval '365 days',
+                note = 'staging dev grant',
+                updated_at = now()
+            WHERE trials.state <> 'enterprise'
+         RETURNING user_id`,
+        [userId]
+    );
+    if (res.rows.length) console.warn('[trial] staging dev grant applied to user ' + userId);
+    return true;
+}
+
+async function ensure(userId, email) {
     if (!(await init())) return shape(null);
+    if (DEV_PLAN_ON && email) {
+        try {
+            await devGrant(userId, email);
+        } catch (err) {
+            console.error('[trial] dev grant failed: ' + err.message);
+        }
+    }
     await db.query(
         `INSERT INTO trials (user_id, state) VALUES ($1, 'none') ON CONFLICT (user_id) DO NOTHING`,
         [userId]

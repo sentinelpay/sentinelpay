@@ -567,7 +567,7 @@ app.get('/dashboard', async (req, res, next) => {
 
     if (DASHBOARD_NEXT) {
         try {
-            const state = await trial.ensure(me.userId);
+            const state = await trial.ensure(me.userId, me.email);
             if (state.state === 'none') return res.redirect(302, '/choose-a-plan');
         } catch (err) {
             console.error('[dashboard trial]', err.message);
@@ -588,7 +588,7 @@ app.get('/choose-a-plan', async (req, res) => {
         return res.redirect(302, '/?signin=1');
     }
     try {
-        const state = await trial.ensure(me.userId);
+        const state = await trial.ensure(me.userId, me.email);
         if (state.state !== 'none') return res.redirect(302, '/dashboard');
     } catch (err) {
         console.error('[plans trial]', err.message);
@@ -1790,7 +1790,7 @@ app.get('/v1/entitlement', async (req, res) => {
         const me = await currentUser(req);
         if (!me) return res.status(401).json({ error: 'Sign in first' });
         const [state, listed, runs] = await Promise.all([
-            trial.ensure(me.userId),
+            trial.ensure(me.userId, me.email),
             sanctions.status(),
             screening.countFor(me.userId),
         ]);

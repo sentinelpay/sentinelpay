@@ -41,7 +41,7 @@
         if (site && domain && domain.indexOf('.') !== -1) site.value = domain;
 
         var state = (r.body.trial && r.body.trial.state) || 'none';
-        if (state === 'starter' || state === 'verified') location.replace('/dashboard');
+        if (state !== 'none') location.replace('/dashboard');
     });
 
     function show(on) {
