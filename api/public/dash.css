@@ -458,7 +458,7 @@ button { font: inherit; color: inherit; }
     }
 
     .side-brand { display: none; }
-    .side-nav { padding: 0.9rem 0.7rem 2rem; }
+    .side-nav { padding: 0.9rem 0.7rem calc(0.45rem + env(safe-area-inset-bottom, 0px)); }
 
     .side-nav > * {
         opacity: 0;
