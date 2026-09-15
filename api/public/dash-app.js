@@ -9,8 +9,8 @@
     function setMenu(open) {
         if (!app) return;
         app.classList.toggle('is-open', open);
-        if (scrim) scrim.hidden = !open;
         if (menuBtn) menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (side) side.setAttribute('aria-hidden', open || window.innerWidth > 900 ? 'false' : 'true');
     }
 
     if (menuBtn) {

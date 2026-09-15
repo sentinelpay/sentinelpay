@@ -365,39 +365,37 @@ button { font: inherit; color: inherit; }
 
 .menu-btn {
     display: none;
-    width: 34px;
-    height: 34px;
-    place-items: center;
-    border: 1px solid var(--line);
-    border-radius: var(--r);
-    background: var(--surface);
-    color: var(--ink);
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    width: 36px;
+    height: 36px;
+    padding: 6px;
+    border: 0;
+    border-radius: 8px;
+    background: none;
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-appearance: none;
 }
-.hb {
-    display: block;
-    position: relative;
-    width: 17px;
-    height: 12px;
-}
+.menu-btn:focus-visible { outline: 2px solid rgba(16, 39, 91, 0.45); outline-offset: 2px; }
 .hb-l {
-    position: absolute;
-    left: 0;
-    width: 100%;
-    height: 1.8px;
+    width: 20px;
+    height: 1.5px;
+    flex: 0 0 auto;
     border-radius: 2px;
-    background: currentColor;
+    background: var(--ink-3);
+    transform-origin: center;
     transition:
         transform 0.34s var(--ease),
         opacity 0.2s ease,
         background 0.2s ease;
 }
-.hb-l:nth-child(1) { top: 0; }
-.hb-l:nth-child(2) { top: 50%; margin-top: -0.9px; }
-.hb-l:nth-child(3) { bottom: 0; }
-.app.is-open .hb-l:nth-child(1) { transform: translateY(5.1px) rotate(45deg); }
-.app.is-open .hb-l:nth-child(2) { opacity: 0; transform: scaleX(0.4); }
-.app.is-open .hb-l:nth-child(3) { transform: translateY(-5.1px) rotate(-45deg); }
+.app.is-open .hb-l { background: var(--ink); }
+.app.is-open .hb-l:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+.app.is-open .hb-l:nth-child(2) { opacity: 0; transform: scaleX(0); }
+.app.is-open .hb-l:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
 
 .canvas {
     flex: 1 1 auto;
@@ -407,10 +405,10 @@ button { font: inherit; color: inherit; }
 .scrim {
     position: fixed;
     inset: 0;
-    z-index: 25;
-    background: rgba(9, 18, 42, 0.32);
+    z-index: 12;
+    display: none;
+    background: rgba(9, 18, 42, 0.3);
 }
-.scrim[hidden] { display: none; }
 
 @media (max-width: 900px) {
     .app { grid-template-columns: minmax(0, 1fr); }
@@ -418,41 +416,61 @@ button { font: inherit; color: inherit; }
         position: fixed;
         z-index: 15;
         left: 0;
-        right: 0;
         top: 0;
-        bottom: 0;
-        width: auto;
-        height: auto;
+        bottom: auto;
+        right: auto;
+        width: min(300px, 84vw);
+        height: 100vh;
+        height: 100dvh;
         padding-top: var(--top-h);
-        border-right: 0;
+        clip-path: none;
+        border-right: 1px solid var(--line);
         box-shadow: none;
-        clip-path: inset(var(--top-h) 0 100% 0);
-        transition:
-            clip-path 0.42s var(--ease),
-            visibility 0s linear 0.42s;
         visibility: hidden;
+        transform: translateX(-101%);
+        transition:
+            transform 0.36s var(--ease),
+            box-shadow 0.36s ease,
+            visibility 0s linear 0.36s;
     }
     .app.is-open .side {
         visibility: visible;
-        clip-path: inset(var(--top-h) 0 0 0);
+        transform: translateX(0);
+        box-shadow: 24px 0 54px -28px rgba(14, 35, 88, 0.5);
         transition:
-            clip-path 0.48s var(--ease),
+            transform 0.42s var(--ease),
+            box-shadow 0.42s ease,
             visibility 0s linear 0s;
     }
+
+    .scrim {
+        display: block;
+        top: var(--top-h);
+        z-index: 12;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+    }
+    .app.is-open .scrim {
+        opacity: 1;
+        visibility: visible;
+        transition: opacity 0.32s ease, visibility 0s linear 0s;
+    }
+
     .side-brand { display: none; }
-    .side-nav { padding: 1rem 1.1rem 2rem; }
+    .side-nav { padding: 0.9rem 0.7rem 2rem; }
 
     .side-nav > * {
         opacity: 0;
-        transform: translateY(-8px);
+        transform: translateX(-10px);
         transition:
-            opacity 0.24s ease,
-            transform 0.32s var(--ease);
+            opacity 0.26s ease,
+            transform 0.36s var(--ease);
     }
     .app.is-open .side-nav > * {
         opacity: 1;
         transform: none;
-        transition-delay: calc(0.08s + var(--sp-row, 0) * 0.03s);
+        transition-delay: calc(0.1s + var(--sp-row, 0) * 0.028s);
     }
     .side-nav > *:nth-child(1) { --sp-row: 0; }
     .side-nav > *:nth-child(2) { --sp-row: 1; }
@@ -462,12 +480,10 @@ button { font: inherit; color: inherit; }
     .side-nav > *:nth-child(6) { --sp-row: 5; }
     .side-nav > *:nth-child(7) { --sp-row: 6; }
     .side-nav > *:nth-child(8) { --sp-row: 7; }
-    .side-nav > *:nth-child(9) { --sp-row: 8; }
-    .side-nav > *:nth-child(10) { --sp-row: 9; }
-    .side-nav > *:nth-child(n + 11) { --sp-row: 10; }
+    .side-nav > *:nth-child(n + 9) { --sp-row: 8; }
 
-    .menu-btn { display: grid; }
-    .scrim { display: none; }
+    .menu-btn { display: flex; }
+    .top { background: var(--canvas); backdrop-filter: none; }
     .canvas { padding: 1.2rem 1rem 2.4rem; }
 }
 
@@ -477,7 +493,7 @@ button { font: inherit; color: inherit; }
 
 @media (prefers-reduced-motion: reduce) {
     .app, .side, .nav-t, .nav-i, .nav-group,
-    .sidectl-pop, .sidectl-opt, .hb-l, .side-nav > * {
+    .sidectl-pop, .sidectl-opt, .hb-l, .side-nav > *, .scrim {
         transition-duration: 0.01ms !important;
         transition-delay: 0s !important;
     }
@@ -499,14 +515,10 @@ button { font: inherit; color: inherit; }
         background: transparent;
     }
     .app[data-side] .nav-group:first-child { height: 1.05rem; margin: 0.1rem 0 0.28rem; }
-    .app[data-side="hover"] .side,
     .app[data-side="hover"] .side:hover,
-    .app[data-side="hover"] .side:focus-within {
-        width: auto;
-        box-shadow: none;
-    }
+    .app[data-side="hover"] .side:focus-within { width: min(300px, 84vw); }
     .app[data-side] .side,
     .app[data-side="collapsed"] .side,
-    .app[data-side="hover"] .side { z-index: 15; width: auto; }
+    .app[data-side="hover"] .side { z-index: 15; width: min(300px, 84vw); }
     .side-foot { display: none; }
 }
