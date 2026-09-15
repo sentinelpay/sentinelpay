@@ -4238,10 +4238,10 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
 .lp-plans-title {
     margin: 0 0 0.7rem;
     font-family: var(--sp-display, 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif);
-    font-size: 2.9rem;
+    font-size: 2.1rem;
     font-weight: 800;
     letter-spacing: -0.02em;
-    line-height: 1.08;
+    line-height: 1.1;
     color: #0e2358;
     text-transform: none;
 }
@@ -4265,13 +4265,12 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
 
 @media (max-height: 1100px) and (min-width: 1081px) {
     .lp-plans.lp-section { padding-top: calc(var(--sp-nav-h, 64px) + 2.8rem); padding-bottom: 2.8rem; }
-    .lp-plans .lp-plans-title { font-size: 2.4rem; }
     .lp-plans .lp-bill-switch { margin-top: 1.15rem; }
     .lp-plans .lp-plan-grid { margin-top: 1.7rem; }
 }
 @media (max-height: 1055px) and (min-width: 1081px) {
     .lp-plans.lp-section { padding-top: calc(var(--sp-nav-h, 64px) + 2.2rem); padding-bottom: 2.2rem; }
-    .lp-plans .lp-plans-title { font-size: 2rem; }
+    .lp-plans .lp-plans-title { font-size: 2.1rem; }
     .lp-plans .lp-plan-btn { font-size: 0.83rem; }
     .lp-plans-foot { font-size: 0.75rem; }
     .lp-plans .lp-plans-sub { font-size: 0.92rem; }
@@ -4287,7 +4286,7 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
 }
 @media (max-height: 920px) and (min-width: 1081px) {
     .lp-plans.lp-section { padding-top: calc(var(--sp-nav-h, 64px) + 1.7rem); padding-bottom: 1.7rem; }
-    .lp-plans .lp-plans-title { font-size: 1.78rem; margin-bottom: 0.45rem; }
+    .lp-plans .lp-plans-title { font-size: 1.95rem; margin-bottom: 0.45rem; }
     .lp-plans .lp-plans-sub { font-size: 0.87rem; }
     .lp-plans .lp-bill-switch { margin-top: 0.8rem; }
     .lp-plans .lp-bill-seg { padding: 0.44rem 1rem; font-size: 0.82rem; }
@@ -4307,7 +4306,7 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
 }
 @media (max-height: 850px) and (min-width: 1081px) {
     .lp-plans.lp-section { padding-top: calc(var(--sp-nav-h, 64px) + 0.7rem); padding-bottom: 1.2rem; }
-    .lp-plans .lp-plans-title { font-size: 1.6rem; margin-bottom: 0.35rem; }
+    .lp-plans .lp-plans-title { font-size: 1.8rem; margin-bottom: 0.35rem; }
     .lp-plans .lp-plans-sub { font-size: 0.83rem; }
     .lp-plans .lp-bill-switch { margin-top: 0.65rem; }
     .lp-plans .lp-plan-grid { margin-top: 0.85rem; gap: 0.8rem; }
@@ -4322,7 +4321,7 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
 }
 @media (max-height: 800px) and (min-width: 1081px) {
     .lp-plans.lp-section { padding-top: calc(var(--sp-nav-h, 64px) + 0.55rem); padding-bottom: 0.9rem; }
-    .lp-plans .lp-plans-title { font-size: 1.46rem; margin-bottom: 0.3rem; }
+    .lp-plans .lp-plans-title { font-size: 1.62rem; margin-bottom: 0.3rem; }
     .lp-plans .lp-plans-sub { font-size: 0.79rem; line-height: 1.45; }
     .lp-plans .lp-bill-switch { margin-top: 0.55rem; padding: 0.22rem; }
     .lp-plans .lp-bill-seg { padding: 0.38rem 0.9rem; font-size: 0.79rem; }
@@ -4343,7 +4342,7 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
 }
 @media (max-height: 745px) and (min-width: 1081px) {
     .lp-plans.lp-section { padding-top: calc(var(--sp-nav-h, 64px) + 0.5rem); padding-bottom: 0.8rem; }
-    .lp-plans .lp-plans-title { font-size: 1.36rem; }
+    .lp-plans .lp-plans-title { font-size: 1.5rem; }
     .lp-plans .lp-plan-card { padding: 0.7rem 0.85rem 0.75rem; }
     .lp-plans .lp-plan-price-note { margin-bottom: 0.5rem; }
     .lp-plans .lp-plan-rule { margin: 0.42rem 0 0.36rem; }
@@ -4362,6 +4361,21 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
     letter-spacing: -0.02em;
     line-height: 1.1;
     color: #0e2358;
+}
+@media (max-height: 1100px) and (min-width: 1081px) {
+    .lp-cmp-title { font-size: 2.1rem; }
+}
+@media (max-height: 920px) and (min-width: 1081px) {
+    .lp-cmp-title { font-size: 1.95rem; }
+}
+@media (max-height: 850px) and (min-width: 1081px) {
+    .lp-cmp-title { font-size: 1.8rem; }
+}
+@media (max-height: 800px) and (min-width: 1081px) {
+    .lp-cmp-title { font-size: 1.62rem; }
+}
+@media (max-height: 745px) and (min-width: 1081px) {
+    .lp-cmp-title { font-size: 1.5rem; }
 }
 .lp-cmp-table { --cmp-label: minmax(0, 1.55fr); --cmp-col: minmax(0, 1fr); }
 .lp-cmp-row {
@@ -4482,5 +4496,4 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
     .lp-cmp-table { overflow-x: auto; }
     .lp-cmp-row { grid-template-columns: minmax(11rem, 1.5fr) repeat(4, minmax(6.4rem, 1fr)); min-width: 37rem; }
     .lp-cmp-cell { font-size: 0.8rem; padding-inline: 0.6rem; }
-    .lp-cmp-title { font-size: 1.7rem; }
 }
