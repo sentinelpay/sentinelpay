@@ -4031,12 +4031,6 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
     border-radius: 20px;
     background: #ffffff;
     box-shadow: 0 2px 10px rgba(14, 35, 88, 0.04);
-    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-}
-.lp-plan-card:hover {
-    border-color: rgba(123, 108, 255, 0.4);
-    box-shadow: 0 14px 34px -18px rgba(14, 35, 88, 0.28);
-    transform: translateY(-2px);
 }
 .lp-plan-card.is-pick {
     border-color: rgba(123, 108, 255, 0.45);
@@ -4095,22 +4089,25 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 0.62rem 1rem;
-    border-radius: 50px;
-    border: 1px solid #10275b;
-    background: #10275b;
+    position: relative;
+    overflow: hidden;
+    padding: 0.8rem 1.9rem;
+    border-radius: 10px;
+    border: none;
+    background: #0e2358;
     color: #ffffff;
-    font: inherit;
-    font-size: 0.86rem;
-    font-weight: 600;
+    font-family: var(--sp-text);
+    font-size: 0.85rem;
+    font-weight: 700;
     text-decoration: none;
     cursor: pointer;
     box-sizing: border-box;
-    transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
+    transform: none !important;
+    transition: background 0.3s ease, box-shadow 0.3s ease;
 }
-.lp-plan-btn:hover { background: #1b3a7e; border-color: #1b3a7e; box-shadow: 0 6px 18px rgba(16, 39, 91, 0.22); }
-.lp-plan-btn-quiet { background: transparent; border-color: transparent; color: #5b6b8c; }
-.lp-plan-btn-quiet:hover { background: rgba(16, 39, 91, 0.05); border-color: transparent; color: #10275b; box-shadow: none; }
+.lp-plan-btn:hover { background: #16305f; box-shadow: 0 12px 28px -12px rgba(14, 35, 88, 0.6); }
+.lp-plan-btn-quiet { background: transparent; color: #5b6b8c; }
+.lp-plan-btn-quiet:hover { background: rgba(16, 39, 91, 0.05); color: #10275b; box-shadow: none; }
 .lp-plan-btn[disabled] { opacity: 0.55; cursor: default; }
 
 .lp-plan-rule { height: 1px; margin: 1.3rem 0 1.1rem; background: rgba(14, 35, 88, 0.09); }
@@ -4182,7 +4179,7 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
     .lp-plans .lp-plan-fig { font-size: 1.55rem; }
     .lp-plans .lp-plan-name { font-size: 1.15rem; }
     .lp-plans .lp-plan-feat { font-size: 0.79rem; line-height: 1.4; }
-    .lp-plans .lp-plan-btn { padding: 0.52rem 0.9rem; font-size: 0.82rem; }
+    .lp-plans .lp-plan-btn { padding: 0.7rem 1rem; font-size: 0.82rem; }
     .lp-plans-foot { font-size: 0.74rem; }
 }
 
@@ -4198,8 +4195,8 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
     text-transform: none;
 }
 .lp-plans-sub { margin: 0; font-size: 0.98rem; line-height: 1.6; color: #5b6b8c; }
-.lp-plan-btn-solid { background: #10275b; border-color: #10275b; color: #ffffff; }
-.lp-plan-btn-solid:hover { background: #1b3a7e; border-color: #1b3a7e; }
+.lp-plan-btn-solid { background: #0e2358; color: #ffffff; }
+.lp-plan-btn-solid:hover { background: #16305f; }
 .lp-plans-foot { margin: 1.8rem auto 0; max-width: 70ch; text-align: center; font-size: 0.78rem; line-height: 1.6; color: rgba(14, 35, 88, 0.5); }
 .lp-plans-foot a { color: #10275b; text-decoration: none; border-bottom: 1px solid rgba(16, 39, 91, 0.3); }
 .lp-plans-foot a:hover { border-bottom-color: #10275b; }
@@ -4223,8 +4220,6 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
     align-items: stretch;
     border-bottom: 1px solid rgba(14, 35, 88, 0.08);
 }
-.lp-cmp-row:hover:not(.is-head) .lp-cmp-cell { background: rgba(14, 35, 88, 0.02); }
-.lp-cmp-row:hover:not(.is-head) .lp-cmp-cell.is-pick { background: rgba(123, 108, 255, 0.06); }
 .lp-cmp-cell {
     display: flex;
     align-items: center;
@@ -4264,45 +4259,22 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 0.4rem 0.95rem;
-    border-radius: 50px;
-    border: 1px solid #10275b;
-    background: #10275b;
+    padding: 0.52rem 1.1rem;
+    border-radius: 10px;
+    border: none;
+    background: #0e2358;
     color: #ffffff;
-    font: inherit;
+    font-family: var(--sp-text);
     font-size: 0.78rem;
-    font-weight: 600;
+    font-weight: 700;
     text-decoration: none;
     white-space: nowrap;
     cursor: pointer;
-    transition: background 0.18s ease, border-color 0.18s ease;
+    transform: none !important;
+    transition: background 0.3s ease, box-shadow 0.3s ease;
 }
-.lp-cmp-btn:hover { background: #1b3a7e; border-color: #1b3a7e; }
+.lp-cmp-btn:hover { background: #16305f; box-shadow: 0 10px 22px -12px rgba(14, 35, 88, 0.6); }
 
-.lp-cmp-search {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    width: 100%;
-    padding: 0.5rem 0.9rem;
-    border: 1px solid rgba(14, 35, 88, 0.14);
-    border-radius: 50px;
-    background: #fbfcfd;
-    color: rgba(14, 35, 88, 0.45);
-}
-.lp-cmp-search:focus-within { border-color: rgba(16, 39, 91, 0.45); box-shadow: 0 0 0 4px rgba(16, 39, 91, 0.06); }
-.lp-cmp-search svg { width: 15px; height: 15px; flex: 0 0 auto; }
-.lp-cmp-search input {
-    flex: 1 1 auto;
-    min-width: 0;
-    border: 0;
-    background: none;
-    outline: none;
-    font: inherit;
-    font-size: 0.84rem;
-    color: #16244a;
-}
-.lp-cmp-search input::-webkit-search-cancel-button { -webkit-appearance: none; }
 
 .lp-cmp-group { margin-top: 2.2rem; }
 .lp-cmp-group-title {
@@ -4355,8 +4327,6 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
     text-align: center;
     line-height: 1.3;
 }
-.lp-cmp-empty { margin: 2.5rem 0 0; text-align: center; color: #5b6b8c; font-size: 0.9rem; }
-.lp-cmp-row.is-out, .lp-cmp-group.is-out { display: none; }
 
 @media (max-width: 900px) {
     .lp-cmp-table { overflow-x: auto; }
