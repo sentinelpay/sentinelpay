@@ -35,19 +35,41 @@
         return String(email || '?').charAt(0).toUpperCase();
     }
 
+    function centreInk(host, inner) {
+        if (!host || !inner || !window.HTMLCanvasElement) return;
+        try {
+            var cs = getComputedStyle(host);
+            var g = document.createElement('canvas').getContext('2d');
+            if (!g || !g.measureText) return;
+            var scale = 20;
+            var size = parseFloat(cs.fontSize) * scale;
+            if (!size) return;
+            g.font = cs.fontWeight + ' ' + size + 'px ' + cs.fontFamily;
+            var m = g.measureText(inner.textContent);
+            if (m.actualBoundingBoxLeft == null || m.actualBoundingBoxRight == null) return;
+            var inkMid = (m.actualBoundingBoxRight - m.actualBoundingBoxLeft) / 2;
+            var dx = (m.width / 2 - inkMid) / scale;
+            inner.style.setProperty('--ink-x', dx.toFixed(3) + 'px');
+        } catch (err) {  }
+    }
+
+    function paintAvatar(me) {
+        var name = document.getElementById('who-name');
+        var mail = document.getElementById('who-mail');
+        var avatar = document.getElementById('avatar');
+        var inner = document.getElementById('avatar-in');
+        if (name) name.textContent = me.name || '';
+        if (mail) mail.textContent = me.email || '';
+        if (!avatar || !inner) return;
+        inner.textContent = initials(me.name, me.email);
+        avatar.setAttribute('aria-label', me.email || 'Account');
+        var place = function () { centreInk(avatar, inner); };
+        place();
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(place);
+    }
+
     fetch('/v1/entitlement', { credentials: 'same-origin' })
         .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (me) {
-            if (!me) return;
-            var name = document.getElementById('who-name');
-            var mail = document.getElementById('who-mail');
-            var avatar = document.getElementById('avatar');
-            if (name) name.textContent = me.name || '';
-            if (mail) mail.textContent = me.email || '';
-            if (avatar) {
-                avatar.textContent = initials(me.name, me.email);
-                avatar.setAttribute('aria-label', me.email || 'Account');
-            }
-        })
+        .then(function (me) { if (me) paintAvatar(me); })
         .catch(function () {  });
 })();

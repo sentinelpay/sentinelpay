@@ -10,14 +10,13 @@
     <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/fonts/jakarta-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="/fonts.2.css">
-    <link rel="stylesheet" href="/dash.18.css">
+    <link rel="stylesheet" href="/dash.20.css">
 </head>
 <body>
     <div class="app" id="app">
         <aside class="side" id="side">
-            <a class="side-brand" href="/dashboard">
-                <img class="side-mark" src="/logo.svg" alt="Sentinelpay" width="26" height="26">
-                <span class="side-word">Sentinelpay</span>
+            <a class="side-brand" href="/dashboard" aria-label="Sentinelpay">
+                <img class="side-mark" src="/logo.svg" alt="Sentinelpay" width="28" height="28">
             </a>
             <nav class="side-nav" id="side-nav" aria-label="Dashboard"></nav>
             <div class="side-foot" id="side-foot"></div>
@@ -34,7 +33,7 @@
                         <span class="who-name" id="who-name"></span>
                         <span class="who-mail" id="who-mail"></span>
                     </span>
-                    <button type="button" class="avatar" id="avatar" aria-label="Account"></button>
+                    <button type="button" class="avatar" id="avatar" aria-label="Account"><span class="avatar-in" id="avatar-in"></span></button>
                 </div>
             </header>
 
@@ -44,6 +43,6 @@
         <div class="scrim" id="scrim" hidden></div>
     </div>
     <script src="/i18n.138.js" defer></script>
-    <script src="/dash-app.16.js" defer></script>
+    <script src="/dash-app.18.js" defer></script>
 </body>
 </html>

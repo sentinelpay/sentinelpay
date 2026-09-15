@@ -63,25 +63,17 @@ button { font: inherit; color: inherit; }
 }
 
 .side-brand {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
+    display: grid;
+    place-items: center;
     height: var(--top-h);
-    padding: 0 1.15rem;
+    padding-top: 1px;
     flex: 0 0 auto;
     border-bottom: 1px solid var(--line-2);
     text-decoration: none;
     color: var(--ink);
 }
 
-.side-mark { width: 26px; height: 26px; display: block; flex: 0 0 auto; }
-
-.side-word {
-    font-family: var(--sp-display);
-    font-size: 0.98rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-}
+.side-mark { width: 28px; height: 28px; display: block; }
 
 .side-nav {
     flex: 1 1 auto;
@@ -149,8 +141,14 @@ button { font: inherit; color: inherit; }
     color: #ffffff;
     font-size: 0.72rem;
     font-weight: 700;
-    letter-spacing: 0.02em;
+    letter-spacing: 0;
+    line-height: 1;
     cursor: pointer;
+}
+
+.avatar-in {
+    display: block;
+    transform: translate(var(--ink-x, 0px), 0.063em);
 }
 
 .menu-btn {
