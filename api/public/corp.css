@@ -3939,6 +3939,19 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
 .lp-plan-fig { font-size: 2rem; font-weight: 700; letter-spacing: -0.035em; }
 .lp-plan-cur { font-size: 1.15rem; font-weight: 600; margin-right: 0.08em; align-self: flex-start; padding-top: 0.22em; }
 .lp-plan-from { align-self: center; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(14, 35, 88, 0.45); margin-right: 0.35rem; }
+.lp-plan-was {
+    align-self: center;
+    margin-left: 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: rgba(14, 35, 88, 0.35);
+}
+.lp-plan-was s { text-decoration: line-through; text-decoration-thickness: 1.5px; }
+.lp-plan-alt {
+    display: block;
+    color: rgba(14, 35, 88, 0.42);
+}
+
 .lp-plan-price-note {
     margin-top: 0.25rem;
     color: #82828c;
@@ -4132,7 +4145,7 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
     font-size: 0.75rem;
     line-height: 1.45;
     color: rgba(14, 35, 88, 0.5);
-    min-height: 2.2rem;
+    min-height: 3.3rem;
 }
 
 .lp-plan-btn {
