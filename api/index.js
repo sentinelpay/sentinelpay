@@ -1908,6 +1908,71 @@ app.get('/v1/screenings', async (req, res) => {
     }
 });
 
+app.get('/v1/screenings/stats', async (req, res) => {
+    res.set('Cache-Control', 'no-store, private');
+    try {
+        const me = await currentUser(req);
+        if (!me) return res.status(401).json({ error: 'Sign in first' });
+        const [numbers, listed] = await Promise.all([
+            screening.stats(me.userId, req.query.days),
+            sanctions.status(),
+        ]);
+        res.json({
+            ...numbers,
+            coverage: {
+                sources: [{
+                    name: 'OFAC SDN',
+                    authority: 'United States, Office of Foreign Assets Control',
+                    listDate: listed.listDate || '',
+                    addresses: listed.addressCount || 0,
+                    refreshedAt: listed.refreshedAt || null,
+                    live: true,
+                }],
+                pending: [
+                    { name: 'EU consolidated list', authority: 'European Union' },
+                    { name: 'UK sanctions list', authority: 'FCDO, United Kingdom' },
+                    { name: 'UN consolidated list', authority: 'United Nations' },
+                ],
+            },
+        });
+    } catch (err) {
+        console.error('[screening stats]', err.message);
+        res.status(500).json({ error: 'Could not read the numbers' });
+    }
+});
+
+app.get('/v1/screenings/:id/evidence', async (req, res) => {
+    res.set('Cache-Control', 'no-store, private');
+    try {
+        const me = await currentUser(req);
+        if (!me) return res.status(401).json({ error: 'Sign in first' });
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: 'Not a screening' });
+        const row = await screening.byId(me.userId, id);
+        if (!row) return res.status(404).json({ error: 'Not found' });
+        const doc = {
+            document: 'Sentinelpay screening evidence',
+            screeningId: id,
+            issuedAt: new Date().toISOString(),
+            issuedTo: me.email,
+            subject: { address: row.address, asset: row.asset || '', chain: row.chain || '' },
+            verdict: row.verdict,
+            checkedAt: row.checkedAt,
+            reasons: row.reasons,
+            sources: row.sources,
+            digest: row.digest,
+            note: 'The digest is taken over the sealed record as it was written. Recomputing it over this document will not match; it identifies the stored record.',
+        };
+        res.set('Content-Type', 'application/json; charset=utf-8');
+        res.set('Content-Disposition', 'attachment; filename="sentinelpay-screening-' + id + '.json"');
+        res.set('X-Content-Type-Options', 'nosniff');
+        res.send(JSON.stringify(doc, null, 2));
+    } catch (err) {
+        console.error('[screening evidence]', err.message);
+        res.status(500).json({ error: 'Could not build the file' });
+    }
+});
+
 app.get('/v1/screenings/:id', async (req, res) => {
     res.set('Cache-Control', 'no-store, private');
     try {

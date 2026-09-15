@@ -155,7 +155,9 @@
         var nav = document.getElementById('dash-nav');
         if (!nav) return;
         nav.textContent = '';
-        var groups = (typeof demoMode === 'function' && demoMode()) ? NAV : LIVE_NAV;
+        var groups = (typeof demoMode === 'function' && demoMode())
+            ? NAV
+            : (hasPlan() ? CONSOLE_NAV : LIVE_NAV);
         groups.forEach(function (g) {
             nav.appendChild(el('div', 'dash-nav-group', g.group));
             g.items.forEach(function (it) {
@@ -1860,9 +1862,8 @@
             return;
         }
         var trial = ENT.trial || {};
-        var live = trial.state === 'starter' || trial.state === 'verified';
         var onStart = !parse().name;
-        box.hidden = !live || onStart;
+        box.hidden = hasPlan() ? false : (!(trial.state === 'starter' || trial.state === 'verified') || onStart);
         if (box.hidden || !search) return;
         search.placeholder = t('Screen an address');
         search.setAttribute('aria-label', t('Screen an address'));
@@ -1923,9 +1924,348 @@
         return wrap;
     };
 
+    function hasPlan() {
+        var st = ENT && ENT.trial && ENT.trial.state;
+        return st === 'starter' || st === 'verified' || st === 'enterprise';
+    }
+
+    var CONSOLE_NAV = [
+        { group: 'Work', items: [
+            { route: '', label: 'Overview', icon: 'home' },
+            { route: 'screenings-log', label: 'Screenings', icon: 'search' },
+        ] },
+        { group: 'Evidence', items: [
+            { route: 'coverage', label: 'Coverage', icon: 'shield' },
+        ] },
+        { group: 'Account', items: [
+            { route: 'settings', label: 'Settings', icon: 'cog' },
+        ] },
+    ];
+
+    var CONSOLE_ROUTES = { '': 1, 'screenings-log': 1, 'coverage': 1, 'check': 1, 'settings': 1 };
+
+    function verdictLabel(v) {
+        if (v === 'severe') return t('Sanctioned');
+        if (v === 'clear') return t('No match');
+        return v || '';
+    }
+    function verdictTag(v) {
+        var s = el('span', 'dash-band dash-band-' + (v === 'severe' ? 'severe' : 'low'));
+        s.textContent = verdictLabel(v);
+        return s;
+    }
+    function daysSince(iso) {
+        if (!iso) return null;
+        var ms = Date.now() - new Date(iso).getTime();
+        if (isNaN(ms)) return null;
+        return Math.max(0, Math.floor(ms / 86400000));
+    }
+    function statCard(n, label, note, tone) {
+        var c = card();
+        var st = el('div', 'dash-stat');
+        var top = el('div', 'dash-stat-top');
+        top.appendChild(el('div', 'dash-stat-n', n));
+        if (tone === 'severe') top.appendChild(bandTag('severe'));
+        st.appendChild(top);
+        st.appendChild(el('div', 'dash-stat-l', label));
+        if (note) st.appendChild(el('div', 'dash-stat-d', note));
+        c.appendChild(st);
+        return c;
+    }
+
+    function activityChart(days) {
+        var wrap = el('div', 'dash-chart');
+        var max = 1;
+        days.forEach(function (d) { if (d.n > max) max = d.n; });
+        var bars = el('div', 'dash-chart-bars');
+        days.forEach(function (d) {
+            var col = el('div', 'dash-chart-col');
+            col.title = d.day + ': ' + d.n + ' ' + t('screenings') +
+                (d.flagged ? ', ' + d.flagged + ' ' + t('flagged') : '');
+            var stack = el('div', 'dash-chart-stack');
+            stack.style.setProperty('--h', Math.round((d.n / max) * 100) + '%');
+            if (d.flagged) {
+                var hot = el('div', 'dash-chart-hot');
+                hot.style.setProperty('--h', Math.round((d.flagged / Math.max(d.n, 1)) * 100) + '%');
+                stack.appendChild(hot);
+            }
+            col.appendChild(stack);
+            bars.appendChild(col);
+        });
+        wrap.appendChild(bars);
+        var axis = el('div', 'dash-chart-axis');
+        axis.appendChild(el('span', null, days.length ? days[0].day : ''));
+        axis.appendChild(el('span', null, t('today')));
+        wrap.appendChild(axis);
+        return wrap;
+    }
+
+    function coverageCard(cov) {
+        var c = card('Lists we screen against', t('Refreshed every 6 hours'));
+        var live = (cov && cov.sources) || [];
+        var rows = live.map(function (s) {
+            var age = daysSince(s.refreshedAt);
+            return { cells: [
+                { node: (function () {
+                    var d = el('div');
+                    d.appendChild(el('div', 'dash-strong', s.name));
+                    d.appendChild(el('div', 'dash-dim', s.authority));
+                    return d;
+                })() },
+                { text: s.listDate || '-' },
+                { text: num(s.addresses), cls: 'num' },
+                { node: (function () {
+                    var tag = el('span', 'dash-band dash-band-low');
+                    tag.textContent = age === null ? t('Live') : (age === 0 ? t('Today') : age + ' ' + t('days ago'));
+                    return tag;
+                })(), cls: 'num' },
+            ] };
+        });
+        ((cov && cov.pending) || []).forEach(function (s) {
+            rows.push({ cells: [
+                { node: (function () {
+                    var d = el('div', 'is-pending');
+                    d.appendChild(el('div', 'dash-strong', s.name));
+                    d.appendChild(el('div', 'dash-dim', s.authority));
+                    return d;
+                })() },
+                { text: '-' },
+                { text: '-', cls: 'num' },
+                { node: (function () {
+                    var tag = el('span', 'dash-band dash-band-medium');
+                    tag.textContent = t('Not connected yet');
+                    return tag;
+                })(), cls: 'num' },
+            ] });
+        });
+        c.appendChild(table(
+            [{ label: 'List' }, { label: 'Published' }, { label: 'Addresses', num: true }, { label: 'Last pull', num: true }],
+            rows));
+        return c;
+    }
+
+    var consoleViews = {};
+
+    consoleViews[''] = function () {
+        var page = el('div');
+        page.appendChild(head('Overview',
+            'What you have screened, what it found, and how current the lists are.',
+            [button('Screen an address', 'primary', function () { focusSearch(); }, 'search')]));
+
+        var stats = el('div', 'dash-grid dash-grid-4');
+        page.appendChild(stats);
+        var chartBox = card('Screening activity', t('Last 30 days'));
+        page.appendChild(chartBox);
+        var chartBody = el('div', 'dash-log-body', t('Loading'));
+        chartBox.appendChild(chartBody);
+        var covHolder = el('div');
+        page.appendChild(covHolder);
+        var recentBox = card('Latest screenings', '');
+        page.appendChild(recentBox);
+        var recentBody = el('div', 'dash-log-body', t('Loading'));
+        recentBox.appendChild(recentBody);
+
+        api('/v1/screenings/stats').then(function (r) {
+            var s = (r.ok && r.body) || {};
+            var flagged = (s.verdicts && s.verdicts.severe) || 0;
+            var clear = (s.verdicts && s.verdicts.clear) || 0;
+            var src = (s.coverage && s.coverage.sources && s.coverage.sources[0]) || {};
+            var age = daysSince(src.refreshedAt);
+            stats.textContent = '';
+            stats.appendChild(statCard(num(s.total || 0), t('Screenings run'), t('since you joined')));
+            stats.appendChild(statCard(num(flagged), t('Sanctions hits'), t('last 30 days'),
+                flagged ? 'severe' : null));
+            stats.appendChild(statCard(num(clear), t('Cleared'), t('last 30 days')));
+            stats.appendChild(statCard(num(src.addresses || 0), t('Addresses on the list'),
+                age === null ? t('OFAC SDN') : t('OFAC SDN, pulled') + ' ' +
+                    (age === 0 ? t('today') : age + ' ' + t('days ago'))));
+
+            chartBody.textContent = '';
+            if (!s.window) {
+                chartBody.appendChild(el('p', 'dash-start-p',
+                    t('Nothing in the last 30 days. Screen an address and it shows up here.')));
+            } else {
+                chartBody.appendChild(activityChart(s.days || []));
+            }
+            covHolder.appendChild(coverageCard(s.coverage));
+        }).catch(function () {
+            chartBody.textContent = t('Could not load the numbers.');
+        });
+
+        api('/v1/screenings?limit=8').then(function (r) {
+            recentBody.textContent = '';
+            var rows = ((r.body && r.body.rows) || []);
+            if (!rows.length) {
+                recentBody.appendChild(el('p', 'dash-start-p', t('No screenings yet.')));
+                return;
+            }
+            recentBody.appendChild(screeningTable(rows));
+        });
+        return page;
+    };
+
+    function screeningTable(rows) {
+        return table(
+            [{ label: 'When' }, { label: 'Chain' }, { label: 'Address' }, { label: 'Result' }],
+            rows.map(function (row) {
+                return {
+                    data: row,
+                    cells: [
+                        { text: when(row.at, true) },
+                        { text: row.asset || '-' },
+                        { node: (function () { var m = el('span', 'dash-mono'); m.textContent = short(row.address); return m; })() },
+                        { node: verdictTag(row.verdict) },
+                    ],
+                };
+            }),
+            function (row) { go('check/' + row.id); });
+    }
+
+    consoleViews['screenings-log'] = function () {
+        var page = el('div');
+        page.appendChild(head('Screenings',
+            'Every check is kept with the list version it ran against, so you can show what you knew and when.'));
+
+        var box = card('', '');
+        var tools = el('div', 'dash-tools');
+        var input = el('input', 'dash-tool-in');
+        input.type = 'search';
+        input.placeholder = t('Filter by address');
+        input.setAttribute('aria-label', t('Filter by address'));
+        tools.appendChild(input);
+        var only = el('label', 'dash-tool-check');
+        var cb = el('input');
+        cb.type = 'checkbox';
+        only.appendChild(cb);
+        only.appendChild(el('span', null, t('Only sanctions hits')));
+        tools.appendChild(only);
+        box.appendChild(tools);
+        var body = el('div', 'dash-log-body', t('Loading'));
+        box.appendChild(body);
+        page.appendChild(box);
+
+        var all = [];
+        function paint() {
+            var q = input.value.trim().toLowerCase();
+            var rows = all.filter(function (r) {
+                if (cb.checked && r.verdict === 'clear') return false;
+                if (q && String(r.address || '').toLowerCase().indexOf(q) === -1) return false;
+                return true;
+            });
+            body.textContent = '';
+            body.appendChild(screeningTable(rows));
+        }
+        input.addEventListener('input', paint);
+        cb.addEventListener('change', paint);
+
+        api('/v1/screenings?limit=200').then(function (r) {
+            all = (r.body && r.body.rows) || [];
+            body.textContent = '';
+            if (!all.length) {
+                body.appendChild(el('p', 'dash-start-p', t('No screenings yet.')));
+                return;
+            }
+            paint();
+        });
+        return page;
+    };
+
+    consoleViews['coverage'] = function () {
+        var page = el('div');
+        page.appendChild(head('Coverage',
+            'Exactly which lists we run against, how current each one is, and what is not connected yet.'));
+        var holder = el('div');
+        page.appendChild(holder);
+        var note = card('How this works', '');
+        note.appendChild(el('p', 'dash-start-p',
+            t('We pull each list from its publisher and keep the version with every screening. A verdict can be reproduced later against the exact list it ran on.')));
+        page.appendChild(note);
+        api('/v1/screenings/stats').then(function (r) {
+            var s = (r.ok && r.body) || {};
+            holder.appendChild(coverageCard(s.coverage));
+        });
+        return page;
+    };
+
+    consoleViews['check'] = function (id) {
+        var page = el('div');
+        page.appendChild(crumbs([{ label: t('Screenings'), route: 'screenings-log' }, { label: '#' + id }]));
+        var box = card('', '');
+        var body = el('div', 'dash-log-body', t('Loading'));
+        box.appendChild(body);
+        page.appendChild(box);
+
+        api('/v1/screenings/' + encodeURIComponent(id)).then(function (r) {
+            body.textContent = '';
+            if (!r.ok || !r.body) {
+                body.appendChild(el('p', 'dash-start-p', t('That screening is not in your log.')));
+                return;
+            }
+            var d = r.body;
+            var top = el('div', 'dash-check-top');
+            var addr = el('div', 'dash-mono dash-check-addr');
+            addr.textContent = d.address;
+            top.appendChild(addr);
+            top.appendChild(verdictTag(d.verdict));
+            body.appendChild(top);
+
+            body.appendChild(facts([
+                [t('Chain'), d.chain || d.asset || t('Not recognised')],
+                [t('Checked'), when(d.checkedAt, true)],
+                [t('List version'), (d.sources && d.sources[0] && d.sources[0].listDate) || '-'],
+                [t('Record digest'), d.digest || '-', 'mono'],
+            ]));
+
+            var why = el('div', 'dash-why');
+            why.appendChild(el('h2', 'sp-dash-h2', t('Why this verdict')));
+            var ul = el('ul', 'dash-why-list');
+            (d.reasons || []).forEach(function (rs) {
+                var li = el('li');
+                li.appendChild(el('div', 'dash-strong', rs.label));
+                if (rs.entity) li.appendChild(el('div', 'dash-dim', t('Entity') + ': ' + rs.entity));
+                if (rs.programs && rs.programs.length) {
+                    li.appendChild(el('div', 'dash-dim', t('Programs') + ': ' + rs.programs.join(', ')));
+                }
+                ul.appendChild(li);
+            });
+            why.appendChild(ul);
+            body.appendChild(why);
+
+            var dl = el('a', 'dash-btn dash-btn-primary');
+            dl.href = '/v1/screenings/' + encodeURIComponent(id) + '/evidence';
+            dl.innerHTML = icon('download') + '<span>' + esc(t('Download evidence file')) + '</span>';
+            body.appendChild(dl);
+        });
+        return page;
+    };
+
     function render() {
         var r = parse();
         var ownWorkspace = ENT && !demoMode();
+        if (ownWorkspace && hasPlan() && r.name !== 'settings') {
+            var build = consoleViews[r.name] || consoleViews[''];
+            var built;
+            try {
+                built = build(r.arg);
+            } catch (err) {
+                built = el('div');
+                built.appendChild(head('Something went wrong',
+                    'This screen could not be drawn. The rest of the dashboard still works.'));
+                if (window.console) console.error('[dashboard]', err);
+            }
+            while (view.firstChild) view.removeChild(view.firstChild);
+            view.appendChild(built);
+            paintNav(CONSOLE_ROUTES[r.name] ? r.name : '');
+            paintDemoChip();
+            paintSearch();
+            paintLive();
+            paintUsage();
+            closeRail();
+            window.scrollTo(0, 0);
+            var h1 = view.querySelector('h1');
+            document.title = 'Sentinelpay \u00b7 ' + (h1 ? h1.textContent : t('Overview'));
+            return;
+        }
         if (ownWorkspace && !LIVE_ROUTES[r.name]) {
             while (view.firstChild) view.removeChild(view.firstChild);
             view.appendChild(startScreen());
@@ -1982,6 +2322,15 @@
             if (e.key !== 'Enter') return;
             var q = search.value.trim();
             if (!q) return;
+            if (!demoMode() && ENT && hasPlan()) {
+                search.blur();
+                search.value = '';
+                api('/v1/screen', { method: 'POST', body: { address: q } }).then(function (r) {
+                    if (r.ok && r.body && r.body.id) { go('check/' + r.body.id); return; }
+                    go('screenings-log');
+                });
+                return;
+            }
             if (!demoMode() && ENT) {
                 search.blur();
                 search.value = '';

@@ -140,15 +140,76 @@ async function recent(userId, limit) {
 
 async function byId(userId, id) {
     if (!(await init())) return null;
-    const res = await db.query('SELECT id, detail_enc FROM screenings WHERE id = $1 AND user_id = $2', [id, userId]);
+    const res = await db.query(
+        'SELECT id, detail_enc, digest, at FROM screenings WHERE id = $1 AND user_id = $2', [id, userId]);
     if (!res.rows.length) return null;
     const plain = db.open('screening:' + res.rows[0].id, res.rows[0].detail_enc);
     if (!plain) return null;
     try {
-        return JSON.parse(plain);
+        const doc = JSON.parse(plain);
+        doc.id = res.rows[0].id;
+        doc.digest = res.rows[0].digest || doc.digest || '';
+        return doc;
     } catch (err) {
         return null;
     }
+}
+
+async function stats(userId, days) {
+    if (!(await init())) {
+        return { total: 0, window: 0, days: [], verdicts: {}, assets: [], firstAt: null, lastAt: null };
+    }
+    const span = Math.min(Math.max(Number(days) || 30, 1), 365);
+    const [totalRes, dayRes, verdictRes, assetRes, edgeRes] = await Promise.all([
+        db.query('SELECT count(*)::int AS n FROM screenings WHERE user_id = $1', [userId]),
+        db.query(
+            `SELECT to_char(date_trunc('day', at), 'YYYY-MM-DD') AS d,
+                    count(*)::int AS n,
+                    count(*) FILTER (WHERE verdict <> 'clear')::int AS flagged
+               FROM screenings
+              WHERE user_id = $1 AND at >= now() - ($2 || ' days')::interval
+           GROUP BY 1 ORDER BY 1`,
+            [userId, String(span)]
+        ),
+        db.query(
+            `SELECT verdict, count(*)::int AS n FROM screenings
+              WHERE user_id = $1 AND at >= now() - ($2 || ' days')::interval
+           GROUP BY 1`,
+            [userId, String(span)]
+        ),
+        db.query(
+            `SELECT COALESCE(NULLIF(asset, ''), 'other') AS asset, count(*)::int AS n
+               FROM screenings
+              WHERE user_id = $1 AND at >= now() - ($2 || ' days')::interval
+           GROUP BY 1 ORDER BY n DESC`,
+            [userId, String(span)]
+        ),
+        db.query('SELECT min(at) AS first_at, max(at) AS last_at FROM screenings WHERE user_id = $1', [userId]),
+    ]);
+
+    const byDay = new Map(dayRes.rows.map((r) => [r.d, r]));
+    const series = [];
+    const now = new Date();
+    for (let i = span - 1; i >= 0; i--) {
+        const d = new Date(now.getTime() - i * 86400000).toISOString().slice(0, 10);
+        const row = byDay.get(d);
+        series.push({ day: d, n: row ? row.n : 0, flagged: row ? row.flagged : 0 });
+    }
+
+    const verdicts = {};
+    let windowTotal = 0;
+    verdictRes.rows.forEach((r) => { verdicts[r.verdict] = r.n; windowTotal += r.n; });
+
+    return {
+        total: totalRes.rows[0].n,
+        window: windowTotal,
+        spanDays: span,
+        days: series,
+        verdicts,
+        assets: assetRes.rows.map((r) => ({ asset: r.asset, n: r.n })),
+        firstAt: edgeRes.rows[0].first_at,
+        lastAt: edgeRes.rows[0].last_at,
+    };
 }
 
 async function countFor(userId) {
@@ -157,4 +218,4 @@ async function countFor(userId) {
     return res.rows[0].n;
 }
 
-module.exports = { screen, recent, byId, countFor, identify };
+module.exports = { screen, recent, byId, countFor, stats, identify };
