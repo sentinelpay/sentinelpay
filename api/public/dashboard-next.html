@@ -8,11 +8,42 @@
     <meta name="robots" content="noindex, nofollow">
     <link rel="icon" type="image/svg+xml" href="/logo.svg">
     <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/jakarta-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="/fonts.2.css">
-    <link rel="stylesheet" href="/dash.17.css">
+    <link rel="stylesheet" href="/dash.18.css">
 </head>
 <body>
-    <main id="app"></main>
-    <script src="/dash-app.15.js" defer></script>
+    <div class="app" id="app">
+        <aside class="side" id="side">
+            <a class="side-brand" href="/dashboard">
+                <img class="side-mark" src="/logo.svg" alt="Sentinelpay" width="26" height="26">
+                <span class="side-word">Sentinelpay</span>
+            </a>
+            <nav class="side-nav" id="side-nav" aria-label="Dashboard"></nav>
+            <div class="side-foot" id="side-foot"></div>
+        </aside>
+
+        <div class="main">
+            <header class="top">
+                <button type="button" class="menu-btn" id="menu-btn" aria-label="Menu" aria-expanded="false">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+                </button>
+                <div class="top-slot" id="top-slot"></div>
+                <div class="top-side">
+                    <span class="who" id="who">
+                        <span class="who-name" id="who-name"></span>
+                        <span class="who-mail" id="who-mail"></span>
+                    </span>
+                    <button type="button" class="avatar" id="avatar" aria-label="Account"></button>
+                </div>
+            </header>
+
+            <main class="canvas" id="canvas"></main>
+        </div>
+
+        <div class="scrim" id="scrim" hidden></div>
+    </div>
+    <script src="/i18n.138.js" defer></script>
+    <script src="/dash-app.16.js" defer></script>
 </body>
 </html>
