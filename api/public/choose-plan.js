@@ -6,7 +6,7 @@
     }
 
     var gate = document.getElementById('lp-plan-gate');
-    var grid = document.querySelector('.lp-plan-matrix');
+    var grid = document.getElementById('choose-a-plan');
     if (!gate || !grid) return;
 
     var who = document.getElementById('lp-plan-gate-who');
@@ -46,7 +46,6 @@
 
     function show(on) {
         gate.hidden = !on;
-        grid.classList.toggle('is-dimmed', on);
         if (on && site) site.focus();
         if (on) gate.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
