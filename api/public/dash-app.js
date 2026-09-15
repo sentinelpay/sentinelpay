@@ -177,7 +177,6 @@
         pop.className = 'sidectl-pop';
         pop.id = 'sidectl-pop';
         pop.setAttribute('role', 'menu');
-        pop.hidden = true;
 
         var head = document.createElement('div');
         head.className = 'sidectl-h';
@@ -215,22 +214,30 @@
             'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
             '<path d="M4.5 5.5h15v13h-15Z"/><path d="M10 5.5v13"/></svg>';
 
+        function isOpen() {
+            return wrap.classList.contains('is-open');
+        }
+
         function openPop(on) {
-            pop.hidden = !on;
-            btn.setAttribute('aria-expanded', on ? 'true' : 'false');
             wrap.classList.toggle('is-open', on);
+            btn.setAttribute('aria-expanded', on ? 'true' : 'false');
+            pop.setAttribute('aria-hidden', on ? 'false' : 'true');
         }
 
         btn.addEventListener('click', function (e) {
             e.stopPropagation();
-            openPop(pop.hidden);
+            openPop(!isOpen());
         });
         pop.addEventListener('click', function (e) { e.stopPropagation(); });
         document.addEventListener('click', function () { openPop(false); });
         document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') openPop(false);
+            if (e.key === 'Escape' && isOpen()) {
+                openPop(false);
+                btn.focus();
+            }
         });
 
+        openPop(false);
         wrap.appendChild(pop);
         wrap.appendChild(btn);
         foot.appendChild(wrap);
