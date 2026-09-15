@@ -4045,6 +4045,57 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
     background: linear-gradient(90deg, #00f0ff, #7b6cff, #a020f0);
 }
 
+.lp-bill-switch {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+    width: fit-content;
+    margin: 1.6rem auto 0;
+    padding: 0.28rem;
+    border: 1px solid rgba(14, 35, 88, 0.08);
+    border-radius: 50px;
+    background: rgba(14, 35, 88, 0.045);
+}
+.lp-bill-seg {
+    position: relative;
+    z-index: 1;
+    padding: 0.5rem 1.15rem;
+    border: none;
+    border-radius: 50px;
+    background: none;
+    font-family: var(--sp-text);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #5b6b8c;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color 0.25s ease;
+}
+.lp-bill-seg[aria-selected="true"] { color: #0e2358; font-weight: 700; }
+.lp-bill-thumb {
+    position: absolute;
+    top: 0;
+    left: 0;
+    border-radius: 50px;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(14, 35, 88, 0.14);
+    transform: translate(var(--x, 0px), var(--y, 0px));
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.lp-bill-switch:not(.is-ready) .lp-bill-thumb { opacity: 0; }
+
+.lp-bill, .lp-plan-price.lp-bill { display: none; }
+.lp-plans[data-bill="quarterly"] .lp-plan-price.lp-bill-q,
+.lp-plans[data-bill="yearly"] .lp-plan-price.lp-bill-y,
+.lp-plans[data-bill="scan"] .lp-plan-price.lp-bill-s { display: flex; }
+.lp-plans[data-bill="quarterly"] .lp-plan-price-note.lp-bill-q,
+.lp-plans[data-bill="yearly"] .lp-plan-price-note.lp-bill-y,
+.lp-plans[data-bill="scan"] .lp-plan-price-note.lp-bill-s { display: block; }
+.lp-plans[data-bill="quarterly"] .lp-plan-feat.lp-bill-q,
+.lp-plans[data-bill="yearly"] .lp-plan-feat.lp-bill-y,
+.lp-plans[data-bill="scan"] .lp-plan-feat.lp-bill-s { display: block; }
+
 .lp-plan-icon { margin-bottom: 1rem; }
 .lp-plan-icon svg { width: 26px; height: 26px; display: block; }
 .lp-plan-name {

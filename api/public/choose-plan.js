@@ -59,6 +59,51 @@
 
     if (cancel) cancel.addEventListener('click', function () { show(false); });
 
+    var billSwitch = document.querySelector('.lp-bill-switch');
+    if (billSwitch) {
+        var segs = [].slice.call(billSwitch.querySelectorAll('.lp-bill-seg'));
+        var thumb = billSwitch.querySelector('.lp-bill-thumb');
+
+        var place = function (seg) {
+            if (!thumb || !seg) return;
+            var box = billSwitch.getBoundingClientRect();
+            var r = seg.getBoundingClientRect();
+            if (!r.width) return;
+            thumb.style.width = r.width + 'px';
+            thumb.style.height = r.height + 'px';
+            thumb.style.setProperty('--x', (r.left - box.left) + 'px');
+            thumb.style.setProperty('--y', (r.top - box.top) + 'px');
+        };
+
+        var pick = function (seg) {
+            segs.forEach(function (s) { s.setAttribute('aria-selected', s === seg ? 'true' : 'false'); });
+            grid.setAttribute('data-bill', seg.getAttribute('data-bill-go'));
+            place(seg);
+        };
+
+        var current = function () {
+            return segs.filter(function (s) { return s.getAttribute('aria-selected') === 'true'; })[0] || segs[0];
+        };
+
+        segs.forEach(function (s) {
+            s.addEventListener('click', function () { pick(s); });
+        });
+
+        var settle = function () {
+            place(current());
+            billSwitch.classList.add('is-ready');
+        };
+        if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(settle);
+        } else {
+            settle();
+        }
+        window.addEventListener('resize', function () { place(current()); });
+        if (window.ResizeObserver) {
+            new ResizeObserver(function () { place(current()); }).observe(billSwitch);
+        }
+    }
+
     if (go) go.addEventListener('click', function () {
         err.hidden = true;
         go.disabled = true;
