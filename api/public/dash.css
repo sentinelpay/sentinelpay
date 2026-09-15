@@ -81,7 +81,17 @@ button { font: inherit; color: inherit; }
     overflow-y: auto;
     overscroll-behavior: contain;
     padding: 0.7rem 0.6rem 1rem;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(14, 35, 88, 0.2) #f1f4f9;
 }
+.side-nav::-webkit-scrollbar { width: 6px; height: 6px; }
+.side-nav::-webkit-scrollbar-track { background: #f1f4f9; border-radius: 10px; }
+.side-nav::-webkit-scrollbar-thumb {
+    background: rgba(14, 35, 88, 0.2);
+    border: 1px solid rgba(14, 35, 88, 0.06);
+    border-radius: 10px;
+}
+.side-nav::-webkit-scrollbar-thumb:hover { background: rgba(0, 145, 200, 0.55); }
 
 .nav-group {
     padding: 0 0.55rem;
@@ -126,10 +136,120 @@ button { font: inherit; color: inherit; }
 
 .side-foot {
     flex: 0 0 auto;
-    padding: 0.5rem 0.6rem 0.8rem;
+    padding: 0.55rem 0.6rem;
     border-top: 1px solid var(--line-2);
 }
-.side-foot .nav-group { margin-top: 0.5rem; }
+
+.sidectl { position: relative; }
+
+.sidectl-btn {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    color: var(--ink-3);
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+.sidectl-btn:hover, .sidectl.is-open .sidectl-btn { background: var(--hover); color: var(--ink); }
+.sidectl-btn:focus-visible { outline: 2px solid rgba(16, 39, 91, 0.45); outline-offset: 1px; }
+
+.sidectl-pop {
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + 0.45rem);
+    z-index: 40;
+    width: 196px;
+    padding: 0.4rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    box-shadow: 0 14px 34px -14px rgba(14, 35, 88, 0.3), 0 2px 6px rgba(14, 35, 88, 0.06);
+}
+.sidectl-pop[hidden] { display: none; }
+
+.sidectl-h {
+    padding: 0.35rem 0.5rem 0.45rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: var(--ink-4);
+}
+
+.sidectl-opt {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.42rem 0.5rem;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    color: var(--ink-3);
+    font-size: 0.83rem;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+.sidectl-opt:hover { background: var(--hover); color: var(--ink); }
+.sidectl-opt:focus-visible { outline: 2px solid rgba(16, 39, 91, 0.45); outline-offset: 1px; }
+.sidectl-opt.is-on { color: var(--ink); font-weight: 600; }
+
+.sidectl-dot {
+    width: 7px;
+    height: 7px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: transparent;
+    box-shadow: inset 0 0 0 1.5px rgba(14, 35, 88, 0.22);
+}
+.sidectl-opt.is-on .sidectl-dot { background: var(--ink); box-shadow: none; }
+
+.app[data-side="collapsed"], .app[data-side="hover"] { --side-w: 64px; }
+.app[data-side="collapsed"] .side, .app[data-side="hover"] .side { z-index: 15; }
+.app[data-side="collapsed"] .nav-t, .app[data-side="hover"] .nav-t { display: none; }
+.app[data-side="collapsed"] .nav-group, .app[data-side="hover"] .nav-group {
+    height: 1px;
+    margin: 0.55rem 0.4rem;
+    padding: 0;
+    overflow: hidden;
+    text-indent: -999px;
+    background: var(--line-2);
+}
+.app[data-side="collapsed"] .nav-group:first-child,
+.app[data-side="hover"] .nav-group:first-child { display: none; }
+.app[data-side="collapsed"] .nav-btn, .app[data-side="hover"] .nav-btn { justify-content: center; padding: 0.44rem 0; }
+.app[data-side="collapsed"] .side-nav, .app[data-side="hover"] .side-nav { padding-left: 0.5rem; padding-right: 0.5rem; }
+.app[data-side="collapsed"] .side-foot, .app[data-side="hover"] .side-foot { display: grid; place-items: center; }
+
+.app[data-side="hover"] .side {
+    transition: width 0.16s ease;
+    width: var(--side-w);
+}
+.app[data-side="hover"] .side:hover,
+.app[data-side="hover"] .side:focus-within {
+    width: 248px;
+    box-shadow: 14px 0 34px -20px rgba(14, 35, 88, 0.35);
+}
+.app[data-side="hover"] .side:hover .nav-t,
+.app[data-side="hover"] .side:focus-within .nav-t { display: block; }
+.app[data-side="hover"] .side:hover .nav-btn,
+.app[data-side="hover"] .side:focus-within .nav-btn { justify-content: flex-start; padding: 0.38rem 0.55rem; }
+.app[data-side="hover"] .side:hover .nav-group,
+.app[data-side="hover"] .side:focus-within .nav-group {
+    height: auto;
+    margin: 0.85rem 0 0.28rem;
+    padding: 0 0.55rem;
+    text-indent: 0;
+    background: none;
+}
+.app[data-side="hover"] .side:hover .nav-group:first-child,
+.app[data-side="hover"] .side:focus-within .nav-group:first-child { display: block; margin-top: 0.1rem; }
+.app[data-side="hover"] .side:hover .side-foot,
+.app[data-side="hover"] .side:focus-within .side-foot { display: block; }
 
 .main {
     display: flex;

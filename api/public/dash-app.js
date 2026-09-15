@@ -98,12 +98,10 @@
 
     function paintNav(active) {
         var host = document.getElementById('side-nav');
-        var foot = document.getElementById('side-foot');
         if (!host) return;
         host.textContent = '';
-        if (foot) foot.textContent = '';
-        NAV.forEach(function (g, gi) {
-            var target = (foot && gi === NAV.length - 1) ? foot : host;
+        NAV.forEach(function (g) {
+            var target = host;
             var label = document.createElement('div');
             label.className = 'nav-group';
             label.textContent = t(g.group);
@@ -128,6 +126,114 @@
             });
             target.appendChild(ul);
         });
+    }
+
+    var SIDE_MODES = [
+        { key: 'expanded', label: 'Expanded' },
+        { key: 'collapsed', label: 'Collapsed' },
+        { key: 'hover', label: 'Expand on hover' }
+    ];
+    var SIDE_KEY = 'sp-side-mode';
+
+    function sideMode() {
+        try {
+            var v = localStorage.getItem(SIDE_KEY);
+            if (v === SIDE_MODES[1].key || v === SIDE_MODES[2].key) return v;
+        } catch (err) {  }
+        return SIDE_MODES[0].key;
+    }
+
+    function applySideMode(mode) {
+        if (!app) return;
+        app.setAttribute('data-side', mode);
+        var narrow = mode !== SIDE_MODES[0].key;
+        [].forEach.call(document.querySelectorAll('.nav-btn'), function (b) {
+            var span = b.querySelector('.nav-t');
+            if (!span) return;
+            if (narrow) b.setAttribute('title', span.textContent);
+            else b.removeAttribute('title');
+        });
+        [].forEach.call(document.querySelectorAll('[data-side-mode]'), function (b) {
+            var on = b.getAttribute('data-side-mode') === mode;
+            b.setAttribute('aria-checked', on ? 'true' : 'false');
+            b.classList.toggle('is-on', on);
+        });
+    }
+
+    function setSideMode(mode) {
+        try { localStorage.setItem(SIDE_KEY, mode); } catch (err) {  }
+        applySideMode(mode);
+    }
+
+    function paintFoot() {
+        var foot = document.getElementById('side-foot');
+        if (!foot) return;
+        foot.textContent = '';
+
+        var wrap = document.createElement('div');
+        wrap.className = 'sidectl';
+
+        var pop = document.createElement('div');
+        pop.className = 'sidectl-pop';
+        pop.id = 'sidectl-pop';
+        pop.setAttribute('role', 'menu');
+        pop.hidden = true;
+
+        var head = document.createElement('div');
+        head.className = 'sidectl-h';
+        head.textContent = t('Sidebar control');
+        pop.appendChild(head);
+
+        SIDE_MODES.forEach(function (m) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'sidectl-opt';
+            b.setAttribute('role', 'menuitemradio');
+            b.setAttribute('data-side-mode', m.key);
+            var dot = document.createElement('span');
+            dot.className = 'sidectl-dot';
+            b.appendChild(dot);
+            var txt = document.createElement('span');
+            txt.textContent = t(m.label);
+            b.appendChild(txt);
+            b.addEventListener('click', function () {
+                setSideMode(m.key);
+                openPop(false);
+            });
+            pop.appendChild(b);
+        });
+
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'sidectl-btn';
+        btn.id = 'sidectl-btn';
+        btn.setAttribute('aria-haspopup', 'menu');
+        btn.setAttribute('aria-expanded', 'false');
+        btn.setAttribute('aria-controls', 'sidectl-pop');
+        btn.setAttribute('aria-label', t('Sidebar control'));
+        btn.innerHTML = '<svg class="nav-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M4.5 5.5h15v13h-15Z"/><path d="M10 5.5v13"/></svg>';
+
+        function openPop(on) {
+            pop.hidden = !on;
+            btn.setAttribute('aria-expanded', on ? 'true' : 'false');
+            wrap.classList.toggle('is-open', on);
+        }
+
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            openPop(pop.hidden);
+        });
+        pop.addEventListener('click', function (e) { e.stopPropagation(); });
+        document.addEventListener('click', function () { openPop(false); });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') openPop(false);
+        });
+
+        wrap.appendChild(pop);
+        wrap.appendChild(btn);
+        foot.appendChild(wrap);
     }
 
     function initials(name, email) {
@@ -172,10 +278,16 @@
         if (document.fonts && document.fonts.ready) document.fonts.ready.then(place);
     }
 
-    if (document.fonts && document.fonts.ready) {
-        document.fonts.ready.then(function () { paintNav('overview'); });
+    function paintShell() {
+        paintNav('overview');
+        paintFoot();
+        applySideMode(sideMode());
     }
-    paintNav('overview');
+
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(paintShell);
+    }
+    paintShell();
 
     fetch('/v1/entitlement', { credentials: 'same-origin' })
         .then(function (r) { return r.ok ? r.json() : null; })
