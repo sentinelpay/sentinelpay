@@ -59,6 +59,28 @@
 
     if (cancel) cancel.addEventListener('click', function () { show(false); });
 
+    var search = document.getElementById('lp-cmp-search');
+    var empty = document.getElementById('lp-cmp-empty');
+    if (search) {
+        var rows = [].slice.call(document.querySelectorAll('.lp-cmp-row[data-label]'));
+        var groups = [].slice.call(document.querySelectorAll('.lp-cmp-group'));
+        search.addEventListener('input', function () {
+            var q = search.value.trim().toLowerCase();
+            var shown = 0;
+            rows.forEach(function (r) {
+                var hit = !q || r.getAttribute('data-label').indexOf(q) !== -1;
+                r.classList.toggle('is-out', !hit);
+                if (hit) shown++;
+            });
+            groups.forEach(function (g) {
+                var any = g.querySelector('.lp-cmp-row[data-label]:not(.is-out)');
+                g.classList.toggle('is-out', !any);
+            });
+            if (empty) empty.hidden = shown > 0;
+        });
+    }
+
+
     if (go) go.addEventListener('click', function () {
         err.hidden = true;
         go.disabled = true;
