@@ -417,3 +417,29 @@ button { font: inherit; color: inherit; }
     }
     .sidectl-pop { transform: none; }
 }
+
+@media (max-width: 900px) {
+    .app[data-side],
+    .app[data-side="collapsed"],
+    .app[data-side="hover"] { --side-w: 248px; }
+    .app[data-side] .nav-t { max-width: 12rem; opacity: 1; }
+    .app[data-side] .nav-i { margin-right: 0.6rem; }
+    .app[data-side] .nav-btn { justify-content: flex-start; padding: 0.38rem 0.55rem; }
+    .app[data-side] .nav-group {
+        height: 1.05rem;
+        margin: 0.85rem 0 0.28rem;
+        color: var(--ink-4);
+        background: transparent;
+    }
+    .app[data-side] .nav-group:first-child { height: 1.05rem; margin: 0.1rem 0 0.28rem; }
+    .app[data-side="hover"] .side,
+    .app[data-side="hover"] .side:hover,
+    .app[data-side="hover"] .side:focus-within {
+        width: var(--side-w);
+        box-shadow: none;
+    }
+    .app[data-side] .side,
+    .app[data-side="collapsed"] .side,
+    .app[data-side="hover"] .side { z-index: 30; }
+    .side-foot { display: none; }
+}
