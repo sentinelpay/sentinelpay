@@ -252,8 +252,13 @@ const COUNTRY_ZONE = {
 };
 
 function geoZone(req) {
+    const exact = String(req.headers['cf-timezone'] || '').trim();
+    if (/^[A-Za-z]+\/[A-Za-z0-9_+\-\/]+$/.test(exact) || exact === 'UTC') {
+        return { zone: exact, src: 'ip' };
+    }
     const cc = String(req.headers['cf-ipcountry'] || '').trim().toUpperCase();
-    return COUNTRY_ZONE[cc] || '';
+    const zone = COUNTRY_ZONE[cc] || '';
+    return zone ? { zone, src: 'country' } : { zone: '', src: '' };
 }
 
 function browserName(ua) {
@@ -450,9 +455,10 @@ function renderPage(file, req, forcedLang) {
         '<p class="sp-ns-text">' + escapeHtml(copy.body) + '</p>' +
         '<a class="sp-ns-link" href="' + escapeHtml(url) + '" rel="noopener nofollow" target="_blank">' + escapeHtml(copy.link) + '</a>' +
         '</div>';
-    const zone = geoZone(req);
+    const geo = geoZone(req);
     const attrs = ' data-geo-lang="' + lang + '"' +
-        (zone ? ' data-geo-tz="' + zone + '"' : '') +
+        (geo.zone ? ' data-geo-tz="' + geo.zone + '"' : '') +
+        (geo.src ? ' data-geo-src="' + geo.src + '"' : '') +
         (forcedLang ? ' data-force-lang="' + forcedLang + '"' : '') +
         (STATUS_MESSAGE ? ' data-status' : '') +
         (STATUS_BLOCKS_MAIL ? ' data-mail-down' : '');
@@ -466,7 +472,7 @@ function renderPage(file, req, forcedLang) {
 function sendPage(res, req, file, status, forcedLang, cache) {
     res.status(status || 200)
         .set('Cache-Control', cache || 'no-cache')
-        .set('Vary', 'CF-IPCountry, User-Agent')
+        .set('Vary', 'CF-IPCountry, CF-Timezone, User-Agent')
         .type('html')
         .send(renderPage(file, req, forcedLang));
 }

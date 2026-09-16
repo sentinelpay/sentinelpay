@@ -295,19 +295,43 @@
         return document.documentElement.getAttribute('data-geo-tz') || '';
     }
 
+    function geoSrc() {
+        return document.documentElement.getAttribute('data-geo-src') || '';
+    }
+
+    function vagueZone(z) {
+        return !z || z === 'UTC' || z === 'Etc/UTC' || z === 'Etc/GMT';
+    }
+
     function autoZone() {
         var geo = geoZone();
         var dev = deviceZone();
-        if (geo && (!dev || dev === 'UTC' || dev === 'Etc/UTC')) return geo;
-        return dev || geo || 'UTC';
+        if (geoSrc() === 'ip' && !vagueZone(geo)) return geo;
+        if (!vagueZone(dev)) return dev;
+        return geo || dev || 'UTC';
     }
 
     function autoSource() {
         var geo = geoZone();
         var dev = deviceZone();
-        if (geo && (!dev || dev === 'UTC' || dev === 'Etc/UTC')) return 'From your connection';
-        if (dev) return 'From this device';
+        if (geoSrc() === 'ip' && !vagueZone(geo)) return 'From your location';
+        if (!vagueZone(dev)) return 'From this device';
+        if (geo) return 'From your country';
         return '';
+    }
+
+    function zoneSources() {
+        var out = [];
+        var dev = deviceZone();
+        var geo = geoZone();
+        if (dev) out.push({ label: 'This device', zone: dev });
+        if (geo) {
+            out.push({
+                label: geoSrc() === 'ip' ? 'Your location' : 'Your country',
+                zone: geo
+            });
+        }
+        return out;
     }
 
     function zonePref() {
@@ -574,6 +598,25 @@
                     auto.appendChild(note);
                 }
                 tzList.appendChild(auto);
+
+                var srcs = zoneSources();
+                if (srcs.length) {
+                    var why = document.createElement('div');
+                    why.className = 'acct-why';
+                    srcs.forEach(function (x) {
+                        var row = document.createElement('div');
+                        row.className = 'acct-why-row';
+                        var k = document.createElement('span');
+                        k.textContent = t(x.label);
+                        var v = document.createElement('span');
+                        v.className = 'acct-why-v';
+                        v.textContent = x.zone;
+                        row.appendChild(k);
+                        row.appendChild(v);
+                        why.appendChild(row);
+                    });
+                    tzList.appendChild(why);
+                }
             }
             var shown = 0;
             for (var i = 0; i < zones.length && shown < 300; i++) {
