@@ -235,6 +235,101 @@
         foot.appendChild(wrap);
     }
 
+    var PLAN_LABEL = {
+        starter: 'Free trial',
+        verified: 'Free trial',
+        enterprise: 'Enterprise',
+        pending: 'Awaiting approval',
+        expired: 'Trial ended'
+    };
+
+    function paintAccountMenu(me) {
+        var wrap = document.getElementById('acct');
+        var btn = document.getElementById('acct-btn');
+        var pop = document.getElementById('acct-pop');
+        if (!wrap || !btn || !pop) return;
+        pop.textContent = '';
+
+        var head = document.createElement('div');
+        head.className = 'acct-head';
+        var hName = document.createElement('div');
+        hName.className = 'acct-name';
+        hName.textContent = me.name || '';
+        var hMail = document.createElement('div');
+        hMail.className = 'acct-mail';
+        hMail.textContent = me.email || '';
+        head.appendChild(hName);
+        head.appendChild(hMail);
+        var state = (me.trial && me.trial.state) || 'none';
+        if (PLAN_LABEL[state]) {
+            var tag = document.createElement('span');
+            tag.className = 'acct-plan';
+            tag.textContent = t(PLAN_LABEL[state]);
+            head.appendChild(tag);
+        }
+        pop.appendChild(head);
+
+        var i18n = window.SentinelI18n;
+        if (i18n && i18n.langs && i18n.setLang) {
+            pop.appendChild(sep());
+            var label = document.createElement('div');
+            label.className = 'acct-label';
+            label.textContent = t('Language');
+            pop.appendChild(label);
+            var now = i18n.lang();
+            i18n.langs().forEach(function (l) {
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'acct-opt' + (l.code === now ? ' is-on' : '');
+                b.setAttribute('role', 'menuitemradio');
+                b.setAttribute('aria-checked', l.code === now ? 'true' : 'false');
+                b.textContent = l.name;
+                b.addEventListener('click', function () { i18n.setLang(l.code); });
+                pop.appendChild(b);
+            });
+        }
+
+        pop.appendChild(sep());
+        var out = document.createElement('button');
+        out.type = 'button';
+        out.className = 'acct-opt acct-out';
+        out.setAttribute('role', 'menuitem');
+        out.textContent = t('Sign out');
+        out.addEventListener('click', function () {
+            out.disabled = true;
+            fetch('/v1/auth/logout', { method: 'POST', credentials: 'same-origin' })
+                .then(function () { location.assign('/'); })
+                .catch(function () { location.assign('/'); });
+        });
+        pop.appendChild(out);
+
+        function open(on) {
+            wrap.classList.toggle('is-open', on);
+            btn.setAttribute('aria-expanded', on ? 'true' : 'false');
+            pop.setAttribute('aria-hidden', on ? 'false' : 'true');
+        }
+        open(false);
+
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            open(!wrap.classList.contains('is-open'));
+        });
+        pop.addEventListener('click', function (e) { e.stopPropagation(); });
+        document.addEventListener('click', function () { open(false); });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && wrap.classList.contains('is-open')) {
+                open(false);
+                btn.focus();
+            }
+        });
+    }
+
+    function sep() {
+        var d = document.createElement('div');
+        d.className = 'acct-sep';
+        return d;
+    }
+
     function initials(name, email) {
         var source = String(name || '').trim();
         if (source) {
@@ -290,6 +385,10 @@
 
     fetch('/v1/entitlement', { credentials: 'same-origin' })
         .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (me) { if (me) paintAvatar(me); })
+        .then(function (me) {
+            if (!me) return;
+            paintAvatar(me);
+            paintAccountMenu(me);
+        })
         .catch(function () {  });
 })();

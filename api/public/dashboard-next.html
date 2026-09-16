@@ -10,7 +10,7 @@
     <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/fonts/jakarta-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="/fonts.2.css">
-    <link rel="stylesheet" href="/dash.35.css">
+    <link rel="stylesheet" href="/dash.36.css">
 </head>
 <body>
     <div class="app" id="app">
@@ -29,11 +29,16 @@
                 </button>
                 <div class="top-slot" id="top-slot"></div>
                 <div class="top-side">
-                    <span class="who" id="who">
-                        <span class="who-name" id="who-name"></span>
-                        <span class="who-mail" id="who-mail"></span>
-                    </span>
-                    <button type="button" class="avatar" id="avatar" aria-label="Account"><span class="avatar-in" id="avatar-in"></span></button>
+                    <div class="acct" id="acct">
+                        <button type="button" class="acct-btn" id="acct-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="acct-pop">
+                            <span class="who" id="who">
+                                <span class="who-name" id="who-name"></span>
+                                <span class="who-mail" id="who-mail"></span>
+                            </span>
+                            <span class="avatar" id="avatar"><span class="avatar-in" id="avatar-in"></span></span>
+                        </button>
+                        <div class="acct-pop" id="acct-pop" role="menu"></div>
+                    </div>
                 </div>
             </header>
 
@@ -42,7 +47,7 @@
 
         <div class="scrim" id="scrim"></div>
     </div>
-    <script src="/i18n.141.js" defer></script>
-    <script src="/dash-app.24.js" defer></script>
+    <script src="/i18n.143.js" defer></script>
+    <script src="/dash-app.25.js" defer></script>
 </body>
 </html>

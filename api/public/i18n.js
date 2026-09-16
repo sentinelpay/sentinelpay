@@ -292,6 +292,9 @@
             "Website domain must match your work email domain": "Domena weba mora se poklapati s domenom vašeg poslovnog maila",
             "We do not onboard gambling operators": "Ne radimo s operaterima kockanja",
             "Too many requests, please try again later": "Previše pokušaja, pokušajte kasnije",
+            "Language": "Jezik",
+            "Awaiting approval": "Čeka odobrenje",
+            "Trial ended": "Proba je istekla",
             "Sidebar control": "Bočna traka",
             "Expanded": "Prošireno",
             "Collapsed": "Suženo",
@@ -1955,6 +1958,9 @@
             "Website domain must match your work email domain": "Die Domain der Website muss zur Domain Ihrer Arbeits-E-Mail passen",
             "We do not onboard gambling operators": "Wir nehmen keine Glücksspielanbieter auf",
             "Too many requests, please try again later": "Zu viele Versuche, bitte später erneut probieren",
+            "Language": "Sprache",
+            "Awaiting approval": "Wartet auf Freigabe",
+            "Trial ended": "Testphase beendet",
             "Sidebar control": "Seitenleiste",
             "Expanded": "Ausgeklappt",
             "Collapsed": "Eingeklappt",
@@ -3592,6 +3598,21 @@
 
     window.SentinelI18n = {
         lang: current,
+        langs: function () {
+            return Object.keys(LANGS).map(function (code) {
+                return { code: code, name: LANGS[code] };
+            });
+        },
+        setLang: function (code) {
+            if (!LANGS[code] || code === current()) return false;
+            persist(code);
+            if (document.documentElement.getAttribute('data-force-lang')) {
+                location.assign('/' + code);
+            } else {
+                location.reload();
+            }
+            return true;
+        },
         t: function (s) {
             var dict = T[current()];
             var hit = dict && dict[norm(s)];
