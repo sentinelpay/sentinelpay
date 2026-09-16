@@ -306,7 +306,7 @@
     function autoZone() {
         var geo = geoZone();
         var dev = deviceZone();
-        if (geoSrc() === 'ip' && !vagueZone(geo)) return geo;
+        if (!vagueZone(geo)) return geo;
         if (!vagueZone(dev)) return dev;
         return geo || dev || 'UTC';
     }
@@ -314,9 +314,10 @@
     function autoSource() {
         var geo = geoZone();
         var dev = deviceZone();
-        if (geoSrc() === 'ip' && !vagueZone(geo)) return 'From your location';
+        if (!vagueZone(geo)) {
+            return geoSrc() === 'ip' ? 'From your location' : 'From your country';
+        }
         if (!vagueZone(dev)) return 'From this device';
-        if (geo) return 'From your country';
         return '';
     }
 
