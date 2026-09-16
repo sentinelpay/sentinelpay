@@ -1724,19 +1724,38 @@
         var m = modalShell('Delete this account',
             'Enter your password to confirm. Once this goes through there is nothing left to restore.');
 
-        // the sign in modal slides the outgoing step out and the incoming one in
-        // from the side it came from, so going back reads as going back.
+        // exactly how the sign in modal changes step: the panel is swapped in the
+        // same frame, the dialog is pinned to the height it had and let glide to
+        // the height it needs, and the arriving panel slides in from the side it
+        // came from. nothing fades out first, so there is no pause in the middle.
+        function glide(change) {
+            var box = m.box;
+            if (prefersStill()) { change(); return; }
+            var from = box.getBoundingClientRect().height;
+            box.style.height = '';
+            change();
+            var to = box.getBoundingClientRect().height;
+            clearTimeout(box.spGlide);
+            box.classList.remove('is-gliding');
+            box.style.height = from + 'px';
+            void box.offsetHeight;
+            box.classList.add('is-gliding');
+            box.style.height = to + 'px';
+            box.spGlide = setTimeout(function () {
+                box.classList.remove('is-gliding');
+                box.style.height = '';
+            }, 320);
+        }
+
         function swap(build, backwards) {
-            m.body.classList.add('is-going');
-            setTimeout(function () {
+            glide(function () {
                 m.body.textContent = '';
                 build();
-                m.body.style.setProperty('--step-dir', backwards ? '-14px' : '14px');
-                m.body.classList.remove('is-going');
-                m.body.classList.remove('is-stepping');
-                void m.body.offsetWidth;
-                m.body.classList.add('is-stepping');
-            }, 150);
+            });
+            m.body.style.setProperty('--step-dir', backwards ? '-14px' : '14px');
+            m.body.classList.remove('is-stepping');
+            void m.body.offsetWidth;
+            m.body.classList.add('is-stepping');
         }
 
         function stepConfirm() {
