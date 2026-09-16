@@ -1632,15 +1632,36 @@
         box.setAttribute('role', 'dialog');
         box.setAttribute('aria-modal', 'true');
 
+        var dots = document.createElement('span');
+        dots.className = 'modal-dots';
+        dots.setAttribute('aria-hidden', 'true');
+        box.appendChild(dots);
+        var edge = document.createElement('span');
+        edge.className = 'modal-edge';
+        edge.setAttribute('aria-hidden', 'true');
+        box.appendChild(edge);
+
+        var x = document.createElement('button');
+        x.type = 'button';
+        x.className = 'modal-x';
+        x.setAttribute('aria-label', t('Close'));
+        x.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            'stroke-width="2" stroke-linecap="round" aria-hidden="true">' +
+            '<path d="M6 6 18 18M18 6 6 18"/></svg>';
+        box.appendChild(x);
+
+        var head = document.createElement('div');
+        head.className = 'modal-head';
         var h = document.createElement('h2');
         h.className = 'modal-h';
         h.textContent = t('Delete this account');
-        box.appendChild(h);
+        head.appendChild(h);
 
         var p = document.createElement('p');
         p.className = 'modal-p';
         p.textContent = t('Enter your password to confirm. Once this goes through there is nothing left to restore.');
-        box.appendChild(p);
+        head.appendChild(p);
+        box.appendChild(head);
 
         var form = document.createElement('form');
         var pw = document.createElement('input');
@@ -1676,6 +1697,7 @@
 
         function shut() {
             back.classList.remove('is-in');
+            document.documentElement.classList.remove('is-modal');
             document.removeEventListener('keydown', onKey);
             setTimeout(function () {
                 if (back.parentNode) back.parentNode.removeChild(back);
@@ -1683,7 +1705,9 @@
         }
         function onKey(e) { if (e.key === 'Escape') shut(); }
         document.addEventListener('keydown', onKey);
+        document.documentElement.classList.add('is-modal');
         no.addEventListener('click', shut);
+        x.addEventListener('click', shut);
         back.addEventListener('click', function (e) { if (e.target === back) shut(); });
 
         form.addEventListener('submit', function (e) {
