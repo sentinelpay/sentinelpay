@@ -1438,7 +1438,7 @@
     function viewShortcuts() {
         var frag = document.createDocumentFragment();
         frag.appendChild(sectionTitle('Keyboard shortcuts'));
-        frag.appendChild(sectionNote('Choose which shortcuts stay active while you work in the dashboard. Most of them point at screens we have not built yet, so today only the sidebar one does anything.'));
+        frag.appendChild(sectionNote('Choose which shortcuts stay active while you work in the dashboard.'));
 
         var card = document.createElement('div');
         card.className = 'card';
