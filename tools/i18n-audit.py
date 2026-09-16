@@ -18,6 +18,8 @@ SKIP_EXACT = {
     'sentinelpay', 'Sentinelpay', 'support@sentinelpay.org', 'privacy@sentinelpay.org',
     'yourcompany.com', 'sentinelpay.org',
     'ceem', 'mind', 'chibby', 'mind, chibby', 'ceem, mind, chibby',
+    # internal state keys and an IANA timezone id. never shown as prose, never translated.
+    'auto', 'system', 'UTC',
     'Ceem', 'Mind', 'Chibby', 'Mind, chibby', 'Ceem, mind, chibby',
     'elektromaterijal', 'Elektromaterijal', 'racunala', 'Racunala',
     'traveler', 'Traveler', 'futura', 'Futura', 'majice', 'Majice',
@@ -95,6 +97,11 @@ for f in sorted(x for x in os.listdir(PUB) if x.endswith('.js')):
     lits += re.findall(r"\b(?:label|title|heading|placeholder|group|name)\s*:\s*'((?:[^'\\]|\\.)+)'", src)
 
     lits += re.findall(r"[^a-zA-Z_.]t\(\s*'((?:[^'\\]|\\.)*)'", src)
+    # strings handed to our own helpers, which translate them inside. the sweep below
+    # only looks at literals containing a space, so single words like Theme or Timezone
+    # would otherwise never be checked.
+    TRANSLATING_HELPERS = r"(?:acctLabel|acctRow|head|card|crumb)"
+    lits += re.findall(TRANSLATING_HELPERS + r"\(\s*'((?:[^'\\]|\\.)+)'", src)
     CODEY = re.compile(r'^[^a-zA-Z]|[\\\[\]{}<>=()]|^https?:|\bdata-|\baria-')
     CLASSY = re.compile(r'^[a-z0-9-]+(?: [a-z0-9-]+)*$')
     def codey(lit):

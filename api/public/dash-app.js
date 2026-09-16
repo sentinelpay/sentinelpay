@@ -47,6 +47,9 @@
         users: '<circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><path d="M16 6.2A3 3 0 0 1 16 13M20.5 19c0-2.3-1.4-3.8-3.2-4.5"/>',
         card: '<path d="M3.5 6.5h17v11h-17Z"/><path d="M3.5 10.5h17"/><path d="M7 14.5h3"/>',
         panel: '<path d="M4.5 5.5h15v13h-15Z"/><path d="M10 5.5v13"/>',
+        clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.2V12l3.2 2"/>',
+        back: '<path d="m14 6-6 6 6 6"/>',
+        out: '<path d="M14.5 4.5H19v15h-4.5"/><path d="M10 15.5 13.5 12 10 8.5"/><path d="M13.5 12H4"/>',
         cog: '<circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2 5.5 5.5"/>'
     };
 
@@ -235,6 +238,99 @@
         foot.appendChild(wrap);
     }
 
+    var THEME_KEY = 'sp-theme';
+    var THEMES = [
+        { key: 'system', label: 'System' },
+        { key: 'light', label: 'Light' },
+        { key: 'dark', label: 'Dark' }
+    ];
+
+    function themeMode() {
+        try {
+            var v = localStorage.getItem(THEME_KEY);
+            if (v === 'light' || v === 'dark' || v === 'system') return v;
+        } catch (err) {  }
+        return 'system';
+    }
+
+    function applyTheme(mode) {
+        var dark = mode === 'dark' ||
+            (mode === 'system' && window.matchMedia &&
+             window.matchMedia('(prefers-color-scheme: dark)').matches);
+        var root = document.documentElement;
+        root.setAttribute('data-theme', dark ? 'dark' : 'light');
+        root.setAttribute('data-theme-mode', mode);
+        [].forEach.call(document.querySelectorAll('[data-theme-pick]'), function (b) {
+            var on = b.getAttribute('data-theme-pick') === mode;
+            b.classList.toggle('is-on', on);
+            b.setAttribute('aria-checked', on ? 'true' : 'false');
+        });
+    }
+
+    function setTheme(mode) {
+        try { localStorage.setItem(THEME_KEY, mode); } catch (err) {  }
+        applyTheme(mode);
+    }
+
+    if (window.matchMedia) {
+        var mq = window.matchMedia('(prefers-color-scheme: dark)');
+        var onScheme = function () {
+            if (themeMode() === 'system') applyTheme('system');
+        };
+        if (mq.addEventListener) mq.addEventListener('change', onScheme);
+        else if (mq.addListener) mq.addListener(onScheme);
+    }
+
+    var TZ_KEY = 'sp-tz';
+
+    function autoZone() {
+        try {
+            return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+        } catch (err) {
+            return 'UTC';
+        }
+    }
+
+    function zonePref() {
+        try {
+            var v = localStorage.getItem(TZ_KEY);
+            if (v) return v;
+        } catch (err) {  }
+        return 'auto';
+    }
+
+    function zoneNow() {
+        var v = zonePref();
+        return v === 'auto' ? autoZone() : v;
+    }
+
+    function zoneList() {
+        var common = [
+            'Europe/Zagreb', 'Europe/London', 'Europe/Berlin', 'Europe/Warsaw',
+            'Europe/Lisbon', 'America/New_York', 'America/Chicago', 'America/Los_Angeles',
+            'Asia/Dubai', 'Asia/Singapore', 'Asia/Tokyo', 'UTC'
+        ];
+        var mine = autoZone();
+        if (common.indexOf(mine) === -1) common.unshift(mine);
+        return common;
+    }
+
+    function zoneOffset(zone) {
+        try {
+            var parts = new Intl.DateTimeFormat('en-GB', {
+                timeZone: zone, timeZoneName: 'shortOffset'
+            }).formatToParts(new Date());
+            for (var i = 0; i < parts.length; i++) {
+                if (parts[i].type === 'timeZoneName') return parts[i].value;
+            }
+        } catch (err) {  }
+        return '';
+    }
+
+    function setZone(v) {
+        try { localStorage.setItem(TZ_KEY, v); } catch (err) {  }
+    }
+
     var PLAN_LABEL = {
         starter: 'Free trial',
         verified: 'Free trial',
@@ -243,12 +339,72 @@
         expired: 'Trial ended'
     };
 
+    function acctRow(label, opts) {
+        var o = opts || {};
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'acct-opt acct-row' + (o.soon ? ' is-soon' : '');
+        b.setAttribute('role', 'menuitem');
+        if (o.icon) b.innerHTML = icon(o.icon);
+        var span = document.createElement('span');
+        span.className = 'acct-row-t';
+        span.textContent = t(label);
+        b.appendChild(span);
+        if (o.soon) {
+            b.disabled = true;
+            var tag = document.createElement('span');
+            tag.className = 'acct-soon';
+            tag.textContent = t('Soon');
+            b.appendChild(tag);
+        }
+        if (o.value) {
+            var v = document.createElement('span');
+            v.className = 'acct-row-v';
+            v.textContent = o.value;
+            b.appendChild(v);
+        }
+        if (o.more) {
+            var chev = document.createElement('span');
+            chev.className = 'acct-chev';
+            chev.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
+            b.appendChild(chev);
+        }
+        if (o.onClick) b.addEventListener('click', o.onClick);
+        return b;
+    }
+
+    function acctLabel(text) {
+        var d = document.createElement('div');
+        d.className = 'acct-label';
+        d.textContent = t(text);
+        return d;
+    }
+
+    function acctPick(label, on, attr, value, onClick) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'acct-opt acct-pick' + (on ? ' is-on' : '');
+        b.setAttribute('role', 'menuitemradio');
+        b.setAttribute('aria-checked', on ? 'true' : 'false');
+        if (attr) b.setAttribute(attr, value);
+        var dot = document.createElement('span');
+        dot.className = 'acct-dot';
+        b.appendChild(dot);
+        var span = document.createElement('span');
+        span.textContent = label;
+        b.appendChild(span);
+        if (onClick) b.addEventListener('click', onClick);
+        return b;
+    }
+
     function paintAccountMenu(me) {
         var wrap = document.getElementById('acct');
-        var btn = document.getElementById('acct-btn');
         var pop = document.getElementById('acct-pop');
-        if (!wrap || !btn || !pop) return;
+        if (!wrap || !pop) return;
         pop.textContent = '';
+
+        var main = document.createElement('div');
+        main.className = 'acct-page';
 
         var head = document.createElement('div');
         head.className = 'acct-head';
@@ -267,34 +423,56 @@
             tag.textContent = t(PLAN_LABEL[state]);
             head.appendChild(tag);
         }
-        pop.appendChild(head);
+        main.appendChild(head);
+
+        main.appendChild(sep());
+        main.appendChild(acctRow('Account', { icon: 'cog', soon: true }));
+        main.appendChild(acctRow('Feature previews', { icon: 'flask', soon: true }));
+        main.appendChild(acctRow('Changelog', { icon: 'file', soon: true }));
+
+        main.appendChild(sep());
+        main.appendChild(acctLabel('Theme'));
+        var mode = themeMode();
+        THEMES.forEach(function (th) {
+            main.appendChild(acctPick(t(th.label), th.key === mode, 'data-theme-pick', th.key,
+                function () { setTheme(th.key); }));
+        });
 
         var i18n = window.SentinelI18n;
         if (i18n && i18n.langs && i18n.setLang) {
-            pop.appendChild(sep());
-            var label = document.createElement('div');
-            label.className = 'acct-label';
-            label.textContent = t('Language');
-            pop.appendChild(label);
+            main.appendChild(sep());
+            main.appendChild(acctLabel('Language'));
             var now = i18n.lang();
             i18n.langs().forEach(function (l) {
-                var b = document.createElement('button');
-                b.type = 'button';
-                b.className = 'acct-opt' + (l.code === now ? ' is-on' : '');
-                b.setAttribute('role', 'menuitemradio');
-                b.setAttribute('aria-checked', l.code === now ? 'true' : 'false');
-                b.textContent = l.name;
-                b.addEventListener('click', function () { i18n.setLang(l.code); });
-                pop.appendChild(b);
+                main.appendChild(acctPick(l.name, l.code === now, null, null,
+                    function () { i18n.setLang(l.code); }));
             });
         }
 
-        pop.appendChild(sep());
+        var zone = document.createElement('div');
+        zone.className = 'acct-zone';
+        var zoneVal = zonePref() === 'auto'
+            ? t('Auto') + ' (' + zoneNow() + ')'
+            : zoneNow();
+        var zoneRow = acctRow('Timezone', { icon: 'clock', more: true });
+        var zv = document.createElement('span');
+        zv.className = 'acct-row-sub';
+        zv.textContent = zoneVal;
+        zoneRow.insertBefore(zv, zoneRow.querySelector('.acct-chev'));
+        zone.appendChild(zoneRow);
+        main.appendChild(sep());
+        main.appendChild(zone);
+
+        main.appendChild(sep());
         var out = document.createElement('button');
         out.type = 'button';
-        out.className = 'acct-opt acct-out';
+        out.className = 'acct-opt acct-row acct-out';
         out.setAttribute('role', 'menuitem');
-        out.textContent = t('Sign out');
+        out.innerHTML = icon('out');
+        var outT = document.createElement('span');
+        outT.className = 'acct-row-t';
+        outT.textContent = t('Sign out');
+        out.appendChild(outT);
         out.addEventListener('click', function () {
             out.disabled = true;
             forgetMe();
@@ -302,8 +480,32 @@
                 .then(function () { location.assign('/'); })
                 .catch(function () { location.assign('/'); });
         });
-        pop.appendChild(out);
+        main.appendChild(out);
 
+        var tz = document.createElement('div');
+        tz.className = 'acct-page acct-sub';
+        var back = acctRow('Timezone', { icon: 'back' });
+        back.className = 'acct-opt acct-row acct-back';
+        back.addEventListener('click', function () { pop.classList.remove('is-sub'); });
+        tz.appendChild(back);
+        tz.appendChild(sep());
+        var tzList = document.createElement('div');
+        tzList.className = 'acct-scroll';
+        var pref = zonePref();
+        tzList.appendChild(acctPick(t('Auto') + ' (' + autoZone() + ')', pref === 'auto', null, null,
+            function () { setZone('auto'); paintAccountMenu(me); }));
+        zoneList().forEach(function (z) {
+            var off = zoneOffset(z);
+            tzList.appendChild(acctPick(z.replace(/_/g, ' ') + (off ? '  ' + off : ''), pref === z, null, null,
+                function () { setZone(z); paintAccountMenu(me); }));
+        });
+        tz.appendChild(tzList);
+
+        zoneRow.addEventListener('click', function () { pop.classList.add('is-sub'); });
+
+        pop.appendChild(main);
+        pop.appendChild(tz);
+        applyTheme(themeMode());
         bindAccountMenu();
     }
 
