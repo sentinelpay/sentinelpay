@@ -1676,19 +1676,28 @@
         msg.className = 'card-msg modal-msg';
         form.appendChild(msg);
 
-        var row = document.createElement('div');
-        row.className = 'modal-foot';
-        var no = document.createElement('button');
-        no.type = 'button';
-        no.className = 'btn btn-quiet';
-        no.textContent = t('Keep my account');
-        row.appendChild(no);
+        // the same shape the sign in modal uses: a link row, then one full width
+        // action, then the quiet way out underneath it.
+        var linkRow = document.createElement('div');
+        linkRow.className = 'modal-row';
+        var lost = document.createElement('a');
+        lost.className = 'modal-link';
+        lost.href = '/?signin=reset';
+        lost.textContent = t('Forgot your password?');
+        linkRow.appendChild(lost);
+        form.appendChild(linkRow);
+
         var yes = document.createElement('button');
         yes.type = 'submit';
-        yes.className = 'btn btn-danger';
+        yes.className = 'btn btn-wide btn-danger';
         yes.textContent = t('Delete account');
-        row.appendChild(yes);
-        form.appendChild(row);
+        form.appendChild(yes);
+
+        var no = document.createElement('button');
+        no.type = 'button';
+        no.className = 'btn btn-wide btn-quiet';
+        no.textContent = t('Keep my account');
+        form.appendChild(no);
         box.appendChild(form);
         back.appendChild(box);
         document.body.appendChild(back);
