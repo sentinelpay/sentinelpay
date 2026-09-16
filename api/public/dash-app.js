@@ -1081,35 +1081,194 @@
         return wrap;
     }
 
-    function selectBox(id, groups, value, onPick) {
-        var wrap = document.createElement('span');
-        wrap.className = 'sel-wrap';
-        var s = document.createElement('select');
-        s.id = id;
-        s.className = 'fld-in sel';
-        groups.forEach(function (g) {
-            var host = s;
-            if (g.group) {
-                host = document.createElement('optgroup');
-                host.label = g.group;
-                s.appendChild(host);
-            }
-            g.options.forEach(function (o) {
-                var op = document.createElement('option');
-                op.value = o.value;
-                op.textContent = o.label;
-                host.appendChild(op);
-            });
-        });
-        s.value = value;
-        s.addEventListener('change', function () { onPick(s.value); });
-        wrap.appendChild(s);
+    // our own dropdown. a native select is painted by the operating system, so
+    // it ignores every token on this page and looked borrowed sitting in the card.
+    // the panel is fixed rather than absolute: the card clips its overflow, and an
+    // absolute panel would be cut off at the card edge.
+    function selectBox(id, groups, value, onPick, opts) {
+        var o = opts || {};
+        var wrap = document.createElement('div');
+        wrap.className = 'pick';
+
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = id;
+        btn.className = 'pick-btn';
+        btn.setAttribute('aria-haspopup', 'listbox');
+        btn.setAttribute('aria-expanded', 'false');
+        var val = document.createElement('span');
+        val.className = 'pick-val';
+        btn.appendChild(val);
         var chev = document.createElement('span');
-        chev.className = 'sel-chev';
+        chev.className = 'pick-chev';
         chev.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
             'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
             '<path d="m6 9 6 6 6-6"/></svg>';
-        wrap.appendChild(chev);
+        btn.appendChild(chev);
+        wrap.appendChild(btn);
+
+        var pop = document.createElement('div');
+        pop.className = 'pick-pop';
+        pop.setAttribute('role', 'listbox');
+        var find = null;
+        if (o.search) {
+            var lab = document.createElement('label');
+            lab.className = 'pick-find';
+            find = document.createElement('input');
+            find.type = 'search';
+            find.autocomplete = 'off';
+            find.spellcheck = false;
+            find.placeholder = t(o.search);
+            lab.appendChild(find);
+            pop.appendChild(lab);
+        }
+        var list = document.createElement('div');
+        list.className = 'pick-scroll';
+        pop.appendChild(list);
+        wrap.appendChild(pop);
+
+        var current = value;
+
+        function labelFor(v) {
+            for (var i = 0; i < groups.length; i++) {
+                var os = groups[i].options;
+                for (var j = 0; j < os.length; j++) {
+                    if (os[j].value === v) return os[j].label;
+                }
+            }
+            return '';
+        }
+
+        function paintVal() { val.textContent = labelFor(current); }
+
+        function draw(q) {
+            list.textContent = '';
+            q = (q || '').trim().toLowerCase();
+            var shown = 0;
+            groups.forEach(function (g) {
+                var hits = g.options.filter(function (op) {
+                    return !q || op.label.toLowerCase().indexOf(q) !== -1;
+                });
+                if (!hits.length || shown >= 300) return;
+                if (g.group) {
+                    var h = document.createElement('div');
+                    h.className = 'pick-group';
+                    h.textContent = g.group;
+                    list.appendChild(h);
+                }
+                hits.forEach(function (op) {
+                    if (shown >= 300) return;
+                    shown++;
+                    var b = document.createElement('button');
+                    b.type = 'button';
+                    b.className = 'pick-opt' + (op.value === current ? ' is-on' : '');
+                    b.setAttribute('role', 'option');
+                    b.setAttribute('aria-selected', op.value === current ? 'true' : 'false');
+                    var dot = document.createElement('span');
+                    dot.className = 'acct-dot';
+                    b.appendChild(dot);
+                    var tx = document.createElement('span');
+                    tx.className = 'pick-t';
+                    tx.textContent = op.label;
+                    b.appendChild(tx);
+                    if (op.meta) {
+                        var m = document.createElement('span');
+                        m.className = 'pick-meta';
+                        m.textContent = op.meta;
+                        b.appendChild(m);
+                    }
+                    b.addEventListener('click', function () {
+                        current = op.value;
+                        paintVal();
+                        open(false);
+                        btn.focus();
+                        onPick(op.value);
+                    });
+                    list.appendChild(b);
+                });
+            });
+            if (!shown) {
+                var none = document.createElement('div');
+                none.className = 'pick-none';
+                none.textContent = t('Nothing matches that.');
+                list.appendChild(none);
+            }
+        }
+
+        function place() {
+            var r = btn.getBoundingClientRect();
+            var below = window.innerHeight - r.bottom;
+            // a menu, not a takeover: never taller than this however much room there is.
+            var CAP = 340;
+            var want = Math.min(pop.scrollHeight || 280, CAP);
+            var up = below < want + 16 && r.top > below;
+            pop.classList.toggle('is-up', up);
+            pop.style.left = Math.round(r.left) + 'px';
+            pop.style.width = Math.round(r.width) + 'px';
+            if (up) {
+                pop.style.top = 'auto';
+                pop.style.bottom = Math.round(window.innerHeight - r.top + 6) + 'px';
+                pop.style.maxHeight = Math.round(Math.min(r.top - 16, CAP)) + 'px';
+            } else {
+                pop.style.bottom = 'auto';
+                pop.style.top = Math.round(r.bottom + 6) + 'px';
+                pop.style.maxHeight = Math.round(Math.min(below - 16, CAP)) + 'px';
+            }
+        }
+
+        function isOpen() { return wrap.classList.contains('is-open'); }
+
+        function open(on) {
+            if (on) {
+                draw('');
+                if (find) find.value = '';
+                document.body.appendChild(pop);
+                place();
+            }
+            wrap.classList.toggle('is-open', on);
+            pop.classList.toggle('is-open', on);
+            btn.setAttribute('aria-expanded', on ? 'true' : 'false');
+            if (on) {
+                var sel = list.querySelector('.pick-opt.is-on');
+                if (sel) sel.scrollIntoView({ block: 'center' });
+                if (find) find.focus();
+            } else if (pop.parentNode) {
+                setTimeout(function () {
+                    if (!isOpen() && pop.parentNode) pop.parentNode.removeChild(pop);
+                }, 200);
+            }
+        }
+
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            open(!isOpen());
+        });
+        pop.addEventListener('click', function (e) { e.stopPropagation(); });
+        if (find) {
+            find.addEventListener('input', function () { draw(find.value); place(); });
+        }
+        document.addEventListener('click', function () { if (isOpen()) open(false); });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && isOpen()) { open(false); btn.focus(); }
+        });
+        pop.addEventListener('keydown', function (e) {
+            if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+            e.preventDefault();
+            var all = [].slice.call(list.querySelectorAll('.pick-opt'));
+            if (!all.length) return;
+            var at = all.indexOf(document.activeElement);
+            var next = e.key === 'ArrowDown' ? at + 1 : at - 1;
+            if (next < 0) next = all.length - 1;
+            if (next >= all.length) next = 0;
+            all[next].focus();
+        });
+        var shut = function () { if (isOpen()) open(false); };
+        window.addEventListener('resize', shut);
+        var canvas = document.getElementById('canvas');
+        if (canvas) canvas.addEventListener('scroll', shut);
+
+        paintVal();
+        wrap.spSet = function (v) { current = v; paintVal(); };
         return wrap;
     }
 
@@ -1131,8 +1290,7 @@
             groups.push({
                 group: r,
                 options: byRegion[r].map(function (z) {
-                    var off = zoneOffset(z);
-                    return { value: z, label: zoneLabel(z) + (off ? '  ' + off : '') };
+                    return { value: z, label: zoneLabel(z), meta: zoneOffset(z) };
                 })
             });
         });
@@ -1195,7 +1353,7 @@
                         ? t(autoSource() || 'Detected for you.')
                         : t('Every timestamp in the dashboard follows this zone.');
                 }
-            })
+            }, { search: 'Search a city or zone' })
         });
         card.appendChild(row);
         frag.appendChild(card);

@@ -919,25 +919,116 @@ button { font: inherit; color: inherit; }
 .fld.is-wide { grid-template-columns: minmax(0, 1fr) minmax(0, 23rem); align-items: start; }
 .fld.is-wide .fld-label { margin-top: 0.1rem; }
 
-.sel-wrap { position: relative; display: block; }
-.sel {
-    appearance: none;
-    -webkit-appearance: none;
-    padding-right: 2rem;
+.pick { position: relative; }
+
+.pick-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.52rem 0.6rem 0.52rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: var(--canvas);
+    font-family: var(--sp-text);
+    font-size: 0.86rem;
+    color: var(--ink-2);
+    text-align: left;
     cursor: pointer;
+    outline: none;
+    transition: border-color 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
+}
+.pick-btn:hover { background: var(--hover); }
+.pick-btn:focus-visible,
+.pick.is-open .pick-btn { border-color: var(--sel); box-shadow: 0 0 0 3px var(--sel-bg); }
+.pick-val {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
 }
-.sel-chev {
-    position: absolute;
-    top: 50%;
-    right: 0.6rem;
-    width: 15px;
-    height: 15px;
-    margin-top: -7.5px;
-    color: var(--ink-4);
+.pick-chev { flex: none; display: flex; width: 15px; height: 15px; color: var(--ink-4); }
+.pick-chev svg { display: block; width: 100%; height: 100%; }
+
+.pick-pop {
+    position: fixed;
+    z-index: 70;
+    display: flex;
+    flex-direction: column;
+    min-width: 12rem;
+    padding: 0.35rem;
+    border: 1px solid var(--panel-line);
+    border-radius: 12px;
+    background: var(--panel);
+    box-shadow: var(--panel-shadow);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-6px);
     pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
 }
-.sel-chev svg { display: block; width: 100%; height: 100%; }
+.pick-pop.is-up { transform: translateY(6px); }
+.pick-pop.is-open {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    pointer-events: auto;
+    transition: opacity 0.18s ease, transform 0.18s ease, visibility 0s;
+}
+
+.pick-find { display: block; padding: 0.15rem 0.15rem 0.35rem; }
+.pick-find input {
+    width: 100%;
+    padding: 0.42rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+    font: inherit;
+    font-size: 0.83rem;
+    color: var(--ink-2);
+    outline: none;
+}
+.pick-find input:focus { border-color: var(--sel); box-shadow: 0 0 0 3px var(--sel-bg); }
+.pick-find input::-webkit-search-cancel-button { -webkit-appearance: none; }
+
+.pick-scroll { overflow-y: auto; min-height: 0; overscroll-behavior: contain; }
+
+.pick-group {
+    padding: 0.5rem 0.5rem 0.25rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-4);
+}
+.pick-group:first-child { padding-top: 0.2rem; }
+
+.pick-opt {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.42rem 0.5rem;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    font-family: var(--sp-text);
+    font-size: 0.86rem;
+    font-weight: 500;
+    color: var(--opt);
+    text-align: left;
+    cursor: pointer;
+    outline: none;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+.pick-opt:hover,
+.pick-opt:focus-visible { background: var(--opt-bg-hover); color: var(--opt-hover); }
+.pick-opt.is-on { color: var(--ink); font-weight: 600; background: var(--sel-bg); }
+.pick-opt.is-on .acct-dot { background: var(--sel); box-shadow: inset 0 0 0 1.4px var(--sel); }
+.pick-t { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick-meta { flex: none; font-size: 0.72rem; color: var(--ink-4); }
+.pick-none { padding: 0.9rem 0.7rem; font-size: 0.83rem; color: var(--ink-4); text-align: center; }
 
 .thms { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6rem; }
 .thm {
@@ -1100,6 +1191,7 @@ html.is-theming .canvas,
 html.is-theming body,
 html.is-theming .card,
 html.is-theming .fld-in,
+html.is-theming .pick-btn,
 html.is-theming .acct-pop,
 html.is-theming .sidectl-pop,
 html.is-theming .toast,
