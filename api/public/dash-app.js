@@ -297,17 +297,30 @@
         out.textContent = t('Sign out');
         out.addEventListener('click', function () {
             out.disabled = true;
+            forgetMe();
             fetch('/v1/auth/logout', { method: 'POST', credentials: 'same-origin' })
                 .then(function () { location.assign('/'); })
                 .catch(function () { location.assign('/'); });
         });
         pop.appendChild(out);
 
-        function open(on) {
+        bindAccountMenu();
+    }
+
+    var acctBound = false;
+    function bindAccountMenu() {
+        if (acctBound) return;
+        var wrap = document.getElementById('acct');
+        var btn = document.getElementById('acct-btn');
+        var pop = document.getElementById('acct-pop');
+        if (!wrap || !btn || !pop) return;
+        acctBound = true;
+
+        var open = function (on) {
             wrap.classList.toggle('is-open', on);
             btn.setAttribute('aria-expanded', on ? 'true' : 'false');
             pop.setAttribute('aria-hidden', on ? 'false' : 'true');
-        }
+        };
         open(false);
 
         btn.addEventListener('click', function (e) {
@@ -322,6 +335,44 @@
                 btn.focus();
             }
         });
+    }
+
+    var ME_KEY = 'sp-me';
+
+    function readMe() {
+        try {
+            var raw = localStorage.getItem(ME_KEY);
+            if (!raw) return null;
+            var me = JSON.parse(raw);
+            return me && me.email ? me : null;
+        } catch (err) {
+            return null;
+        }
+    }
+
+    function writeMe(me) {
+        try {
+            localStorage.setItem(ME_KEY, JSON.stringify({
+                name: me.name || '',
+                email: me.email || '',
+                trial: { state: (me.trial && me.trial.state) || 'none' }
+            }));
+        } catch (err) {  }
+    }
+
+    function forgetMe() {
+        try { localStorage.removeItem(ME_KEY); } catch (err) {  }
+    }
+
+    function sameMe(a, b) {
+        if (!a || !b) return false;
+        return a.name === b.name && a.email === b.email &&
+            ((a.trial && a.trial.state) || '') === ((b.trial && b.trial.state) || '');
+    }
+
+    function paintMe(me) {
+        paintAvatar(me);
+        paintAccountMenu(me);
     }
 
     function sep() {
@@ -351,9 +402,26 @@
             g.font = cs.fontWeight + ' ' + size + 'px ' + cs.fontFamily;
             var m = g.measureText(inner.textContent);
             if (m.actualBoundingBoxLeft == null || m.actualBoundingBoxRight == null) return;
+
+            inner.style.setProperty('--ink-x', '0px');
+            inner.style.setProperty('--ink-y', '0px');
+
             var inkMid = (m.actualBoundingBoxRight - m.actualBoundingBoxLeft) / 2;
             var dx = (m.width / 2 - inkMid) / scale;
+
+            var probe = document.createElement('i');
+            probe.setAttribute('style', 'display:inline-block;width:0;height:0;');
+            inner.appendChild(probe);
+            var baseline = probe.getBoundingClientRect().bottom;
+            inner.removeChild(probe);
+
+            var box = host.getBoundingClientRect();
+            var inkCentre = baseline +
+                ((m.actualBoundingBoxDescent - m.actualBoundingBoxAscent) / 2) / scale;
+            var dy = (box.top + box.height / 2) - inkCentre;
+
             inner.style.setProperty('--ink-x', dx.toFixed(3) + 'px');
+            inner.style.setProperty('--ink-y', dy.toFixed(3) + 'px');
         } catch (err) {  }
     }
 
@@ -383,12 +451,19 @@
     }
     paintShell();
 
+    var cached = readMe();
+    if (cached) paintMe(cached);
+    else bindAccountMenu();
+
     fetch('/v1/entitlement', { credentials: 'same-origin' })
-        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (r) {
+            if (r.status === 401) { forgetMe(); return null; }
+            return r.ok ? r.json() : null;
+        })
         .then(function (me) {
             if (!me) return;
-            paintAvatar(me);
-            paintAccountMenu(me);
+            if (!sameMe(cached, me)) paintMe(me);
+            writeMe(me);
         })
         .catch(function () {  });
 })();

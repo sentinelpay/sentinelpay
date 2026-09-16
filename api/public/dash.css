@@ -450,7 +450,7 @@ button { font: inherit; color: inherit; }
 
 .avatar-in {
     display: block;
-    transform: translate(var(--ink-x, 0px), 0.063em);
+    transform: translate(var(--ink-x, 0px), var(--ink-y, 0px));
 }
 
 .menu-btn {
