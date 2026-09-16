@@ -53,6 +53,8 @@
         cog: '<circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2 5.5 5.5"/>'
     };
 
+    var ACCOUNT_PATH = '/dashboard/account/preferences';
+
     var NAV = [
         { group: 'Work', items: [
             { key: 'overview', label: 'Overview', icon: 'home' },
@@ -86,7 +88,7 @@
         { group: 'Organisation', items: [
             { key: 'team', label: 'Team', icon: 'users' },
             { key: 'billing', label: 'Billing', icon: 'card' },
-            { key: 'account', label: 'Account', icon: 'cog' }
+            { key: 'account', label: 'Account', icon: 'cog', href: ACCOUNT_PATH }
         ] }
     ];
 
@@ -120,6 +122,9 @@
                 b.className = 'nav-btn' + (item.key === active ? ' is-on' : '');
                 b.setAttribute('data-nav', item.key);
                 if (item.key === active) b.setAttribute('aria-current', 'page');
+                if (item.href) {
+                    b.addEventListener('click', function () { location.assign(item.href); });
+                }
                 b.innerHTML = icon(item.icon);
                 var span = document.createElement('span');
                 span.className = 'nav-t';
@@ -491,7 +496,10 @@
         main.appendChild(head);
 
         main.appendChild(sep());
-        main.appendChild(acctRow('Account', { icon: 'cog', soon: true }));
+        main.appendChild(acctRow('Account', {
+            icon: 'cog',
+            onClick: function () { location.assign(ACCOUNT_PATH); }
+        }));
         main.appendChild(acctRow('Feature previews', { icon: 'flask', soon: true }));
         main.appendChild(acctRow('Changelog', { icon: 'file', soon: true }));
 
@@ -755,8 +763,14 @@
         if (document.fonts && document.fonts.ready) document.fonts.ready.then(place);
     }
 
+    function currentNav() {
+        var path = location.pathname;
+        if (path.indexOf('/dashboard/account') === 0) return 'account';
+        return 'overview';
+    }
+
     function paintShell() {
-        paintNav('overview');
+        paintNav(currentNav());
         paintFoot();
         applySideMode(sideMode());
     }

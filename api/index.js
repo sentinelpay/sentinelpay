@@ -588,7 +588,7 @@ app.get('/auth', (req, res) => {
 app.get('/privacy', (req, res) => res.redirect(301, '/privacy-policy'));
 app.get('/tos', (req, res) => res.redirect(301, '/terms-of-service'));
 
-app.get('/dashboard', async (req, res, next) => {
+app.get(['/dashboard', '/dashboard/*splat'], async (req, res, next) => {
     let me;
     try {
         me = await currentUser(req);
