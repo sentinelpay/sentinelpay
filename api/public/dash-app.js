@@ -789,6 +789,7 @@
 
     function forgetMe() {
         try { localStorage.removeItem(ME_KEY); } catch (err) {  }
+        forgetTokenCache();
     }
 
     function sameMe(a, b) {
@@ -2053,6 +2054,57 @@
 
     var TOKENS_PATH = '/dashboard/account/tokens';
 
+    // the token list is cached only to spare you the empty half second on the way
+    // in. every rule here exists to keep it from becoming anything more than that:
+    //
+    //   sessionStorage, not localStorage, so it dies with the tab and is never
+    //     carried across browser sessions or left behind on a shared machine;
+    //   stamped with the address it was read for, so another account signing in
+    //     on the same tab can never be shown the previous one's tokens;
+    //   sixty seconds, after which it is ignored rather than shown;
+    //   never the deciding answer: the list is always refetched and replaced, so
+    //     a revoked token cannot keep looking live for longer than that fetch;
+    //   cleared on sign out along with the cached identity;
+    //   and it holds no secret, because the server only ever returns one once, at
+    //     creation, and this is not on that path.
+    var TOK_KEY = 'sp-tokens';
+    var TOK_GOOD_FOR = 60 * 1000;
+
+    function readTokenCache(who) {
+        try {
+            var raw = sessionStorage.getItem(TOK_KEY);
+            if (!raw) return null;
+            var box = JSON.parse(raw);
+            if (!box || box.who !== who) return null;
+            if (!box.at || Date.now() - box.at > TOK_GOOD_FOR) return null;
+            if (!box.rows || box.rows.length === undefined) return null;
+            return box;
+        } catch (err) {
+            return null;
+        }
+    }
+
+    function writeTokenCache(who, rows, scopes) {
+        try {
+            sessionStorage.setItem(TOK_KEY, JSON.stringify({
+                who: who,
+                at: Date.now(),
+                scopes: scopes,
+                rows: rows.map(function (r) {
+                    return {
+                        id: r.id, name: r.name, tail: r.tail, scopes: r.scopes,
+                        lastUsedAt: r.lastUsedAt, expiresAt: r.expiresAt, revokedAt: r.revokedAt
+                    };
+                })
+            }));
+        } catch (err) {  }
+    }
+
+    function forgetTokenCache() {
+        try { sessionStorage.removeItem(TOK_KEY); } catch (err) {  }
+    }
+
+
     function whenText(iso, withTime) {
         if (!iso) return '';
         var d = new Date(iso);
@@ -2187,8 +2239,10 @@
         card.className = 'card';
         page.appendChild(card);
 
-        var rows = [];
-        var scopes = [];
+        var who = (me && me.email) || '';
+        var warm = readTokenCache(who);
+        var rows = warm ? warm.rows : [];
+        var scopes = warm ? (warm.scopes || []) : [];
 
         function scopeLabel(key) {
             for (var i = 0; i < scopes.length; i++) {
@@ -2285,13 +2339,23 @@
 
         function load() {
             fetch('/v1/account/tokens', { credentials: 'same-origin' })
-                .then(function (r) { return r.json(); })
+                .then(function (r) {
+                    // a 500 still parses as json, so the status has to be the thing
+                    // that decides. without this an error read as an empty account.
+                    if (!r.ok) throw new Error('bad-status-' + r.status);
+                    return r.json();
+                })
                 .then(function (j) {
                     rows = (j && j.rows) || [];
                     scopes = (j && j.scopes) || [];
+                    writeTokenCache(who, rows, scopes);
                     draw();
                 })
                 .catch(function () {
+                    // a cached list on screen is better than replacing it with an
+                    // error, so only an empty page says the fetch failed.
+                    forgetTokenCache();
+                    if (rows.length) return;
                     card.textContent = '';
                     card.appendChild(emptyState('That did not load.', 'Reload the page to try again.'));
                 });
@@ -2300,9 +2364,32 @@
         findIn.addEventListener('input', draw);
         make.addEventListener('click', function () { askToken(scopes, load); });
 
-        card.appendChild(emptyState('Loading', ''));
+        if (warm) draw();
+        else card.appendChild(waiting());
         load();
         return page;
+    }
+
+    // on a cold visit there is nothing to show yet. the shape of the table reads
+    // as the page arriving, where the word Loading reads as the page being late.
+    function waiting() {
+        var box = document.createElement('div');
+        box.className = 'waiting';
+        box.setAttribute('aria-hidden', 'true');
+        for (var i = 0; i < 3; i++) {
+            var row = document.createElement('div');
+            row.className = 'tr';
+            for (var j = 0; j < 4; j++) {
+                var cell = document.createElement('div');
+                var bar = document.createElement('span');
+                bar.className = 'shim';
+                cell.appendChild(bar);
+                row.appendChild(cell);
+            }
+            row.appendChild(document.createElement('div'));
+            box.appendChild(row);
+        }
+        return box;
     }
 
     function emptyState(title, sub) {

@@ -1066,6 +1066,25 @@ button { font: inherit; color: inherit; }
 }
 .rowbtn:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-bg); }
 
+.waiting .tr { border-bottom: 1px solid var(--line-2); }
+.waiting .tr:last-child { border-bottom: 0; }
+.shim {
+    display: block;
+    height: 10px;
+    border-radius: 6px;
+    background: var(--line);
+    animation: shim 1.4s ease-in-out infinite;
+}
+.waiting .tr:nth-child(2) .shim { animation-delay: 0.12s; }
+.waiting .tr:nth-child(3) .shim { animation-delay: 0.24s; }
+@keyframes shim {
+    0%, 100% { opacity: 0.45; }
+    50% { opacity: 0.9; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .shim { animation: none; }
+}
+
 .empty { padding: 3rem 1.2rem; text-align: center; }
 .empty-h { font-size: 0.9rem; font-weight: 650; color: var(--ink); }
 .empty p { margin: 0.3rem 0 0; font-size: 0.83rem; line-height: 1.6; color: var(--ink-3); }
