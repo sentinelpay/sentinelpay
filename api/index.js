@@ -16,6 +16,7 @@ const { PostgresStore, ipKey, startSweep: startRateSweep } = require('./rate-sto
 const sanctions = require('./sanctions');
 const trial = require('./trial');
 const screening = require('./screening');
+const tokens = require('./tokens');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -774,6 +775,36 @@ function clearSignupCookie(res) {
     res.clearCookie(SIGNUP_COOKIE, {
         httpOnly: true, secure: COOKIE_SECURE, sameSite: 'lax', path: '/',
     });
+}
+
+// a /v1 data endpoint can be reached two ways: from the dashboard with a session
+// cookie, or from a customer's own code with a bearer token. the token path is
+// the only one that checks scopes, because a session is the whole account.
+async function caller(req, res, scope) {
+    const raw = String(req.headers.authorization || '');
+    if (/^Bearer\s+/i.test(raw)) {
+        const out = await tokens.read(raw.replace(/^Bearer\s+/i, ''));
+        if (!out.ok) {
+            const said = {
+                revoked: 'That token has been revoked',
+                expired: 'That token has expired',
+                unavailable: 'Accounts are not available right now. Please try again shortly.',
+            };
+            res.status(out.reason === 'unavailable' ? 503 : 401)
+               .json({ error: said[out.reason] || 'That token is not valid' });
+            return null;
+        }
+        if (scope && out.scopes.indexOf(scope) === -1) {
+            res.status(403).json({ error: 'That token does not carry the ' + scope + ' scope' });
+            return null;
+        }
+        const who = await accounts.readUser(out.userId);
+        if (!who) { res.status(401).json({ error: 'That token is not valid' }); return null; }
+        return { ...who, viaToken: out.tokenId };
+    }
+    const me = await currentUser(req);
+    if (!me) { res.status(401).json({ error: 'Sign in first' }); return null; }
+    return me;
 }
 
 async function currentUser(req) {
@@ -1798,6 +1829,52 @@ app.post('/v1/account/reset-password', requireCloudflareOrigin, accountLimiter, 
     res.json({ ok: true, resendIn: accounts.RESET_RESEND_WAIT_S });
 });
 
+// managing tokens is session only on purpose: a token must never be able to mint
+// another token, or quietly widen its own reach by revoking and replacing itself.
+app.get('/v1/account/tokens', async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    res.set('Cache-Control', 'no-store, private');
+    res.json({ ok: true, scopes: tokens.SCOPES, rows: await tokens.list(me.userId) });
+});
+
+app.post('/v1/account/tokens', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const b = req.body || {};
+    const out = await tokens.mint(me.userId, b.name, b.scopes, b.days);
+    if (!out.ok) {
+        const said = {
+            'no-name': 'Give the token a name you will recognise later.',
+            'no-scopes': 'Pick at least one thing this token may do.',
+            'too-many': 'That is as many live tokens as one account may hold.',
+        };
+        return res.status(out.reason === 'unavailable' ? 503 : 400).json({
+            error: said[out.reason] || 'Accounts are not available right now. Please try again shortly.',
+        });
+    }
+    await accounts.audit('token-created', {
+        actor: String(me.userId), subject: out.row.id, ip: req.realIp,
+        detail: out.row.scopes.join(' '),
+    });
+    res.set('Cache-Control', 'no-store, private');
+    res.json({ ok: true, token: out.token, row: out.row });
+});
+
+app.post('/v1/account/tokens/:id/revoke', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const out = await tokens.revoke(me.userId, req.params.id);
+    if (!out.ok) {
+        if (out.reason === 'missing') return res.status(404).json({ error: 'That token is already gone.' });
+        return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
+    }
+    await accounts.audit('token-revoked', {
+        actor: String(me.userId), subject: String(req.params.id), ip: req.realIp,
+    });
+    res.json({ ok: true });
+});
+
 app.get('/v1/account/sessions', async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
@@ -1931,8 +2008,8 @@ app.post('/v1/trial/activate', trialActivateLimiter, async (req, res) => {
 app.post('/v1/screen', screenLimiter, async (req, res) => {
     res.set('Cache-Control', 'no-store, private');
     try {
-        const me = await currentUser(req);
-        if (!me) return res.status(401).json({ error: 'Sign in first' });
+        const me = await caller(req, res, 'screenings:write');
+        if (!me) return;
 
         const address = String((req.body && req.body.address) || '').trim();
         if (!address) return res.status(400).json({ error: 'Paste an address first' });
@@ -1977,8 +2054,8 @@ app.post('/v1/screen', screenLimiter, async (req, res) => {
 app.get('/v1/screenings', async (req, res) => {
     res.set('Cache-Control', 'no-store, private');
     try {
-        const me = await currentUser(req);
-        if (!me) return res.status(401).json({ error: 'Sign in first' });
+        const me = await caller(req, res, 'screenings:read');
+        if (!me) return;
         res.json({ rows: await screening.recent(me.userId, req.query.limit) });
     } catch (err) {
         console.error('[screenings]', err.message);
@@ -1989,8 +2066,8 @@ app.get('/v1/screenings', async (req, res) => {
 app.get('/v1/screenings/stats', async (req, res) => {
     res.set('Cache-Control', 'no-store, private');
     try {
-        const me = await currentUser(req);
-        if (!me) return res.status(401).json({ error: 'Sign in first' });
+        const me = await caller(req, res, 'screenings:read');
+        if (!me) return;
         const [numbers, listed] = await Promise.all([
             screening.stats(me.userId, req.query.days),
             sanctions.status(),
@@ -2022,8 +2099,8 @@ app.get('/v1/screenings/stats', async (req, res) => {
 app.get('/v1/screenings/:id/evidence', async (req, res) => {
     res.set('Cache-Control', 'no-store, private');
     try {
-        const me = await currentUser(req);
-        if (!me) return res.status(401).json({ error: 'Sign in first' });
+        const me = await caller(req, res, 'screenings:read');
+        if (!me) return;
         const id = Number(req.params.id);
         if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: 'Not a screening' });
         const row = await screening.byId(me.userId, id);
@@ -2054,8 +2131,8 @@ app.get('/v1/screenings/:id/evidence', async (req, res) => {
 app.get('/v1/screenings/:id', async (req, res) => {
     res.set('Cache-Control', 'no-store, private');
     try {
-        const me = await currentUser(req);
-        if (!me) return res.status(401).json({ error: 'Sign in first' });
+        const me = await caller(req, res, 'screenings:read');
+        if (!me) return;
         const id = Number(req.params.id);
         if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: 'Not a screening' });
         const row = await screening.byId(me.userId, id);

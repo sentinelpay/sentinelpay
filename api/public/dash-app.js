@@ -2051,6 +2051,505 @@
         stepConfirm();
     }
 
+    var TOKENS_PATH = '/dashboard/account/tokens';
+
+    function whenText(iso, withTime) {
+        if (!iso) return '';
+        var d = new Date(iso);
+        if (isNaN(d.getTime())) return '';
+        var opts = { year: 'numeric', month: 'short', day: 'numeric' };
+        if (withTime) { opts.hour = '2-digit'; opts.minute = '2-digit'; }
+        try {
+            opts.timeZone = zoneNow();
+            return new Intl.DateTimeFormat(navLang(), opts).format(d);
+        } catch (err) {
+            return d.toISOString().slice(0, 10);
+        }
+    }
+
+    function navLang() {
+        return (window.SentinelI18n && window.SentinelI18n.lang()) || 'en';
+    }
+
+    function daysUntil(iso) {
+        if (!iso) return null;
+        var d = new Date(iso).getTime();
+        if (isNaN(d)) return null;
+        return Math.ceil((d - Date.now()) / 86400000);
+    }
+
+    function tag(text, kind) {
+        var el = document.createElement('span');
+        el.className = 'tag' + (kind ? ' tag-' + kind : '');
+        el.textContent = text;
+        return el;
+    }
+
+    function copyBtn(getText) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'copy';
+        var label = document.createElement('span');
+        label.textContent = t('Copy');
+        b.appendChild(label);
+        b.addEventListener('click', function () {
+            var text = getText();
+            var done = function () {
+                b.classList.add('is-done');
+                label.textContent = t('Copied');
+                clearTimeout(b.spTimer);
+                b.spTimer = setTimeout(function () {
+                    b.classList.remove('is-done');
+                    label.textContent = t('Copy');
+                }, 1600);
+            };
+            // the clipboard api needs permission and refuses in some contexts, so a
+            // rejection has to fall through to the old way rather than leaving the
+            // button silent and the token uncopied.
+            var theOldWay = function () {
+                var probe = document.createElement('textarea');
+                probe.value = text;
+                probe.setAttribute('readonly', '');
+                probe.style.position = 'fixed';
+                probe.style.opacity = '0';
+                document.body.appendChild(probe);
+                probe.select();
+                var won = false;
+                try { won = document.execCommand('copy'); } catch (err) { won = false; }
+                document.body.removeChild(probe);
+                if (won) done();
+                else {
+                    label.textContent = t('Press ctrl C');
+                    var code = b.parentNode && b.parentNode.querySelector('code');
+                    if (code && window.getSelection) {
+                        var range = document.createRange();
+                        range.selectNodeContents(code);
+                        var sel = window.getSelection();
+                        sel.removeAllRanges();
+                        sel.addRange(range);
+                    }
+                }
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(done).catch(theOldWay);
+                return;
+            }
+            theOldWay();
+        });
+        return b;
+    }
+
+    function viewTokens(me) {
+        var page = document.createElement('div');
+        page.className = 'pg pg-wide';
+        page.appendChild(pageHead('Access tokens',
+            'Let your own systems call our API without a person signing in.'));
+
+        var note = document.createElement('div');
+        note.className = 'notice';
+        note.innerHTML = '<svg class="notice-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8v.01"></path></svg>';
+        var noteT = document.createElement('div');
+        noteT.className = 'notice-t';
+        var noteH = document.createElement('div');
+        noteH.className = 'notice-h';
+        noteH.textContent = t('Every token is scoped, and shown once');
+        noteT.appendChild(noteH);
+        var noteP = document.createElement('p');
+        noteP.textContent = t('Give each token only what its job needs, and a date to expire on. We store a hash, never the token, so it is shown to you once when you create it and cannot be shown again.');
+        noteT.appendChild(noteP);
+        note.appendChild(noteT);
+        page.appendChild(note);
+
+        var bar = document.createElement('div');
+        bar.className = 'bar';
+        var find = document.createElement('label');
+        find.className = 'bar-find';
+        find.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
+            'stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle>' +
+            '<path d="m19.5 19.5-3.8-3.8"></path></svg>';
+        var findIn = document.createElement('input');
+        findIn.type = 'search';
+        findIn.autocomplete = 'off';
+        findIn.placeholder = t('Filter tokens');
+        find.appendChild(findIn);
+        bar.appendChild(find);
+
+        var make = document.createElement('button');
+        make.type = 'button';
+        make.className = 'btn btn-primary';
+        make.textContent = t('Generate new token');
+        bar.appendChild(make);
+        page.appendChild(bar);
+
+        var card = document.createElement('div');
+        card.className = 'card';
+        page.appendChild(card);
+
+        var rows = [];
+        var scopes = [];
+
+        function scopeLabel(key) {
+            for (var i = 0; i < scopes.length; i++) {
+                if (scopes[i].key === key) return t(scopes[i].label);
+            }
+            return key;
+        }
+
+        function draw() {
+            card.textContent = '';
+            var q = findIn.value.trim().toLowerCase();
+            var shown = rows.filter(function (r) {
+                return !q || (r.name + ' ' + r.scopes.join(' ')).toLowerCase().indexOf(q) !== -1;
+            });
+
+            if (!rows.length) {
+                card.appendChild(emptyState('No tokens yet',
+                    'When you create one it will appear here, with what it may do and when it expires.'));
+                return;
+            }
+            if (!shown.length) {
+                card.appendChild(emptyState('Nothing matches that', 'Try a different name.'));
+                return;
+            }
+
+            var head = document.createElement('div');
+            head.className = 'tr';
+            head.classList.add('th');
+            ['Token', 'Scopes', 'Last used', 'Expires'].forEach(function (h) {
+                var c = document.createElement('div');
+                c.textContent = t(h);
+                head.appendChild(c);
+            });
+            head.appendChild(document.createElement('div'));
+            card.appendChild(head);
+
+            shown.forEach(function (r) { card.appendChild(tokenRow(r)); });
+        }
+
+        function tokenRow(r) {
+            var row = document.createElement('div');
+            row.className = 'tr' + (r.revokedAt ? ' is-off' : '');
+
+            var who = document.createElement('div');
+            var nm = document.createElement('div');
+            nm.className = 'tr-name';
+            nm.textContent = r.name;
+            who.appendChild(nm);
+            var sub = document.createElement('div');
+            sub.className = 'tr-sub mono';
+            sub.textContent = 'sp_live_' + '\u2026' + r.tail;
+            who.appendChild(sub);
+            row.appendChild(who);
+
+            var sc = document.createElement('div');
+            sc.className = 'tr-tags';
+            if (r.revokedAt) sc.appendChild(tag(t('Revoked'), 'off'));
+            else r.scopes.forEach(function (k) { sc.appendChild(tag(scopeLabel(k))); });
+            row.appendChild(sc);
+
+            var used = document.createElement('div');
+            used.className = 'tr-dim';
+            used.textContent = r.lastUsedAt ? whenText(r.lastUsedAt, true) : t('Never');
+            row.appendChild(used);
+
+            var exp = document.createElement('div');
+            exp.className = 'tr-dim';
+            if (!r.expiresAt) {
+                exp.textContent = t('Does not expire');
+            } else {
+                var left = daysUntil(r.expiresAt);
+                exp.textContent = whenText(r.expiresAt);
+                if (left !== null && left <= 0) exp.appendChild(tag(t('Expired'), 'off'));
+                else if (left !== null && left <= 14) exp.appendChild(tag(t('Soon'), 'warn'));
+            }
+            row.appendChild(exp);
+
+            var act = document.createElement('div');
+            act.className = 'tr-act';
+            if (!r.revokedAt) {
+                var kill = document.createElement('button');
+                kill.type = 'button';
+                kill.className = 'rowbtn';
+                kill.textContent = t('Revoke');
+                kill.addEventListener('click', function () { askRevoke(r, load); });
+                act.appendChild(kill);
+            }
+            row.appendChild(act);
+            return row;
+        }
+
+        function load() {
+            fetch('/v1/account/tokens', { credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (j) {
+                    rows = (j && j.rows) || [];
+                    scopes = (j && j.scopes) || [];
+                    draw();
+                })
+                .catch(function () {
+                    card.textContent = '';
+                    card.appendChild(emptyState('That did not load.', 'Reload the page to try again.'));
+                });
+        }
+
+        findIn.addEventListener('input', draw);
+        make.addEventListener('click', function () { askToken(scopes, load); });
+
+        card.appendChild(emptyState('Loading', ''));
+        load();
+        return page;
+    }
+
+    function emptyState(title, sub) {
+        var box = document.createElement('div');
+        box.className = 'empty';
+        var h = document.createElement('div');
+        h.className = 'empty-h';
+        h.textContent = t(title);
+        box.appendChild(h);
+        if (sub) {
+            var p = document.createElement('p');
+            p.textContent = t(sub);
+            box.appendChild(p);
+        }
+        return box;
+    }
+
+    function askRevoke(row, done) {
+        var m = modalShell('Revoke this token',
+            'Anything still using it stops working the moment this goes through.');
+        var body = document.createElement('div');
+        body.className = 'vpanel';
+
+        var who = document.createElement('div');
+        who.className = 'modal-who mono';
+        who.textContent = row.name + '  ' + 'sp_live_' + '\u2026' + row.tail;
+        body.appendChild(who);
+
+        var msg = document.createElement('p');
+        msg.className = 'verr';
+        msg.hidden = true;
+        body.appendChild(msg);
+
+        var yes = wideBtn('Revoke token', 'cta');
+        body.appendChild(yes);
+        var quit = document.createElement('div');
+        quit.className = 'modal-quit';
+        var no = wideBtn('Keep it', 'quiet');
+        no.addEventListener('click', m.shut);
+        quit.appendChild(no);
+        body.appendChild(quit);
+        m.body.appendChild(body);
+
+        yes.addEventListener('click', function () {
+            yes.disabled = true;
+            msg.hidden = true;
+            fetch('/v1/account/tokens/' + encodeURIComponent(row.id) + '/revoke', {
+                method: 'POST', credentials: 'same-origin'
+            }).then(function (r) {
+                return r.json().catch(function () { return {}; }).then(function (j) {
+                    return { ok: r.ok, body: j };
+                });
+            }).then(function (r) {
+                if (!r.ok) {
+                    msg.textContent = (r.body && r.body.error) || t('That did not work.');
+                    msg.hidden = false;
+                    yes.disabled = false;
+                    return;
+                }
+                m.shut();
+                toast(t('Token revoked'), 'good');
+                done();
+            }).catch(function () {
+                msg.textContent = t('That did not work.');
+                msg.hidden = false;
+                yes.disabled = false;
+            });
+        });
+    }
+
+    var TTL_CHOICES = [
+        { value: '30', label: '30 days' },
+        { value: '90', label: '90 days' },
+        { value: '180', label: '180 days' },
+        { value: '365', label: 'A year' },
+        { value: '0', label: 'Does not expire' }
+    ];
+
+    function askToken(scopes, done) {
+        var m = modalShell('Generate a token',
+            'Name it after the thing that will use it, and give it only what that thing needs.');
+
+        function step(build, backwards) {
+            m.body.textContent = '';
+            build();
+            m.body.style.setProperty('--step-dir', backwards ? '-14px' : '14px');
+            m.body.classList.remove('is-stepping');
+            void m.body.offsetWidth;
+            m.body.classList.add('is-stepping');
+        }
+
+        function stepMake() {
+            var form = document.createElement('form');
+            form.className = 'vpanel';
+
+            var nameField = document.createElement('div');
+            nameField.className = 'vfield';
+            var nameLab = document.createElement('label');
+            nameLab.textContent = t('Name');
+            nameLab.setAttribute('for', 'tk-name');
+            nameField.appendChild(nameLab);
+            var name = document.createElement('input');
+            name.id = 'tk-name';
+            name.type = 'text';
+            name.autocomplete = 'off';
+            name.maxLength = 60;
+            name.placeholder = t('e.g. Billing service');
+            nameField.appendChild(name);
+            form.appendChild(nameField);
+
+            var scopeBox = document.createElement('div');
+            scopeBox.className = 'vfield';
+            var scopeLab = document.createElement('span');
+            scopeLab.className = 'vfield-lab';
+            scopeLab.textContent = t('What it may do');
+            scopeBox.appendChild(scopeLab);
+            var picked = {};
+            scopes.forEach(function (sc) {
+                var row = document.createElement('label');
+                row.className = 'tick';
+                var box = document.createElement('input');
+                box.type = 'checkbox';
+                box.addEventListener('change', function () {
+                    picked[sc.key] = box.checked;
+                    sync();
+                });
+                row.appendChild(box);
+                var txt = document.createElement('span');
+                txt.textContent = t(sc.label);
+                row.appendChild(txt);
+                var code = document.createElement('code');
+                code.textContent = sc.key;
+                row.appendChild(code);
+                scopeBox.appendChild(row);
+            });
+            form.appendChild(scopeBox);
+
+            var ttlField = document.createElement('div');
+            ttlField.className = 'vfield';
+            var ttlLab = document.createElement('label');
+            ttlLab.className = 'vfield-lab';
+            ttlLab.textContent = t('Expires after');
+            ttlField.appendChild(ttlLab);
+            var ttl = '90';
+            ttlField.appendChild(selectBox('tk-ttl', [{
+                options: TTL_CHOICES.map(function (c) {
+                    return { value: c.value, label: t(c.label) };
+                })
+            }], ttl, function (v) { ttl = v; }));
+            form.appendChild(ttlField);
+
+            var msg = document.createElement('p');
+            msg.className = 'verr';
+            msg.hidden = true;
+            form.appendChild(msg);
+
+            var go2 = wideBtn('Generate token', 'cta', 'submit');
+            go2.disabled = true;
+            form.appendChild(go2);
+            var quit = document.createElement('div');
+            quit.className = 'modal-quit';
+            var no = wideBtn('Cancel', 'quiet');
+            no.addEventListener('click', m.shut);
+            quit.appendChild(no);
+            form.appendChild(quit);
+            m.body.appendChild(form);
+
+            function sync() {
+                var any = Object.keys(picked).some(function (k) { return picked[k]; });
+                go2.disabled = !name.value.trim() || !any;
+            }
+            name.addEventListener('input', function () {
+                if (!msg.hidden) msg.hidden = true;
+                sync();
+            });
+            setTimeout(function () { name.focus(); }, 60);
+
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                if (go2.disabled) return;
+                go2.disabled = true;
+                msg.hidden = true;
+                fetch('/v1/account/tokens', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        name: name.value,
+                        days: Number(ttl),
+                        scopes: Object.keys(picked).filter(function (k) { return picked[k]; })
+                    })
+                }).then(function (r) {
+                    return r.json().catch(function () { return {}; }).then(function (j) {
+                        return { ok: r.ok, body: j };
+                    });
+                }).then(function (r) {
+                    if (!r.ok) {
+                        msg.textContent = (r.body && r.body.error) || t('That did not work.');
+                        msg.hidden = false;
+                        go2.disabled = false;
+                        return;
+                    }
+                    done();
+                    step(function () { stepShow(r.body.token, r.body.row); });
+                }).catch(function () {
+                    msg.textContent = t('That did not work.');
+                    msg.hidden = false;
+                    go2.disabled = false;
+                });
+            });
+        }
+
+        function stepShow(secret, row) {
+            m.bare(true);
+            var box = document.createElement('div');
+            box.className = 'vpanel';
+
+            var head = document.createElement('div');
+            head.className = 'vhead';
+            var mark = document.createElement('div');
+            mark.className = 'vmark';
+            mark.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
+                'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                '<polyline points="20 6 9 17 4 12"></polyline></svg>';
+            head.appendChild(mark);
+            var h3 = document.createElement('h3');
+            h3.textContent = t('Copy it now');
+            head.appendChild(h3);
+            var p = document.createElement('p');
+            p.textContent = t('This is the only time we can show you this token. We keep a hash of it, not the token itself.');
+            head.appendChild(p);
+            box.appendChild(head);
+
+            var secretBox = document.createElement('div');
+            secretBox.className = 'secret';
+            var code = document.createElement('code');
+            code.textContent = secret;
+            secretBox.appendChild(code);
+            secretBox.appendChild(copyBtn(function () { return secret; }));
+            box.appendChild(secretBox);
+
+            var done2 = wideBtn('I have copied it', 'cta');
+            done2.addEventListener('click', m.shut);
+            box.appendChild(done2);
+            m.body.appendChild(box);
+        }
+
+        stepMake();
+    }
+
     function viewPreferences(me) {
         var page = document.createElement('div');
         page.className = 'pg';
@@ -2166,8 +2665,11 @@
         var canvas = document.getElementById('canvas');
         if (!canvas) return;
         canvas.textContent = '';
-        if (location.pathname === ACCOUNT_PATH && lastMe) {
+        if (!lastMe) return;
+        if (location.pathname === ACCOUNT_PATH) {
             canvas.appendChild(viewPreferences(lastMe));
+        } else if (location.pathname === TOKENS_PATH) {
+            canvas.appendChild(viewTokens(lastMe));
         }
     }
 

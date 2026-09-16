@@ -20,6 +20,8 @@ SKIP_EXACT = {
     'ceem', 'mind', 'chibby', 'mind, chibby', 'ceem, mind, chibby',
     # internal state keys and an IANA timezone id. never shown as prose, never translated.
     'auto', 'system', 'UTC',
+    # the api token prefix. printed verbatim, never translated.
+    'sp_live_',
     'Ceem', 'Mind', 'Chibby', 'Mind, chibby', 'Ceem, mind, chibby',
     'elektromaterijal', 'Elektromaterijal', 'racunala', 'Racunala',
     'traveler', 'Traveler', 'futura', 'Futura', 'majice', 'Majice',

@@ -388,6 +388,34 @@ async function startSession(userId, { mfa = false } = {}) {
     return { token, maxAgeSeconds: SESSION_MAX_DAYS * 24 * 60 * 60 };
 }
 
+// the same person a session would give you, looked up by id. the api token path
+// needs this: it has an owner but no session row to join through.
+async function readUser(userId) {
+    if (!(await init())) return null;
+    try {
+        const res = await db.query(
+            `SELECT id, email_hash, email_enc, name_enc, lang, created_at, totp_at
+               FROM users WHERE id = $1`,
+            [userId]
+        );
+        if (!res.rowCount) return null;
+        const row = res.rows[0];
+        return {
+            userId: row.id,
+            email: db.open('signup-email:' + row.email_hash, row.email_enc),
+            name: db.open('signup-name:' + row.email_hash, row.name_enc),
+            lang: row.lang || 'en',
+            since: row.created_at,
+            mfa: false,
+            totpOn: Boolean(row.totp_at),
+            emailHash: row.email_hash,
+        };
+    } catch (err) {
+        console.error('[accounts] user lookup failed: ' + err.message);
+        return null;
+    }
+}
+
 async function readSession(token) {
     if (!token || typeof token !== 'string' || token.length > 200) return null;
     if (!(await init())) return null;
@@ -1136,6 +1164,7 @@ module.exports = {
     startTotp, confirmTotp, disableTotp, startTotpPending, finishTotp, recoveryLeft,
     changePassword, listSessions, revokeOtherSessions, deleteAccount,
     startReset, readReset, finishReset, RESET_TTL_MIN, RESET_RESEND_WAIT_S,
+    readUser,
     hashPassword, verifyPassword,
     signIn, startSession, readSession, endSession,
     CODE_TTL_MIN, CODE_MAX_SENDS, CODE_RESEND_WAIT_S, setName };
