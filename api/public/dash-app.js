@@ -984,6 +984,212 @@
         return { first: parts[0], last: parts.slice(1).join(' ') };
     }
 
+    function sectionNote(text) {
+        var p = document.createElement('p');
+        p.className = 'pg-note';
+        p.textContent = t(text);
+        return p;
+    }
+
+    // a mini drawing of the dashboard, so the tile shows the theme rather than
+    // naming it. painted in fixed colours, never tokens: the light preview has
+    // to stay light while you are looking at it in the dark.
+    function themeFace(tone) {
+        var face = document.createElement('span');
+        face.className = 'thm-face is-' + tone;
+        var rail = document.createElement('span');
+        rail.className = 'thm-rail';
+        for (var i = 0; i < 4; i++) rail.appendChild(document.createElement('span'));
+        face.appendChild(rail);
+        var body = document.createElement('span');
+        body.className = 'thm-body';
+        var bar = document.createElement('span');
+        bar.className = 'thm-bar';
+        for (var j = 0; j < 3; j++) bar.appendChild(document.createElement('span'));
+        body.appendChild(bar);
+        for (var k = 0; k < 2; k++) {
+            var box = document.createElement('span');
+            box.className = 'thm-box';
+            box.appendChild(document.createElement('i'));
+            box.appendChild(document.createElement('i'));
+            body.appendChild(box);
+        }
+        face.appendChild(body);
+        return face;
+    }
+
+    function themeTile(th) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'thm';
+        b.setAttribute('role', 'radio');
+        b.setAttribute('data-theme-pick', th.key);
+        var on = themeMode() === th.key;
+        b.classList.toggle('is-on', on);
+        b.setAttribute('aria-checked', on ? 'true' : 'false');
+
+        var art = document.createElement('span');
+        art.className = 'thm-art';
+        if (th.key === 'system') {
+            art.classList.add('is-split');
+            art.appendChild(themeFace('dark'));
+            art.appendChild(themeFace('light'));
+        } else {
+            art.appendChild(themeFace(th.key));
+        }
+        b.appendChild(art);
+
+        var lab = document.createElement('span');
+        lab.className = 'thm-lab';
+        var dot = document.createElement('span');
+        dot.className = 'thm-dot';
+        lab.appendChild(dot);
+        var txt = document.createElement('span');
+        txt.textContent = t(th.label);
+        lab.appendChild(txt);
+        b.appendChild(lab);
+
+        b.addEventListener('click', function (e) {
+            if (themeMode() === th.key) return;
+            var r = b.getBoundingClientRect();
+            setTheme(th.key, {
+                x: Math.round((e && e.clientX) || r.left + r.width / 2),
+                y: Math.round((e && e.clientY) || r.top + r.height / 2)
+            });
+            toast(t('Appearance saved'), 'good');
+        });
+        return b;
+    }
+
+    function themePicker() {
+        var wrap = document.createElement('div');
+        wrap.className = 'thms';
+        wrap.setAttribute('role', 'radiogroup');
+        THEMES.forEach(function (th) { wrap.appendChild(themeTile(th)); });
+        return wrap;
+    }
+
+    function selectBox(id, groups, value, onPick) {
+        var wrap = document.createElement('span');
+        wrap.className = 'sel-wrap';
+        var s = document.createElement('select');
+        s.id = id;
+        s.className = 'fld-in sel';
+        groups.forEach(function (g) {
+            var host = s;
+            if (g.group) {
+                host = document.createElement('optgroup');
+                host.label = g.group;
+                s.appendChild(host);
+            }
+            g.options.forEach(function (o) {
+                var op = document.createElement('option');
+                op.value = o.value;
+                op.textContent = o.label;
+                host.appendChild(op);
+            });
+        });
+        s.value = value;
+        s.addEventListener('change', function () { onPick(s.value); });
+        wrap.appendChild(s);
+        var chev = document.createElement('span');
+        chev.className = 'sel-chev';
+        chev.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="m6 9 6 6 6-6"/></svg>';
+        wrap.appendChild(chev);
+        return wrap;
+    }
+
+    function zoneGroups() {
+        var groups = [];
+        var auto = { options: [{
+            value: 'auto',
+            label: t('Auto detect') + ' (' + zoneLabel(autoZone()) + ')'
+        }] };
+        groups.push(auto);
+        var byRegion = {};
+        var order = [];
+        zoneList().forEach(function (z) {
+            var r = zoneRegion(z) || t('Other');
+            if (!byRegion[r]) { byRegion[r] = []; order.push(r); }
+            byRegion[r].push(z);
+        });
+        order.forEach(function (r) {
+            groups.push({
+                group: r,
+                options: byRegion[r].map(function (z) {
+                    var off = zoneOffset(z);
+                    return { value: z, label: zoneLabel(z) + (off ? '  ' + off : '') };
+                })
+            });
+        });
+        return groups;
+    }
+
+    function viewAppearance() {
+        var frag = document.createDocumentFragment();
+        frag.appendChild(sectionTitle('Appearance'));
+        frag.appendChild(sectionNote('Choose how Sentinelpay looks and behaves in the dashboard.'));
+
+        var card = document.createElement('div');
+        card.className = 'card';
+        var row = fieldRow({
+            label: 'Theme mode',
+            hint: 'Pick a single theme, or follow whatever your system is set to.',
+            control: themePicker()
+        });
+        row.classList.add('is-wide');
+        card.appendChild(row);
+
+        card.appendChild(fieldRow({
+            label: 'Sidebar behavior',
+            hint: 'How the sidebar sits when you are not using it.',
+            id: 'pf-side',
+            control: selectBox('pf-side', [{
+                options: SIDE_MODES.map(function (m) {
+                    return { value: m.key, label: t(m.label) };
+                })
+            }], sideMode(), function (v) {
+                setSideMode(v);
+                toast(t('Appearance saved'), 'good');
+            })
+        }));
+        frag.appendChild(card);
+        return frag;
+    }
+
+    function viewTimezone(me) {
+        var frag = document.createDocumentFragment();
+        frag.appendChild(sectionTitle('Timezone'));
+        frag.appendChild(sectionNote('Choose how dates and times are shown across the dashboard.'));
+
+        var card = document.createElement('div');
+        card.className = 'card';
+        var hint = zonePref() === 'auto'
+            ? (autoSource() || 'Detected for you.')
+            : 'Every timestamp in the dashboard follows this zone.';
+        var row = fieldRow({
+            label: 'Display timezone',
+            hint: hint,
+            id: 'pf-tz',
+            control: selectBox('pf-tz', zoneGroups(), zonePref(), function (v) {
+                setZone(v);
+                paintAccountMenu(me);
+                toast(t('Timezone saved'), 'good');
+                var h = row.querySelector('.fld-hint');
+                if (h) {
+                    h.textContent = v === 'auto'
+                        ? t(autoSource() || 'Detected for you.')
+                        : t('Every timestamp in the dashboard follows this zone.');
+                }
+            })
+        });
+        card.appendChild(row);
+        frag.appendChild(card);
+        return frag;
+    }
+
     function viewPreferences(me) {
         var page = document.createElement('div');
         page.className = 'pg';
@@ -1022,6 +1228,8 @@
         foot.appendChild(save);
         card.appendChild(foot);
         page.appendChild(card);
+        page.appendChild(viewAppearance());
+        page.appendChild(viewTimezone(me));
 
         function dirty() {
             return first.value.trim() !== n.first || last.value.trim() !== n.last;

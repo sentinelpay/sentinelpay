@@ -912,8 +912,120 @@ button { font: inherit; color: inherit; }
 [data-theme="dark"] .btn-primary:hover:not([disabled]) { background: #37497f; }
 .btn[disabled] { opacity: 0.45; cursor: default; }
 
+.pg-note { margin: -0.55rem 0 1rem; font-size: 0.84rem; line-height: 1.6; color: var(--ink-3); }
+.card + .pg-h2 { margin-top: 2.6rem; }
+.card > .fld:last-child { border-bottom: 0; }
+
+.fld.is-wide { grid-template-columns: minmax(0, 1fr) minmax(0, 23rem); align-items: start; }
+.fld.is-wide .fld-label { margin-top: 0.1rem; }
+
+.sel-wrap { position: relative; display: block; }
+.sel {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 2rem;
+    cursor: pointer;
+    text-overflow: ellipsis;
+}
+.sel-chev {
+    position: absolute;
+    top: 50%;
+    right: 0.6rem;
+    width: 15px;
+    height: 15px;
+    margin-top: -7.5px;
+    color: var(--ink-4);
+    pointer-events: none;
+}
+.sel-chev svg { display: block; width: 100%; height: 100%; }
+
+.thms { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6rem; }
+.thm {
+    display: block;
+    padding: 0;
+    border: 0;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+}
+.thm-art {
+    position: relative;
+    display: block;
+    height: 4.9rem;
+    border: 1.4px solid var(--line);
+    border-radius: 9px;
+    overflow: hidden;
+    transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.22s var(--ease);
+}
+.thm:hover .thm-art { transform: translateY(-1px); }
+.thm.is-on .thm-art { border-color: var(--sel); box-shadow: 0 0 0 3px var(--sel-bg); }
+.thm:focus-visible .thm-art { border-color: var(--sel); box-shadow: 0 0 0 3px var(--sel-bg); }
+
+.thm-face {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    gap: 3px;
+    padding: 4px;
+}
+.thm-face.is-light { --f-bg: #ffffff; --f-rail: #eceff5; --f-box: #f4f6fa; --f-ink: #d4dae6; }
+.thm-face.is-dark { --f-bg: #10131b; --f-rail: #1d2230; --f-box: #191e29; --f-ink: #333b4d; }
+.thm-face { background: var(--f-bg); }
+.thm-art.is-split .thm-face.is-light { clip-path: polygon(0 0, 100% 0, 0 100%); }
+
+.thm-rail {
+    flex: 0 0 9px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding-top: 2px;
+}
+.thm-rail span { height: 3px; border-radius: 2px; background: var(--f-rail); }
+.thm-body { flex: 1 1 auto; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.thm-bar { display: flex; gap: 3px; }
+.thm-bar span { height: 4px; border-radius: 2px; background: var(--f-rail); }
+.thm-bar span:first-child { width: 12px; background: var(--f-ink); }
+.thm-bar span:nth-child(2) { width: 9px; }
+.thm-bar span:nth-child(3) { width: 9px; }
+.thm-box {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    padding: 0 5px;
+    border-radius: 3px;
+    background: var(--f-box);
+}
+.thm-box i { display: block; height: 2.5px; border-radius: 2px; background: var(--f-ink); }
+.thm-box i:first-child { width: 68%; }
+.thm-box i:last-child { width: 42%; opacity: 0.6; }
+
+.thm-lab {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.45rem;
+    font-size: 0.8rem;
+    font-weight: 550;
+    color: var(--ink-3);
+    transition: color 0.16s ease;
+}
+.thm.is-on .thm-lab { color: var(--ink); font-weight: 650; }
+.thm-dot {
+    flex: none;
+    width: 11px;
+    height: 11px;
+    border: 1.4px solid var(--line);
+    border-radius: 50%;
+    transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+.thm.is-on .thm-dot { border-color: var(--sel); border-width: 3.5px; }
+
 @media (max-width: 720px) {
     .fld { grid-template-columns: minmax(0, 1fr); gap: 0.5rem; align-items: start; }
+    .fld.is-wide { grid-template-columns: minmax(0, 1fr); }
 }
 
 .toasts {
@@ -991,6 +1103,8 @@ html.is-theming .nav-btn,
 html.is-theming .acct-opt,
 html.is-theming .sidectl-opt,
 html.is-theming .avatar,
+html.is-theming .thm-art,
+html.is-theming .thm-dot,
 html.is-theming .btn {
     transition:
         background-color 0.4s ease,

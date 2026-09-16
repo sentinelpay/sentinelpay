@@ -100,7 +100,7 @@ for f in sorted(x for x in os.listdir(PUB) if x.endswith('.js')):
     # strings handed to our own helpers, which translate them inside. the sweep below
     # only looks at literals containing a space, so single words like Theme or Timezone
     # would otherwise never be checked.
-    TRANSLATING_HELPERS = r"(?:acctLabel|acctRow|head|card|crumb)"
+    TRANSLATING_HELPERS = r"(?:acctLabel|acctRow|head|card|crumb|sectionTitle|sectionNote)"
     lits += re.findall(TRANSLATING_HELPERS + r"\(\s*'((?:[^'\\]|\\.)+)'", src)
     CODEY = re.compile(r'^[^a-zA-Z]|[\\\[\]{}<>=()]|^https?:|\bdata-|\baria-')
     CLASSY = re.compile(r'^[a-z0-9-]+(?: [a-z0-9-]+)*$')
