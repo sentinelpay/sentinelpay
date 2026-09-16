@@ -765,8 +765,15 @@
 
     function currentNav() {
         var path = location.pathname;
-        if (path.indexOf('/dashboard/account') === 0) return 'account';
-        return 'overview';
+        var hit = '';
+        NAV.forEach(function (g) {
+            g.items.forEach(function (item) {
+                if (!item.href) return;
+                var base = item.href.split('/').slice(0, 3).join('/');
+                if (path.indexOf(base) === 0) hit = item.key;
+            });
+        });
+        return hit || NAV[0].items[0].key;
     }
 
     function paintShell() {
