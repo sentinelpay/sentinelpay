@@ -75,6 +75,16 @@ button { font: inherit; color: inherit; }
     grid-template-columns: var(--side-w) minmax(0, 1fr);
     min-height: 100%;
     transition: grid-template-columns var(--ease-dur, 0.22s) var(--ease, cubic-bezier(0.22, 1, 0.36, 1));
+    animation: appIn 0.34s ease both;
+}
+
+@keyframes appIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+@keyframes contentIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
 }
 
 .side {
@@ -490,6 +500,7 @@ button { font: inherit; color: inherit; }
 .canvas {
     flex: 1 1 auto;
     padding: 1.6rem 1.4rem 3rem;
+    animation: contentIn 0.46s var(--ease) 0.06s both;
 }
 
 .scrim {
@@ -587,6 +598,7 @@ button { font: inherit; color: inherit; }
         transition-duration: 0.01ms !important;
         transition-delay: 0s !important;
     }
+    .app, .canvas { animation: none !important; }
     .sidectl-pop { transform: none; }
     .side-nav > * { opacity: 1; transform: none; }
 }
