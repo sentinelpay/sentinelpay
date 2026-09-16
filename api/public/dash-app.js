@@ -121,9 +121,32 @@
         return inAccount() ? ACCOUNT_NAV : NAV;
     }
 
+    function navKey() {
+        return inAccount() ? 'account' : 'main';
+    }
+
+    function markNav(host, active) {
+        [].forEach.call(host.querySelectorAll('[data-nav]'), function (b) {
+            var on = b.getAttribute('data-nav') === active;
+            b.classList.toggle('is-on', on);
+            if (on) b.setAttribute('aria-current', 'page');
+            else b.removeAttribute('aria-current');
+        });
+    }
+
+    // returns true when the list itself was rebuilt. moving between two items of
+    // the same list is not a new sidebar, so it only moves the highlight: tearing
+    // the list down and replaying its entrance for that read as a reload.
     function paintNav(active) {
         var host = document.getElementById('side-nav');
-        if (!host) return;
+        if (!host) return false;
+
+        var key = navKey();
+        if (host.getAttribute('data-navset') === key) {
+            markNav(host, active);
+            return false;
+        }
+        host.setAttribute('data-navset', key);
         host.textContent = '';
 
         if (inAccount()) {
@@ -168,6 +191,7 @@
             });
             target.appendChild(ul);
         });
+        return true;
     }
 
     var SIDE_MODES = [
@@ -2148,7 +2172,7 @@
     }
 
     function render() {
-        paintNav(currentNav());
+        var rebuilt = paintNav(currentNav());
         applySideMode(sideMode());
         setMenu(false);
         paintCanvas();
@@ -2158,6 +2182,7 @@
             void canvas.offsetWidth;
             canvas.style.animation = '';
         }
+        if (!rebuilt) return;
         var side = document.getElementById('side-nav');
         if (side) {
             side.classList.remove('is-in');
