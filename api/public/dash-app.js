@@ -326,7 +326,11 @@
         }, 460);
     }
 
-    function setTheme(mode, from) {
+    // the whole page dissolves from the old theme into the new one. the old
+    // frame is a snapshot held on top at full opacity and faded out, so text,
+    // borders and shadows all cross over together instead of each element
+    // running its own transition and finishing at its own time.
+    function setTheme(mode) {
         var was = themeMode();
         try { localStorage.setItem(THEME_KEY, mode); } catch (err) {  }
 
@@ -334,7 +338,7 @@
             applyTheme(mode);
             return;
         }
-        if (!document.startViewTransition || !from) {
+        if (!document.startViewTransition) {
             fadeTheme(mode);
             return;
         }
@@ -342,19 +346,8 @@
         var root = document.documentElement;
         root.classList.add('is-wiping');
         var run = document.startViewTransition(function () { applyTheme(mode); });
-
-        var w = window.innerWidth;
-        var h = window.innerHeight;
-        var far = Math.hypot(Math.max(from.x, w - from.x), Math.max(from.y, h - from.y));
-        root.style.setProperty('--wipe-x', from.x + 'px');
-        root.style.setProperty('--wipe-y', from.y + 'px');
-        root.style.setProperty('--wipe-r', Math.ceil(far) + 'px');
-
-        run.finished.then(function () {
-            root.classList.remove('is-wiping');
-        }).catch(function () {
-            root.classList.remove('is-wiping');
-        });
+        var clear = function () { root.classList.remove('is-wiping'); };
+        run.finished.then(clear).catch(clear);
     }
 
     if (window.matchMedia) {
@@ -591,13 +584,7 @@
         var mode = themeMode();
         THEMES.forEach(function (th) {
             main.appendChild(acctPick(t(th.label), th.key === mode, 'data-theme-pick', th.key,
-                function (e) {
-                    var r = this.getBoundingClientRect();
-                    setTheme(th.key, {
-                        x: Math.round((e && e.clientX) || r.left + r.width / 2),
-                        y: Math.round((e && e.clientY) || r.top + r.height / 2)
-                    });
-                }));
+                function () { setTheme(th.key); }));
         });
 
         var i18n = window.SentinelI18n;
@@ -888,9 +875,29 @@
         return host;
     }
 
+    function toastBody(el, k, text) {
+        el.className = 'toast toast-' + k + ' is-in';
+        el.innerHTML = '<svg class="toast-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            TOAST_ICON[k] + '</svg>';
+        var span = document.createElement('span');
+        span.textContent = text;
+        el.appendChild(span);
+    }
+
+    // one panel at a time. stacking them buried the newest message under older
+    // ones that were already read, so a second message rewrites the panel that
+    // is already up instead of queueing behind it.
     function toast(text, kind) {
         var host = toastHost();
         var k = kind === 'bad' ? 'bad' : 'good';
+
+        var live = host.querySelector('.toast.is-in');
+        if (live && live.spRetext) {
+            live.spRetext(k, text);
+            return live;
+        }
+
         var el = document.createElement('div');
         el.className = 'toast toast-' + k;
         el.innerHTML = '<svg class="toast-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
@@ -915,6 +922,15 @@
             }, 260);
         };
         var timer = setTimeout(drop, 4000);
+        el.spRetext = function (nk, ntext) {
+            clearTimeout(timer);
+            el.classList.add('is-beat');
+            setTimeout(function () {
+                toastBody(el, nk, ntext);
+                el.classList.remove('is-beat');
+            }, 110);
+            timer = setTimeout(drop, 4110);
+        };
         el.addEventListener('click', function () { clearTimeout(timer); drop(); });
         return el;
     }
@@ -1049,13 +1065,9 @@
         lab.appendChild(txt);
         b.appendChild(lab);
 
-        b.addEventListener('click', function (e) {
+        b.addEventListener('click', function () {
             if (themeMode() === th.key) return;
-            var r = b.getBoundingClientRect();
-            setTheme(th.key, {
-                x: Math.round((e && e.clientX) || r.left + r.width / 2),
-                y: Math.round((e && e.clientY) || r.top + r.height / 2)
-            });
+            setTheme(th.key);
             toast(t('Appearance saved'), 'good');
         });
         return b;

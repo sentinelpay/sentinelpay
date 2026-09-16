@@ -1061,6 +1061,7 @@ button { font: inherit; color: inherit; }
 }
 .toast.is-in { opacity: 1; transform: none; }
 .toast.is-out { opacity: 0; transform: translateY(6px) scale(0.98); }
+.toast.is-beat { opacity: 0; transform: translateY(3px) scale(0.99); transition-duration: 0.1s; }
 
 .toast-i { width: 17px; height: 17px; flex: 0 0 auto; }
 .toast-good .toast-i { color: #16a34a; }
@@ -1076,15 +1077,18 @@ button { font: inherit; color: inherit; }
     animation: none;
     mix-blend-mode: normal;
 }
-::view-transition-old(root) { z-index: 1; }
-::view-transition-new(root) {
+/* the new theme is already painted underneath. only the old frame moves:
+   it holds for a beat, then dissolves away, which reads as the page settling
+   into the other theme rather than anything sliding across it. */
+::view-transition-new(root) { z-index: 1; }
+::view-transition-old(root) {
     z-index: 2;
-    animation: wipeIn 0.56s var(--ease) both;
+    animation: themeOut 0.42s ease 0.04s both;
 }
 
-@keyframes wipeIn {
-    from { clip-path: circle(0px at var(--wipe-x, 50%) var(--wipe-y, 50%)); }
-    to { clip-path: circle(var(--wipe-r, 150vmax) at var(--wipe-x, 50%) var(--wipe-y, 50%)); }
+@keyframes themeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
 }
 
 html.is-wiping,
