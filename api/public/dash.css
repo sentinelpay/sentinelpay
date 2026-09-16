@@ -209,6 +209,24 @@ button { font: inherit; color: inherit; }
 
 .nav-list { list-style: none; margin: 0; padding: 0; }
 
+.nav-back { margin-bottom: 0.35rem; color: var(--ink-3); }
+.nav-back .nav-i { opacity: 0.7; }
+.nav-back:hover { color: var(--ink); }
+
+.side-nav.is-in > * {
+    animation: navIn 0.34s var(--ease) both;
+}
+.side-nav.is-in > *:nth-child(1) { animation-delay: 0.02s; }
+.side-nav.is-in > *:nth-child(2) { animation-delay: 0.05s; }
+.side-nav.is-in > *:nth-child(3) { animation-delay: 0.08s; }
+.side-nav.is-in > *:nth-child(4) { animation-delay: 0.11s; }
+.side-nav.is-in > *:nth-child(n + 5) { animation-delay: 0.14s; }
+
+@keyframes navIn {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: none; }
+}
+
 .nav-btn {
     width: 100%;
     display: flex;
@@ -784,7 +802,7 @@ button { font: inherit; color: inherit; }
         transition-duration: 0.01ms !important;
         transition-delay: 0s !important;
     }
-    .app, .canvas { animation: none !important; }
+    .app, .canvas, .side-nav.is-in > * { animation: none !important; }
     .sidectl-pop { transform: none; }
     .side-nav > * { opacity: 1; transform: none; }
 }

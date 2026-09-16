@@ -55,6 +55,17 @@
 
     var ACCOUNT_PATH = '/dashboard/account/preferences';
 
+    var ACCOUNT_NAV = [
+        { group: 'Account settings', items: [
+            { key: 'preferences', label: 'Preferences', icon: 'cog', href: '/dashboard/account/preferences' },
+            { key: 'tokens', label: 'Access tokens', icon: 'key', href: '/dashboard/account/tokens' },
+            { key: 'security', label: 'Security', icon: 'shield', href: '/dashboard/account/security' }
+        ] },
+        { group: 'Logs', items: [
+            { key: 'account-logs', label: 'Audit logs', icon: 'trail', href: '/dashboard/account/logs' }
+        ] }
+    ];
+
     var NAV = [
         { group: 'Work', items: [
             { key: 'overview', label: 'Overview', icon: 'home' },
@@ -102,11 +113,33 @@
             (ICONS[name] || '') + '</svg>';
     }
 
+    function inAccount() {
+        return location.pathname.indexOf('/dashboard/account') === 0;
+    }
+
+    function navFor() {
+        return inAccount() ? ACCOUNT_NAV : NAV;
+    }
+
     function paintNav(active) {
         var host = document.getElementById('side-nav');
         if (!host) return;
         host.textContent = '';
-        NAV.forEach(function (g) {
+
+        if (inAccount()) {
+            var back = document.createElement('button');
+            back.type = 'button';
+            back.className = 'nav-btn nav-back';
+            back.innerHTML = icon('back');
+            var bt = document.createElement('span');
+            bt.className = 'nav-t';
+            bt.textContent = t('Back to dashboard');
+            back.appendChild(bt);
+            back.addEventListener('click', function () { go('/dashboard'); });
+            host.appendChild(back);
+        }
+
+        navFor().forEach(function (g) {
             var target = host;
             var label = document.createElement('div');
             label.className = 'nav-group';
@@ -123,7 +156,7 @@
                 b.setAttribute('data-nav', item.key);
                 if (item.key === active) b.setAttribute('aria-current', 'page');
                 if (item.href) {
-                    b.addEventListener('click', function () { location.assign(item.href); });
+                    b.addEventListener('click', function () { go(item.href); });
                 }
                 b.innerHTML = icon(item.icon);
                 var span = document.createElement('span');
@@ -498,7 +531,10 @@
         main.appendChild(sep());
         main.appendChild(acctRow('Account', {
             icon: 'cog',
-            onClick: function () { location.assign(ACCOUNT_PATH); }
+            onClick: function () {
+                document.getElementById('acct').classList.remove('is-open');
+                go(ACCOUNT_PATH);
+            }
         }));
         main.appendChild(acctRow('Feature previews', { icon: 'flask', soon: true }));
         main.appendChild(acctRow('Changelog', { icon: 'file', soon: true }));
@@ -766,15 +802,48 @@
     function currentNav() {
         var path = location.pathname;
         var hit = '';
-        NAV.forEach(function (g) {
+        var best = 0;
+        navFor().forEach(function (g) {
             g.items.forEach(function (item) {
                 if (!item.href) return;
-                var base = item.href.split('/').slice(0, 3).join('/');
-                if (path.indexOf(base) === 0) hit = item.key;
+                var exact = path === item.href || path.indexOf(item.href + '/') === 0;
+                if (exact && item.href.length > best) {
+                    best = item.href.length;
+                    hit = item.key;
+                }
             });
         });
-        return hit || NAV[0].items[0].key;
+        return hit || navFor()[0].items[0].key;
     }
+
+    var canRoute = !!(window.history && history.pushState);
+
+    function go(path) {
+        if (!canRoute) { location.assign(path); return; }
+        if (path === location.pathname) { setMenu(false); return; }
+        history.pushState({}, '', path);
+        render();
+    }
+
+    function render() {
+        paintNav(currentNav());
+        applySideMode(sideMode());
+        setMenu(false);
+        var canvas = document.getElementById('canvas');
+        if (canvas) {
+            canvas.style.animation = 'none';
+            void canvas.offsetWidth;
+            canvas.style.animation = '';
+        }
+        var side = document.getElementById('side-nav');
+        if (side) {
+            side.classList.remove('is-in');
+            void side.offsetWidth;
+            side.classList.add('is-in');
+        }
+    }
+
+    window.addEventListener('popstate', render);
 
     function paintShell() {
         paintNav(currentNav());
