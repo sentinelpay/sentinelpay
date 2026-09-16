@@ -62,6 +62,9 @@
     --pill-line: rgba(14, 35, 88, 0.12);
     --pill-line-hover: rgba(0, 145, 200, 0.45);
     --pill-glow: 0 6px 16px -12px rgba(14, 35, 88, 0.7);
+    --field-line: rgba(14, 35, 88, 0.14);
+    --field-ring: rgba(0, 145, 200, 0.12);
+    --field-hint: rgba(14, 35, 88, 0.62);
 
     --r: 10px;
     --r-lg: 14px;
@@ -133,6 +136,9 @@
     --pill-line: rgba(233, 238, 249, 0.14);
     --pill-line-hover: rgba(123, 220, 255, 0.45);
     --pill-glow: 0 6px 16px -12px rgba(0, 0, 0, 0.8);
+    --field-line: rgba(233, 238, 249, 0.15);
+    --field-ring: rgba(0, 240, 255, 0.12);
+    --field-hint: rgba(233, 238, 249, 0.38);
 }
 
 * { box-sizing: border-box; }
@@ -1336,16 +1342,21 @@ button { font: inherit; color: inherit; }
 .modal-in {
     width: 100%;
     padding: 0.78rem 0.9rem;
-    border: 1px solid var(--line);
+    border: 1px solid var(--field-line);
     border-radius: 10px;
     background: var(--canvas);
-    font: inherit;
-    font-size: 0.88rem;
-    color: var(--ink-2);
+    font-family: var(--sp-text);
+    font-size: 0.9rem;
+    color: var(--ink);
     outline: none;
-    transition: border-color 0.14s ease, box-shadow 0.14s ease;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
-.modal-in:focus { border-color: var(--sel); box-shadow: 0 0 0 3px var(--sel-bg); }
+.modal-in::placeholder { color: var(--field-hint); }
+.modal-in:focus {
+    border-color: var(--link);
+    background: var(--surface);
+    box-shadow: 0 0 0 3px var(--field-ring);
+}
 
 .modal-who {
     padding: 0.7rem 0.9rem;
@@ -1404,6 +1415,9 @@ button { font: inherit; color: inherit; }
     font-family: var(--sp-text);
     font-size: 0.85rem;
     font-weight: 700;
+    /* our global button rule inherits the body line height; the landing buttons
+       keep the browser default, and that is what sets their height. */
+    line-height: normal;
     cursor: pointer;
     transition: background 0.16s ease, box-shadow 0.3s ease, color 0.16s ease, opacity 0.16s ease;
 }
@@ -1436,7 +1450,11 @@ button { font: inherit; color: inherit; }
 
 .modal-head[hidden] { display: none; }
 
-.vhead { text-align: center; margin-bottom: 1.3rem; }
+/* the reset panel is a grid with a one rem gap, the way .sp-auth-form is, so
+   the spacing between its parts comes from the layout and not from margins
+   guessed per element. */
+.vpanel { display: grid; gap: 1rem; }
+.vhead { text-align: center; margin-bottom: 1.3rem; padding: 0 1.5rem; }
 .vmark,
 .vdone-mark {
     width: 46px;
@@ -1468,27 +1486,37 @@ button { font: inherit; color: inherit; }
     color: var(--ink-3);
 }
 
-.vfield { display: flex; flex-direction: column; gap: 0.45rem; margin-bottom: 1rem; }
+.vfield { display: flex; flex-direction: column; gap: 0.45rem; position: relative; }
 .vfield > label {
     font-size: 0.74rem;
     font-weight: 600;
     letter-spacing: 0.01em;
     color: var(--ink-3);
+    transition: color 0.18s ease;
 }
+.vfield:focus-within > label { color: var(--link); }
 .vfield input {
     width: 100%;
     padding: 0.78rem 0.9rem;
-    border: 1px solid var(--line);
+    border: 1px solid var(--field-line);
     border-radius: 10px;
     background: var(--canvas);
     font-family: var(--sp-text);
     font-size: 0.9rem;
-    color: var(--ink-2);
+    color: var(--ink);
     outline: none;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+.vfield input:focus {
+    border-color: var(--link);
+    background: var(--surface);
+    box-shadow: 0 0 0 3px var(--field-ring);
 }
 .vfield input[readonly] { cursor: default; }
 
-.verr { margin: 0 0 0.9rem; text-align: center; font-size: 0.85rem; line-height: 1.5; color: var(--danger); }
+.vpanel .btn-cta { margin-top: 0.3rem; }
+
+.verr { margin: 0; text-align: center; font-size: 0.85rem; line-height: 1.5; color: var(--danger); }
 .verr[hidden] { display: none; }
 
 .vfoot {
@@ -1497,7 +1525,6 @@ button { font: inherit; color: inherit; }
     justify-content: center;
     gap: 0.5rem;
     flex-wrap: wrap;
-    margin-top: 1.1rem;
 }
 
 /* the quiet button the sign in modal uses under its panels. the delete
@@ -1514,6 +1541,7 @@ button { font: inherit; color: inherit; }
     font-family: var(--sp-text);
     font-size: 0.8rem;
     font-weight: 600;
+    line-height: normal;
     color: var(--ink-3);
     cursor: pointer;
     transition: border-color 0.18s ease, color 0.18s ease,

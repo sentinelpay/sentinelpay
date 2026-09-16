@@ -1893,8 +1893,8 @@
             mail.type = 'email';
             mail.value = me.email || '';
             mail.readOnly = true;
-            mail.tabIndex = -1;
             field.appendChild(mail);
+            setTimeout(function () { mail.focus(); }, 60);
             form.appendChild(field);
 
             var err = document.createElement('p');
