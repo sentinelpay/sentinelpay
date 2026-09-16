@@ -958,3 +958,49 @@ button { font: inherit; color: inherit; }
 @media (prefers-reduced-motion: reduce) {
     .toast { transition-duration: 0.01ms !important; transform: none !important; }
 }
+
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+}
+::view-transition-old(root) { z-index: 1; }
+::view-transition-new(root) {
+    z-index: 2;
+    animation: wipeIn 0.56s var(--ease) both;
+}
+
+@keyframes wipeIn {
+    from { clip-path: circle(0px at var(--wipe-x, 50%) var(--wipe-y, 50%)); }
+    to { clip-path: circle(var(--wipe-r, 150vmax) at var(--wipe-x, 50%) var(--wipe-y, 50%)); }
+}
+
+html.is-wiping,
+html.is-wiping body { overflow: hidden; }
+
+html.is-theming .side,
+html.is-theming .top,
+html.is-theming .canvas,
+html.is-theming body,
+html.is-theming .card,
+html.is-theming .fld-in,
+html.is-theming .acct-pop,
+html.is-theming .sidectl-pop,
+html.is-theming .toast,
+html.is-theming .nav-btn,
+html.is-theming .acct-opt,
+html.is-theming .sidectl-opt,
+html.is-theming .avatar,
+html.is-theming .btn {
+    transition:
+        background-color 0.4s ease,
+        color 0.4s ease,
+        border-color 0.4s ease,
+        box-shadow 0.4s ease !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) { animation: none !important; }
+    html.is-theming * { transition: none !important; }
+}

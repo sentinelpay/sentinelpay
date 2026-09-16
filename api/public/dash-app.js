@@ -292,11 +292,8 @@
     }
 
     function applyTheme(mode) {
-        var dark = mode === 'dark' ||
-            (mode === 'system' && window.matchMedia &&
-             window.matchMedia('(prefers-color-scheme: dark)').matches);
         var root = document.documentElement;
-        root.setAttribute('data-theme', dark ? 'dark' : 'light');
+        root.setAttribute('data-theme', isDark(mode) ? 'dark' : 'light');
         root.setAttribute('data-theme-mode', mode);
         [].forEach.call(document.querySelectorAll('[data-theme-pick]'), function (b) {
             var on = b.getAttribute('data-theme-pick') === mode;
@@ -305,9 +302,59 @@
         });
     }
 
-    function setTheme(mode) {
-        try { localStorage.setItem(THEME_KEY, mode); } catch (err) {  }
+    function prefersStill() {
+        try {
+            return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        } catch (err) {
+            return false;
+        }
+    }
+
+    function isDark(mode) {
+        return mode === 'dark' ||
+            (mode === 'system' && window.matchMedia &&
+             window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+
+    function fadeTheme(mode) {
+        var root = document.documentElement;
+        root.classList.add('is-theming');
         applyTheme(mode);
+        clearTimeout(fadeTheme.timer);
+        fadeTheme.timer = setTimeout(function () {
+            root.classList.remove('is-theming');
+        }, 460);
+    }
+
+    function setTheme(mode, from) {
+        var was = themeMode();
+        try { localStorage.setItem(THEME_KEY, mode); } catch (err) {  }
+
+        if (prefersStill() || isDark(mode) === isDark(was)) {
+            applyTheme(mode);
+            return;
+        }
+        if (!document.startViewTransition || !from) {
+            fadeTheme(mode);
+            return;
+        }
+
+        var root = document.documentElement;
+        root.classList.add('is-wiping');
+        var run = document.startViewTransition(function () { applyTheme(mode); });
+
+        var w = window.innerWidth;
+        var h = window.innerHeight;
+        var far = Math.hypot(Math.max(from.x, w - from.x), Math.max(from.y, h - from.y));
+        root.style.setProperty('--wipe-x', from.x + 'px');
+        root.style.setProperty('--wipe-y', from.y + 'px');
+        root.style.setProperty('--wipe-r', Math.ceil(far) + 'px');
+
+        run.finished.then(function () {
+            root.classList.remove('is-wiping');
+        }).catch(function () {
+            root.classList.remove('is-wiping');
+        });
     }
 
     if (window.matchMedia) {
@@ -544,7 +591,13 @@
         var mode = themeMode();
         THEMES.forEach(function (th) {
             main.appendChild(acctPick(t(th.label), th.key === mode, 'data-theme-pick', th.key,
-                function () { setTheme(th.key); }));
+                function (e) {
+                    var r = this.getBoundingClientRect();
+                    setTheme(th.key, {
+                        x: Math.round((e && e.clientX) || r.left + r.width / 2),
+                        y: Math.round((e && e.clientY) || r.top + r.height / 2)
+                    });
+                }));
         });
 
         var i18n = window.SentinelI18n;
