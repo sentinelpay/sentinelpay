@@ -1655,7 +1655,7 @@
         stepBack.type = 'button';
         stepBack.className = 'modal-back-btn';
         stepBack.hidden = true;
-        stepBack.setAttribute('aria-label', t('Back'));
+        stepBack.setAttribute('aria-label', t('Back to account deletion'));
         stepBack.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
             'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
             '<path d="m14 6-6 6 6 6"/></svg>';
@@ -1770,9 +1770,12 @@
 
             var yes = wideBtn('Delete account', 'cta', 'submit');
             form.appendChild(yes);
+            var quit = document.createElement('div');
+            quit.className = 'modal-quit';
             var no = wideBtn('Keep my account', 'quiet');
             no.addEventListener('click', m.shut);
-            form.appendChild(no);
+            quit.appendChild(no);
+            form.appendChild(quit);
             m.body.appendChild(form);
 
             function say(text) {
@@ -1886,7 +1889,7 @@
 
             var foot = document.createElement('div');
             foot.className = 'vfoot';
-            var back2 = linkBtn('Back');
+            var back2 = linkBtn('Back to account deletion');
             back2.addEventListener('click', function () { swap(stepConfirm, true); });
             foot.appendChild(back2);
             form.appendChild(foot);
@@ -1955,7 +1958,7 @@
             foot.className = 'vfoot';
             var again = linkBtn('Send a new link');
             foot.appendChild(again);
-            var back2 = linkBtn('Back');
+            var back2 = linkBtn('Back to account deletion');
             back2.addEventListener('click', function () {
                 clearInterval(tick);
                 swap(stepConfirm, true);
