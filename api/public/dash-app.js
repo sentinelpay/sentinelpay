@@ -321,19 +321,6 @@
         return '';
     }
 
-    function zoneSources() {
-        var out = [];
-        var dev = deviceZone();
-        var geo = geoZone();
-        if (dev) out.push({ label: 'This device', zone: dev });
-        if (geo) {
-            out.push({
-                label: geoSrc() === 'ip' ? 'Your location' : 'Your country',
-                zone: geo
-            });
-        }
-        return out;
-    }
 
     function zonePref() {
         try {
@@ -381,10 +368,6 @@
             all = all.slice();
             if (all.indexOf('UTC') === -1) all.push('UTC');
         }
-        var mine = autoZone();
-        var i = all.indexOf(mine);
-        if (i > 0) { all.splice(i, 1); all.unshift(mine); }
-        else if (i === -1 && mine) all.unshift(mine);
         return all;
     }
 
@@ -599,25 +582,6 @@
                     auto.appendChild(note);
                 }
                 tzList.appendChild(auto);
-
-                var srcs = zoneSources();
-                if (srcs.length) {
-                    var why = document.createElement('div');
-                    why.className = 'acct-why';
-                    srcs.forEach(function (x) {
-                        var row = document.createElement('div');
-                        row.className = 'acct-why-row';
-                        var k = document.createElement('span');
-                        k.textContent = t(x.label);
-                        var v = document.createElement('span');
-                        v.className = 'acct-why-v';
-                        v.textContent = x.zone;
-                        row.appendChild(k);
-                        row.appendChild(v);
-                        why.appendChild(row);
-                    });
-                    tzList.appendChild(why);
-                }
             }
             var shown = 0;
             for (var i = 0; i < zones.length && shown < 300; i++) {
