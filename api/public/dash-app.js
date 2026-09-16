@@ -2515,55 +2515,232 @@
         { value: '0', label: 'Does not expire' }
     ];
 
-    function askToken(scopes, done, kind) {
-        var sandbox = kind === 'test';
-        var m = modalShell(sandbox ? 'Generate a sandbox token' : 'Generate a token',
-            sandbox
-                ? 'It screens against the same lists as a live token, but spends none of your checks and never touches your real history.'
-                : 'Name it after the thing that will use it, and give it only what that thing needs.');
+    // creating a token asks for four things and then has something to say about
+    // what it granted, which is more than a dialog in the middle of the screen
+    // wants to hold. a panel from the side gives it room and keeps the list you
+    // came from visible behind it.
+    function drawer(title) {
+        var back = document.createElement('div');
+        back.className = 'drw-back';
+        var box = document.createElement('aside');
+        box.className = 'drw';
+        box.setAttribute('role', 'dialog');
+        box.setAttribute('aria-modal', 'true');
+        box.tabIndex = -1;
 
-        function step(build, backwards) {
-            m.body.textContent = '';
-            build();
-            m.body.style.setProperty('--step-dir', backwards ? '-14px' : '14px');
-            m.body.classList.remove('is-stepping');
-            void m.body.offsetWidth;
-            m.body.classList.add('is-stepping');
+        var head = document.createElement('header');
+        head.className = 'drw-head';
+        var h = document.createElement('h2');
+        h.className = 'drw-h';
+        h.textContent = t(title);
+        head.appendChild(h);
+        var x = document.createElement('button');
+        x.type = 'button';
+        x.className = 'modal-x drw-x';
+        x.setAttribute('aria-label', t('Close'));
+        x.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            'stroke-width="2" stroke-linecap="round" aria-hidden="true">' +
+            '<path d="M6 6 18 18M18 6 6 18"/></svg>';
+        head.appendChild(x);
+        box.appendChild(head);
+
+        var body = document.createElement('div');
+        body.className = 'drw-body';
+        box.appendChild(body);
+
+        var foot = document.createElement('footer');
+        foot.className = 'drw-foot';
+        var where = document.createElement('div');
+        where.className = 'drw-where';
+        foot.appendChild(where);
+        var acts = document.createElement('div');
+        acts.className = 'drw-acts';
+        foot.appendChild(acts);
+        box.appendChild(foot);
+
+        back.appendChild(box);
+        document.body.appendChild(back);
+        void back.offsetWidth;
+        back.classList.add('is-in');
+        document.documentElement.classList.add('is-modal');
+        box.focus();
+
+        function shut() {
+            back.classList.remove('is-in');
+            document.documentElement.classList.remove('is-modal');
+            document.removeEventListener('keydown', onKey);
+            setTimeout(function () {
+                if (back.parentNode) back.parentNode.removeChild(back);
+            }, 320);
+        }
+        function onKey(e) { if (e.key === 'Escape') shut(); }
+        document.addEventListener('keydown', onKey);
+        x.addEventListener('click', shut);
+        back.addEventListener('click', function (e) { if (e.target === back) shut(); });
+
+        return {
+            box: box, body: body, acts: acts, shut: shut,
+            retitle: function (v) { h.textContent = t(v); },
+            steps: function (at, of, label) {
+                where.textContent = '';
+                if (!of) return;
+                var dots = document.createElement('span');
+                dots.className = 'drw-dots';
+                for (var i = 1; i <= of; i++) {
+                    var d = document.createElement('i');
+                    if (i <= at) d.className = 'is-on';
+                    dots.appendChild(d);
+                }
+                where.appendChild(dots);
+                var txt = document.createElement('span');
+                txt.textContent = t('Step') + ' ' + at + ' ' + t('of') + ' ' + of +
+                    '  \u00b7  ' + t(label);
+                where.appendChild(txt);
+            },
+            show: function (build, backwards) {
+                body.textContent = '';
+                acts.textContent = '';
+                build();
+                body.style.setProperty('--step-dir', backwards ? '-14px' : '14px');
+                body.classList.remove('is-stepping');
+                void body.offsetWidth;
+                body.classList.add('is-stepping');
+                body.scrollTop = 0;
+            }
+        };
+    }
+
+    function drwSection(label, hint, control) {
+        var sec = document.createElement('div');
+        sec.className = 'drw-sec';
+        var left = document.createElement('div');
+        left.className = 'drw-sec-l';
+        var lab = document.createElement('div');
+        lab.className = 'drw-sec-h';
+        lab.textContent = t(label);
+        left.appendChild(lab);
+        if (hint) {
+            var p = document.createElement('p');
+            p.textContent = t(hint);
+            left.appendChild(p);
+        }
+        sec.appendChild(left);
+        var right = document.createElement('div');
+        right.className = 'drw-sec-r';
+        if (control) right.appendChild(control);
+        sec.appendChild(right);
+        return sec;
+    }
+
+    function pickCard(title, sub, on, badge) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'card-pick' + (on ? ' is-on' : '');
+        b.setAttribute('role', 'radio');
+        b.setAttribute('aria-checked', on ? 'true' : 'false');
+        var dot = document.createElement('span');
+        dot.className = 'card-pick-dot';
+        b.appendChild(dot);
+        var txt = document.createElement('span');
+        txt.className = 'card-pick-t';
+        var line = document.createElement('span');
+        line.className = 'card-pick-h';
+        line.textContent = t(title);
+        if (badge) {
+            var tg = document.createElement('span');
+            tg.className = 'tag tag-sbx';
+            tg.textContent = t(badge);
+            line.appendChild(tg);
+        }
+        txt.appendChild(line);
+        var p = document.createElement('span');
+        p.className = 'card-pick-p';
+        p.textContent = t(sub);
+        txt.appendChild(p);
+        b.appendChild(txt);
+        return b;
+    }
+
+    function askToken(scopes, done, kind) {
+        var want = {
+            name: '',
+            kind: kind === 'test' ? 'test' : 'live',
+            days: '90',
+            scopes: {}
+        };
+        var d = drawer('Generate token');
+
+        function scopeLabel(key) {
+            for (var i = 0; i < scopes.length; i++) {
+                if (scopes[i].key === key) return t(scopes[i].label);
+            }
+            return key;
+        }
+        function chosen() {
+            return Object.keys(want.scopes).filter(function (k) { return want.scopes[k]; });
+        }
+        function ttlLabel() {
+            for (var i = 0; i < TTL_CHOICES.length; i++) {
+                if (TTL_CHOICES[i].value === want.days) return t(TTL_CHOICES[i].label);
+            }
+            return want.days;
         }
 
-        function stepMake() {
-            var form = document.createElement('form');
-            form.className = 'vpanel';
+        function stepConfigure() {
+            d.retitle('Generate token');
+            d.steps(1, 2, 'Configure');
 
-            var nameField = document.createElement('div');
-            nameField.className = 'vfield';
-            var nameLab = document.createElement('label');
-            nameLab.textContent = t('Name');
-            nameLab.setAttribute('for', 'tk-name');
-            nameField.appendChild(nameLab);
-            var name = document.createElement('input');
-            name.id = 'tk-name';
-            name.type = 'text';
-            name.autocomplete = 'off';
-            name.maxLength = 60;
-            name.placeholder = t(sandbox ? 'e.g. Staging worker' : 'e.g. Billing service');
-            nameField.appendChild(name);
-            form.appendChild(nameField);
+            var nameIn = document.createElement('input');
+            nameIn.type = 'text';
+            nameIn.id = 'tk-name';
+            nameIn.className = 'modal-in';
+            nameIn.autocomplete = 'off';
+            nameIn.maxLength = 60;
+            nameIn.value = want.name;
+            nameIn.placeholder = t('e.g. Billing service');
+            d.body.appendChild(drwSection('Name',
+                'Something you will recognise in this list a year from now.', nameIn));
 
-            var scopeBox = document.createElement('div');
-            scopeBox.className = 'vfield';
-            var scopeLab = document.createElement('span');
-            scopeLab.className = 'vfield-lab';
-            scopeLab.textContent = t('What it may do');
-            scopeBox.appendChild(scopeLab);
-            var picked = {};
+            d.body.appendChild(drwSection('Expires after',
+                'A token that never expires is one you can forget you issued.',
+                selectBox('tk-ttl', [{
+                    options: TTL_CHOICES.map(function (c) {
+                        return { value: c.value, label: t(c.label) };
+                    })
+                }], want.days, function (v) { want.days = v; })));
+
+            var kinds = document.createElement('div');
+            kinds.className = 'card-picks';
+            kinds.setAttribute('role', 'radiogroup');
+            var liveCard = pickCard('Live',
+                'Screens for real. Spends your checks and writes to the history you report on.',
+                want.kind === 'live');
+            var testCard = pickCard('Sandbox',
+                'Same lists, spends nothing, kept in a history of its own. For building against.',
+                want.kind === 'test', 'sp_test_');
+            function markKinds() {
+                [[liveCard, 'live'], [testCard, 'test']].forEach(function (pair) {
+                    var on = want.kind === pair[1];
+                    pair[0].classList.toggle('is-on', on);
+                    pair[0].setAttribute('aria-checked', on ? 'true' : 'false');
+                });
+            }
+            liveCard.addEventListener('click', function () { want.kind = 'live'; markKinds(); });
+            testCard.addEventListener('click', function () { want.kind = 'test'; markKinds(); });
+            kinds.appendChild(liveCard);
+            kinds.appendChild(testCard);
+            d.body.appendChild(drwSection('What it screens against',
+                'This cannot be changed later. Issue another token instead.', kinds));
+
+            var ticks = document.createElement('div');
             scopes.forEach(function (sc) {
                 var row = document.createElement('label');
                 row.className = 'tick';
                 var box = document.createElement('input');
                 box.type = 'checkbox';
+                box.checked = !!want.scopes[sc.key];
                 box.addEventListener('change', function () {
-                    picked[sc.key] = box.checked;
+                    want.scopes[sc.key] = box.checked;
                     sync();
                 });
                 row.appendChild(box);
@@ -2573,64 +2750,105 @@
                 var code = document.createElement('code');
                 code.textContent = sc.key;
                 row.appendChild(code);
-                scopeBox.appendChild(row);
+                ticks.appendChild(row);
             });
-            form.appendChild(scopeBox);
+            d.body.appendChild(drwSection('Permissions',
+                'Everything is off until you turn it on. Give it the least that does the job.', ticks));
 
-            var ttlField = document.createElement('div');
-            ttlField.className = 'vfield';
-            var ttlLab = document.createElement('label');
-            ttlLab.className = 'vfield-lab';
-            ttlLab.textContent = t('Expires after');
-            ttlField.appendChild(ttlLab);
-            var ttl = '90';
-            ttlField.appendChild(selectBox('tk-ttl', [{
-                options: TTL_CHOICES.map(function (c) {
-                    return { value: c.value, label: t(c.label) };
-                })
-            }], ttl, function (v) { ttl = v; }));
-            form.appendChild(ttlField);
+            var no = document.createElement('button');
+            no.type = 'button';
+            no.className = 'btn btn-flat';
+            no.textContent = t('Cancel');
+            no.addEventListener('click', d.shut);
+            d.acts.appendChild(no);
 
-            var msg = document.createElement('p');
-            msg.className = 'verr';
-            msg.hidden = true;
-            form.appendChild(msg);
-
-            var go2 = wideBtn(sandbox ? 'Generate sandbox token' : 'Generate token', 'cta', 'submit');
-            go2.disabled = true;
-            form.appendChild(go2);
-            var quit = document.createElement('div');
-            quit.className = 'modal-quit';
-            var no = wideBtn('Cancel', 'quiet');
-            no.addEventListener('click', m.shut);
-            quit.appendChild(no);
-            form.appendChild(quit);
-            m.body.appendChild(form);
+            var next = document.createElement('button');
+            next.type = 'button';
+            next.className = 'btn btn-primary';
+            next.textContent = t('Review access');
+            next.addEventListener('click', function () {
+                d.show(stepReview);
+            });
+            d.acts.appendChild(next);
 
             function sync() {
-                var any = Object.keys(picked).some(function (k) { return picked[k]; });
-                go2.disabled = !name.value.trim() || !any;
+                next.disabled = !nameIn.value.trim() || !chosen().length;
             }
-            name.addEventListener('input', function () {
-                if (!msg.hidden) msg.hidden = true;
+            nameIn.addEventListener('input', function () {
+                want.name = nameIn.value;
                 sync();
             });
-            setTimeout(function () { name.focus(); }, 60);
+            sync();
+            setTimeout(function () { nameIn.focus(); }, 60);
+        }
 
-            form.addEventListener('submit', function (e) {
-                e.preventDefault();
-                if (go2.disabled) return;
+        function stepReview() {
+            d.retitle('Review access');
+            d.steps(2, 2, 'Review');
+
+            var sum = document.createElement('dl');
+            sum.className = 'sum';
+            function line(k, v, mono) {
+                var dt = document.createElement('dt');
+                dt.textContent = t(k);
+                sum.appendChild(dt);
+                var dd = document.createElement('dd');
+                if (mono) dd.className = 'mono';
+                dd.textContent = v;
+                sum.appendChild(dd);
+            }
+            line('Name', want.name.trim());
+            line('Prefix', want.kind === 'test' ? 'sp_test_' : 'sp_live_', true);
+            line('Screens against', t(want.kind === 'test' ? 'Sandbox' : 'Live'));
+            line('Expires after', ttlLabel());
+            d.body.appendChild(drwSection('This token', '', sum));
+
+            var may = document.createElement('ul');
+            may.className = 'grants';
+            chosen().forEach(function (k) {
+                var li = document.createElement('li');
+                li.className = 'is-yes';
+                li.textContent = scopeLabel(k);
+                may.appendChild(li);
+            });
+            scopes.forEach(function (sc) {
+                if (want.scopes[sc.key]) return;
+                var li = document.createElement('li');
+                li.className = 'is-no';
+                li.textContent = t(sc.label);
+                may.appendChild(li);
+            });
+            d.body.appendChild(drwSection('What it will be able to do',
+                'Anything not listed as allowed is refused.', may));
+
+            var err = document.createElement('p');
+            err.className = 'verr drw-err';
+            err.hidden = true;
+            d.body.appendChild(err);
+
+            var back = document.createElement('button');
+            back.type = 'button';
+            back.className = 'btn btn-flat';
+            back.textContent = t('Back');
+            back.addEventListener('click', function () { d.show(stepConfigure, true); });
+            d.acts.appendChild(back);
+
+            var go2 = document.createElement('button');
+            go2.type = 'button';
+            go2.className = 'btn btn-primary';
+            go2.textContent = t('Generate token');
+            go2.addEventListener('click', function () {
                 go2.disabled = true;
-                msg.hidden = true;
+                err.hidden = true;
                 fetch('/v1/account/tokens', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'same-origin',
                     body: JSON.stringify({
-                        name: name.value,
-                        kind: sandbox ? 'test' : 'live',
-                        days: Number(ttl),
-                        scopes: Object.keys(picked).filter(function (k) { return picked[k]; })
+                        name: want.name,
+                        kind: want.kind,
+                        days: Number(want.days),
+                        scopes: chosen()
                     })
                 }).then(function (r) {
                     return r.json().catch(function () { return {}; }).then(function (j) {
@@ -2638,28 +2856,28 @@
                     });
                 }).then(function (r) {
                     if (!r.ok) {
-                        msg.textContent = (r.body && r.body.error) || t('That did not work.');
-                        msg.hidden = false;
+                        err.textContent = (r.body && r.body.error) || t('That did not work.');
+                        err.hidden = false;
                         go2.disabled = false;
                         return;
                     }
                     done();
-                    step(function () { stepShow(r.body.token, r.body.row); });
+                    d.show(function () { stepShow(r.body.token); });
                 }).catch(function () {
-                    msg.textContent = t('That did not work.');
-                    msg.hidden = false;
+                    err.textContent = t('That did not work.');
+                    err.hidden = false;
                     go2.disabled = false;
                 });
             });
+            d.acts.appendChild(go2);
         }
 
-        function stepShow(secret, row) {
-            m.bare(true);
-            var box = document.createElement('div');
-            box.className = 'vpanel';
+        function stepShow(secret) {
+            d.retitle('Copy it now');
+            d.steps(0, 0, '');
 
             var head = document.createElement('div');
-            head.className = 'vhead';
+            head.className = 'vhead drw-done';
             var mark = document.createElement('div');
             mark.className = 'vmark';
             mark.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
@@ -2672,23 +2890,25 @@
             var p = document.createElement('p');
             p.textContent = t('This is the only time we can show you this token. We keep a hash of it, not the token itself.');
             head.appendChild(p);
-            box.appendChild(head);
+            d.body.appendChild(head);
 
             var secretBox = document.createElement('div');
-            secretBox.className = 'secret';
+            secretBox.className = 'secret drw-secret';
             var code = document.createElement('code');
             code.textContent = secret;
             secretBox.appendChild(code);
             secretBox.appendChild(copyBtn(function () { return secret; }));
-            box.appendChild(secretBox);
+            d.body.appendChild(secretBox);
 
-            var done2 = wideBtn('I have copied it', 'cta');
-            done2.addEventListener('click', m.shut);
-            box.appendChild(done2);
-            m.body.appendChild(box);
+            var fin = document.createElement('button');
+            fin.type = 'button';
+            fin.className = 'btn btn-primary';
+            fin.textContent = t('I have copied it');
+            fin.addEventListener('click', d.shut);
+            d.acts.appendChild(fin);
         }
 
-        stepMake();
+        d.show(stepConfigure);
     }
 
     function viewPreferences(me) {
