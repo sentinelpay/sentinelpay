@@ -551,6 +551,16 @@ function clearLoginFails(emailHash) {
     db.query('DELETE FROM login_fails WHERE email_hash = $1', [emailHash])
         .catch((err) => console.error('[accounts] could not clear the sign-in throttle: ' + err.message));
 }
+async function setName(userId, name) {
+    if (!db.available()) return { ok: false, reason: 'unavailable' };
+    const res = await db.query('SELECT email_hash FROM users WHERE id = $1', [userId]);
+    if (!res.rows.length) return { ok: false, reason: 'no-user' };
+    const emailHash = res.rows[0].email_hash;
+    await db.query('UPDATE users SET name_enc = $2 WHERE id = $1',
+        [userId, db.seal('signup-name:' + emailHash, name)]);
+    return { ok: true, name };
+}
+
 async function signIn(email, password) {
     if (!(await init())) return { ok: false, reason: 'unavailable' };
     const emailHash = db.blindIndex(email);
@@ -1128,5 +1138,4 @@ module.exports = {
     startReset, readReset, finishReset, RESET_TTL_MIN, RESET_RESEND_WAIT_S,
     hashPassword, verifyPassword,
     signIn, startSession, readSession, endSession,
-    CODE_TTL_MIN, CODE_MAX_SENDS, CODE_RESEND_WAIT_S,
-};
+    CODE_TTL_MIN, CODE_MAX_SENDS, CODE_RESEND_WAIT_S, setName };

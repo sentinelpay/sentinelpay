@@ -730,8 +730,10 @@
     }
 
     function paintMe(me) {
+        lastMe = me;
         paintAvatar(me);
         paintAccountMenu(me);
+        paintCanvas();
     }
 
     function sep() {
@@ -816,6 +818,164 @@
         return hit || navFor()[0].items[0].key;
     }
 
+    function pageHead(title, sub) {
+        var h = document.createElement('div');
+        h.className = 'pg-head';
+        var t1 = document.createElement('h1');
+        t1.className = 'pg-h1';
+        t1.textContent = t(title);
+        h.appendChild(t1);
+        if (sub) {
+            var p = document.createElement('p');
+            p.className = 'pg-sub';
+            p.textContent = t(sub);
+            h.appendChild(p);
+        }
+        return h;
+    }
+
+    function sectionTitle(text) {
+        var h = document.createElement('h2');
+        h.className = 'pg-h2';
+        h.textContent = t(text);
+        return h;
+    }
+
+    function fieldRow(opts) {
+        var row = document.createElement('div');
+        row.className = 'fld';
+        var left = document.createElement('div');
+        left.className = 'fld-l';
+        var lab = document.createElement('label');
+        lab.className = 'fld-label';
+        lab.textContent = t(opts.label);
+        if (opts.id) lab.setAttribute('for', opts.id);
+        left.appendChild(lab);
+        if (opts.hint) {
+            var hint = document.createElement('div');
+            hint.className = 'fld-hint';
+            hint.textContent = t(opts.hint);
+            left.appendChild(hint);
+        }
+        row.appendChild(left);
+        var right = document.createElement('div');
+        right.className = 'fld-r';
+        right.appendChild(opts.control);
+        row.appendChild(right);
+        return row;
+    }
+
+    function textInput(id, value, placeholder, readOnly) {
+        var i = document.createElement('input');
+        i.type = 'text';
+        i.id = id;
+        i.className = 'fld-in' + (readOnly ? ' is-locked' : '');
+        i.value = value || '';
+        i.autocomplete = 'off';
+        if (placeholder) i.placeholder = t(placeholder);
+        if (readOnly) { i.readOnly = true; i.tabIndex = -1; }
+        return i;
+    }
+
+    function splitName(full) {
+        var parts = String(full || '').trim().split(/\s+/);
+        if (!parts[0]) return { first: '', last: '' };
+        return { first: parts[0], last: parts.slice(1).join(' ') };
+    }
+
+    function viewPreferences(me) {
+        var page = document.createElement('div');
+        page.className = 'pg';
+        page.appendChild(pageHead('Preferences',
+            'Manage your account profile, connections, and dashboard experience.'));
+
+        page.appendChild(sectionTitle('Profile information'));
+
+        var card = document.createElement('form');
+        card.className = 'card';
+        var n = splitName(me.name);
+
+        var first = textInput('pf-first', n.first, 'First name');
+        var last = textInput('pf-last', n.last, 'Last name');
+        var mail = textInput('pf-mail', me.email, null, true);
+
+        card.appendChild(fieldRow({ label: 'First name', id: 'pf-first', control: first }));
+        card.appendChild(fieldRow({ label: 'Last name', id: 'pf-last', control: last }));
+        card.appendChild(fieldRow({
+            label: 'Primary email',
+            hint: 'Used for account notifications. Contact us to change it.',
+            id: 'pf-mail',
+            control: mail
+        }));
+
+        var foot = document.createElement('div');
+        foot.className = 'card-foot';
+        var msg = document.createElement('span');
+        msg.className = 'card-msg';
+        foot.appendChild(msg);
+        var save = document.createElement('button');
+        save.type = 'submit';
+        save.className = 'btn btn-primary';
+        save.textContent = t('Save');
+        save.disabled = true;
+        foot.appendChild(save);
+        card.appendChild(foot);
+        page.appendChild(card);
+
+        function dirty() {
+            return first.value.trim() !== n.first || last.value.trim() !== n.last;
+        }
+        function sync() {
+            save.disabled = !dirty() || !first.value.trim();
+        }
+        function onType() {
+            if (msg.textContent) { msg.textContent = ''; msg.className = 'card-msg'; }
+            sync();
+        }
+        first.addEventListener('input', onType);
+        last.addEventListener('input', onType);
+
+        card.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (save.disabled) return;
+            save.disabled = true;
+            msg.textContent = '';
+            fetch('/v1/account/profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ firstName: first.value, lastName: last.value })
+            }).then(function (r) {
+                return r.json().catch(function () { return {}; }).then(function (j) {
+                    return { ok: r.ok, body: j };
+                });
+            }).then(function (r) {
+                if (!r.ok) {
+                    msg.textContent = (r.body && r.body.error) || t('That did not save.');
+                    msg.className = 'card-msg is-bad';
+                    save.disabled = false;
+                    return;
+                }
+                n = splitName(r.body.name);
+                first.value = n.first;
+                last.value = n.last;
+                msg.textContent = t('Saved');
+                msg.className = 'card-msg is-good';
+                var fresh = { name: r.body.name, email: me.email, trial: me.trial };
+                writeMe(fresh);
+                paintAvatar(fresh);
+                paintAccountMenu(fresh);
+                sync();
+            }).catch(function () {
+                msg.textContent = t('That did not save.');
+                msg.className = 'card-msg is-bad';
+                save.disabled = false;
+            });
+        });
+
+        return page;
+    }
+
     var canRoute = !!(window.history && history.pushState);
 
     function go(path) {
@@ -825,10 +985,22 @@
         render();
     }
 
+    var lastMe = null;
+
+    function paintCanvas() {
+        var canvas = document.getElementById('canvas');
+        if (!canvas) return;
+        canvas.textContent = '';
+        if (location.pathname === ACCOUNT_PATH && lastMe) {
+            canvas.appendChild(viewPreferences(lastMe));
+        }
+    }
+
     function render() {
         paintNav(currentNav());
         applySideMode(sideMode());
         setMenu(false);
+        paintCanvas();
         var canvas = document.getElementById('canvas');
         if (canvas) {
             canvas.style.animation = 'none';

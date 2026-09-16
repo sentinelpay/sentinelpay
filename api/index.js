@@ -1754,6 +1754,31 @@ app.post('/v1/account/password', requireCloudflareOrigin, accountLimiter, async 
     }
 });
 
+app.post('/v1/account/profile', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const b = req.body || {};
+    const clean = (v) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
+    const first = clean(b.firstName);
+    const last = clean(b.lastName);
+
+    if (!first) return res.status(400).json({ error: 'Please enter your first name.' });
+    if (first.length > 60 || last.length > 60) {
+        return res.status(400).json({ error: 'That name is too long.' });
+    }
+    if (/[<>\\/"]/.test(first + last)) {
+        return res.status(400).json({ error: 'Please use letters only in your name.' });
+    }
+
+    const name = (first + ' ' + last).trim();
+    const out = await accounts.setName(me.userId, name);
+    if (!out.ok) {
+        return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
+    }
+    res.set('Cache-Control', 'no-store, private');
+    res.json({ ok: true, name });
+});
+
 app.get('/v1/account/sessions', async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
