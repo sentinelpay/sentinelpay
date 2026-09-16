@@ -1631,6 +1631,7 @@
         box.className = 'modal';
         box.setAttribute('role', 'dialog');
         box.setAttribute('aria-modal', 'true');
+        box.tabIndex = -1;
 
         var dots = document.createElement('span');
         dots.className = 'modal-dots';
@@ -1693,7 +1694,12 @@
         document.body.appendChild(back);
         void back.offsetWidth;
         back.classList.add('is-in');
-        pw.focus();
+        // deliberately not focusing the password field: the browser answers a
+        // focused password input with its saved logins panel, which covers the
+        // dialog the moment it opens. focus the dialog itself so the keyboard
+        // still lands here, and let the suggestions appear when the field is
+        // actually clicked.
+        box.focus();
 
         function shut() {
             back.classList.remove('is-in');

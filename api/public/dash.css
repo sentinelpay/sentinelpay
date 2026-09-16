@@ -1242,6 +1242,7 @@ button { font: inherit; color: inherit; }
                 transform 0.62s cubic-bezier(0.16, 1, 0.3, 1) 0.1s;
 }
 .modal-back.is-in .modal { opacity: 1; transform: none; }
+.modal:focus { outline: none; }
 
 .modal-dots {
     position: absolute;
