@@ -2565,13 +2565,18 @@
         document.documentElement.classList.add('is-modal');
         box.focus();
 
+        // leaving is marked with its own class rather than just dropping is-in, so
+        // the way out can be timed differently from the way in. on a phone the
+        // panel is the whole screen and has to travel the whole way off it.
         function shut() {
+            if (back.classList.contains('is-out')) return;
+            back.classList.add('is-out');
             back.classList.remove('is-in');
             document.documentElement.classList.remove('is-modal');
             document.removeEventListener('keydown', onKey);
             setTimeout(function () {
                 if (back.parentNode) back.parentNode.removeChild(back);
-            }, 320);
+            }, 420);
         }
         function onKey(e) { if (e.key === 'Escape') shut(); }
         document.addEventListener('keydown', onKey);

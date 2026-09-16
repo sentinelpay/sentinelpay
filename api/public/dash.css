@@ -1177,10 +1177,25 @@ button { font: inherit; color: inherit; }
     .drw { width: 100%; border-left: 0; }
     .drw-sec { grid-template-columns: minmax(0, 1fr); gap: 0.6rem; }
     .drw-where span:last-child { display: none; }
+
+    /* on a phone the panel is the whole screen, so a 24px nudge reads as the
+       thing blinking out of existence. it travels the full width instead, and
+       leaves faster than it arrived: arriving is an invitation to look, leaving
+       should get out of the way. */
+    .drw { transform: translateX(100%); }
+    .drw-back.is-in .drw { transform: none; }
+    .drw-back.is-out {
+        opacity: 0;
+        transition: opacity 0.26s cubic-bezier(0.4, 0, 1, 1);
+    }
+    .drw-back.is-out .drw {
+        transform: translateX(100%);
+        transition: transform 0.32s cubic-bezier(0.4, 0, 1, 1);
+    }
 }
 @media (prefers-reduced-motion: reduce) {
-    .drw-back, .drw { transition: none; }
-    .drw { transform: none; }
+    .drw-back, .drw, .drw-back.is-out, .drw-back.is-out .drw { transition: none; }
+    .drw, .drw-back.is-out .drw { transform: none; }
 }
 
 .split { position: relative; margin-left: auto; display: flex; }
