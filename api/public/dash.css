@@ -47,6 +47,10 @@
     --tint-b: rgba(0, 190, 220, 0.05);
     --scrim-deep: rgba(6, 12, 28, 0.42);
     --modal-shadow: 0 24px 60px -34px rgba(14, 35, 88, 0.4), 0 2px 8px rgba(14, 35, 88, 0.05);
+    --cta-bg: #0e2358;
+    --cta-ink: #ffffff;
+    --cta-bg-hover: #16305f;
+    --cta-glow: 0 12px 28px -12px rgba(14, 35, 88, 0.6);
 
     --r: 10px;
     --r-lg: 14px;
@@ -103,6 +107,10 @@
     --tint-b: rgba(0, 190, 220, 0.14);
     --scrim-deep: rgba(3, 6, 18, 0.6);
     --modal-shadow: 0 40px 90px -44px rgba(0, 0, 0, 0.9);
+    --cta-bg: #ffffff;
+    --cta-ink: #06070f;
+    --cta-bg-hover: #ffffff;
+    --cta-glow: 0 12px 32px -8px rgba(123, 108, 255, 0.6);
 }
 
 * { box-sizing: border-box; }
@@ -1285,7 +1293,7 @@ button { font: inherit; color: inherit; }
 .modal-x svg { width: 15px; height: 15px; }
 .modal-x:hover { color: var(--ink); background: var(--hover); }
 
-.modal-head { position: relative; z-index: 1; text-align: center; margin-bottom: 1.4rem; }
+.modal-head { position: relative; z-index: 1; text-align: center; margin-bottom: 1.35rem; }
 .modal-h {
     margin: 0 0 0.4rem;
     font-family: var(--sp-display);
@@ -1296,35 +1304,108 @@ button { font: inherit; color: inherit; }
     color: var(--ink);
 }
 .modal-p { margin: 0; font-size: 0.88rem; line-height: 1.55; color: var(--ink-3); }
-.modal form { position: relative; z-index: 1; }
-.modal-msg { display: block; margin-top: 0.5rem; min-height: 1.1rem; text-align: center; }
-.modal-row { display: flex; justify-content: flex-end; margin: 0.15rem 0 0.9rem; }
+
+.modal-body { position: relative; z-index: 1; opacity: 1; transition: opacity 0.15s ease; }
+.modal-body.is-going { opacity: 0; }
+
+.modal-in {
+    width: 100%;
+    padding: 0.78rem 0.9rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--canvas);
+    font: inherit;
+    font-size: 0.88rem;
+    color: var(--ink-2);
+    outline: none;
+    transition: border-color 0.14s ease, box-shadow 0.14s ease;
+}
+.modal-in:focus { border-color: var(--sel); box-shadow: 0 0 0 3px var(--sel-bg); }
+
+.modal-who {
+    padding: 0.7rem 0.9rem;
+    margin-bottom: 0.9rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--canvas);
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--ink-2);
+    text-align: center;
+    word-break: break-all;
+}
+
+/* only takes room once it has something to say, so there is no dead band
+   between the field and the link when nothing has gone wrong. */
+.modal-msg {
+    display: block;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    text-align: center;
+    color: var(--ink-4);
+}
+.modal-msg:not(:empty) { margin-top: 0.6rem; }
+.modal-msg.is-bad { color: var(--danger); }
+
+.modal-row { display: flex; justify-content: flex-end; margin: 0.55rem 0 1rem; }
 .modal-link {
+    padding: 0;
+    border: 0;
+    background: none;
+    font-family: var(--sp-text);
     font-size: 0.84rem;
     color: var(--sel);
-    text-decoration: none;
+    cursor: pointer;
     white-space: nowrap;
 }
 .modal-link:hover { text-decoration: underline; text-underline-offset: 2px; }
 
-/* the sign in modal's action: full width, heavier, and a lift on hover in the
-   colour of the button rather than a flat darkening. */
+/* the sign in modal's submit, to the pixel: full width, 10px radius, weight
+   700, and a lift on hover rather than a flat darkening. */
 .btn-wide {
     display: block;
     width: 100%;
     padding: 0.8rem 1.9rem;
+    border: 0;
     border-radius: 10px;
+    font-family: var(--sp-text);
+    font-size: 0.85rem;
     font-weight: 700;
-    transition: background 0.16s ease, box-shadow 0.3s ease, opacity 0.16s ease;
+    cursor: pointer;
+    transition: background 0.16s ease, box-shadow 0.3s ease, color 0.16s ease, opacity 0.16s ease;
 }
-.btn-wide + .btn-wide { margin-top: 0.5rem; }
-.btn-danger.btn-wide:hover:not([disabled]) { box-shadow: 0 12px 28px -12px var(--danger); }
+.btn-cta { background: var(--cta-bg); color: var(--cta-ink); }
+.btn-cta:hover:not([disabled]) { background: var(--cta-bg-hover); box-shadow: var(--cta-glow); }
+.btn-wide[disabled] { opacity: 0.45; cursor: default; }
 .btn-quiet.btn-wide {
+    margin-top: 0.45rem;
     background: transparent;
-    color: var(--ink-3);
+    color: var(--ink-4);
     font-weight: 600;
 }
 .btn-quiet.btn-wide:hover:not([disabled]) { background: var(--hover); color: var(--ink); }
+
+.modal-back-btn {
+    position: absolute;
+    top: 0.7rem;
+    left: 0.7rem;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--ink-4);
+    cursor: pointer;
+    transition: color 0.18s ease, background 0.18s ease;
+}
+.modal-back-btn[hidden] { display: none; }
+.modal-back-btn svg { width: 17px; height: 17px; }
+.modal-back-btn:hover { color: var(--ink); background: var(--hover); }
 
 @media (prefers-reduced-motion: reduce) {
     .modal-back, .modal { transition: none; }

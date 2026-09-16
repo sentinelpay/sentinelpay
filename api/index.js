@@ -1779,6 +1779,25 @@ app.post('/v1/account/profile', requireCloudflareOrigin, accountLimiter, async (
     res.json({ ok: true, name });
 });
 
+// the signed in version of /v1/auth/forgot. that one is open to the world, so it
+// has to stand behind turnstile; this one needs a live session and can only ever
+// send to the address on that session, so the check would protect nothing.
+app.post('/v1/account/reset-password', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    if (!db.available()) {
+        return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
+    }
+    const lang = ['hr', 'de', 'en'].includes((req.body || {}).lang) ? req.body.lang : 'en';
+    const started = await accounts.startReset(me.email, lang);
+    if (!started.ok && started.reason === 'rate') {
+        res.set('Retry-After', String(started.retryIn));
+        return res.status(429).json({ error: 'Too many requests, please try again later' });
+    }
+    res.set('Cache-Control', 'no-store, private');
+    res.json({ ok: true });
+});
+
 app.get('/v1/account/sessions', async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;

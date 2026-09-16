@@ -1624,7 +1624,7 @@
         return frag;
     }
 
-    function askDelete(me) {
+    function modalShell(title, sub) {
         var back = document.createElement('div');
         back.className = 'modal-back';
         var box = document.createElement('div');
@@ -1651,63 +1651,39 @@
             '<path d="M6 6 18 18M18 6 6 18"/></svg>';
         box.appendChild(x);
 
+        var stepBack = document.createElement('button');
+        stepBack.type = 'button';
+        stepBack.className = 'modal-back-btn';
+        stepBack.hidden = true;
+        stepBack.setAttribute('aria-label', t('Back'));
+        stepBack.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="m14 6-6 6 6 6"/></svg>';
+        box.appendChild(stepBack);
+
         var head = document.createElement('div');
         head.className = 'modal-head';
         var h = document.createElement('h2');
         h.className = 'modal-h';
-        h.textContent = t('Delete this account');
+        h.textContent = t(title);
         head.appendChild(h);
-
         var p = document.createElement('p');
         p.className = 'modal-p';
-        p.textContent = t('Enter your password to confirm. Once this goes through there is nothing left to restore.');
+        p.textContent = t(sub);
         head.appendChild(p);
         box.appendChild(head);
 
-        var form = document.createElement('form');
-        var pw = document.createElement('input');
-        pw.type = 'password';
-        pw.className = 'fld-in';
-        pw.autocomplete = 'current-password';
-        pw.placeholder = t('Your password');
-        form.appendChild(pw);
+        var body = document.createElement('div');
+        body.className = 'modal-body';
+        box.appendChild(body);
 
-        var msg = document.createElement('div');
-        msg.className = 'card-msg modal-msg';
-        form.appendChild(msg);
-
-        // the same shape the sign in modal uses: a link row, then one full width
-        // action, then the quiet way out underneath it.
-        var linkRow = document.createElement('div');
-        linkRow.className = 'modal-row';
-        var lost = document.createElement('a');
-        lost.className = 'modal-link';
-        lost.href = '/?signin=reset';
-        lost.textContent = t('Forgot your password?');
-        linkRow.appendChild(lost);
-        form.appendChild(linkRow);
-
-        var yes = document.createElement('button');
-        yes.type = 'submit';
-        yes.className = 'btn btn-wide btn-danger';
-        yes.textContent = t('Delete account');
-        form.appendChild(yes);
-
-        var no = document.createElement('button');
-        no.type = 'button';
-        no.className = 'btn btn-wide btn-quiet';
-        no.textContent = t('Keep my account');
-        form.appendChild(no);
-        box.appendChild(form);
         back.appendChild(box);
         document.body.appendChild(back);
         void back.offsetWidth;
         back.classList.add('is-in');
-        // deliberately not focusing the password field: the browser answers a
-        // focused password input with its saved logins panel, which covers the
-        // dialog the moment it opens. focus the dialog itself so the keyboard
-        // still lands here, and let the suggestions appear when the field is
-        // actually clicked.
+        document.documentElement.classList.add('is-modal');
+        // not focusing a field: a focused password input makes the browser offer
+        // its saved logins, and that panel lands over the dialog.
         box.focus();
 
         function shut() {
@@ -1716,45 +1692,177 @@
             document.removeEventListener('keydown', onKey);
             setTimeout(function () {
                 if (back.parentNode) back.parentNode.removeChild(back);
-            }, 220);
+            }, 260);
         }
         function onKey(e) { if (e.key === 'Escape') shut(); }
         document.addEventListener('keydown', onKey);
-        document.documentElement.classList.add('is-modal');
-        no.addEventListener('click', shut);
         x.addEventListener('click', shut);
         back.addEventListener('click', function (e) { if (e.target === back) shut(); });
 
-        form.addEventListener('submit', function (e) {
-            e.preventDefault();
-            if (!pw.value) { pw.focus(); return; }
-            yes.disabled = true;
-            msg.textContent = '';
-            msg.className = 'card-msg modal-msg';
-            fetch('/v1/account/delete', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin',
-                body: JSON.stringify({ password: pw.value })
-            }).then(function (r) {
-                return r.json().catch(function () { return {}; }).then(function (j) {
-                    return { ok: r.ok, body: j };
-                });
-            }).then(function (r) {
-                if (!r.ok) {
-                    msg.textContent = (r.body && r.body.error) || t('That did not work.');
-                    msg.className = 'card-msg modal-msg is-bad';
+        return {
+            box: box, body: body, shut: shut, stepBack: stepBack,
+            retitle: function (title2, sub2) {
+                h.textContent = t(title2);
+                p.textContent = t(sub2);
+            }
+        };
+    }
+
+    // the sign in modal's action button, down to the lift on hover.
+    function wideBtn(label, kind, type) {
+        var b = document.createElement('button');
+        b.type = type || 'button';
+        b.className = 'btn btn-wide' + (kind ? ' btn-' + kind : '');
+        b.textContent = t(label);
+        return b;
+    }
+
+    function askDelete(me) {
+        var m = modalShell('Delete this account',
+            'Enter your password to confirm. Once this goes through there is nothing left to restore.');
+
+        function swap(build) {
+            m.body.classList.add('is-going');
+            setTimeout(function () {
+                m.body.textContent = '';
+                build();
+                m.body.classList.remove('is-going');
+            }, 150);
+        }
+
+        function stepConfirm() {
+            m.stepBack.hidden = true;
+            m.retitle('Delete this account',
+                'Enter your password to confirm. Once this goes through there is nothing left to restore.');
+
+            var form = document.createElement('form');
+            var pw = document.createElement('input');
+            pw.type = 'password';
+            pw.className = 'modal-in';
+            pw.autocomplete = 'current-password';
+            pw.placeholder = t('Your password');
+            form.appendChild(pw);
+
+            var msg = document.createElement('div');
+            msg.className = 'modal-msg';
+            form.appendChild(msg);
+
+            var row = document.createElement('div');
+            row.className = 'modal-row';
+            var lost = document.createElement('button');
+            lost.type = 'button';
+            lost.className = 'modal-link';
+            lost.textContent = t('Forgot your password?');
+            lost.addEventListener('click', function () { swap(stepReset); });
+            row.appendChild(lost);
+            form.appendChild(row);
+
+            var yes = wideBtn('Delete account', 'cta', 'submit');
+            form.appendChild(yes);
+            var no = wideBtn('Keep my account', 'quiet');
+            no.addEventListener('click', m.shut);
+            form.appendChild(no);
+            m.body.appendChild(form);
+
+            function say(text) {
+                msg.textContent = text;
+                msg.className = 'modal-msg is-bad';
+            }
+
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                if (!pw.value) { pw.focus(); return; }
+                yes.disabled = true;
+                msg.textContent = '';
+                msg.className = 'modal-msg';
+                fetch('/v1/account/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ password: pw.value })
+                }).then(function (r) {
+                    return r.json().catch(function () { return {}; }).then(function (j) {
+                        return { ok: r.ok, body: j };
+                    });
+                }).then(function (r) {
+                    if (!r.ok) {
+                        say((r.body && r.body.error) || t('That did not work.'));
+                        yes.disabled = false;
+                        return;
+                    }
+                    forgetMe();
+                    location.assign('/');
+                }).catch(function () {
+                    say(t('That did not work.'));
                     yes.disabled = false;
-                    return;
-                }
-                forgetMe();
-                location.assign('/');
-            }).catch(function () {
-                msg.textContent = t('That did not work.');
-                msg.className = 'card-msg modal-msg is-bad';
-                yes.disabled = false;
+                });
             });
-        });
+        }
+
+        function stepReset() {
+            m.stepBack.hidden = false;
+            m.retitle('Reset your password',
+                'We will send a link to the address on this account. Opening it lets you set a new password.');
+
+            var who = document.createElement('div');
+            who.className = 'modal-who';
+            who.textContent = me.email || '';
+            m.body.appendChild(who);
+
+            var msg = document.createElement('div');
+            msg.className = 'modal-msg';
+            m.body.appendChild(msg);
+
+            var send = wideBtn('Send the link', 'cta');
+            m.body.appendChild(send);
+            var back2 = wideBtn('Back', 'quiet');
+            back2.addEventListener('click', function () { swap(stepConfirm); });
+            m.body.appendChild(back2);
+
+            send.addEventListener('click', function () {
+                send.disabled = true;
+                msg.textContent = '';
+                msg.className = 'modal-msg';
+                fetch('/v1/account/reset-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ lang: (window.SentinelI18n && window.SentinelI18n.lang()) || 'en' })
+                }).then(function (r) {
+                    return r.json().catch(function () { return {}; }).then(function (j) {
+                        return { ok: r.ok, body: j };
+                    });
+                }).then(function (r) {
+                    if (!r.ok) {
+                        msg.textContent = (r.body && r.body.error) || t('That did not work.');
+                        msg.className = 'modal-msg is-bad';
+                        send.disabled = false;
+                        return;
+                    }
+                    swap(stepSent);
+                }).catch(function () {
+                    msg.textContent = t('That did not work.');
+                    msg.className = 'modal-msg is-bad';
+                    send.disabled = false;
+                });
+            });
+        }
+
+        function stepSent() {
+            m.stepBack.hidden = true;
+            m.retitle('Check your email',
+                'If there is an account on this address, a reset link is on its way. It is good for an hour.');
+            var who = document.createElement('div');
+            who.className = 'modal-who';
+            who.textContent = me.email || '';
+            m.body.appendChild(who);
+            var done = wideBtn('Close', 'cta');
+            done.addEventListener('click', m.shut);
+            m.body.appendChild(done);
+        }
+
+        m.stepBack.addEventListener('click', function () { swap(stepConfirm); });
+        stepConfirm();
     }
 
     function viewPreferences(me) {
