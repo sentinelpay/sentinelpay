@@ -1114,8 +1114,61 @@ button { font: inherit; color: inherit; }
 }
 .thm.is-on .thm-dot { border-color: var(--sel); border-width: 3.5px; }
 
+.krow { grid-template-columns: minmax(0, 1fr) auto; gap: 1.2rem; }
+.krow .fld-l { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.krow .fld-label { font-weight: 500; color: var(--ink-2); }
+.krow-r { display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem; }
+
+.keys { display: flex; align-items: center; gap: 0.2rem; }
+.keys kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.5rem;
+    height: 1.4rem;
+    padding: 0 0.35rem;
+    border: 1px solid var(--line);
+    border-bottom-width: 2px;
+    border-radius: 6px;
+    background: var(--surface);
+    font-family: var(--sp-text);
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--ink-3);
+}
+
+.sw {
+    flex: none;
+    width: 2.35rem;
+    height: 1.3rem;
+    padding: 2px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--line);
+    cursor: pointer;
+    outline: none;
+    transition: background 0.18s ease, box-shadow 0.14s ease;
+}
+.sw:focus-visible { box-shadow: 0 0 0 3px var(--sel-bg); }
+.sw-k {
+    display: block;
+    width: calc(1.3rem - 4px);
+    height: calc(1.3rem - 4px);
+    border-radius: 50%;
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgba(14, 35, 88, 0.3);
+    transition: transform 0.22s var(--ease);
+}
+.sw.is-on { background: var(--sel); }
+.sw.is-on .sw-k { transform: translateX(calc(2.35rem - 1.3rem)); }
+
 @media (max-width: 720px) {
     .fld { grid-template-columns: minmax(0, 1fr); gap: 0.5rem; align-items: start; }
+    /* the shortcut rows keep both columns: the label is short and the keys and
+       switch belong beside it, not stacked under it. this has to sit after the
+       .fld rule above, which is the same specificity and would otherwise win. */
+    .krow { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0.75rem; }
     .fld.is-wide { grid-template-columns: minmax(0, 1fr); }
 }
 
@@ -1192,6 +1245,8 @@ html.is-theming body,
 html.is-theming .card,
 html.is-theming .fld-in,
 html.is-theming .pick-btn,
+html.is-theming .keys kbd,
+html.is-theming .sw,
 html.is-theming .acct-pop,
 html.is-theming .sidectl-pop,
 html.is-theming .toast,

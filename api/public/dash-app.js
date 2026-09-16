@@ -200,6 +200,10 @@
             b.setAttribute('aria-checked', on ? 'true' : 'false');
             b.classList.toggle('is-on', on);
         });
+        // the settings page shows the same choice, so keep its picker honest when
+        // the mode is changed from the sidebar or from the keyboard.
+        var pf = document.getElementById('pf-side');
+        if (pf && pf.parentNode && pf.parentNode.spSet) pf.parentNode.spSet(mode);
     }
 
     function setSideMode(mode) {
@@ -1360,6 +1364,134 @@
         return frag;
     }
 
+    // the shortcuts the finished product needs. most of the screens they point
+    // at do not exist yet, so only the ones marked live are bound; the rest are
+    // listed and switchable now so the setting outlives the gap.
+    var SHORTCUTS = [
+        { key: 'palette', label: 'Open the command menu', keys: ['mod', 'K'] },
+        { key: 'find', label: 'Search addresses, wallets and cases', keys: ['mod', 'shift', 'F'] },
+        { key: 'screen', label: 'Screen an address', keys: ['mod', 'shift', 'S'] },
+        { key: 'case', label: 'Open a new case', keys: ['shift', 'N'] },
+        { key: 'next', label: 'Next alert in the queue', keys: ['J'] },
+        { key: 'prev', label: 'Previous alert in the queue', keys: ['K'] },
+        { key: 'assign', label: 'Assign the open alert to me', keys: ['shift', 'A'] },
+        { key: 'escalate', label: 'Escalate the open alert', keys: ['shift', 'E'] },
+        { key: 'clear', label: 'Clear the open alert as a false positive', keys: ['shift', 'C'] },
+        { key: 'copy-addr', label: 'Copy the address in view', keys: ['mod', 'shift', 'A'] },
+        { key: 'copy-json', label: 'Copy the screening result as JSON', keys: ['mod', 'shift', 'J'] },
+        { key: 'csv', label: 'Download results as CSV', keys: ['mod', 'shift', 'D'] },
+        { key: 'report', label: 'Export the case report as PDF', keys: ['mod', 'shift', 'P'] },
+        { key: 'graph', label: 'Open the exposure graph', keys: ['mod', 'G'] },
+        { key: 'sidebar', label: 'Collapse or expand the sidebar', keys: ['mod', 'B'], live: true },
+        { key: 'audit', label: 'Refresh the audit log', keys: ['shift', 'R'] },
+        { key: 'help', label: 'Show this shortcut list', keys: ['?'] }
+    ];
+    var KEYS_KEY = 'sp-keys-off';
+
+    function onApple() {
+        var p = (navigator.userAgentData && navigator.userAgentData.platform) ||
+            navigator.platform || '';
+        return /mac|iphone|ipad|ipod/i.test(p);
+    }
+
+    function keyCap(k) {
+        if (k === 'mod') return onApple() ? '\u2318' : t('Ctrl');
+        if (k === 'shift') return '\u21e7';
+        return k;
+    }
+
+    function keysOff() {
+        try {
+            var raw = JSON.parse(localStorage.getItem(KEYS_KEY) || '[]');
+            if (raw && raw.length !== undefined) return raw;
+        } catch (err) {  }
+        return [];
+    }
+
+    function keyOn(key) {
+        return keysOff().indexOf(key) === -1;
+    }
+
+    function setKey(key, on) {
+        var off = keysOff().filter(function (k) { return k !== key; });
+        if (!on) off.push(key);
+        try { localStorage.setItem(KEYS_KEY, JSON.stringify(off)); } catch (err) {  }
+    }
+
+    function toggle(id, on, onFlip) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.id = id;
+        b.className = 'sw' + (on ? ' is-on' : '');
+        b.setAttribute('role', 'switch');
+        b.setAttribute('aria-checked', on ? 'true' : 'false');
+        b.appendChild(document.createElement('span')).className = 'sw-k';
+        b.addEventListener('click', function () {
+            var next = !b.classList.contains('is-on');
+            b.classList.toggle('is-on', next);
+            b.setAttribute('aria-checked', next ? 'true' : 'false');
+            onFlip(next);
+        });
+        return b;
+    }
+
+    function viewShortcuts() {
+        var frag = document.createDocumentFragment();
+        frag.appendChild(sectionTitle('Keyboard shortcuts'));
+        frag.appendChild(sectionNote('Choose which shortcuts stay active while you work in the dashboard. Most of them point at screens we have not built yet, so today only the sidebar one does anything.'));
+
+        var card = document.createElement('div');
+        card.className = 'card';
+
+        SHORTCUTS.forEach(function (sc) {
+            var row = document.createElement('div');
+            row.className = 'fld';
+            row.classList.add('krow');
+
+            var left = document.createElement('div');
+            left.className = 'fld-l';
+            var lab = document.createElement('label');
+            lab.className = 'fld-label';
+            lab.textContent = t(sc.label);
+            lab.setAttribute('for', 'ks-' + sc.key);
+            left.appendChild(lab);
+            row.appendChild(left);
+
+            var right = document.createElement('div');
+            right.className = 'krow-r';
+            var caps = document.createElement('span');
+            caps.className = 'keys';
+            sc.keys.forEach(function (k) {
+                var kb = document.createElement('kbd');
+                kb.textContent = keyCap(k);
+                caps.appendChild(kb);
+            });
+            right.appendChild(caps);
+            right.appendChild(toggle('ks-' + sc.key, keyOn(sc.key), function (on) {
+                setKey(sc.key, on);
+                toast(t(on ? 'Shortcut turned on' : 'Shortcut turned off'), 'good');
+            }));
+            row.appendChild(right);
+            card.appendChild(row);
+        });
+
+        frag.appendChild(card);
+        return frag;
+    }
+
+    // the only shortcut with somewhere to go today. it reads the same switch the
+    // rest of the list writes, so the setting is real even while the others wait.
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'b' && e.key !== 'B') return;
+        if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey) return;
+        if (!keyOn('sidebar')) return;
+        var tag = (e.target && e.target.tagName) || '';
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable)) return;
+        e.preventDefault();
+        if (window.innerWidth <= 900) { setMenu(!app.classList.contains('is-open')); return; }
+        setSideMode(sideMode() === SIDE_MODES[0].key ? SIDE_MODES[1].key : SIDE_MODES[0].key);
+    });
+
     function viewPreferences(me) {
         var page = document.createElement('div');
         page.className = 'pg';
@@ -1400,6 +1532,7 @@
         page.appendChild(card);
         page.appendChild(viewAppearance());
         page.appendChild(viewTimezone(me));
+        page.appendChild(viewShortcuts());
 
         function dirty() {
             return first.value.trim() !== n.first || last.value.trim() !== n.last;
