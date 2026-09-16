@@ -920,56 +920,23 @@ button { font: inherit; color: inherit; }
     border-bottom: 1px solid var(--line-2);
 }
 .fld-l { min-width: 0; }
-.fld-label,
-.drw-sec-h {
-    display: block;
-    font-size: 0.86rem;
-    font-weight: 600;
-    line-height: 1.5;
-    color: var(--ink);
-}
-.fld-hint,
-.drw-sec-l p {
-    margin-top: 0.15rem;
-    font-size: 0.78rem;
-    line-height: 1.5;
-    color: var(--ink-4);
-}
+.fld-label { display: block; font-size: 0.86rem; font-weight: 600; color: var(--ink); }
+.fld-hint { margin-top: 0.15rem; font-size: 0.78rem; line-height: 1.5; color: var(--ink-4); }
 .fld-r { min-width: 0; }
 
-/* one text field, everywhere, and the dropdown trigger matches its height so a
-   row of controls lines up. the page had its own smaller one with a blue focus
-   ring while the dialogs used the cyan one from the sign in modal. */
-.fld-in,
-.modal-in,
-.vfield input,
-.pick-btn,
-.bar-find input {
+.fld-in {
     width: 100%;
-    padding: 0.78rem 0.9rem;
-    border: 1px solid var(--field-line);
-    border-radius: 10px;
+    padding: 0.52rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: 9px;
     background: var(--canvas);
-    font-family: var(--sp-text);
-    font-size: 0.88rem;
-    line-height: normal;
-    color: var(--ink);
+    font: inherit;
+    font-size: 0.86rem;
+    color: var(--ink-2);
     outline: none;
-    transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    transition: border-color 0.14s ease, box-shadow 0.14s ease;
 }
-.fld-in::placeholder,
-.modal-in::placeholder,
-.bar-find input::placeholder { color: var(--field-hint); }
-.fld-in:focus,
-.modal-in:focus,
-.vfield input:focus,
-.pick-btn:focus-visible,
-.pick.is-open .pick-btn,
-.bar-find input:focus {
-    border-color: var(--link);
-    background: var(--surface);
-    box-shadow: 0 0 0 3px var(--field-ring);
-}
+.fld-in:focus { border-color: var(--sel); box-shadow: 0 0 0 3px var(--sel-bg); }
 .fld-in.is-locked { color: var(--ink-4); cursor: default; }
 
 .card-foot {
@@ -983,73 +950,20 @@ button { font: inherit; color: inherit; }
 .card-msg.is-good { color: var(--sel); }
 .card-msg.is-bad { color: var(--danger); }
 
-/* one button, everywhere. the page, the dialogs and the side panel were each
-   drawing their own primary: three radii, two weights, two colours and the
-   shine on only one of them. these are the sign in submit's own values, and
-   .btn-wide only widens it for a form action. line-height is pinned because our
-   global button rule pulls the body one in, which made the same class render
-   four pixels shorter inside the panel than on the page. */
 .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 2.75rem;
-    padding: 0.5rem 1.15rem;
+    padding: 0.5rem 1.1rem;
     border: 0;
-    border-radius: 10px;
+    border-radius: 9px;
     font-family: var(--sp-text);
     font-size: 0.85rem;
-    font-weight: 700;
-    line-height: normal;
+    font-weight: 650;
     cursor: pointer;
-    transition: background 0.16s ease, box-shadow 0.3s ease, color 0.16s ease, opacity 0.16s ease;
+    transition: background 0.16s ease, opacity 0.16s ease;
 }
+.btn-primary { background: var(--avatar-bg); color: var(--avatar-ink); }
+.btn-primary:hover:not([disabled]) { background: #16305f; }
+[data-theme="dark"] .btn-primary:hover:not([disabled]) { background: #37497f; }
 .btn[disabled] { opacity: 0.45; cursor: default; }
-
-.btn-primary,
-.btn-cta {
-    position: relative;
-    overflow: hidden;
-    background: var(--cta-bg);
-    color: var(--cta-ink);
-}
-.btn-primary:hover:not([disabled]),
-.btn-cta:hover:not([disabled]) { background: var(--cta-bg-hover); box-shadow: var(--cta-glow); }
-.btn-primary::after,
-.btn-cta::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -85%;
-    width: 55%;
-    height: 100%;
-    background: linear-gradient(105deg, transparent, rgba(123, 108, 255, 0.45) 50%, rgba(0, 240, 255, 0.3) 62%, transparent);
-    transform: skewX(-18deg);
-    pointer-events: none;
-}
-.btn-primary:hover:not([disabled])::after,
-.btn-cta:hover:not([disabled])::after {
-    left: 135%;
-    transition: left 0.6s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-/* the secondary is the sign in modal's pill, and the only one we have */
-.btn-quiet,
-.btn-flat {
-    border: 1px solid var(--pill-line);
-    border-radius: 11px;
-    background: var(--pill-bg);
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--pill-ink);
-}
-.btn-quiet:hover:not([disabled]),
-.btn-flat:hover:not([disabled]) {
-    border-color: var(--pill-line-hover);
-    color: var(--ink);
-    background: var(--pill-bg-hover);
-    box-shadow: var(--pill-glow);
-}
 
 .notice {
     display: flex;
@@ -1081,7 +995,19 @@ button { font: inherit; color: inherit; }
     color: var(--ink-4);
     pointer-events: none;
 }
-.bar-find input { padding-left: 2.2rem; }
+.bar-find input {
+    width: 100%;
+    padding: 0.5rem 0.7rem 0.5rem 2.1rem;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: var(--canvas);
+    font-family: var(--sp-text);
+    font-size: 0.85rem;
+    color: var(--ink-2);
+    outline: none;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.bar-find input:focus { border-color: var(--link); box-shadow: 0 0 0 3px var(--field-ring); }
 .bar-find input::-webkit-search-cancel-button { -webkit-appearance: none; }
 
 /* the token panel. same surface and scrim language as the dialogs, but it
@@ -1147,7 +1073,8 @@ button { font: inherit; color: inherit; }
     padding: 1.15rem 1.3rem;
     border-bottom: 1px solid var(--line-2);
 }
-.drw-sec-l p { margin: 0.15rem 0 0; }
+.drw-sec-h { font-size: 0.86rem; font-weight: 600; color: var(--ink); }
+.drw-sec-l p { margin: 0.25rem 0 0; font-size: 0.79rem; line-height: 1.55; color: var(--ink-4); }
 .drw-sec-r { min-width: 0; }
 
 .card-picks { display: grid; gap: 0.45rem; }
@@ -1243,6 +1170,8 @@ button { font: inherit; color: inherit; }
 }
 .drw-dots i.is-on { background: var(--link); }
 .drw-acts { flex: none; display: flex; gap: 0.5rem; }
+.btn-flat { background: transparent; color: var(--ink-3); }
+.btn-flat:hover:not([disabled]) { background: var(--nav-on); color: var(--ink); }
 
 @media (max-width: 720px) {
     .drw { width: 100%; border-left: 0; }
@@ -1270,14 +1199,13 @@ button { font: inherit; color: inherit; }
 }
 
 .split { position: relative; margin-left: auto; display: flex; }
-.split-main { border-radius: 10px 0 0 10px; }
+.split-main { border-radius: 9px 0 0 9px; }
 .split-more {
-    overflow: visible;
     display: grid;
     place-items: center;
     width: 2rem;
     padding: 0;
-    border-radius: 0 10px 10px 0;
+    border-radius: 0 9px 9px 0;
     border-left: 1px solid rgba(255, 255, 255, 0.22);
 }
 [data-theme="dark"] .split-more { border-left-color: rgba(0, 0, 0, 0.25); }
@@ -1493,14 +1421,25 @@ button { font: inherit; color: inherit; }
 .pick { position: relative; }
 
 .pick-btn {
+    width: 100%;
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding-right: 0.6rem;
+    padding: 0.52rem 0.6rem 0.52rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: var(--canvas);
+    font-family: var(--sp-text);
+    font-size: 0.86rem;
+    color: var(--ink-2);
     text-align: left;
     cursor: pointer;
+    outline: none;
+    transition: border-color 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
 }
 .pick-btn:hover { background: var(--hover); }
+.pick-btn:focus-visible,
+.pick.is-open .pick-btn { border-color: var(--sel); box-shadow: 0 0 0 3px var(--sel-bg); }
 .pick-val {
     flex: 1 1 auto;
     min-width: 0;
@@ -1747,7 +1686,9 @@ button { font: inherit; color: inherit; }
 
 .btn-danger { background: var(--danger); color: #fff; }
 [data-theme="dark"] .btn-danger { color: #2a0812; }
-.btn-danger:hover:not([disabled]) { background: var(--danger-hover); box-shadow: 0 12px 28px -12px var(--danger); }
+.btn-danger:hover:not([disabled]) { background: var(--danger-hover); }
+.btn-quiet { background: var(--hover); color: var(--ink-2); }
+.btn-quiet:hover:not([disabled]) { background: var(--nav-on); }
 
 .modal-back {
     position: fixed;
@@ -1859,7 +1800,24 @@ button { font: inherit; color: inherit; }
     transition: height 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-
+.modal-in {
+    width: 100%;
+    padding: 0.78rem 0.9rem;
+    border: 1px solid var(--field-line);
+    border-radius: 10px;
+    background: var(--canvas);
+    font-family: var(--sp-text);
+    font-size: 0.9rem;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+.modal-in::placeholder { color: var(--field-hint); }
+.modal-in:focus {
+    border-color: var(--link);
+    background: var(--surface);
+    box-shadow: 0 0 0 3px var(--field-ring);
+}
 
 .modal-who {
     padding: 0.7rem 0.9rem;
@@ -1887,7 +1845,6 @@ button { font: inherit; color: inherit; }
 .modal-msg.is-bad { color: var(--danger); }
 
 .modal-quit { display: flex; justify-content: center; margin-top: 0.7rem; }
-.modal-quit { margin-top: 0.45rem; }
 .modal-quit .btn-quiet.btn-wide { flex: 0 1 auto; width: auto; padding-left: 1.5rem; padding-right: 1.5rem; }
 .modal-row { display: flex; justify-content: flex-start; margin: 0.55rem 0 1rem; }
 .modal-link {
@@ -1910,14 +1867,46 @@ button { font: inherit; color: inherit; }
 
 /* the sign in modal's submit, to the pixel: full width, 10px radius, weight
    700, and a lift on hover rather than a flat darkening. */
-/* the form action from the sign in modal: the shared button, widened, with that
-   modal's exact padding so the two stay the same height side by side. */
 .btn-wide {
-    display: flex;
+    display: block;
     width: 100%;
-    min-height: 0;
     padding: 0.8rem 1.9rem;
+    border: 0;
+    border-radius: 10px;
+    font-family: var(--sp-text);
+    font-size: 0.85rem;
+    font-weight: 700;
+    /* our global button rule inherits the body line height; the landing buttons
+       keep the browser default, and that is what sets their height. */
+    line-height: normal;
+    cursor: pointer;
+    transition: background 0.16s ease, box-shadow 0.3s ease, color 0.16s ease, opacity 0.16s ease;
 }
+/* the shine that crosses our buttons on hover, and the gradient underline that
+   draws in under the quiet one. both lifted from the landing page's own. */
+.btn-cta {
+    position: relative;
+    overflow: hidden;
+    background: var(--cta-bg);
+    color: var(--cta-ink);
+}
+.btn-cta:hover:not([disabled]) { background: var(--cta-bg-hover); box-shadow: var(--cta-glow); }
+.btn-cta::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -85%;
+    width: 55%;
+    height: 100%;
+    background: linear-gradient(105deg, transparent, rgba(123, 108, 255, 0.45) 50%, rgba(0, 240, 255, 0.3) 62%, transparent);
+    transform: skewX(-18deg);
+    pointer-events: none;
+}
+.btn-cta:hover:not([disabled])::after {
+    left: 135%;
+    transition: left 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.btn-wide[disabled] { opacity: 0.45; cursor: default; }
 
 
 .modal-head[hidden] { display: none; }
@@ -1967,7 +1956,23 @@ button { font: inherit; color: inherit; }
     transition: color 0.18s ease;
 }
 .vfield:focus-within > label { color: var(--link); }
-
+.vfield input {
+    width: 100%;
+    padding: 0.78rem 0.9rem;
+    border: 1px solid var(--field-line);
+    border-radius: 10px;
+    background: var(--canvas);
+    font-family: var(--sp-text);
+    font-size: 0.9rem;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+.vfield input:focus {
+    border-color: var(--link);
+    background: var(--surface);
+    box-shadow: 0 0 0 3px var(--field-ring);
+}
 .vfield input[readonly] { cursor: default; }
 
 .vpanel .btn-cta { margin-top: 0.3rem; }
@@ -1985,13 +1990,13 @@ button { font: inherit; color: inherit; }
     color: var(--ink-4);
 }
 
-/* the quiet button the sign in modal uses under its panels, and the footer link
-   buttons it sits beside. both are the same pill .btn-quiet already gives. */
-.linkbtn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 2.25rem;
+/* the quiet button the sign in modal uses under its panels. the delete
+   dialog's own way out wears it too, so the two read as one family. */
+.linkbtn,
+.btn-quiet.btn-wide {
+    flex: 1 1 0;
+    min-width: 0;
+    white-space: nowrap;
     padding: 0.6rem 0.55rem;
     border: 1px solid var(--pill-line);
     border-radius: 11px;
@@ -2005,11 +2010,9 @@ button { font: inherit; color: inherit; }
     transition: border-color 0.18s ease, color 0.18s ease,
                 background 0.18s ease, box-shadow 0.18s ease;
 }
-.linkbtn,
-.btn-quiet.btn-wide { flex: 1 1 0; min-width: 0; white-space: nowrap; }
-.btn-quiet.btn-wide { padding: 0.6rem 0.55rem; }
 .linkbtn:only-child { flex: 0 1 auto; padding-left: 1.5rem; padding-right: 1.5rem; }
-.linkbtn:hover {
+.linkbtn:hover,
+.btn-quiet.btn-wide:hover:not([disabled]) {
     border-color: var(--pill-line-hover);
     color: var(--ink);
     background: var(--pill-bg-hover);
