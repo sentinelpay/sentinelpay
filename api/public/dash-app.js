@@ -818,6 +818,54 @@
         return hit || navFor()[0].items[0].key;
     }
 
+    var TOAST_ICON = {
+        good: '<path d="m5 12.5 4.5 4.5L19 7"/>',
+        bad: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.6v5M12 16.2h.01"/>'
+    };
+
+    function toastHost() {
+        var host = document.getElementById('toasts');
+        if (host) return host;
+        host = document.createElement('div');
+        host.id = 'toasts';
+        host.className = 'toasts';
+        host.setAttribute('role', 'status');
+        host.setAttribute('aria-live', 'polite');
+        document.body.appendChild(host);
+        return host;
+    }
+
+    function toast(text, kind) {
+        var host = toastHost();
+        var k = kind === 'bad' ? 'bad' : 'good';
+        var el = document.createElement('div');
+        el.className = 'toast toast-' + k;
+        el.innerHTML = '<svg class="toast-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            TOAST_ICON[k] + '</svg>';
+        var span = document.createElement('span');
+        span.textContent = text;
+        el.appendChild(span);
+        host.appendChild(el);
+
+        void el.offsetWidth;
+        el.classList.add('is-in');
+
+        var gone = false;
+        var drop = function () {
+            if (gone) return;
+            gone = true;
+            el.classList.remove('is-in');
+            el.classList.add('is-out');
+            setTimeout(function () {
+                if (el.parentNode) el.parentNode.removeChild(el);
+            }, 260);
+        };
+        var timer = setTimeout(drop, 4000);
+        el.addEventListener('click', function () { clearTimeout(timer); drop(); });
+        return el;
+    }
+
     function pageHead(title, sub) {
         var h = document.createElement('div');
         h.className = 'pg-head';
@@ -959,8 +1007,9 @@
                 n = splitName(r.body.name);
                 first.value = n.first;
                 last.value = n.last;
-                msg.textContent = t('Saved');
-                msg.className = 'card-msg is-good';
+                msg.textContent = '';
+                msg.className = 'card-msg';
+                toast(t('Profile saved'), 'good');
                 var fresh = { name: r.body.name, email: me.email, trial: me.trial };
                 writeMe(fresh);
                 paintAvatar(fresh);
