@@ -230,6 +230,32 @@ function geoLang(req) {
     return 'en';
 }
 
+const COUNTRY_ZONE = {
+    HR: 'Europe/Zagreb', SI: 'Europe/Ljubljana', BA: 'Europe/Sarajevo', RS: 'Europe/Belgrade',
+    ME: 'Europe/Podgorica', MK: 'Europe/Skopje', AL: 'Europe/Tirane', GR: 'Europe/Athens',
+    IT: 'Europe/Rome', AT: 'Europe/Vienna', DE: 'Europe/Berlin', CH: 'Europe/Zurich',
+    HU: 'Europe/Budapest', SK: 'Europe/Bratislava', CZ: 'Europe/Prague', PL: 'Europe/Warsaw',
+    NL: 'Europe/Amsterdam', BE: 'Europe/Brussels', LU: 'Europe/Luxembourg', FR: 'Europe/Paris',
+    ES: 'Europe/Madrid', PT: 'Europe/Lisbon', IE: 'Europe/Dublin', GB: 'Europe/London',
+    DK: 'Europe/Copenhagen', NO: 'Europe/Oslo', SE: 'Europe/Stockholm', FI: 'Europe/Helsinki',
+    EE: 'Europe/Tallinn', LV: 'Europe/Riga', LT: 'Europe/Vilnius', IS: 'Atlantic/Reykjavik',
+    RO: 'Europe/Bucharest', BG: 'Europe/Sofia', MD: 'Europe/Chisinau', UA: 'Europe/Kyiv',
+    TR: 'Europe/Istanbul', CY: 'Asia/Nicosia', MT: 'Europe/Malta',
+    AE: 'Asia/Dubai', IL: 'Asia/Jerusalem', SA: 'Asia/Riyadh', QA: 'Asia/Qatar',
+    SG: 'Asia/Singapore', HK: 'Asia/Hong_Kong', JP: 'Asia/Tokyo', KR: 'Asia/Seoul',
+    IN: 'Asia/Kolkata', PH: 'Asia/Manila', TH: 'Asia/Bangkok', VN: 'Asia/Ho_Chi_Minh',
+    MY: 'Asia/Kuala_Lumpur', TW: 'Asia/Taipei', PK: 'Asia/Karachi',
+    ZA: 'Africa/Johannesburg', NG: 'Africa/Lagos', KE: 'Africa/Nairobi', EG: 'Africa/Cairo',
+    MA: 'Africa/Casablanca',
+    NZ: 'Pacific/Auckland', AR: 'America/Argentina/Buenos_Aires', CL: 'America/Santiago',
+    CO: 'America/Bogota', PE: 'America/Lima', UY: 'America/Montevideo', PA: 'America/Panama'
+};
+
+function geoZone(req) {
+    const cc = String(req.headers['cf-ipcountry'] || '').trim().toUpperCase();
+    return COUNTRY_ZONE[cc] || '';
+}
+
 function browserName(ua) {
     ua = String(ua || '');
     if (/\bEdgA?\//.test(ua)) return 'microsoft edge';
@@ -424,7 +450,9 @@ function renderPage(file, req, forcedLang) {
         '<p class="sp-ns-text">' + escapeHtml(copy.body) + '</p>' +
         '<a class="sp-ns-link" href="' + escapeHtml(url) + '" rel="noopener nofollow" target="_blank">' + escapeHtml(copy.link) + '</a>' +
         '</div>';
+    const zone = geoZone(req);
     const attrs = ' data-geo-lang="' + lang + '"' +
+        (zone ? ' data-geo-tz="' + zone + '"' : '') +
         (forcedLang ? ' data-force-lang="' + forcedLang + '"' : '') +
         (STATUS_MESSAGE ? ' data-status' : '') +
         (STATUS_BLOCKS_MAIL ? ' data-mail-down' : '');

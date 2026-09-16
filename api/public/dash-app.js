@@ -283,12 +283,31 @@
 
     var TZ_KEY = 'sp-tz';
 
-    function autoZone() {
+    function deviceZone() {
         try {
-            return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+            return Intl.DateTimeFormat().resolvedOptions().timeZone || '';
         } catch (err) {
-            return 'UTC';
+            return '';
         }
+    }
+
+    function geoZone() {
+        return document.documentElement.getAttribute('data-geo-tz') || '';
+    }
+
+    function autoZone() {
+        var geo = geoZone();
+        var dev = deviceZone();
+        if (geo && (!dev || dev === 'UTC' || dev === 'Etc/UTC')) return geo;
+        return dev || geo || 'UTC';
+    }
+
+    function autoSource() {
+        var geo = geoZone();
+        var dev = deviceZone();
+        if (geo && (!dev || dev === 'UTC' || dev === 'Etc/UTC')) return 'From your connection';
+        if (dev) return 'From this device';
+        return '';
     }
 
     function zonePref() {
@@ -304,15 +323,53 @@
         return v === 'auto' ? autoZone() : v;
     }
 
+    var FALLBACK_ZONES = [
+        'Europe/Zagreb', 'Europe/Ljubljana', 'Europe/Belgrade', 'Europe/Sarajevo',
+        'Europe/Vienna', 'Europe/Berlin', 'Europe/Zurich', 'Europe/Rome', 'Europe/Madrid',
+        'Europe/Paris', 'Europe/Amsterdam', 'Europe/Brussels', 'Europe/Prague',
+        'Europe/Budapest', 'Europe/Warsaw', 'Europe/Bucharest', 'Europe/Sofia',
+        'Europe/Athens', 'Europe/Istanbul', 'Europe/Kyiv', 'Europe/Stockholm',
+        'Europe/Oslo', 'Europe/Copenhagen', 'Europe/Helsinki', 'Europe/Dublin',
+        'Europe/Lisbon', 'Europe/London', 'Atlantic/Reykjavik',
+        'America/New_York', 'America/Toronto', 'America/Chicago', 'America/Denver',
+        'America/Los_Angeles', 'America/Vancouver', 'America/Mexico_City',
+        'America/Bogota', 'America/Lima', 'America/Santiago', 'America/Sao_Paulo',
+        'America/Argentina/Buenos_Aires',
+        'Africa/Casablanca', 'Africa/Lagos', 'Africa/Cairo', 'Africa/Nairobi',
+        'Africa/Johannesburg',
+        'Asia/Jerusalem', 'Asia/Dubai', 'Asia/Riyadh', 'Asia/Karachi', 'Asia/Kolkata',
+        'Asia/Bangkok', 'Asia/Ho_Chi_Minh', 'Asia/Singapore', 'Asia/Kuala_Lumpur',
+        'Asia/Hong_Kong', 'Asia/Shanghai', 'Asia/Taipei', 'Asia/Seoul', 'Asia/Tokyo',
+        'Australia/Perth', 'Australia/Brisbane', 'Australia/Sydney', 'Pacific/Auckland',
+        'UTC'
+    ];
+
     function zoneList() {
-        var common = [
-            'Europe/Zagreb', 'Europe/London', 'Europe/Berlin', 'Europe/Warsaw',
-            'Europe/Lisbon', 'America/New_York', 'America/Chicago', 'America/Los_Angeles',
-            'Asia/Dubai', 'Asia/Singapore', 'Asia/Tokyo', 'UTC'
-        ];
+        var all;
+        try {
+            all = Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone') : null;
+        } catch (err) {
+            all = null;
+        }
+        if (!all || !all.length) all = FALLBACK_ZONES.slice();
+        else {
+            all = all.slice();
+            if (all.indexOf('UTC') === -1) all.push('UTC');
+        }
         var mine = autoZone();
-        if (common.indexOf(mine) === -1) common.unshift(mine);
-        return common;
+        var i = all.indexOf(mine);
+        if (i > 0) { all.splice(i, 1); all.unshift(mine); }
+        else if (i === -1 && mine) all.unshift(mine);
+        return all;
+    }
+
+    function zoneLabel(z) {
+        return z.split('/').pop().replace(/_/g, ' ');
+    }
+
+    function zoneRegion(z) {
+        var parts = z.split('/');
+        return parts.length > 1 ? parts[0].replace(/_/g, ' ') : '';
     }
 
     function zoneOffset(zone) {
@@ -343,7 +400,7 @@
         var o = opts || {};
         var b = document.createElement('button');
         b.type = 'button';
-        b.className = 'acct-opt acct-row' + (o.soon ? ' is-soon' : '');
+        b.className = 'acct-opt acct-row' + (o.soon ? ' is-soon' : '') + (o.stack ? ' is-stack' : '');
         b.setAttribute('role', 'menuitem');
         if (o.icon) b.innerHTML = icon(o.icon);
         var span = document.createElement('span');
@@ -449,19 +506,15 @@
             });
         }
 
-        var zone = document.createElement('div');
-        zone.className = 'acct-zone';
-        var zoneVal = zonePref() === 'auto'
-            ? t('Auto') + ' (' + zoneNow() + ')'
-            : zoneNow();
-        var zoneRow = acctRow('Timezone', { icon: 'clock', more: true });
+        var zoneRow = acctRow('Timezone', { icon: 'clock', more: true, stack: true });
         var zv = document.createElement('span');
         zv.className = 'acct-row-sub';
-        zv.textContent = zoneVal;
-        zoneRow.insertBefore(zv, zoneRow.querySelector('.acct-chev'));
-        zone.appendChild(zoneRow);
+        zv.textContent = zonePref() === 'auto'
+            ? t('Auto') + ' (' + zoneLabel(zoneNow()) + ')'
+            : zoneLabel(zoneNow());
+        zoneRow.querySelector('.acct-row-t').appendChild(zv);
         main.appendChild(sep());
-        main.appendChild(zone);
+        main.appendChild(zoneRow);
 
         main.appendChild(sep());
         var out = document.createElement('button');
@@ -488,20 +541,72 @@
         back.className = 'acct-opt acct-row acct-back';
         back.addEventListener('click', function () { pop.classList.remove('is-sub'); });
         tz.appendChild(back);
-        tz.appendChild(sep());
+
+        var find = document.createElement('label');
+        find.className = 'acct-find';
+        var findIn = document.createElement('input');
+        findIn.type = 'search';
+        findIn.autocomplete = 'off';
+        findIn.spellcheck = false;
+        findIn.placeholder = t('Search a city or zone');
+        find.appendChild(findIn);
+        tz.appendChild(find);
+
         var tzList = document.createElement('div');
         tzList.className = 'acct-scroll';
-        var pref = zonePref();
-        tzList.appendChild(acctPick(t('Auto') + ' (' + autoZone() + ')', pref === 'auto', null, null,
-            function () { setZone('auto'); paintAccountMenu(me); }));
-        zoneList().forEach(function (z) {
-            var off = zoneOffset(z);
-            tzList.appendChild(acctPick(z.replace(/_/g, ' ') + (off ? '  ' + off : ''), pref === z, null, null,
-                function () { setZone(z); paintAccountMenu(me); }));
-        });
         tz.appendChild(tzList);
 
-        zoneRow.addEventListener('click', function () { pop.classList.add('is-sub'); });
+        var pref = zonePref();
+        var zones = zoneList();
+
+        function drawZones(q) {
+            tzList.textContent = '';
+            q = (q || '').trim().toLowerCase();
+            if (!q) {
+                var auto = acctPick(t('Auto') + ' (' + zoneLabel(autoZone()) + ')',
+                    pref === 'auto', null, null,
+                    function () { setZone('auto'); paintAccountMenu(me); openZones(); });
+                var src = autoSource();
+                if (src) {
+                    var note = document.createElement('span');
+                    note.className = 'acct-pick-note';
+                    note.textContent = t(src);
+                    auto.appendChild(note);
+                }
+                tzList.appendChild(auto);
+            }
+            var shown = 0;
+            for (var i = 0; i < zones.length && shown < 300; i++) {
+                var z = zones[i];
+                if (q && z.toLowerCase().replace(/_/g, ' ').indexOf(q) === -1) continue;
+                shown++;
+                (function (zone) {
+                    var off = zoneOffset(zone);
+                    var b = acctPick(zoneLabel(zone), pref === zone, null, null,
+                        function () { setZone(zone); paintAccountMenu(me); openZones(); });
+                    var meta = document.createElement('span');
+                    meta.className = 'acct-pick-meta';
+                    meta.textContent = (zoneRegion(zone) ? zoneRegion(zone) + '  ' : '') + off;
+                    b.appendChild(meta);
+                    tzList.appendChild(b);
+                })(z);
+            }
+            if (!shown && q) {
+                var none = document.createElement('div');
+                none.className = 'acct-none';
+                none.textContent = t('Nothing matches that.');
+                tzList.appendChild(none);
+            }
+        }
+        drawZones('');
+        findIn.addEventListener('input', function () { drawZones(findIn.value); });
+
+        function openZones() {
+            pop.classList.add('is-sub');
+            setTimeout(function () { findIn.focus(); }, 180);
+        }
+
+        zoneRow.addEventListener('click', openZones);
 
         pop.appendChild(main);
         pop.appendChild(tz);
