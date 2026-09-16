@@ -1795,7 +1795,7 @@ app.post('/v1/account/reset-password', requireCloudflareOrigin, accountLimiter, 
         return res.status(429).json({ error: 'Too many requests, please try again later' });
     }
     res.set('Cache-Control', 'no-store, private');
-    res.json({ ok: true });
+    res.json({ ok: true, resendIn: accounts.RESET_RESEND_WAIT_S });
 });
 
 app.get('/v1/account/sessions', async (req, res) => {

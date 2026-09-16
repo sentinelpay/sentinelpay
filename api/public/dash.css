@@ -51,6 +51,12 @@
     --cta-ink: #ffffff;
     --cta-bg-hover: #16305f;
     --cta-glow: 0 12px 28px -12px rgba(14, 35, 88, 0.6);
+    --link: #0091c8;
+    --link-hover: #00739f;
+    --link-line: rgba(0, 145, 200, 0.3);
+    --mark-ink: #0091c8;
+    --mark-bg: linear-gradient(160deg, rgba(0, 145, 200, 0.12), rgba(160, 32, 240, 0.08));
+    --mark-line: rgba(0, 145, 200, 0.18);
 
     --r: 10px;
     --r-lg: 14px;
@@ -111,6 +117,12 @@
     --cta-ink: #06070f;
     --cta-bg-hover: #ffffff;
     --cta-glow: 0 12px 32px -8px rgba(123, 108, 255, 0.6);
+    --link: #7bdcff;
+    --link-hover: #b2ecff;
+    --link-line: rgba(123, 220, 255, 0.3);
+    --mark-ink: #7bdcff;
+    --mark-bg: linear-gradient(160deg, rgba(0, 190, 220, 0.16), rgba(160, 32, 240, 0.14));
+    --mark-line: rgba(123, 220, 255, 0.22);
 }
 
 * { box-sizing: border-box; }
@@ -1347,18 +1359,20 @@ button { font: inherit; color: inherit; }
 .modal-msg:not(:empty) { margin-top: 0.6rem; }
 .modal-msg.is-bad { color: var(--danger); }
 
-.modal-row { display: flex; justify-content: flex-end; margin: 0.55rem 0 1rem; }
+.modal-row { display: flex; justify-content: flex-start; margin: 0.55rem 0 1rem; }
 .modal-link {
     padding: 0;
     border: 0;
+    border-bottom: 1px solid var(--link-line);
     background: none;
     font-family: var(--sp-text);
     font-size: 0.84rem;
-    color: var(--sel);
+    color: var(--link);
     cursor: pointer;
     white-space: nowrap;
+    transition: color 0.16s ease, border-bottom-color 0.16s ease;
 }
-.modal-link:hover { text-decoration: underline; text-underline-offset: 2px; }
+.modal-link:hover { color: var(--link-hover); border-bottom-color: var(--link-hover); }
 
 /* the sign in modal's submit, to the pixel: full width, 10px radius, weight
    700, and a lift on hover rather than a flat darkening. */
@@ -1374,16 +1388,169 @@ button { font: inherit; color: inherit; }
     cursor: pointer;
     transition: background 0.16s ease, box-shadow 0.3s ease, color 0.16s ease, opacity 0.16s ease;
 }
-.btn-cta { background: var(--cta-bg); color: var(--cta-ink); }
+/* the shine that crosses our buttons on hover, and the gradient underline that
+   draws in under the quiet one. both lifted from the landing page's own. */
+.btn-cta {
+    position: relative;
+    overflow: hidden;
+    background: var(--cta-bg);
+    color: var(--cta-ink);
+}
 .btn-cta:hover:not([disabled]) { background: var(--cta-bg-hover); box-shadow: var(--cta-glow); }
+.btn-cta::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -85%;
+    width: 55%;
+    height: 100%;
+    background: linear-gradient(105deg, transparent, rgba(123, 108, 255, 0.45) 50%, rgba(0, 240, 255, 0.3) 62%, transparent);
+    transform: skewX(-18deg);
+    pointer-events: none;
+}
+.btn-cta:hover:not([disabled])::after {
+    left: 135%;
+    transition: left 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
 .btn-wide[disabled] { opacity: 0.45; cursor: default; }
 .btn-quiet.btn-wide {
+    position: relative;
     margin-top: 0.45rem;
     background: transparent;
     color: var(--ink-4);
     font-weight: 600;
+    transition: color 0.25s ease;
 }
-.btn-quiet.btn-wide:hover:not([disabled]) { background: var(--hover); color: var(--ink); }
+.btn-quiet.btn-wide:hover:not([disabled]) { color: var(--ink); }
+.btn-quiet.btn-wide::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    right: 50%;
+    bottom: 0.52rem;
+    height: 1.5px;
+    background: var(--brand);
+    transform: scaleX(0);
+    transform-origin: right center;
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+                left 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+                right 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.btn-quiet.btn-wide:hover:not([disabled])::after {
+    left: 30%;
+    right: 30%;
+    transform: scaleX(1);
+    transform-origin: left center;
+}
+
+.modal-head[hidden] { display: none; }
+
+.vhead { text-align: center; margin-bottom: 1.3rem; }
+.vmark,
+.vdone-mark {
+    width: 46px;
+    height: 46px;
+    margin: 0 auto 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    color: var(--mark-ink);
+    background: var(--mark-bg);
+    border: 1px solid var(--mark-line);
+}
+.vmark svg,
+.vdone-mark svg { width: 22px; height: 22px; }
+.vhead h3 {
+    margin: 0 0 0.4rem;
+    font-family: var(--sp-display);
+    font-size: 1.3rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+}
+.vhead p {
+    margin: 0 auto;
+    max-width: 21rem;
+    font-size: 0.88rem;
+    line-height: 1.55;
+    color: var(--ink-3);
+}
+
+.vfield { display: flex; flex-direction: column; gap: 0.45rem; margin-bottom: 1rem; }
+.vfield > label {
+    font-size: 0.74rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--ink-3);
+}
+.vfield input {
+    width: 100%;
+    padding: 0.78rem 0.9rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--canvas);
+    font-family: var(--sp-text);
+    font-size: 0.9rem;
+    color: var(--ink-2);
+    outline: none;
+}
+.vfield input[readonly] { cursor: default; }
+
+.verr { margin: 0 0 0.9rem; text-align: center; font-size: 0.85rem; line-height: 1.5; color: var(--danger); }
+.verr[hidden] { display: none; }
+
+.vfoot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem 0.9rem;
+    flex-wrap: wrap;
+    margin-top: 1.1rem;
+    font-size: 0.84rem;
+}
+.linkbtn {
+    padding: 0;
+    border: 0;
+    border-bottom: 1px solid var(--link-line);
+    background: none;
+    font: inherit;
+    color: var(--link);
+    cursor: pointer;
+    transition: color 0.16s ease, border-bottom-color 0.16s ease;
+}
+.linkbtn:hover { color: var(--link-hover); border-bottom-color: var(--link-hover); }
+.linkbtn[disabled] { color: var(--ink-4); border-bottom-color: transparent; cursor: default; }
+
+.vdone { text-align: center; padding: 1.1rem 0 0.4rem; }
+.vdone-mark { margin-bottom: 1.15rem; }
+.vdone h3 {
+    margin: 0 0 0.5rem;
+    font-family: var(--sp-display);
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+}
+.vdone p {
+    margin: 0 auto;
+    max-width: 21rem;
+    font-size: 0.92rem;
+    line-height: 1.6;
+    color: var(--ink-3);
+}
+.vdone p b { display: block; margin-top: 0.3rem; color: var(--ink); overflow-wrap: anywhere; }
+.vdone .vfoot { margin-top: 1.6rem; }
+
+.modal-body.is-stepping { animation: stepIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes stepIn {
+    from { opacity: 0; transform: translateX(var(--step-dir, 14px)); }
+    to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .modal-body.is-stepping { animation: none; }
+    .btn-cta::after { display: none; }
+}
 
 .modal-back-btn {
     position: absolute;

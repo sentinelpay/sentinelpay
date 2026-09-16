@@ -1701,6 +1701,9 @@
 
         return {
             box: box, body: body, shut: shut, stepBack: stepBack,
+            // the reset panels carry their own badge and heading, as the sign in
+            // modal does, so the shell head steps aside for them.
+            bare: function (on) { head.hidden = !!on; },
             retitle: function (title2, sub2) {
                 h.textContent = t(title2);
                 p.textContent = t(sub2);
@@ -1721,17 +1724,25 @@
         var m = modalShell('Delete this account',
             'Enter your password to confirm. Once this goes through there is nothing left to restore.');
 
-        function swap(build) {
+        // the sign in modal slides the outgoing step out and the incoming one in
+        // from the side it came from, so going back reads as going back.
+        function swap(build, backwards) {
             m.body.classList.add('is-going');
             setTimeout(function () {
                 m.body.textContent = '';
                 build();
+                m.body.style.setProperty('--step-dir', backwards ? '-14px' : '14px');
                 m.body.classList.remove('is-going');
+                m.body.classList.remove('is-stepping');
+                void m.body.offsetWidth;
+                m.body.classList.add('is-stepping');
             }, 150);
         }
 
         function stepConfirm() {
+            clearInterval(tick);
             m.stepBack.hidden = true;
+            m.bare(false);
             m.retitle('Delete this account',
                 'Enter your password to confirm. Once this goes through there is nothing left to restore.');
 
@@ -1799,69 +1810,198 @@
             });
         }
 
+        // both of these are the sign in modal's reset panels, ported piece for
+        // piece: the badge, the heading pair, the field row, the footer of link
+        // buttons, and the sixty second hold on the resend.
+        function markBadge(kind, path) {
+            var d = document.createElement('div');
+            d.className = kind;
+            d.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                path + '</svg>';
+            return d;
+        }
+
+        function vHead(kind, title, sub) {
+            var head = document.createElement('div');
+            head.className = 'vhead';
+            head.appendChild(markBadge('vmark', kind === 'lock'
+                ? '<rect x="4" y="10.5" width="16" height="10" rx="2.2"></rect>' +
+                  '<path d="M8 10.5V7.6a4 4 0 0 1 8 0v2.9"></path>'
+                : '<rect x="2.5" y="4.5" width="19" height="15" rx="2.5"></rect>' +
+                  '<polyline points="3 6.5 12 13 21 6.5"></polyline>'));
+            var h3 = document.createElement('h3');
+            h3.textContent = t(title);
+            head.appendChild(h3);
+            var p2 = document.createElement('p');
+            p2.textContent = t(sub);
+            head.appendChild(p2);
+            return head;
+        }
+
+        function linkBtn(label) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'linkbtn';
+            b.textContent = t(label);
+            return b;
+        }
+
+        var RESEND_WAIT = 60;
+        var tick = null;
+
         function stepReset() {
+            clearInterval(tick);
             m.stepBack.hidden = false;
-            m.retitle('Reset your password',
-                'We will send a link to the address on this account. Opening it lets you set a new password.');
+            m.bare(true);
 
-            var who = document.createElement('div');
-            who.className = 'modal-who';
-            who.textContent = me.email || '';
-            m.body.appendChild(who);
+            var form = document.createElement('form');
+            form.className = 'vpanel';
+            form.appendChild(vHead('lock', 'Reset your password',
+                'This is the address on your account. We will send you a link to set a new password.'));
 
-            var msg = document.createElement('div');
-            msg.className = 'modal-msg';
-            m.body.appendChild(msg);
+            var field = document.createElement('div');
+            field.className = 'vfield';
+            var lab = document.createElement('label');
+            lab.textContent = t('Work email');
+            lab.setAttribute('for', 'dz-mail');
+            field.appendChild(lab);
+            var mail = document.createElement('input');
+            mail.id = 'dz-mail';
+            mail.type = 'email';
+            mail.value = me.email || '';
+            mail.readOnly = true;
+            mail.tabIndex = -1;
+            field.appendChild(mail);
+            form.appendChild(field);
 
-            var send = wideBtn('Send the link', 'cta');
-            m.body.appendChild(send);
-            var back2 = wideBtn('Back', 'quiet');
-            back2.addEventListener('click', function () { swap(stepConfirm); });
-            m.body.appendChild(back2);
+            var err = document.createElement('p');
+            err.className = 'verr';
+            err.hidden = true;
+            err.setAttribute('role', 'alert');
+            form.appendChild(err);
 
-            send.addEventListener('click', function () {
+            var send = wideBtn('Send the reset link', 'cta', 'submit');
+            form.appendChild(send);
+
+            var foot = document.createElement('div');
+            foot.className = 'vfoot';
+            var back2 = linkBtn('Back');
+            back2.addEventListener('click', function () { swap(stepConfirm, true); });
+            foot.appendChild(back2);
+            form.appendChild(foot);
+            m.body.appendChild(form);
+
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
                 send.disabled = true;
-                msg.textContent = '';
-                msg.className = 'modal-msg';
-                fetch('/v1/account/reset-password', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'same-origin',
-                    body: JSON.stringify({ lang: (window.SentinelI18n && window.SentinelI18n.lang()) || 'en' })
-                }).then(function (r) {
-                    return r.json().catch(function () { return {}; }).then(function (j) {
-                        return { ok: r.ok, body: j };
-                    });
-                }).then(function (r) {
+                err.hidden = true;
+                askLink().then(function (r) {
                     if (!r.ok) {
-                        msg.textContent = (r.body && r.body.error) || t('That did not work.');
-                        msg.className = 'modal-msg is-bad';
+                        err.textContent = (r.body && r.body.error) || t('That did not work.');
+                        err.hidden = false;
                         send.disabled = false;
                         return;
                     }
-                    swap(stepSent);
-                }).catch(function () {
-                    msg.textContent = t('That did not work.');
-                    msg.className = 'modal-msg is-bad';
-                    send.disabled = false;
+                    swap(function () { stepSent((r.body && r.body.resendIn) || RESEND_WAIT); });
                 });
             });
         }
 
-        function stepSent() {
-            m.stepBack.hidden = true;
-            m.retitle('Check your email',
-                'If there is an account on this address, a reset link is on its way. It is good for an hour.');
-            var who = document.createElement('div');
-            who.className = 'modal-who';
-            who.textContent = me.email || '';
-            m.body.appendChild(who);
-            var done = wideBtn('Close', 'cta');
-            done.addEventListener('click', m.shut);
-            m.body.appendChild(done);
+        function askLink() {
+            return fetch('/v1/account/reset-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ lang: (window.SentinelI18n && window.SentinelI18n.lang()) || 'en' })
+            }).then(function (r) {
+                return r.json().catch(function () { return {}; }).then(function (j) {
+                    return { ok: r.ok, body: j };
+                });
+            }).catch(function () { return { ok: false, body: {} }; });
         }
 
-        m.stepBack.addEventListener('click', function () { swap(stepConfirm); });
+        function stepSent(waitFor) {
+            m.stepBack.hidden = false;
+            m.bare(true);
+
+            var done = document.createElement('div');
+            done.className = 'vdone';
+            done.appendChild(markBadge('vdone-mark', ''));
+            done.querySelector('.vdone-mark').innerHTML =
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
+                'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                '<rect x="2.5" y="4.5" width="19" height="15" rx="2.5"></rect>' +
+                '<polyline points="3 6.5 12 13 21 6.5"></polyline></svg>';
+            var h3 = document.createElement('h3');
+            h3.textContent = t('Check your email');
+            done.appendChild(h3);
+            var sub = document.createElement('p');
+            sub.appendChild(document.createTextNode(
+                t('A link to set a new password is on its way to')));
+            sub.appendChild(document.createTextNode(' '));
+            var b = document.createElement('b');
+            b.textContent = me.email || '';
+            sub.appendChild(b);
+            done.appendChild(sub);
+
+            var err = document.createElement('p');
+            err.className = 'verr';
+            err.hidden = true;
+            err.setAttribute('role', 'alert');
+            done.appendChild(err);
+
+            var foot = document.createElement('div');
+            foot.className = 'vfoot';
+            var again = linkBtn('Send a new link');
+            foot.appendChild(again);
+            var back2 = linkBtn('Back');
+            back2.addEventListener('click', function () {
+                clearInterval(tick);
+                swap(stepConfirm, true);
+            });
+            foot.appendChild(back2);
+            done.appendChild(foot);
+            m.body.appendChild(done);
+
+            function hold(seconds) {
+                clearInterval(tick);
+                var left = seconds;
+                function paint() {
+                    if (left <= 0) {
+                        clearInterval(tick);
+                        again.disabled = false;
+                        again.textContent = t('Send a new link');
+                        return;
+                    }
+                    again.disabled = true;
+                    again.textContent = t('Send a new link in') + ' ' + left + 's';
+                    left--;
+                }
+                again.disabled = true;
+                paint();
+                tick = setInterval(paint, 1000);
+            }
+
+            again.addEventListener('click', function () {
+                if (again.disabled) return;
+                hold(RESEND_WAIT);
+                err.hidden = true;
+                askLink().then(function (r) {
+                    if (!r.ok) {
+                        clearInterval(tick);
+                        again.disabled = false;
+                        again.textContent = t('Send a new link');
+                        err.textContent = (r.body && r.body.error) || t('That did not work.');
+                        err.hidden = false;
+                    }
+                });
+            });
+
+            hold(waitFor);
+        }
+
+        m.stepBack.addEventListener('click', function () { swap(stepConfirm, true); });
         stepConfirm();
     }
 
