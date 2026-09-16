@@ -1163,8 +1163,76 @@ button { font: inherit; color: inherit; }
 .sw.is-on { background: var(--sel); }
 .sw.is-on .sw-k { transform: translateX(calc(2.35rem - 1.3rem)); }
 
+.fld.is-sw { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.fld.is-sw .fld-r { display: flex; justify-content: flex-end; }
+
+.card.is-danger { border-color: var(--danger); }
+.dz { display: flex; gap: 0.85rem; padding: 1.15rem; background: var(--danger-bg); }
+.dz-mark {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 1.7rem;
+    height: 1.7rem;
+    margin-top: 0.05rem;
+    border-radius: 8px;
+    background: var(--danger);
+    color: #fff;
+}
+[data-theme="dark"] .dz-mark { color: #2a0812; }
+.dz-mark svg { width: 15px; height: 15px; }
+.dz-t { min-width: 0; }
+.dz-h { font-size: 0.9rem; font-weight: 650; color: var(--ink); }
+.dz-p { margin: 0.3rem 0 0.9rem; font-size: 0.82rem; line-height: 1.6; color: var(--ink-3); max-width: 34rem; }
+
+.btn-danger { background: var(--danger); color: #fff; }
+[data-theme="dark"] .btn-danger { color: #2a0812; }
+.btn-danger:hover:not([disabled]) { background: var(--danger-hover); }
+.btn-quiet { background: var(--hover); color: var(--ink-2); }
+.btn-quiet:hover:not([disabled]) { background: var(--nav-on); }
+
+.modal-back {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: grid;
+    place-items: center;
+    padding: 1.1rem;
+    background: rgba(8, 17, 40, 0.42);
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+.modal-back.is-in { opacity: 1; }
+.modal {
+    width: min(26rem, 100%);
+    padding: 1.3rem;
+    border: 1px solid var(--panel-line);
+    border-radius: var(--r-lg);
+    background: var(--panel);
+    box-shadow: var(--panel-shadow);
+    transform: translateY(10px) scale(0.98);
+    transition: transform 0.28s var(--ease);
+}
+.modal-back.is-in .modal { transform: none; }
+.modal-h {
+    margin: 0 0 0.45rem;
+    font-family: var(--sp-display);
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+}
+.modal-p { margin: 0 0 1rem; font-size: 0.85rem; line-height: 1.6; color: var(--ink-3); }
+.modal-msg { display: block; margin-top: 0.5rem; min-height: 1.1rem; }
+.modal-foot { display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 0.9rem; }
+
 @media (max-width: 720px) {
     .fld { grid-template-columns: minmax(0, 1fr); gap: 0.5rem; align-items: start; }
+    /* both of these keep their second column on a phone: the switch belongs
+       beside its label, not stacked under it. they must sit after the .fld rule
+       above, which is the same specificity and would otherwise win. */
+    .fld.is-sw { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0.9rem; }
     /* the shortcut rows keep both columns: the label is short and the keys and
        switch belong beside it, not stacked under it. this has to sit after the
        .fld rule above, which is the same specificity and would otherwise win. */
@@ -1246,6 +1314,8 @@ html.is-theming .card,
 html.is-theming .fld-in,
 html.is-theming .pick-btn,
 html.is-theming .keys kbd,
+html.is-theming .dz,
+html.is-theming .modal,
 html.is-theming .sw,
 html.is-theming .acct-pop,
 html.is-theming .sidectl-pop,

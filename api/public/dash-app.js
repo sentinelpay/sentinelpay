@@ -1492,6 +1492,232 @@
         setSideMode(sideMode() === SIDE_MODES[0].key ? SIDE_MODES[1].key : SIDE_MODES[0].key);
     });
 
+    // dashboard behaviour, kept per browser rather than on the account: these are
+    // about how this screen in front of you behaves, not about who you are.
+    var DASH_PREFS = [
+        { key: 'confirm-clear', on: true,
+          label: 'Confirm before clearing an alert',
+          hint: 'Ask a second time before an alert is closed as a false positive.' },
+        { key: 'graph-beside', on: true,
+          label: 'Open the exposure graph beside a result',
+          hint: 'Show where the funds came from without leaving the screening.' },
+        { key: 'keep-filters', on: true,
+          label: 'Remember my filters on the alert queue',
+          hint: 'Come back to the queue the way you left it.' },
+        { key: 'full-address', on: false,
+          label: 'Write addresses out in full',
+          hint: 'Show the whole address instead of shortening the middle.' }
+    ];
+    var PREF_KEY = 'sp-prefs';
+
+    function prefs() {
+        try {
+            var v = JSON.parse(localStorage.getItem(PREF_KEY) || '{}');
+            if (v && typeof v === 'object') return v;
+        } catch (err) {  }
+        return {};
+    }
+
+    function prefOn(key, fallback) {
+        var v = prefs()[key];
+        return v === undefined ? fallback : !!v;
+    }
+
+    function setPref(key, on) {
+        var all = prefs();
+        all[key] = !!on;
+        try { localStorage.setItem(PREF_KEY, JSON.stringify(all)); } catch (err) {  }
+    }
+
+    function switchRow(id, label, hint, on, onFlip) {
+        var row = fieldRow({
+            label: label,
+            hint: hint,
+            id: id,
+            control: toggle(id, on, onFlip)
+        });
+        row.classList.add('is-sw');
+        return row;
+    }
+
+    function viewDashPrefs() {
+        var frag = document.createDocumentFragment();
+        frag.appendChild(sectionTitle('Dashboard'));
+        frag.appendChild(sectionNote('Change how the dashboard behaves on this browser and device.'));
+
+        var card = document.createElement('div');
+        card.className = 'card';
+        DASH_PREFS.forEach(function (d) {
+            card.appendChild(switchRow('dp-' + d.key, d.label, d.hint,
+                prefOn(d.key, d.on), function (on) {
+                    setPref(d.key, on);
+                    toast(t('Preference saved'), 'good');
+                }));
+        });
+        frag.appendChild(card);
+        return frag;
+    }
+
+    function viewTelemetry() {
+        var frag = document.createDocumentFragment();
+        frag.appendChild(sectionTitle('Analytics and marketing'));
+        frag.appendChild(sectionNote('Decide what leaves your browser beyond the work itself.'));
+
+        var card = document.createElement('div');
+        card.className = 'card';
+        card.appendChild(switchRow('dp-usage',
+            'Share anonymous usage data',
+            'Which screens get opened and how long a screening takes, so we know what to improve. Never addresses, customer names or anything inside a case.',
+            prefOn('usage', false), function (on) {
+                setPref('usage', on);
+                toast(t('Preference saved'), 'good');
+            }));
+        card.appendChild(switchRow('dp-product-mail',
+            'Product email',
+            'A note when we ship something worth knowing about. Never more than once a month.',
+            prefOn('product-mail', false), function (on) {
+                setPref('product-mail', on);
+                toast(t('Preference saved'), 'good');
+            }));
+        frag.appendChild(card);
+        return frag;
+    }
+
+    function viewDanger(me) {
+        var frag = document.createDocumentFragment();
+        frag.appendChild(sectionTitle('Danger zone'));
+        frag.appendChild(sectionNote('Close this account for good.'));
+
+        var card = document.createElement('div');
+        card.className = 'card is-danger';
+        var body = document.createElement('div');
+        body.className = 'dz';
+
+        var mark = document.createElement('span');
+        mark.className = 'dz-mark';
+        mark.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M12 8.5v5M12 16.9v.1"/><path d="M10.3 4.3 2.8 18a1.8 1.8 0 0 0 1.6 2.7h15.2A1.8 1.8 0 0 0 21.2 18L13.7 4.3a1.9 1.9 0 0 0-3.4 0Z"/></svg>';
+        body.appendChild(mark);
+
+        var txt = document.createElement('div');
+        txt.className = 'dz-t';
+        var h = document.createElement('div');
+        h.className = 'dz-h';
+        h.textContent = t('Delete this account');
+        txt.appendChild(h);
+        var p = document.createElement('p');
+        p.className = 'dz-p';
+        p.textContent = t('This cannot be undone. Your account, your screenings and your cases go with it. We keep the audit record of the deletion itself, because the law requires it of us.');
+        txt.appendChild(p);
+
+        var go2 = document.createElement('button');
+        go2.type = 'button';
+        go2.className = 'btn btn-danger';
+        go2.textContent = t('Delete account');
+        go2.addEventListener('click', function () { askDelete(me); });
+        txt.appendChild(go2);
+
+        body.appendChild(txt);
+        card.appendChild(body);
+        frag.appendChild(card);
+        return frag;
+    }
+
+    function askDelete(me) {
+        var back = document.createElement('div');
+        back.className = 'modal-back';
+        var box = document.createElement('div');
+        box.className = 'modal';
+        box.setAttribute('role', 'dialog');
+        box.setAttribute('aria-modal', 'true');
+
+        var h = document.createElement('h2');
+        h.className = 'modal-h';
+        h.textContent = t('Delete this account');
+        box.appendChild(h);
+
+        var p = document.createElement('p');
+        p.className = 'modal-p';
+        p.textContent = t('Enter your password to confirm. Once this goes through there is nothing left to restore.');
+        box.appendChild(p);
+
+        var form = document.createElement('form');
+        var pw = document.createElement('input');
+        pw.type = 'password';
+        pw.className = 'fld-in';
+        pw.autocomplete = 'current-password';
+        pw.placeholder = t('Your password');
+        form.appendChild(pw);
+
+        var msg = document.createElement('div');
+        msg.className = 'card-msg modal-msg';
+        form.appendChild(msg);
+
+        var row = document.createElement('div');
+        row.className = 'modal-foot';
+        var no = document.createElement('button');
+        no.type = 'button';
+        no.className = 'btn btn-quiet';
+        no.textContent = t('Keep my account');
+        row.appendChild(no);
+        var yes = document.createElement('button');
+        yes.type = 'submit';
+        yes.className = 'btn btn-danger';
+        yes.textContent = t('Delete account');
+        row.appendChild(yes);
+        form.appendChild(row);
+        box.appendChild(form);
+        back.appendChild(box);
+        document.body.appendChild(back);
+        void back.offsetWidth;
+        back.classList.add('is-in');
+        pw.focus();
+
+        function shut() {
+            back.classList.remove('is-in');
+            document.removeEventListener('keydown', onKey);
+            setTimeout(function () {
+                if (back.parentNode) back.parentNode.removeChild(back);
+            }, 220);
+        }
+        function onKey(e) { if (e.key === 'Escape') shut(); }
+        document.addEventListener('keydown', onKey);
+        no.addEventListener('click', shut);
+        back.addEventListener('click', function (e) { if (e.target === back) shut(); });
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (!pw.value) { pw.focus(); return; }
+            yes.disabled = true;
+            msg.textContent = '';
+            msg.className = 'card-msg modal-msg';
+            fetch('/v1/account/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ password: pw.value })
+            }).then(function (r) {
+                return r.json().catch(function () { return {}; }).then(function (j) {
+                    return { ok: r.ok, body: j };
+                });
+            }).then(function (r) {
+                if (!r.ok) {
+                    msg.textContent = (r.body && r.body.error) || t('That did not work.');
+                    msg.className = 'card-msg modal-msg is-bad';
+                    yes.disabled = false;
+                    return;
+                }
+                forgetMe();
+                location.assign('/');
+            }).catch(function () {
+                msg.textContent = t('That did not work.');
+                msg.className = 'card-msg modal-msg is-bad';
+                yes.disabled = false;
+            });
+        });
+    }
+
     function viewPreferences(me) {
         var page = document.createElement('div');
         page.className = 'pg';
@@ -1533,6 +1759,9 @@
         page.appendChild(viewAppearance());
         page.appendChild(viewTimezone(me));
         page.appendChild(viewShortcuts());
+        page.appendChild(viewDashPrefs());
+        page.appendChild(viewTelemetry());
+        page.appendChild(viewDanger(me));
 
         function dirty() {
             return first.value.trim() !== n.first || last.value.trim() !== n.last;
