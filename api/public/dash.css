@@ -1009,7 +1009,69 @@ button { font: inherit; color: inherit; }
 }
 .bar-find input:focus { border-color: var(--link); box-shadow: 0 0 0 3px var(--field-ring); }
 .bar-find input::-webkit-search-cancel-button { -webkit-appearance: none; }
-.bar .btn-primary { margin-left: auto; }
+
+.split { position: relative; margin-left: auto; display: flex; }
+.split-main { border-radius: 9px 0 0 9px; }
+.split-more {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    padding: 0;
+    border-radius: 0 9px 9px 0;
+    border-left: 1px solid rgba(255, 255, 255, 0.22);
+}
+[data-theme="dark"] .split-more { border-left-color: rgba(0, 0, 0, 0.25); }
+.split-more svg { width: 15px; height: 15px; }
+.split-pop {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 40;
+    width: max(18rem, 100%);
+    padding: 0.35rem;
+    border: 1px solid var(--panel-line);
+    border-radius: 12px;
+    background: var(--panel);
+    box-shadow: var(--panel-shadow);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-6px);
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+}
+.split.is-open .split-pop {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    pointer-events: auto;
+    transition: opacity 0.18s ease, transform 0.18s ease, visibility 0s;
+}
+.split-opt {
+    display: block;
+    width: 100%;
+    padding: 0.55rem 0.6rem;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    font-family: var(--sp-text);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--opt);
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+.split-opt:hover { background: var(--opt-bg-hover); color: var(--opt-hover); }
+.split-opt-sub {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 0.76rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--ink-4);
+}
+
+.tag-sbx { color: var(--link); border-color: var(--pill-line-hover); background: var(--sel-bg); }
 
 .tr {
     display: grid;

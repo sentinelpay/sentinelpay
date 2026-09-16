@@ -2209,7 +2209,7 @@
         noteH.textContent = t('Every token is scoped, and shown once');
         noteT.appendChild(noteH);
         var noteP = document.createElement('p');
-        noteP.textContent = t('Give each token only what its job needs, and a date to expire on. We store a hash, never the token, so it is shown to you once when you create it and cannot be shown again.');
+        noteP.textContent = t('Give each token only what its job needs, and a date to expire on. We store a hash, never the token, so it is shown to you once when you create it and cannot be shown again. A sandbox token is for building against: it reads the same lists but spends nothing and stays out of your real history.');
         noteT.appendChild(noteP);
         note.appendChild(noteT);
         page.appendChild(note);
@@ -2228,12 +2228,58 @@
         find.appendChild(findIn);
         bar.appendChild(find);
 
+        var split = document.createElement('div');
+        split.className = 'split';
         var make = document.createElement('button');
         make.type = 'button';
-        make.className = 'btn btn-primary';
+        make.className = 'btn btn-primary split-main';
         make.textContent = t('Generate new token');
-        bar.appendChild(make);
+        split.appendChild(make);
+        var more = document.createElement('button');
+        more.type = 'button';
+        more.className = 'btn btn-primary split-more';
+        more.setAttribute('aria-haspopup', 'menu');
+        more.setAttribute('aria-expanded', 'false');
+        more.setAttribute('aria-label', t('More token kinds'));
+        more.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+            'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+        split.appendChild(more);
+        var pop = document.createElement('div');
+        pop.className = 'split-pop';
+        pop.setAttribute('role', 'menu');
+        var sandboxItem = document.createElement('button');
+        sandboxItem.type = 'button';
+        sandboxItem.className = 'split-opt';
+        sandboxItem.setAttribute('role', 'menuitem');
+        var siT = document.createElement('span');
+        siT.textContent = t('Generate a sandbox token');
+        sandboxItem.appendChild(siT);
+        var siS = document.createElement('span');
+        siS.className = 'split-opt-sub';
+        siS.textContent = t('Runs against the same lists, spends nothing, kept apart from your real history.');
+        sandboxItem.appendChild(siS);
+        pop.appendChild(sandboxItem);
+        split.appendChild(pop);
+        bar.appendChild(split);
         page.appendChild(bar);
+
+        function openSplit(on) {
+            split.classList.toggle('is-open', on);
+            more.setAttribute('aria-expanded', on ? 'true' : 'false');
+        }
+        more.addEventListener('click', function (e) {
+            e.stopPropagation();
+            openSplit(!split.classList.contains('is-open'));
+        });
+        pop.addEventListener('click', function (e) { e.stopPropagation(); });
+        document.addEventListener('click', function () { openSplit(false); });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') openSplit(false);
+        });
+        sandboxItem.addEventListener('click', function () {
+            openSplit(false);
+            askToken(scopes, load, 'test');
+        });
 
         var card = document.createElement('div');
         card.className = 'card';
@@ -2293,12 +2339,13 @@
             who.appendChild(nm);
             var sub = document.createElement('div');
             sub.className = 'tr-sub mono';
-            sub.textContent = 'sp_live_' + '\u2026' + r.tail;
+            sub.textContent = (r.kind === 'test' ? 'sp_test_' : 'sp_live_') + '\u2026' + r.tail;
             who.appendChild(sub);
             row.appendChild(who);
 
             var sc = document.createElement('div');
             sc.className = 'tr-tags';
+            if (r.kind === 'test') sc.appendChild(tag(t('Sandbox'), 'sbx'));
             if (r.revokedAt) sc.appendChild(tag(t('Revoked'), 'off'));
             else r.scopes.forEach(function (k) { sc.appendChild(tag(scopeLabel(k))); });
             row.appendChild(sc);
@@ -2362,7 +2409,7 @@
         }
 
         findIn.addEventListener('input', draw);
-        make.addEventListener('click', function () { askToken(scopes, load); });
+        make.addEventListener('click', function () { askToken(scopes, load, 'live'); });
 
         if (warm) draw();
         else card.appendChild(waiting());
@@ -2468,9 +2515,12 @@
         { value: '0', label: 'Does not expire' }
     ];
 
-    function askToken(scopes, done) {
-        var m = modalShell('Generate a token',
-            'Name it after the thing that will use it, and give it only what that thing needs.');
+    function askToken(scopes, done, kind) {
+        var sandbox = kind === 'test';
+        var m = modalShell(sandbox ? 'Generate a sandbox token' : 'Generate a token',
+            sandbox
+                ? 'It screens against the same lists as a live token, but spends none of your checks and never touches your real history.'
+                : 'Name it after the thing that will use it, and give it only what that thing needs.');
 
         function step(build, backwards) {
             m.body.textContent = '';
@@ -2496,7 +2546,7 @@
             name.type = 'text';
             name.autocomplete = 'off';
             name.maxLength = 60;
-            name.placeholder = t('e.g. Billing service');
+            name.placeholder = t(sandbox ? 'e.g. Staging worker' : 'e.g. Billing service');
             nameField.appendChild(name);
             form.appendChild(nameField);
 
@@ -2546,7 +2596,7 @@
             msg.hidden = true;
             form.appendChild(msg);
 
-            var go2 = wideBtn('Generate token', 'cta', 'submit');
+            var go2 = wideBtn(sandbox ? 'Generate sandbox token' : 'Generate token', 'cta', 'submit');
             go2.disabled = true;
             form.appendChild(go2);
             var quit = document.createElement('div');
@@ -2578,6 +2628,7 @@
                     credentials: 'same-origin',
                     body: JSON.stringify({
                         name: name.value,
+                        kind: sandbox ? 'test' : 'live',
                         days: Number(ttl),
                         scopes: Object.keys(picked).filter(function (k) { return picked[k]; })
                     })

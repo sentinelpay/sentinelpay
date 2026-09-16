@@ -800,11 +800,12 @@ async function caller(req, res, scope) {
         }
         const who = await accounts.readUser(out.userId);
         if (!who) { res.status(401).json({ error: 'That token is not valid' }); return null; }
-        return { ...who, viaToken: out.tokenId };
+        return { ...who, viaToken: out.tokenId, sandbox: out.sandbox };
     }
     const me = await currentUser(req);
     if (!me) { res.status(401).json({ error: 'Sign in first' }); return null; }
-    return me;
+    // the dashboard is always looking at the real thing
+    return { ...me, sandbox: false };
 }
 
 async function currentUser(req) {
@@ -1835,14 +1836,14 @@ app.get('/v1/account/tokens', async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
     res.set('Cache-Control', 'no-store, private');
-    res.json({ ok: true, scopes: tokens.SCOPES, rows: await tokens.list(me.userId) });
+    res.json({ ok: true, scopes: tokens.SCOPES, kinds: tokens.KINDS, rows: await tokens.list(me.userId) });
 });
 
 app.post('/v1/account/tokens', requireCloudflareOrigin, accountLimiter, async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
     const b = req.body || {};
-    const out = await tokens.mint(me.userId, b.name, b.scopes, b.days);
+    const out = await tokens.mint(me.userId, b.name, b.scopes, b.days, b.kind);
     if (!out.ok) {
         const said = {
             'no-name': 'Give the token a name you will recognise later.',
@@ -1855,7 +1856,7 @@ app.post('/v1/account/tokens', requireCloudflareOrigin, accountLimiter, async (r
     }
     await accounts.audit('token-created', {
         actor: String(me.userId), subject: out.row.id, ip: req.realIp,
-        detail: out.row.scopes.join(' '),
+        detail: out.row.kind + ' ' + out.row.scopes.join(' '),
     });
     res.set('Cache-Control', 'no-store, private');
     res.json({ ok: true, token: out.token, row: out.row });
@@ -2016,6 +2017,16 @@ app.post('/v1/screen', screenLimiter, async (req, res) => {
         if (address.length > 128) return res.status(400).json({ error: 'That is too long to be an address' });
 
         const kind = (req.body && req.body.kind) === 'history' ? 'history' : 'live';
+
+        // a sandbox call is for writing an integration against, so it screens
+        // against the same sanctions data but spends nothing and lands in its own
+        // history. nothing it does can touch what the customer reports on.
+        if (me.sandbox) {
+            const out = await screening.screen(me.userId, address, kind, true);
+            if (!out.ok) return res.status(400).json({ error: 'That does not look like an address' });
+            return res.json({ ...out, sandbox: true, trial: null });
+        }
+
         const spent = await trial.spend(me.userId, kind);
         if (!spent.ok) {
             const said = {
@@ -2032,7 +2043,7 @@ app.post('/v1/screen', screenLimiter, async (req, res) => {
             });
         }
 
-        const out = await screening.screen(me.userId, address, kind);
+        const out = await screening.screen(me.userId, address, kind, false);
         if (!out.ok) return res.status(400).json({ error: 'That does not look like an address' });
 
         await accounts.audit('screening', {
@@ -2056,7 +2067,7 @@ app.get('/v1/screenings', async (req, res) => {
     try {
         const me = await caller(req, res, 'screenings:read');
         if (!me) return;
-        res.json({ rows: await screening.recent(me.userId, req.query.limit) });
+        res.json({ sandbox: me.sandbox, rows: await screening.recent(me.userId, req.query.limit, me.sandbox) });
     } catch (err) {
         console.error('[screenings]', err.message);
         res.status(500).json({ error: 'Could not read the log' });
@@ -2069,7 +2080,7 @@ app.get('/v1/screenings/stats', async (req, res) => {
         const me = await caller(req, res, 'screenings:read');
         if (!me) return;
         const [numbers, listed] = await Promise.all([
-            screening.stats(me.userId, req.query.days),
+            screening.stats(me.userId, req.query.days, me.sandbox),
             sanctions.status(),
         ]);
         res.json({
@@ -2103,7 +2114,7 @@ app.get('/v1/screenings/:id/evidence', async (req, res) => {
         if (!me) return;
         const id = Number(req.params.id);
         if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: 'Not a screening' });
-        const row = await screening.byId(me.userId, id);
+        const row = await screening.byId(me.userId, id, me.sandbox);
         if (!row) return res.status(404).json({ error: 'Not found' });
         const doc = {
             document: 'Sentinelpay screening evidence',
@@ -2135,7 +2146,7 @@ app.get('/v1/screenings/:id', async (req, res) => {
         if (!me) return;
         const id = Number(req.params.id);
         if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: 'Not a screening' });
-        const row = await screening.byId(me.userId, id);
+        const row = await screening.byId(me.userId, id, me.sandbox);
         if (!row) return res.status(404).json({ error: 'Not found' });
         res.json(row);
     } catch (err) {

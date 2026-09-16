@@ -11,7 +11,14 @@ const SCOPES = [
 ];
 const SCOPE_KEYS = SCOPES.map((s) => s.key);
 
-const PREFIX = 'sp_live_';
+// two kinds, and the prefix says which at a glance: a live token touches the
+// customer's real screening history and spends their quota, a sandbox one does
+// neither. same endpoints, same sanctions data, separate world.
+const KINDS = {
+    live: { prefix: 'sp_live_', label: 'Live' },
+    test: { prefix: 'sp_test_', label: 'Sandbox' },
+};
+const KIND_KEYS = Object.keys(KINDS);
 const NAME_MAX = 60;
 const PER_USER = 25;
 const TTL_CHOICES = [30, 90, 180, 365, 0];
@@ -23,6 +30,7 @@ CREATE TABLE IF NOT EXISTS api_tokens (
     user_id      bigint      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     created_at   timestamptz NOT NULL DEFAULT now(),
     name         text        NOT NULL DEFAULT '',
+    kind         text        NOT NULL DEFAULT 'live',
     secret_hash  text        NOT NULL,
     tail         text        NOT NULL DEFAULT '',
     scopes       text        NOT NULL DEFAULT '',
@@ -31,6 +39,7 @@ CREATE TABLE IF NOT EXISTS api_tokens (
     revoked_at   timestamptz
 );
 CREATE INDEX IF NOT EXISTS api_tokens_user_idx ON api_tokens (user_id, created_at DESC);
+ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'live';
 `;
 
 let ready = null;
@@ -77,12 +86,13 @@ function cleanName(name) {
     return String(name == null ? '' : name).replace(/\s+/g, ' ').trim().slice(0, NAME_MAX);
 }
 
-// the token reads sp_live_<id>_<secret>. the id is in the clear on purpose: it
+// the token reads sp_<kind>_<id>_<secret>. the id is in the clear on purpose: it
 // turns verification into one indexed lookup instead of a scan over every row.
 function splitToken(raw) {
     const s = String(raw || '').trim();
-    if (s.slice(0, PREFIX.length) !== PREFIX) return null;
-    const rest = s.slice(PREFIX.length);
+    const kind = KIND_KEYS.find((k) => s.slice(0, KINDS[k].prefix.length) === KINDS[k].prefix);
+    if (!kind) return null;
+    const rest = s.slice(KINDS[kind].prefix.length);
     const cut = rest.indexOf('_');
     if (cut < 1) return null;
     const id = rest.slice(0, cut);
@@ -90,7 +100,7 @@ function splitToken(raw) {
     if (!/^[0-9a-z]+$/.test(id) || secret.length < 20) return null;
     const asNumber = parseInt(id, 36);
     if (!Number.isSafeInteger(asNumber) || asNumber < 1) return null;
-    return { id: asNumber, secret: secret };
+    return { id: asNumber, secret: secret, kind: kind };
 }
 
 function shape(row) {
@@ -98,6 +108,7 @@ function shape(row) {
     return {
         id: String(row.id),
         name: row.name || '',
+        kind: row.kind === 'test' ? 'test' : 'live',
         tail: row.tail || '',
         scopes: scopes,
         createdAt: row.created_at,
@@ -107,7 +118,7 @@ function shape(row) {
     };
 }
 
-async function mint(userId, name, scopes, days) {
+async function mint(userId, name, scopes, days, kind) {
     if (!(await init())) return { ok: false, reason: 'unavailable' };
 
     const keep = cleanScopes(scopes);
@@ -116,6 +127,7 @@ async function mint(userId, name, scopes, days) {
     if (!label) return { ok: false, reason: 'no-name' };
 
     const ttl = TTL_CHOICES.indexOf(Number(days)) === -1 ? 90 : Number(days);
+    const flavour = kind === 'test' ? 'test' : 'live';
 
     try {
         const live = await db.query(
@@ -128,15 +140,15 @@ async function mint(userId, name, scopes, days) {
 
         const secret = crypto.randomBytes(32).toString('base64url');
         const res = await db.query(
-            `INSERT INTO api_tokens (user_id, name, secret_hash, tail, scopes, expires_at)
-             VALUES ($1, $2, $3, $4, $5, CASE WHEN $6 = 0 THEN NULL
-                                              ELSE now() + ($6 || ' days')::interval END)
+            `INSERT INTO api_tokens (user_id, name, kind, secret_hash, tail, scopes, expires_at)
+             VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $7 = 0 THEN NULL
+                                                  ELSE now() + ($7 || ' days')::interval END)
              RETURNING *`,
-            [userId, label, hashSecret(secret), secret.slice(-4), keep.join(' '), ttl]
+            [userId, label, flavour, hashSecret(secret), secret.slice(-4), keep.join(' '), ttl]
         );
         const row = res.rows[0];
         const id = Number(row.id).toString(36);
-        return { ok: true, token: PREFIX + id + '_' + secret, row: shape(row) };
+        return { ok: true, token: KINDS[flavour].prefix + id + '_' + secret, row: shape(row) };
     } catch (err) {
         console.error('[tokens] could not mint: ' + err.message);
         return { ok: false, reason: 'unavailable' };
@@ -190,6 +202,7 @@ async function read(raw) {
         if (!res.rowCount) return { ok: false, reason: 'bad' };
         const row = res.rows[0];
         if (!sameHash(row.secret_hash, hashSecret(parts.secret))) return { ok: false, reason: 'bad' };
+        if ((row.kind === 'test' ? 'test' : 'live') !== parts.kind) return { ok: false, reason: 'bad' };
         if (row.revoked_at) return { ok: false, reason: 'revoked' };
         if (row.expires_at && new Date(row.expires_at).getTime() <= Date.now()) {
             return { ok: false, reason: 'expired' };
@@ -205,6 +218,8 @@ async function read(raw) {
             userId: row.user_id,
             tokenId: String(row.id),
             name: row.name || '',
+            kind: row.kind === 'test' ? 'test' : 'live',
+            sandbox: row.kind === 'test',
             scopes: row.scopes ? row.scopes.split(' ').filter(Boolean) : [],
         };
     } catch (err) {
@@ -214,6 +229,6 @@ async function read(raw) {
 }
 
 module.exports = {
-    SCOPES, SCOPE_KEYS, TTL_CHOICES, PER_USER, NAME_MAX, PREFIX,
+    SCOPES, SCOPE_KEYS, TTL_CHOICES, PER_USER, NAME_MAX, KINDS, KIND_KEYS,
     mint, list, revoke, read, splitToken, init,
 };

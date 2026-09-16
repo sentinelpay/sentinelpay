@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS screenings (
     digest       text        NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS screenings_user_idx ON screenings (user_id, at DESC);
+ALTER TABLE screenings ADD COLUMN IF NOT EXISTS sandbox boolean NOT NULL DEFAULT false;
 `;
 
 let ready = null;
@@ -61,7 +62,7 @@ function digestOf(payload) {
     return 'sha256:' + crypto.createHash('sha256').update(JSON.stringify(payload), 'utf8').digest('hex');
 }
 
-async function screen(userId, address, kind) {
+async function screen(userId, address, kind, sandbox) {
     const clean = String(address || '').trim();
     if (!clean || clean.length > 128) return { ok: false, reason: 'bad-address' };
 
@@ -112,25 +113,25 @@ async function screen(userId, address, kind) {
     let id = null;
     if (await init()) {
         const res = await db.query(
-            `INSERT INTO screenings (user_id, kind, asset, address, verdict, score, sources, list_date, detail_enc, digest)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
+            `INSERT INTO screenings (user_id, kind, asset, address, verdict, score, sources, list_date, detail_enc, digest, sandbox)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
             [userId, kind === 'history' ? 'history' : 'live', sealed.asset, clean, verdict, score,
-             'OFAC SDN', meta.listDate || '', '', digest]
+             'OFAC SDN', meta.listDate || '', '', digest, Boolean(sandbox)]
         );
         id = res.rows[0].id;
         await db.query('UPDATE screenings SET detail_enc = $1 WHERE id = $2',
             [db.seal('screening:' + id, JSON.stringify(sealed)), id]);
     }
 
-    return { ok: true, id, ...sealed, digest };
+    return { ok: true, id, ...sealed, digest, sandbox: Boolean(sandbox) };
 }
 
-async function recent(userId, limit) {
+async function recent(userId, limit, sandbox) {
     if (!(await init())) return [];
     const res = await db.query(
         `SELECT id, at, kind, asset, address, verdict, score, list_date, digest
-         FROM screenings WHERE user_id = $1 ORDER BY at DESC, id DESC LIMIT $2`,
-        [userId, Math.min(Math.max(Number(limit) || 25, 1), 200)]
+         FROM screenings WHERE user_id = $1 AND sandbox = $3 ORDER BY at DESC, id DESC LIMIT $2`,
+        [userId, Math.min(Math.max(Number(limit) || 25, 1), 200), Boolean(sandbox)]
     );
     return res.rows.map((r) => ({
         id: r.id, at: r.at, kind: r.kind, asset: r.asset, address: r.address,
@@ -138,10 +139,11 @@ async function recent(userId, limit) {
     }));
 }
 
-async function byId(userId, id) {
+async function byId(userId, id, sandbox) {
     if (!(await init())) return null;
     const res = await db.query(
-        'SELECT id, detail_enc, digest, at FROM screenings WHERE id = $1 AND user_id = $2', [id, userId]);
+        'SELECT id, detail_enc, digest, at FROM screenings WHERE id = $1 AND user_id = $2 AND sandbox = $3',
+        [id, userId, Boolean(sandbox)]);
     if (!res.rows.length) return null;
     const plain = db.open('screening:' + res.rows[0].id, res.rows[0].detail_enc);
     if (!plain) return null;
@@ -155,36 +157,38 @@ async function byId(userId, id) {
     }
 }
 
-async function stats(userId, days) {
+async function stats(userId, days, sandbox) {
     if (!(await init())) {
         return { total: 0, window: 0, days: [], verdicts: {}, assets: [], firstAt: null, lastAt: null };
     }
     const span = Math.min(Math.max(Number(days) || 30, 1), 365);
+    const box = Boolean(sandbox);
     const [totalRes, dayRes, verdictRes, assetRes, edgeRes] = await Promise.all([
-        db.query('SELECT count(*)::int AS n FROM screenings WHERE user_id = $1', [userId]),
+        db.query('SELECT count(*)::int AS n FROM screenings WHERE user_id = $1 AND sandbox = $2', [userId, box]),
         db.query(
             `SELECT to_char(date_trunc('day', at), 'YYYY-MM-DD') AS d,
                     count(*)::int AS n,
                     count(*) FILTER (WHERE verdict <> 'clear')::int AS flagged
                FROM screenings
-              WHERE user_id = $1 AND at >= now() - ($2 || ' days')::interval
+              WHERE user_id = $1 AND sandbox = $3 AND at >= now() - ($2 || ' days')::interval
            GROUP BY 1 ORDER BY 1`,
-            [userId, String(span)]
+            [userId, String(span), box]
         ),
         db.query(
             `SELECT verdict, count(*)::int AS n FROM screenings
-              WHERE user_id = $1 AND at >= now() - ($2 || ' days')::interval
+              WHERE user_id = $1 AND sandbox = $3 AND at >= now() - ($2 || ' days')::interval
            GROUP BY 1`,
-            [userId, String(span)]
+            [userId, String(span), box]
         ),
         db.query(
             `SELECT COALESCE(NULLIF(asset, ''), 'other') AS asset, count(*)::int AS n
                FROM screenings
-              WHERE user_id = $1 AND at >= now() - ($2 || ' days')::interval
+              WHERE user_id = $1 AND sandbox = $3 AND at >= now() - ($2 || ' days')::interval
            GROUP BY 1 ORDER BY n DESC`,
-            [userId, String(span)]
+            [userId, String(span), box]
         ),
-        db.query('SELECT min(at) AS first_at, max(at) AS last_at FROM screenings WHERE user_id = $1', [userId]),
+        db.query('SELECT min(at) AS first_at, max(at) AS last_at FROM screenings WHERE user_id = $1 AND sandbox = $2',
+            [userId, box]),
     ]);
 
     const byDay = new Map(dayRes.rows.map((r) => [r.d, r]));
