@@ -2141,7 +2141,7 @@
 
     function viewTokens(me) {
         var page = document.createElement('div');
-        page.className = 'pg pg-wide';
+        page.className = 'pg';
         page.appendChild(pageHead('Access tokens',
             'Let your own systems call our API without a person signing in.'));
 
@@ -2251,7 +2251,10 @@
 
             var used = document.createElement('div');
             used.className = 'tr-dim';
-            used.textContent = r.lastUsedAt ? whenText(r.lastUsedAt, true) : t('Never');
+            // the date keeps the row to one line; the hour is worth having when you
+            // are working out whether a token leaked, so it waits on hover.
+            used.textContent = r.lastUsedAt ? whenText(r.lastUsedAt) : t('Never');
+            if (r.lastUsedAt) used.title = whenText(r.lastUsedAt, true);
             row.appendChild(used);
 
             var exp = document.createElement('div');
