@@ -2873,6 +2873,11 @@
 
                     var body = document.createElement('div');
                     body.className = 'grp-body';
+                    // the rows go inside one wrapper: the collapse animates the
+                    // body from no rows to one row, and with the ticks as direct
+                    // children only the first of them was being folded away.
+                    var inner = document.createElement('div');
+                    body.appendChild(inner);
                     mine.forEach(function (sc) {
                         var row = document.createElement('label');
                         row.className = 'tick';
@@ -2898,11 +2903,20 @@
                             th.textContent = t(sc.hint);
                             txt.appendChild(th);
                         }
+                        // a scope whose endpoints are not wired yet still grants
+                        // nothing, so the row says so rather than letting the
+                        // tick imply otherwise.
+                        if (!sc.live) {
+                            var soon = document.createElement('span');
+                            soon.className = 'tick-soon';
+                            soon.textContent = t('Not live yet');
+                            tn.appendChild(soon);
+                        }
                         row.appendChild(txt);
                         var code = document.createElement('code');
                         code.textContent = sc.key;
                         row.appendChild(code);
-                        body.appendChild(row);
+                        inner.appendChild(row);
                     });
                     box.appendChild(body);
                     groupsHost.appendChild(box);

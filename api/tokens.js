@@ -12,40 +12,72 @@ const db = require('./db.js');
 // the counters are computed from. Adding the next one is a line in this list;
 // nothing downstream has to be redesigned to hold it.
 const SCOPE_GROUPS = [
-    {
-        key: 'screening',
-        label: 'Screening',
-        hint: 'Checking addresses against the lists, and the results that come back.',
-    },
-    {
-        key: 'evidence',
-        label: 'Evidence',
-        hint: 'The sealed record behind a result, the one you hand to an examiner.',
-    },
+    { key: 'screening', label: 'Screening',
+      hint: 'Checking addresses against the lists, and the results that come back.' },
+    { key: 'evidence', label: 'Evidence and reports',
+      hint: 'The sealed record behind a result, and the documents built from it.' },
+    { key: 'wallets', label: 'Wallets',
+      hint: 'The addresses and extended keys we watch on the customer behalf.' },
+    { key: 'monitoring', label: 'Alerts and cases',
+      hint: 'What the watching throws up, and the work of clearing it.' },
+    { key: 'policy', label: 'Policy',
+      hint: 'The rules that decide what is flagged and what passes.' },
+    { key: 'developers', label: 'Developers',
+      hint: 'Where results are pushed, rather than asked for.' },
+    { key: 'organisation', label: 'Organisation',
+      hint: 'Who is on the account and what they have done.' },
 ];
 
+// live is whether the endpoints behind a scope exist today. every scope here is
+// one we intend to serve; the flag is what tells the panel to mark the ones that
+// are not wired yet, and it is the only thing to change when they are.
 const SCOPES = [
-    {
-        key: 'screenings:write',
-        group: 'screening',
-        label: 'Run screenings',
-        hint: 'Check an address. On a live token this spends a check.',
-        writes: true,
-    },
-    {
-        key: 'screenings:read',
-        group: 'screening',
-        label: 'Read screenings',
-        hint: 'List past checks and read a single result.',
-        writes: false,
-    },
-    {
-        key: 'evidence:read',
-        group: 'evidence',
-        label: 'Download evidence',
-        hint: 'Pull the full sealed record for a check, with its digest.',
-        writes: false,
-    },
+    { key: 'screenings:write', group: 'screening', writes: true, live: true,
+      label: 'Run screenings', hint: 'Check an address. On a live token this spends a check.' },
+    { key: 'screenings:read', group: 'screening', writes: false, live: true,
+      label: 'Read screenings', hint: 'List past checks and read a single result.' },
+    { key: 'screenings:bulk', group: 'screening', writes: true, live: false,
+      label: 'Screen in bulk', hint: 'Submit many addresses in one call and collect them later.' },
+
+    { key: 'evidence:read', group: 'evidence', writes: false, live: true,
+      label: 'Download evidence', hint: 'Pull the full sealed record for a check, with its digest.' },
+    { key: 'reports:read', group: 'evidence', writes: false, live: false,
+      label: 'Read reports', hint: 'List and download reports that have already been built.' },
+    { key: 'reports:generate', group: 'evidence', writes: true, live: false,
+      label: 'Build reports', hint: 'Ask for a new report over a period or a case.' },
+
+    { key: 'wallets:read', group: 'wallets', writes: false, live: false,
+      label: 'Read wallets', hint: 'List watched wallets and the addresses under them.' },
+    { key: 'wallets:write', group: 'wallets', writes: true, live: false,
+      label: 'Manage wallets', hint: 'Add, rename and stop watching a wallet.' },
+    { key: 'xpub:register', group: 'wallets', writes: true, live: false,
+      label: 'Register an extended key', hint: 'Hand us an xpub or descriptor for us to derive and watch.' },
+
+    { key: 'alerts:read', group: 'monitoring', writes: false, live: false,
+      label: 'Read alerts', hint: 'List what the watching has raised and read one.' },
+    { key: 'alerts:triage', group: 'monitoring', writes: true, live: false,
+      label: 'Work alerts', hint: 'Assign, escalate and clear an alert as a false positive.' },
+    { key: 'cases:read', group: 'monitoring', writes: false, live: false,
+      label: 'Read cases', hint: 'List cases and read what is attached to one.' },
+    { key: 'cases:write', group: 'monitoring', writes: true, live: false,
+      label: 'Work cases', hint: 'Open, note, attach to and close a case.' },
+
+    { key: 'policy:read', group: 'policy', writes: false, live: false,
+      label: 'Read policy', hint: 'Read the thresholds and rules in force.' },
+    { key: 'policy:write', group: 'policy', writes: true, live: false,
+      label: 'Change policy', hint: 'Change what is flagged. This moves what the account reports.' },
+    { key: 'watchlists:write', group: 'policy', writes: true, live: false,
+      label: 'Manage watchlists', hint: 'Add and remove the account own addresses of interest.' },
+
+    { key: 'webhooks:read', group: 'developers', writes: false, live: false,
+      label: 'Read webhooks', hint: 'List endpoints we deliver to and their recent attempts.' },
+    { key: 'webhooks:manage', group: 'developers', writes: true, live: false,
+      label: 'Manage webhooks', hint: 'Add and remove endpoints, and replay a delivery.' },
+
+    { key: 'audit:read', group: 'organisation', writes: false, live: false,
+      label: 'Read the audit log', hint: 'Read what has been done on the account and by whom.' },
+    { key: 'members:read', group: 'organisation', writes: false, live: false,
+      label: 'Read members', hint: 'List who is on the account and what they may do.' },
 ];
 const SCOPE_KEYS = SCOPES.map((s) => s.key);
 

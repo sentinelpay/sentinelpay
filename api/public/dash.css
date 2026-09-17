@@ -1219,6 +1219,18 @@ button { font: inherit; color: inherit; }
 .grp-body .tick input { margin-top: 0.1rem; }
 .tick-t { flex: 1 1 auto; min-width: 0; }
 .tick-n { display: block; font-size: 0.84rem; color: var(--ink-2); }
+.tick-soon {
+    margin-left: 0.45rem;
+    padding: 0.05rem 0.35rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 0.64rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--ink-4);
+    vertical-align: 1px;
+    white-space: nowrap;
+}
 .tick-h { display: block; margin-top: 0.1rem; font-size: 0.76rem; line-height: 1.45; color: var(--ink-4); }
 .grp-body .tick code { margin-left: 0; margin-top: 0.15rem; align-self: flex-start; }
 
