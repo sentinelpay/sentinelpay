@@ -998,6 +998,9 @@ button { font: inherit; color: inherit; }
 .notice-t p { margin: 0.25rem 0 0; font-size: 0.82rem; line-height: 1.6; color: var(--ink-3); }
 
 .bar { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.9rem; }
+/* the action sits at the far edge of the column, where the sentence above it
+   ends, rather than trailing the search box across the middle. */
+.bar > .btn { margin-left: auto; }
 .bar-find {
     position: relative;
     flex: 1 1 auto;
