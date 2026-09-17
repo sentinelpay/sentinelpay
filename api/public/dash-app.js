@@ -3756,7 +3756,7 @@
     function render() {
         // on the picker there is nothing to navigate to yet, so the shell drops
         // to the top bar alone
-        if (app) app.classList.toggle('is-bare', onOrgs());
+        setBare(onOrgs());
         paintTopBrand(onOrgs());
         paintSideBrand();
         var rebuilt = paintNav(currentNav());
@@ -3805,6 +3805,14 @@
         slot.appendChild(a2);
     }
 
+    // the head already wrote this for the first frame; from here the class and
+    // the attribute are kept together so a navigation cannot leave one behind.
+    function setBare(on) {
+        if (app) app.classList.toggle('is-bare', on);
+        if (on) document.documentElement.setAttribute('data-bare', '1');
+        else document.documentElement.removeAttribute('data-bare');
+    }
+
     // the mark in the sidebar goes to the organisation you are in. it used to go
     // to /dashboard, which is now a door onto the picker, so it would have thrown
     // you out of the place it was meant to take you home to.
@@ -3818,7 +3826,7 @@
         if (location.pathname === ORGS_PATH_ALT && canRoute) {
             history.replaceState({}, '', ORGS_PATH);
         }
-        if (app) app.classList.toggle('is-bare', onOrgs());
+        setBare(onOrgs());
         paintTopBrand(onOrgs());
         paintSideBrand();
         paintNav(currentNav());

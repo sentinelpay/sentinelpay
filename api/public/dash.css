@@ -1656,9 +1656,17 @@ button { font: inherit; color: inherit; }
 
 /* the organisation picker. no sidebar: everything in it belongs to an
    organisation, so until one is chosen there is nothing there to reach. */
+/* the sidebar is in the markup, so the browser paints it before any script has
+   said where we are. the head decides that and writes it on the document, which
+   is why this keys off both: the attribute for the first frame, the class for
+   every navigation after it. */
+html[data-bare] .app,
 .app.is-bare { grid-template-columns: 0 minmax(0, 1fr); }
+html[data-bare] .side,
 .app.is-bare .side { width: 0; overflow: hidden; border-right: 0; }
+html[data-bare] .menu-btn,
 .app.is-bare .menu-btn { display: none; }
+html[data-bare] .top,
 .app.is-bare .top { padding-left: 1.4rem; }
 /* nothing happens to it on hover. it is a way out, not something to play with. */
 .top-brand { display: inline-flex; align-items: center; }
