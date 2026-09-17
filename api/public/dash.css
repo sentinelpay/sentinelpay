@@ -235,8 +235,7 @@ button { font: inherit; color: inherit; }
     width: 100%;
     background: var(--surface);
     border-right: 1px solid var(--line);
-    transition: width var(--ease-dur, 0.22s) var(--ease, cubic-bezier(0.22, 1, 0.36, 1)),
-                box-shadow 0.2s ease;
+    transition: width var(--ease-dur, 0.22s) var(--ease, cubic-bezier(0.22, 1, 0.36, 1));
 }
 
 .side-brand {
@@ -447,11 +446,12 @@ button { font: inherit; color: inherit; }
 .app[data-side="collapsed"] .side-nav, .app[data-side="hover"] .side-nav { padding-left: 0.5rem; padding-right: 0.5rem; }
 
 .app[data-side="hover"] .side { width: var(--side-w); }
+/* Opened by the pointer, it is the expanded sidebar and nothing else: same
+   surface, same one pixel edge, no shadow thrown over the page. The blur was
+   the only thing that made this mode look like a different component from the
+   one it turns into. */
 .app[data-side="hover"] .side:hover,
-.app[data-side="hover"] .side:focus-within {
-    width: 248px;
-    box-shadow: 18px 0 44px -24px rgba(14, 35, 88, 0.4);
-}
+.app[data-side="hover"] .side:focus-within { width: 248px; }
 .app[data-side="hover"] .side:hover .nav-t,
 .app[data-side="hover"] .side:focus-within .nav-t { max-width: 12rem; opacity: 1; }
 .app[data-side="hover"] .side:hover .nav-i,
