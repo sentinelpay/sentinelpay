@@ -1668,26 +1668,48 @@ button { font: inherit; color: inherit; }
 .orgs-pg { max-width: 34rem; }
 .orgs { display: grid; gap: 0.5rem; }
 .org {
+    position: relative;
     display: flex;
-    align-items: center;
-    gap: 0.85rem;
-    width: 100%;
-    padding: 0.9rem 1rem;
+    align-items: stretch;
     border: 1px solid var(--line);
     border-radius: var(--r-lg);
     background: var(--surface);
-    font-family: var(--sp-text);
-    text-align: left;
-    cursor: pointer;
-    transition: border-color 0.18s ease, background 0.18s ease,
-                box-shadow 0.18s ease, transform 0.22s var(--ease);
+    overflow: hidden;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.22s var(--ease);
 }
 .org:hover {
     border-color: var(--pill-line-hover);
     box-shadow: var(--pill-glow);
     transform: translateY(-1px);
 }
-.org[disabled] { opacity: 0.55; cursor: default; transform: none; }
+.org-go {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.9rem 1rem;
+    border: 0;
+    background: none;
+    font-family: var(--sp-text);
+    text-align: left;
+    cursor: pointer;
+}
+.org-go[disabled] { opacity: 0.55; cursor: default; }
+.org-del {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 2.6rem;
+    border: 0;
+    border-left: 1px solid var(--line-2);
+    background: none;
+    color: var(--ink-4);
+    cursor: pointer;
+    transition: color 0.18s ease, background 0.18s ease;
+}
+.org-del svg { width: 16px; height: 16px; }
+.org-del:hover { color: var(--danger); background: var(--danger-bg); }
 .org-mark {
     flex: none;
     display: grid;

@@ -1917,6 +1917,46 @@ app.post('/v1/orgs/:id/use', requireCloudflareOrigin, accountLimiter, async (req
     res.json({ ok: true, org: mine });
 });
 
+// what closing this organisation would take with it
+app.get('/v1/orgs/:id/weight', async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const mine = await orgs.membership(me.userId, req.params.id);
+    if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
+    res.set('Cache-Control', 'no-store, private');
+    res.json({ ok: true, org: mine, weight: await orgs.weightOf(mine.id) });
+});
+
+app.post('/v1/orgs/:id/delete', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const mine = await orgs.membership(me.userId, req.params.id);
+    if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
+
+    // typing the name back is the whole guard here, because what follows cannot
+    // be undone and takes the work with it
+    const said = String((req.body || {}).name || '').trim();
+    if (said.toLowerCase() !== String(mine.name || '').trim().toLowerCase()) {
+        return res.status(400).json({ error: 'That is not the name of this organisation.' });
+    }
+
+    const out = await orgs.remove(me.userId, mine.id);
+    if (!out.ok) {
+        if (out.reason === 'not-owner') {
+            return res.status(403).json({ error: 'Only the owner can close an organisation.' });
+        }
+        if (out.reason === 'missing') {
+            return res.status(404).json({ error: 'You are not in that organisation.' });
+        }
+        return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
+    }
+    if (readCookie(req, ORG_COOKIE) === String(mine.id)) clearOrgCookie(res);
+    await accounts.audit('org-closed', {
+        actor: String(me.userId), subject: mine.id, ip: req.realIp, detail: mine.name,
+    });
+    res.json({ ok: true });
+});
+
 app.get('/v1/account/tokens', async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;

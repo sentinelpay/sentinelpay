@@ -233,8 +233,41 @@ function roleAtLeast(role, needed) {
     return (ROLE_RANK[role] || 0) >= (ROLE_RANK[needed] || 0);
 }
 
+// Closing an organisation. Only an owner may, and the cascade takes its tokens
+// and its checks with it, which is why the caller is made to say the name back
+// before this is reached.
+async function remove(userId, orgId) {
+    if (!(await init())) return { ok: false, reason: 'unavailable' };
+    const mine = await membership(userId, orgId);
+    if (!mine) return { ok: false, reason: 'missing' };
+    if (mine.role !== 'owner') return { ok: false, reason: 'not-owner' };
+    try {
+        await db.query('DELETE FROM organisations WHERE id = $1', [Number(orgId)]);
+        return { ok: true, org: mine };
+    } catch (err) {
+        console.error('[orgs] could not remove: ' + err.message);
+        return { ok: false, reason: 'unavailable' };
+    }
+}
+
+// what goes with it, so the confirmation can say rather than imply.
+async function weightOf(orgId) {
+    if (!(await init())) return { tokens: 0, checks: 0, members: 0 };
+    try {
+        const res = await db.query(`
+            SELECT (SELECT count(*)::int FROM api_tokens WHERE org_id = $1 AND revoked_at IS NULL) AS tokens,
+                   (SELECT count(*)::int FROM screenings WHERE org_id = $1) AS checks,
+                   (SELECT count(*)::int FROM memberships WHERE org_id = $1) AS members
+        `, [Number(orgId)]);
+        const r = res.rows[0];
+        return { tokens: r.tokens, checks: r.checks, members: r.members };
+    } catch (err) {
+        return { tokens: 0, checks: 0, members: 0 };
+    }
+}
+
 module.exports = {
     ROLES, ROLE_KEYS, ROLE_RANK, NAME_MAX, ORGS_PER_USER,
-    init, create, listFor, membership, bySlug, roleAtLeast,
+    init, create, listFor, membership, bySlug, roleAtLeast, remove, weightOf,
     hostOf, nameFromHost, cleanName,
 };

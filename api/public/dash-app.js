@@ -3233,9 +3233,11 @@
         }
 
         function orgCard(r) {
+            var card = document.createElement('div');
+            card.className = 'org';
             var b = document.createElement('button');
             b.type = 'button';
-            b.className = 'org';
+            b.className = 'org-go';
             var mark = document.createElement('span');
             mark.className = 'org-mark';
             mark.textContent = (r.name || '?').trim().charAt(0).toUpperCase();
@@ -3261,6 +3263,25 @@
             chev.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
                 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
             b.appendChild(chev);
+            card.appendChild(b);
+
+            // only an owner sees this, because only an owner may
+            if (r.role === 'owner') {
+                var kill = document.createElement('button');
+                kill.type = 'button';
+                kill.className = 'org-del';
+                kill.setAttribute('aria-label', t('Close this organisation'));
+                kill.title = t('Close this organisation');
+                kill.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                    'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                    '<path d="M4 7h16M10 11v6M14 11v6"/>' +
+                    '<path d="M6 7l1 12.5h10L18 7M9.5 7V4.5h5V7"/></svg>';
+                kill.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    askCloseOrg(r, load);
+                });
+                card.appendChild(kill);
+            }
             b.addEventListener('click', function () {
                 b.disabled = true;
                 fetch('/v1/orgs/' + encodeURIComponent(r.id) + '/use', {
@@ -3275,7 +3296,7 @@
                     toast(t('That did not work.'), 'bad');
                 });
             });
-            return b;
+            return card;
         }
 
         function load() {
@@ -3309,6 +3330,108 @@
         { key: 'analyst', label: 'Analyst' },
         { key: 'viewer', label: 'Viewer' }
     ];
+
+    function askCloseOrg(org, done) {
+        var m = modalShell('Close this organisation',
+            'Everything in it goes with it, and none of it comes back.');
+        var form = document.createElement('form');
+        form.className = 'vpanel';
+
+        var weigh = document.createElement('p');
+        weigh.className = 'modal-p';
+        weigh.style.textAlign = 'left';
+        weigh.textContent = t('Working out what is in it...');
+        form.appendChild(weigh);
+
+        var field = document.createElement('div');
+        field.className = 'vfield';
+        var lab = document.createElement('label');
+        lab.textContent = t('Type the name to confirm');
+        lab.setAttribute('for', 'org-kill');
+        field.appendChild(lab);
+        var typed = document.createElement('input');
+        typed.id = 'org-kill';
+        typed.type = 'text';
+        typed.autocomplete = 'off';
+        typed.placeholder = org.name;
+        field.appendChild(typed);
+        form.appendChild(field);
+
+        var err = document.createElement('p');
+        err.className = 'verr';
+        err.hidden = true;
+        form.appendChild(err);
+
+        var go2 = wideBtn('Close it for good', 'cta', 'submit');
+        go2.disabled = true;
+        form.appendChild(go2);
+        var quit = document.createElement('div');
+        quit.className = 'modal-quit';
+        var no = wideBtn('Keep it', 'quiet');
+        no.addEventListener('click', m.shut);
+        quit.appendChild(no);
+        form.appendChild(quit);
+        m.body.appendChild(form);
+
+        fetch('/v1/orgs/' + encodeURIComponent(org.id) + '/weight', { credentials: 'same-origin' })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (j) {
+                if (!j || !j.weight) { weigh.textContent = ''; return; }
+                var bits = [];
+                if (j.weight.members) {
+                    bits.push(j.weight.members + ' ' + t(j.weight.members === 1 ? 'member' : 'members'));
+                }
+                if (j.weight.tokens) {
+                    bits.push(j.weight.tokens + ' ' + t(j.weight.tokens === 1 ? 'live token' : 'live tokens'));
+                }
+                if (j.weight.checks) {
+                    bits.push(j.weight.checks + ' ' + t(j.weight.checks === 1 ? 'screening' : 'screenings'));
+                }
+                weigh.textContent = bits.length
+                    ? t('This will remove') + ' ' + bits.join(', ') + '.'
+                    : t('There is nothing in it yet.');
+            })
+            .catch(function () { weigh.textContent = ''; });
+
+        typed.addEventListener('input', function () {
+            go2.disabled = typed.value.trim().toLowerCase() !== String(org.name).trim().toLowerCase();
+            if (!err.hidden) err.hidden = true;
+        });
+        setTimeout(function () { typed.focus(); }, 60);
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (go2.disabled) return;
+            go2.disabled = true;
+            err.hidden = true;
+            fetch('/v1/orgs/' + encodeURIComponent(org.id) + '/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ name: typed.value })
+            }).then(function (r) {
+                return r.json().catch(function () { return {}; }).then(function (j) {
+                    return { ok: r.ok, body: j };
+                });
+            }).then(function (r) {
+                if (!r.ok) {
+                    err.textContent = (r.body && r.body.error) || t('That did not work.');
+                    err.hidden = false;
+                    go2.disabled = false;
+                    return;
+                }
+                m.shut();
+                forgetTokenCache();
+                forgetPicked();
+                toast(t('Organisation closed'), 'good');
+                done();
+            }).catch(function () {
+                err.textContent = t('That did not work.');
+                err.hidden = false;
+                go2.disabled = false;
+            });
+        });
+    }
 
     function askOrg(done) {
         var m = modalShell('New organisation',
