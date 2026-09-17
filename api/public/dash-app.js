@@ -121,39 +121,17 @@
         ] }
     ];
 
+    // What is in here is what exists. A rail of nineteen items across seven
+    // groups looked like a product and behaved like a wall of dead links: only
+    // one of them had a screen behind it. It grows as screens land.
     var NAV = [
         { group: 'Work', items: [
-            { key: 'overview', label: 'Overview', icon: 'home' },
-            { key: 'triage', label: 'Triage', icon: 'inbox' },
-            { key: 'alerts', label: 'Alerts', icon: 'bell' },
-            { key: 'cases', label: 'Cases', icon: 'folder' }
-        ] },
-        { group: 'Screening', items: [
-            { key: 'screenings', label: 'Screenings', icon: 'search' },
-            { key: 'wallets', label: 'Wallets', icon: 'wallet' },
-            { key: 'watchlists', label: 'Watchlists', icon: 'list' }
-        ] },
-        { group: 'Investigate', items: [
-            { key: 'exposure', label: 'Exposure', icon: 'rings' },
-            { key: 'graph', label: 'Graph', icon: 'graph' }
-        ] },
-        { group: 'Evidence', items: [
-            { key: 'reports', label: 'Reports', icon: 'file' },
-            { key: 'audit', label: 'Audit trail', icon: 'trail' },
-            { key: 'coverage', label: 'Coverage', icon: 'shield' }
-        ] },
-        { group: 'Configure', items: [
-            { key: 'policy', label: 'Policy', icon: 'book' },
-            { key: 'notifications', label: 'Notifications', icon: 'wave' }
+            { key: 'overview', label: 'Overview', icon: 'home', org: '' }
         ] },
         { group: 'Developers', items: [
-            { key: 'api', label: 'API keys', icon: 'key' },
-            { key: 'webhooks', label: 'Webhooks', icon: 'hook' },
-            { key: 'sandbox', label: 'Sandbox', icon: 'flask' }
+            { key: 'tokens', label: 'Access tokens', icon: 'key', org: 'tokens' }
         ] },
         { group: 'Organisation', items: [
-            { key: 'team', label: 'Team', icon: 'users' },
-            { key: 'billing', label: 'Billing', icon: 'card' },
             { key: 'account', label: 'Account', icon: 'cog', href: ACCOUNT_PATH }
         ] }
     ];
@@ -199,8 +177,10 @@
     // the list down and replaying its entrance for that read as a reload.
     // an item declared with an org tail lives inside the organisation, so its
     // address is only known once we know which one we are in
+    // an empty tail is the organisation's own home, so this asks whether the
+    // item declared one at all rather than whether it is truthy.
     function hrefOf(item) {
-        if (item.org) return atOrg ? orgPath(atOrg, item.org) : '';
+        if (item.org !== undefined) return atOrg ? orgPath(atOrg, item.org) : '';
         return item.href || '';
     }
 
@@ -2328,6 +2308,162 @@
         return b;
     }
 
+    // Landing in an organisation. Everything on it is a number we already hold:
+    // the plan and what it includes come from the entitlement, the check count
+    // from this organisation's own rows, the list date from the sanctions
+    // refresh. Nothing here is a placeholder, because a first screen full of
+    // zeroes that are real is worth more than one full of figures that are not.
+    function viewOrgHome(me) {
+        var page = document.createElement('div');
+        page.className = 'pg orgh-pg';
+
+        var org = me.org || {};
+        page.appendChild(pageHead(org.name || 'Organisation'));
+
+        var wrap = document.createElement('div');
+        wrap.className = 'orgh';
+
+        var main = document.createElement('div');
+        main.className = 'orgh-main';
+
+        // who you are in here, and how many of you
+        // label and figure, the same shape as the rail. it started as prose
+        // ("3 people have access") which cannot be translated: croatian needs
+        // one form for 1, another for 2 to 4 and a third for 5 and up, and a
+        // singular/plural pair can only ever get two of those right.
+        var team = orghCard('Your team', 'users');
+        team.appendChild(orghStat('Your role', orghRole(org.role)));
+        team.appendChild(orghStat('People with access', Number(org.members || 1).toLocaleString()));
+        main.appendChild(team);
+
+        var c = me.coverage || {};
+        var cov = orghCard('Sanctions coverage', 'shield');
+        cov.appendChild(orghStat('List', c.source || 'OFAC SDN'));
+        cov.appendChild(orghStat('Addresses', c.addresses
+            ? Number(c.addresses).toLocaleString() : '—'));
+        cov.appendChild(orghStat('Dated', c.listDate || '—'));
+        main.appendChild(cov);
+
+        wrap.appendChild(main);
+
+        // the rail: the plan and what is left of it
+        var rail = document.createElement('aside');
+        rail.className = 'orgh-rail';
+        var tr = me.trial || {};
+
+        var head = document.createElement('div');
+        head.className = 'orgh-rail-head';
+        var planName = document.createElement('div');
+        planName.className = 'orgh-plan';
+        planName.textContent = orghPlan(tr.state);
+        head.appendChild(planName);
+        var cycle = document.createElement('div');
+        cycle.className = 'orgh-cycle';
+        // croatian takes 'dan' for one and 'dana' for everything else, so a
+        // pair is enough here, unlike a count of people.
+        cycle.textContent = tr.daysLeft
+            ? (tr.daysLeft + ' ' + t(tr.daysLeft === 1 ? 'day left' : 'days left'))
+            : '';
+        head.appendChild(cycle);
+        rail.appendChild(head);
+
+        rail.appendChild(orghMeter('Live checks', tr.liveUsed, tr.liveIncluded, tr.state === 'enterprise'));
+        if (!tr.historyOpen) {
+            rail.appendChild(orghMeter('History scans', tr.historyUsed, tr.historyIncluded, false));
+        }
+        rail.appendChild(orghStat('Screenings run', Number(me.screeningsRun || 0).toLocaleString()));
+
+        wrap.appendChild(rail);
+        page.appendChild(wrap);
+        return page;
+    }
+
+    function orghCard(title, ico) {
+        var card = document.createElement('section');
+        card.className = 'orgh-card';
+        var h = document.createElement('div');
+        h.className = 'orgh-card-h';
+        var mark = document.createElement('span');
+        mark.className = 'orgh-ico';
+        mark.innerHTML = icon(ico);
+        h.appendChild(mark);
+        var lab = document.createElement('h2');
+        lab.className = 'orgh-card-t';
+        lab.textContent = t(title);
+        h.appendChild(lab);
+        card.appendChild(h);
+        return card;
+    }
+
+    function orghRole(key) {
+        var list = ORG_ROLES || [];
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].key === key) return t(list[i].label);
+        }
+        return key || '\u2014';
+    }
+
+    function orghPlan(state) {
+        var said = {
+            none: 'No plan yet',
+            pending: 'Waiting to be approved',
+            starter: 'Free trial',
+            verified: 'Free trial',
+            expired: 'Trial ended',
+            enterprise: 'Enterprise'
+        };
+        return t(said[state] || 'No plan yet');
+    }
+
+    // used against included, as a bar. an unmetered plan says so instead of
+    // drawing a bar that would never move.
+    function orghMeter(label, used, included, unmetered) {
+        var row = document.createElement('div');
+        row.className = 'orgh-meter';
+        var top = document.createElement('div');
+        top.className = 'orgh-meter-h';
+        var lab = document.createElement('span');
+        lab.textContent = t(label);
+        top.appendChild(lab);
+        var fig = document.createElement('span');
+        fig.className = 'orgh-fig';
+        var u = Number(used || 0);
+        var inc = Number(included || 0);
+        fig.textContent = unmetered
+            ? t('Unmetered')
+            : (u.toLocaleString() + ' / ' + inc.toLocaleString());
+        top.appendChild(fig);
+        row.appendChild(top);
+        if (!unmetered) {
+            var track = document.createElement('div');
+            track.className = 'orgh-track';
+            var fill = document.createElement('span');
+            fill.className = 'orgh-fill';
+            var pct = inc > 0 ? Math.min(100, Math.round((u / inc) * 100)) : 0;
+            fill.style.width = pct + '%';
+            if (pct >= 100) fill.classList.add('is-full');
+            track.appendChild(fill);
+            row.appendChild(track);
+        }
+        return row;
+    }
+
+    function orghStat(label, value) {
+        var row = document.createElement('div');
+        row.className = 'orgh-meter';
+        var top = document.createElement('div');
+        top.className = 'orgh-meter-h';
+        var lab = document.createElement('span');
+        lab.textContent = t(label);
+        top.appendChild(lab);
+        var fig = document.createElement('span');
+        fig.className = 'orgh-fig';
+        fig.textContent = value;
+        top.appendChild(fig);
+        row.appendChild(top);
+        return row;
+    }
+
     function viewTokens(me) {
         var page = document.createElement('div');
         page.className = 'pg';
@@ -3726,6 +3862,7 @@
         if (slug) {
             var tail = location.pathname.slice(orgHome(slug).length).replace(/^\//, '');
             if (tail === 'tokens') canvas.appendChild(viewTokens(lastMe));
+            else if (!tail) canvas.appendChild(viewOrgHome(lastMe));
         }
     }
 

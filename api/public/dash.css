@@ -2571,3 +2571,54 @@ html.is-theming .btn {
     ::view-transition-new(root) { animation: none !important; }
     html.is-theming * { transition: none !important; }
 }
+
+/* the organisation's own first screen. the work sits on the left and what the
+   plan has left of it on the right, because the second is a thing you glance
+   at rather than read. */
+.orgh { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 17rem); gap: 1.1rem; align-items: start; }
+.orgh-main { display: grid; gap: 0.7rem; min-width: 0; }
+.orgh-card {
+    padding: 1rem 1.1rem 1.1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+}
+.orgh-card-h { display: flex; align-items: center; gap: 0.6rem; }
+.orgh-ico {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: var(--canvas);
+    color: var(--ink-3);
+}
+.orgh-ico .nav-i { width: 15px; height: 15px; }
+.orgh-card-t { margin: 0; font-size: 0.86rem; font-weight: 650; color: var(--ink); letter-spacing: 0; text-transform: none; }
+.orgh-body { margin-top: 0.7rem; }
+.orgh-line { margin: 0; font-size: 0.88rem; line-height: 1.6; color: var(--ink-2); }
+.orgh-line.is-quiet { margin-top: 0.15rem; font-size: 0.8rem; color: var(--ink-4); }
+
+.orgh-rail {
+    padding: 1rem 1.1rem 1.15rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+}
+.orgh-rail-head { padding-bottom: 0.85rem; border-bottom: 1px solid var(--line-2); }
+.orgh-plan { font-size: 0.92rem; font-weight: 700; color: var(--ink); }
+.orgh-cycle { margin-top: 0.1rem; font-size: 0.78rem; color: var(--ink-4); }
+.orgh-meter { margin-top: 0.85rem; }
+.orgh-meter-h { display: flex; align-items: baseline; gap: 0.6rem; font-size: 0.82rem; color: var(--ink-3); }
+.orgh-fig { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 650; color: var(--ink-2); }
+.orgh-track { margin-top: 0.4rem; height: 5px; border-radius: 3px; background: var(--nav-on); overflow: hidden; }
+.orgh-fill { display: block; height: 100%; border-radius: 3px; background: var(--link); }
+.orgh-fill.is-full { background: var(--risk-high); }
+
+/* the rail is a glance, so on a phone it goes under the work rather than
+   squeezing beside it. */
+@media (max-width: 860px) {
+    .orgh { grid-template-columns: minmax(0, 1fr); }
+}
