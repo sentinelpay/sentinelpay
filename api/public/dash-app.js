@@ -122,29 +122,22 @@
         ] }
     ];
 
-    // The organisation's own rail, in the order supabase puts it: where you
-    // are, who is with you, what you have used, what it costs, what it is
-    // called. Projects is deliberately not here. Supabase has them because one
-    // organisation holds many databases; a compliance team has a queue of
-    // checks, not projects, so the level would be a grid with nothing in it.
+    // The organisation's rail. Two sectors, because there are two kinds of
+    // thing in here: the work, and the company that owns it.
     //
-    // Nothing goes in this list before the screen it names. A rail of items
-    // that open a blank canvas is a feature list pretending to be navigation.
+    // Access tokens and your own account are not on it. Tokens belong to the
+    // organisation's settings, which is where the screen is reached from now,
+    // and your account is behind your own avatar in the corner, where it was
+    // always also reachable. A rail is for where the work is.
     var NAV = [
         { group: 'Work', items: [
-            { key: 'overview', label: 'Overview', icon: 'home', org: '' }
+            { key: 'projects', label: 'Projects', icon: 'rings', org: '' }
         ] },
         { group: 'Organisation', items: [
             { key: 'team', label: 'Team', icon: 'users', org: 'team' },
-            { key: 'usage', label: 'Usage', icon: 'rings', org: 'usage' },
+            { key: 'usage', label: 'Usage', icon: 'graph', org: 'usage' },
             { key: 'billing', label: 'Billing', icon: 'card', org: 'billing' },
-            { key: 'settings', label: 'Settings', icon: 'cog', org: 'settings' }
-        ] },
-        { group: 'Developers', items: [
-            { key: 'tokens', label: 'Access tokens', icon: 'key', org: 'tokens' }
-        ] },
-        { group: 'Account', items: [
-            { key: 'account', label: 'Your account', icon: 'users', href: ACCOUNT_PATH }
+            { key: 'settings', label: 'Organization settings', icon: 'cog', org: 'settings' }
         ] }
     ];
 
@@ -2358,76 +2351,6 @@
         return b;
     }
 
-    // Landing in an organisation. Everything on it is a number we already hold:
-    // the plan and what it includes come from the entitlement, the check count
-    // from this organisation's own rows, the list date from the sanctions
-    // refresh. Nothing here is a placeholder, because a first screen full of
-    // zeroes that are real is worth more than one full of figures that are not.
-    function viewOrgHome(me) {
-        var page = document.createElement('div');
-        page.className = 'pg orgh-pg';
-
-        var org = me.org || {};
-        page.appendChild(pageHead(org.name || 'Organisation'));
-
-        var wrap = document.createElement('div');
-        wrap.className = 'orgh';
-
-        var main = document.createElement('div');
-        main.className = 'orgh-main';
-
-        // who you are in here, and how many of you
-        // label and figure, the same shape as the rail. it started as prose
-        // ("3 people have access") which cannot be translated: croatian needs
-        // one form for 1, another for 2 to 4 and a third for 5 and up, and a
-        // singular/plural pair can only ever get two of those right.
-        var team = orghCard('Your team', 'users');
-        team.appendChild(orghStat('Your role', orghRole(org.role)));
-        team.appendChild(orghStat('People with access', Number(org.members || 1).toLocaleString()));
-        main.appendChild(team);
-
-        var c = me.coverage || {};
-        var cov = orghCard('Sanctions coverage', 'shield');
-        cov.appendChild(orghStat('List', c.source || 'OFAC SDN'));
-        cov.appendChild(orghStat('Addresses', c.addresses
-            ? Number(c.addresses).toLocaleString() : '—'));
-        cov.appendChild(orghStat('Dated', c.listDate || '—'));
-        main.appendChild(cov);
-
-        wrap.appendChild(main);
-
-        // the rail: the plan and what is left of it
-        var rail = document.createElement('aside');
-        rail.className = 'orgh-rail';
-        var tr = me.trial || {};
-
-        var head = document.createElement('div');
-        head.className = 'orgh-rail-head';
-        var planName = document.createElement('div');
-        planName.className = 'orgh-plan';
-        planName.textContent = orghPlan(tr.state);
-        head.appendChild(planName);
-        var cycle = document.createElement('div');
-        cycle.className = 'orgh-cycle';
-        // croatian takes 'dan' for one and 'dana' for everything else, so a
-        // pair is enough here, unlike a count of people.
-        cycle.textContent = tr.daysLeft
-            ? (tr.daysLeft + ' ' + t(tr.daysLeft === 1 ? 'day left' : 'days left'))
-            : '';
-        head.appendChild(cycle);
-        rail.appendChild(head);
-
-        rail.appendChild(orghMeter('Live checks', tr.liveUsed, tr.liveIncluded, tr.state === 'enterprise'));
-        if (!tr.historyOpen) {
-            rail.appendChild(orghMeter('History scans', tr.historyUsed, tr.historyIncluded, false));
-        }
-        rail.appendChild(orghStat('Screenings run', Number(me.screeningsRun || 0).toLocaleString()));
-
-        wrap.appendChild(rail);
-        page.appendChild(wrap);
-        return page;
-    }
-
     function orghCard(title, ico) {
         var card = document.createElement('section');
         card.className = 'orgh-card';
@@ -2517,6 +2440,277 @@
     // Everyone in the organisation. Read only for now: inviting needs mail going
     // out and a token coming back, which is its own piece of work. What it shows
     // is real, which a screen offering an invite that does nothing would not be.
+    // The organisation's landing screen: what it screens for. A project is a
+    // boundary inside the company, so a firm running an exchange and a card
+    // product can keep their rules, keys and trail apart while sharing one
+    // team and one bill.
+    function viewProjects(me) {
+        var page = document.createElement('div');
+        var org = me.org || {};
+        page.appendChild(pageHead('Projects'));
+
+        var bar = document.createElement('div');
+        bar.className = 'bar';
+        var find = document.createElement('div');
+        find.className = 'bar-find';
+        find.innerHTML = '<svg class="bar-find-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            'stroke-width="1.8" stroke-linecap="round" aria-hidden="true">' +
+            '<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>';
+        var findIn = document.createElement('input');
+        findIn.type = 'search';
+        findIn.placeholder = t('Search for a project');
+        findIn.autocomplete = 'off';
+        find.appendChild(findIn);
+        bar.appendChild(find);
+        var make = document.createElement('button');
+        make.type = 'button';
+        make.className = 'btn btn-primary';
+        make.textContent = t('New project');
+        bar.appendChild(make);
+        page.appendChild(bar);
+
+        var list = document.createElement('div');
+        list.className = 'prjs';
+        page.appendChild(list);
+
+        var rows = [];
+        var may = roleAtLeastLocal(org.role, 'admin');
+        make.disabled = !may;
+
+        function draw() {
+            list.textContent = '';
+            var q = findIn.value.trim().toLowerCase();
+            var shown = rows.filter(function (r) {
+                return !q || r.name.toLowerCase().indexOf(q) !== -1;
+            });
+            if (!shown.length) {
+                list.appendChild(rows.length
+                    ? emptyState('Nothing matches that', 'Try a different name.')
+                    : emptyState('No projects yet', 'Make one for the first thing you screen for.'));
+                return;
+            }
+            shown.forEach(function (r) { list.appendChild(projectCard(r, org, may, load)); });
+        }
+
+        function load() {
+            fetch('/v1/orgs/' + encodeURIComponent(org.id) + '/projects', { credentials: 'same-origin' })
+                .then(function (r) {
+                    if (!r.ok) throw new Error('bad-status-' + r.status);
+                    return r.json();
+                })
+                .then(function (j) {
+                    rows = (j && j.rows) || [];
+                    draw();
+                })
+                .catch(function () {
+                    list.textContent = '';
+                    list.appendChild(emptyState('That did not load.', 'Reload the page to try again.'));
+                });
+        }
+
+        findIn.addEventListener('input', draw);
+        make.addEventListener('click', function () { askProject(org, load); });
+
+        list.appendChild(waiting());
+        load();
+        return page;
+    }
+
+    function projectCard(r, org, may, done) {
+        var card = document.createElement('div');
+        card.className = 'prj';
+
+        var mark = document.createElement('span');
+        mark.className = 'prj-mark';
+        mark.innerHTML = icon('rings');
+        card.appendChild(mark);
+
+        var txt = document.createElement('span');
+        txt.className = 'prj-t';
+        var n = document.createElement('span');
+        n.className = 'prj-n';
+        n.textContent = r.name;
+        txt.appendChild(n);
+        var sub = document.createElement('span');
+        sub.className = 'prj-sub';
+        sub.textContent = r.createdAt
+            ? t('Added') + '  ·  ' + new Date(r.createdAt).toISOString().slice(0, 10)
+            : '';
+        txt.appendChild(sub);
+        card.appendChild(txt);
+
+        if (may) {
+            var edit = document.createElement('button');
+            edit.type = 'button';
+            edit.className = 'prj-act';
+            edit.setAttribute('aria-label', t('Rename'));
+            edit.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+                'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                '<path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17Z"/></svg>';
+            edit.addEventListener('click', function () { askRenameProject(org, r, done); });
+            card.appendChild(edit);
+
+            var kill = document.createElement('button');
+            kill.type = 'button';
+            kill.className = 'prj-act is-bad';
+            kill.setAttribute('aria-label', t('Remove'));
+            kill.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+                'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                '<path d="M5 7h14M9 7V5.5h6V7M7 7l1 12.5h8L17 7"/></svg>';
+            kill.addEventListener('click', function () { askRemoveProject(org, r, done); });
+            card.appendChild(kill);
+        }
+        return card;
+    }
+
+    function askProject(org, done) {
+        projectDialog({
+            title: 'New project',
+            sub: 'Name it after the thing it screens for.',
+            label: 'Name',
+            placeholder: 'e.g. Card payments',
+            value: '',
+            go: 'Create project',
+            quit: 'Cancel',
+            url: '/v1/orgs/' + encodeURIComponent(org.id) + '/projects',
+            said: 'Project created',
+            done: done
+        });
+    }
+
+    function askRenameProject(org, project, done) {
+        projectDialog({
+            title: 'Rename project',
+            sub: 'Only the name changes. Nothing in it moves.',
+            label: 'Name',
+            placeholder: project.name,
+            value: project.name,
+            go: 'Save',
+            quit: 'Cancel',
+            url: '/v1/orgs/' + encodeURIComponent(org.id) + '/projects/' +
+                encodeURIComponent(project.id) + '/rename',
+            said: 'Name saved',
+            done: done
+        });
+    }
+
+    function projectDialog(o) {
+        var m = modalShell(o.title, o.sub);
+        var form = document.createElement('form');
+        form.className = 'vpanel';
+
+        var field = document.createElement('div');
+        field.className = 'vfield';
+        var lab = document.createElement('label');
+        lab.textContent = t(o.label);
+        lab.setAttribute('for', 'prj-name');
+        field.appendChild(lab);
+        var name = document.createElement('input');
+        name.id = 'prj-name';
+        name.type = 'text';
+        name.autocomplete = 'off';
+        name.maxLength = 60;
+        name.placeholder = t(o.placeholder);
+        name.value = o.value || '';
+        field.appendChild(name);
+        form.appendChild(field);
+
+        var err = document.createElement('p');
+        err.className = 'verr';
+        err.hidden = true;
+        form.appendChild(err);
+
+        var go = wideBtn(o.go, 'cta', 'submit');
+        go.disabled = !name.value.trim();
+        form.appendChild(go);
+        var quit = document.createElement('div');
+        quit.className = 'modal-quit';
+        var no = wideBtn(o.quit, 'quiet');
+        no.addEventListener('click', m.shut);
+        quit.appendChild(no);
+        form.appendChild(quit);
+        m.body.appendChild(form);
+
+        name.addEventListener('input', function () {
+            go.disabled = !name.value.trim();
+            if (!err.hidden) err.hidden = true;
+        });
+        setTimeout(function () { name.focus(); }, 60);
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (go.disabled) return;
+            go.disabled = true;
+            err.hidden = true;
+            fetch(o.url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ name: name.value })
+            }).then(function (r) {
+                return r.json().catch(function () { return {}; }).then(function (b) {
+                    return { ok: r.ok, body: b };
+                });
+            }).then(function (r) {
+                if (!r.ok) {
+                    err.textContent = (r.body && r.body.error) || t('That did not work.');
+                    err.hidden = false;
+                    go.disabled = false;
+                    return;
+                }
+                m.shut();
+                toast(t(o.said), 'good');
+                o.done();
+            }).catch(function () {
+                err.textContent = t('That did not work.');
+                err.hidden = false;
+                go.disabled = false;
+            });
+        });
+    }
+
+    function askRemoveProject(org, project, done) {
+        var m = modalShell('Remove this project', 'The project goes. What it screened stays on the organisation.');
+        var form = document.createElement('form');
+        form.className = 'vpanel';
+
+        var err = document.createElement('p');
+        err.className = 'verr';
+        err.hidden = true;
+        form.appendChild(err);
+
+        var go = wideBtn('Remove it', 'cta', 'submit');
+        form.appendChild(go);
+        var quit = document.createElement('div');
+        quit.className = 'modal-quit';
+        var no = wideBtn('Keep it', 'quiet');
+        no.addEventListener('click', m.shut);
+        quit.appendChild(no);
+        form.appendChild(quit);
+        m.body.appendChild(form);
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            go.disabled = true;
+            fetch('/v1/orgs/' + encodeURIComponent(org.id) + '/projects/' +
+                encodeURIComponent(project.id) + '/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: '{}'
+            }).then(function (r) {
+                if (!r.ok) throw new Error('bad');
+                m.shut();
+                toast(t('Project removed'), 'good');
+                done();
+            }).catch(function () {
+                err.textContent = t('That did not work.');
+                err.hidden = false;
+                go.disabled = false;
+            });
+        });
+    }
+
     function viewTeam(me) {
         var page = document.createElement('div');
         var org = me.org || {};
@@ -2662,7 +2856,7 @@
     function viewOrgSettings(me) {
         var page = document.createElement('div');
         var org = me.org || {};
-        page.appendChild(pageHead('Settings', 'What this organisation is called, and how to close it.'));
+        page.appendChild(pageHead('Organization settings', 'What this organisation is called, and how to close it.'));
 
         var may = roleAtLeastLocal(org.role, 'admin');
 
@@ -2729,6 +2923,23 @@
         var idCard = orghCard('Address', 'key');
         idCard.appendChild(orghStat('In the url', org.slug || '—'));
         page.appendChild(idCard);
+
+        // the rail no longer carries this, so it is reached from here. a screen
+        // that exists and cannot be got to is worse than one that does not.
+        var tokCard = orghCard('Access tokens', 'key');
+        var tb = document.createElement('div');
+        tb.className = 'orgh-body';
+        var tp = document.createElement('p');
+        tp.className = 'orgh-line';
+        tp.textContent = t('Keys that let your own software screen through the API.');
+        tb.appendChild(tp);
+        var tlink = document.createElement('a');
+        tlink.className = 'btn btn-quiet orgh-act';
+        tlink.href = orgPath(org.slug, 'tokens');
+        tlink.textContent = t('Manage access tokens');
+        tb.appendChild(tlink);
+        tokCard.appendChild(tb);
+        page.appendChild(tokCard);
 
         if (org.role === 'owner') {
             var dangerCard = orghCard('Close this organisation', 'warn');
@@ -4160,7 +4371,7 @@
             else if (tail === 'usage') canvas.appendChild(viewUsage(lastMe));
             else if (tail === 'billing') canvas.appendChild(viewBilling(lastMe));
             else if (tail === 'settings') canvas.appendChild(viewOrgSettings(lastMe));
-            else if (!tail) canvas.appendChild(viewOrgHome(lastMe));
+            else if (!tail) canvas.appendChild(viewProjects(lastMe));
         }
     }
 
