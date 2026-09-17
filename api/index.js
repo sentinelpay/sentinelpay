@@ -1943,6 +1943,37 @@ app.get('/v1/orgs/:id/weight', async (req, res) => {
     res.json({ ok: true, org: mine, weight: await orgs.weightOf(mine.id) });
 });
 
+app.get('/v1/orgs/:id/members', async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const rows = await orgs.members(me.userId, req.params.id);
+    if (!rows) return res.status(404).json({ error: 'You are not in that organisation.' });
+    res.set('Cache-Control', 'no-store, private');
+    res.json({ ok: true, rows, roles: orgs.ROLES });
+});
+
+app.post('/v1/orgs/:id/rename', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const out = await orgs.rename(me.userId, req.params.id, (req.body || {}).name);
+    if (!out.ok) {
+        const said = {
+            'no-name': 'Give the organisation a name.',
+            missing: 'You are not in that organisation.',
+            'not-allowed': 'Only an admin or the owner can rename an organisation.',
+        };
+        const code = out.reason === 'missing' ? 404 : (out.reason === 'not-allowed' ? 403 : 400);
+        return res.status(out.reason === 'unavailable' ? 503 : code).json({
+            error: said[out.reason] || 'Accounts are not available right now. Please try again shortly.',
+        });
+    }
+    await accounts.audit('org-renamed', {
+        actor: String(me.userId), subject: out.org.id, ip: req.realIp, detail: out.org.name,
+    });
+    res.set('Cache-Control', 'no-store, private');
+    res.json({ ok: true, org: out.org });
+});
+
 app.post('/v1/orgs/:id/delete', requireCloudflareOrigin, accountLimiter, async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;

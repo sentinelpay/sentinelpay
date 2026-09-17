@@ -239,6 +239,59 @@ async function bySlug(userId, slug) {
     }
 }
 
+// Everyone in the organisation, for the team screen. The membership check runs
+// first: this hands out colleagues' names and addresses, so it answers only to
+// somebody already inside.
+//
+// Names and addresses are encrypted per row and keyed by the email hash. The
+// prefixes belong to accounts.js, which is the only other place that knows
+// them; they are repeated here rather than exported because a third caller
+// should have to think about why it wants them.
+async function members(userId, orgId) {
+    if (!(await init())) return null;
+    const mine = await membership(userId, orgId);
+    if (!mine) return null;
+    try {
+        const res = await db.query(
+            `SELECT u.id, u.email_hash, u.email_enc, u.name_enc, m.role, m.created_at
+               FROM memberships m
+               JOIN users u ON u.id = m.user_id
+              WHERE m.org_id = $1
+           ORDER BY m.created_at`,
+            [Number(orgId)]
+        );
+        return res.rows.map((row) => ({
+            id: String(row.id),
+            name: db.open('signup-name:' + row.email_hash, row.name_enc) || '',
+            email: db.open('signup-email:' + row.email_hash, row.email_enc) || '',
+            role: row.role,
+            joinedAt: row.created_at,
+            you: String(row.id) === String(userId),
+        }));
+    } catch (err) {
+        console.error('[orgs] could not list members: ' + err.message);
+        return null;
+    }
+}
+
+// Renaming is an admin's job, not an owner's alone: it is a label, and the
+// people who run the place have to be able to fix a typo in it.
+async function rename(userId, orgId, name) {
+    if (!(await init())) return { ok: false, reason: 'unavailable' };
+    const label = cleanName(name);
+    if (!label) return { ok: false, reason: 'no-name' };
+    const mine = await membership(userId, orgId);
+    if (!mine) return { ok: false, reason: 'missing' };
+    if (!roleAtLeast(mine.role, 'admin')) return { ok: false, reason: 'not-allowed' };
+    try {
+        await db.query('UPDATE organisations SET name = $1 WHERE id = $2', [label, Number(orgId)]);
+        return { ok: true, org: { ...mine, name: label } };
+    } catch (err) {
+        console.error('[orgs] could not rename: ' + err.message);
+        return { ok: false, reason: 'unavailable' };
+    }
+}
+
 function roleAtLeast(role, needed) {
     return (ROLE_RANK[role] || 0) >= (ROLE_RANK[needed] || 0);
 }
@@ -307,6 +360,7 @@ async function reslug() {
 module.exports = {
     ROLES, ROLE_KEYS, ROLE_RANK, NAME_MAX, ORGS_PER_USER,
     init, create, listFor, membership, bySlug, roleAtLeast, remove, weightOf, reslug,
+    members, rename,
     SLUG_LENGTH, SLUG_SHAPE,
     hostOf, nameFromHost, cleanName,
 };

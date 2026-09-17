@@ -34,6 +34,7 @@
         search: '<circle cx="11" cy="11" r="6.5"/><path d="m19.5 19.5-3.8-3.8"/>',
         wallet: '<path d="M4 7.5h13.5A2.5 2.5 0 0 1 20 10v7.5H4Z"/><path d="M4 7.5V6a1.5 1.5 0 0 1 1.5-1.5H16"/><circle cx="16.5" cy="13.5" r="1.1"/>',
         list: '<path d="M9 7h11M9 12h11M9 17h11M4.5 7h.01M4.5 12h.01M4.5 17h.01"/>',
+        warn: '<path d="M12 8.5v5M12 16.9v.1"/><path d="M10.3 4.3 2.8 18a1.8 1.8 0 0 0 1.6 2.7h15.2A1.8 1.8 0 0 0 21.2 18L13.7 4.3a1.9 1.9 0 0 0-3.4 0Z"/>',
         rings: '<circle cx="12" cy="12" r="3"/><path d="M12 4.5v4.4M12 15.1v4.4M4.5 12h4.4M15.1 12h4.4"/>',
         graph: '<circle cx="6" cy="17" r="2.2"/><circle cx="12" cy="7" r="2.2"/><circle cx="18" cy="15" r="2.2"/><path d="m7.6 15.3 3-6.2M13.8 8.4l2.9 4.9"/>',
         file: '<path d="M14 3.5v5h5"/><path d="M19 8.5V20H5V3.5h9Z"/>',
@@ -121,18 +122,29 @@
         ] }
     ];
 
-    // What is in here is what exists. A rail of nineteen items across seven
-    // groups looked like a product and behaved like a wall of dead links: only
-    // one of them had a screen behind it. It grows as screens land.
+    // The organisation's own rail, in the order supabase puts it: where you
+    // are, who is with you, what you have used, what it costs, what it is
+    // called. Projects is deliberately not here. Supabase has them because one
+    // organisation holds many databases; a compliance team has a queue of
+    // checks, not projects, so the level would be a grid with nothing in it.
+    //
+    // Nothing goes in this list before the screen it names. A rail of items
+    // that open a blank canvas is a feature list pretending to be navigation.
     var NAV = [
         { group: 'Work', items: [
             { key: 'overview', label: 'Overview', icon: 'home', org: '' }
         ] },
+        { group: 'Organisation', items: [
+            { key: 'team', label: 'Team', icon: 'users', org: 'team' },
+            { key: 'usage', label: 'Usage', icon: 'rings', org: 'usage' },
+            { key: 'billing', label: 'Billing', icon: 'card', org: 'billing' },
+            { key: 'settings', label: 'Settings', icon: 'cog', org: 'settings' }
+        ] },
         { group: 'Developers', items: [
             { key: 'tokens', label: 'Access tokens', icon: 'key', org: 'tokens' }
         ] },
-        { group: 'Organisation', items: [
-            { key: 'account', label: 'Account', icon: 'cog', href: ACCOUNT_PATH }
+        { group: 'Account', items: [
+            { key: 'account', label: 'Your account', icon: 'users', href: ACCOUNT_PATH }
         ] }
     ];
 
@@ -834,12 +846,32 @@
         }
     }
 
+    // What the shell paints before the fetch answers. It used to be the name,
+    // the address and the plan state, which was everything the top bar needed.
+    // The organisation's own screens read the organisation off here too, so a
+    // warm load without it drew a page with no name and empty cards, and then
+    // kept it: sameMe saw no difference and skipped the repaint entirely.
     function writeMe(me) {
         try {
+            var org = me.org || null;
             localStorage.setItem(ME_KEY, JSON.stringify({
                 name: me.name || '',
                 email: me.email || '',
-                trial: { state: (me.trial && me.trial.state) || 'none' }
+                trial: {
+                    state: (me.trial && me.trial.state) || 'none',
+                    daysLeft: (me.trial && me.trial.daysLeft) || 0,
+                    liveUsed: (me.trial && me.trial.liveUsed) || 0,
+                    liveIncluded: (me.trial && me.trial.liveIncluded) || 0,
+                    historyUsed: (me.trial && me.trial.historyUsed) || 0,
+                    historyIncluded: (me.trial && me.trial.historyIncluded) || 0,
+                    historyOpen: Boolean(me.trial && me.trial.historyOpen)
+                },
+                org: org ? {
+                    id: org.id, name: org.name, slug: org.slug,
+                    role: org.role, members: org.members
+                } : null,
+                screeningsRun: me.screeningsRun || 0,
+                coverage: me.coverage || null
             }));
         } catch (err) {  }
     }
@@ -851,10 +883,28 @@
         forgetPicked();
     }
 
+    // this decides whether the screen is already right, so it has to compare
+    // everything the screen is drawn from. comparing less than that is how a
+    // stale page survives a fetch that disagreed with it.
     function sameMe(a, b) {
         if (!a || !b) return false;
-        return a.name === b.name && a.email === b.email &&
-            ((a.trial && a.trial.state) || '') === ((b.trial && b.trial.state) || '');
+        if (a.name !== b.name || a.email !== b.email) return false;
+        if (String(a.screeningsRun || 0) !== String(b.screeningsRun || 0)) return false;
+        var ta = a.trial || {}, tb = b.trial || {};
+        var keys = ['state', 'daysLeft', 'liveUsed', 'liveIncluded',
+            'historyUsed', 'historyIncluded', 'historyOpen'];
+        for (var i = 0; i < keys.length; i++) {
+            if (String(ta[keys[i]] || '') !== String(tb[keys[i]] || '')) return false;
+        }
+        var oa = a.org || {}, ob = b.org || {};
+        var ok = ['id', 'name', 'slug', 'role', 'members'];
+        for (var k = 0; k < ok.length; k++) {
+            if (String(oa[ok[k]] || '') !== String(ob[ok[k]] || '')) return false;
+        }
+        var ca = a.coverage || {}, cb = b.coverage || {};
+        return String(ca.source || '') === String(cb.source || '') &&
+            String(ca.listDate || '') === String(cb.listDate || '') &&
+            String(ca.addresses || '') === String(cb.addresses || '');
     }
 
     function paintMe(me) {
@@ -2464,6 +2514,250 @@
         return row;
     }
 
+    // Everyone in the organisation. Read only for now: inviting needs mail going
+    // out and a token coming back, which is its own piece of work. What it shows
+    // is real, which a screen offering an invite that does nothing would not be.
+    function viewTeam(me) {
+        var page = document.createElement('div');
+        var org = me.org || {};
+        page.appendChild(pageHead('Team', 'Everyone here shares the same screenings, cases and tokens.'));
+
+        var card = document.createElement('div');
+        card.className = 'card';
+        page.appendChild(card);
+        card.appendChild(waiting());
+
+        fetch('/v1/orgs/' + encodeURIComponent(org.id) + '/members', { credentials: 'same-origin' })
+            .then(function (r) {
+                if (!r.ok) throw new Error('bad-status-' + r.status);
+                return r.json();
+            })
+            .then(function (jj) {
+                var rows = (jj && jj.rows) || [];
+                if (jj && jj.roles && jj.roles.length) ORG_ROLES = jj.roles;
+                card.textContent = '';
+                if (!rows.length) {
+                    card.appendChild(emptyState('Nobody here yet',
+                        'That should not happen: you are in it.'));
+                    return;
+                }
+                rows.forEach(function (m) { card.appendChild(memberRow(m)); });
+            })
+            .catch(function () {
+                card.textContent = '';
+                card.appendChild(emptyState('That did not load.', 'Reload the page to try again.'));
+            });
+        return page;
+    }
+
+    function memberRow(m) {
+        var row = document.createElement('div');
+        row.className = 'mem';
+        var av = document.createElement('span');
+        av.className = 'mem-av';
+        av.textContent = initialsOf(m.name || m.email);
+        row.appendChild(av);
+        var txt = document.createElement('span');
+        txt.className = 'mem-t';
+        var n = document.createElement('span');
+        n.className = 'mem-n';
+        n.textContent = m.name || m.email || '—';
+        if (m.you) {
+            var you = document.createElement('span');
+            you.className = 'mem-you';
+            you.textContent = t('you');
+            n.appendChild(you);
+        }
+        txt.appendChild(n);
+        // somebody who signed up without a name is shown by their address, so
+        // the line under it would otherwise repeat the line above it.
+        if (m.name && m.email) {
+            var sub = document.createElement('span');
+            sub.className = 'mem-sub';
+            sub.textContent = m.email;
+            txt.appendChild(sub);
+        }
+        row.appendChild(txt);
+        var role = document.createElement('span');
+        role.className = 'mem-role';
+        role.textContent = orghRole(m.role);
+        row.appendChild(role);
+        return row;
+    }
+
+    function initialsOf(who) {
+        var bits = String(who || '').trim().split(/[\s@._-]+/).filter(Boolean);
+        if (!bits.length) return '?';
+        var out = bits[0].charAt(0);
+        if (bits.length > 1) out += bits[1].charAt(0);
+        return out.toUpperCase();
+    }
+
+    // The rail from the overview, with room to breathe and the figures it could
+    // not fit.
+    function viewUsage(me) {
+        var page = document.createElement('div');
+        var tr = me.trial || {};
+        page.appendChild(pageHead('Usage', 'What this organisation has used in the current period.'));
+
+        var plan = orghCard('Plan', 'card');
+        plan.appendChild(orghStat('Plan', orghPlan(tr.state)));
+        if (tr.daysLeft) {
+            plan.appendChild(orghStat('Days left', String(tr.daysLeft)));
+        }
+        page.appendChild(plan);
+
+        var checks = orghCard('Screening', 'search');
+        checks.appendChild(orghMeter('Live checks', tr.liveUsed, tr.liveIncluded, tr.state === 'enterprise'));
+        if (!tr.historyOpen) {
+            checks.appendChild(orghMeter('History scans', tr.historyUsed, tr.historyIncluded, false));
+        }
+        checks.appendChild(orghStat('Screenings run', Number(me.screeningsRun || 0).toLocaleString()));
+        page.appendChild(checks);
+
+        var c = me.coverage || {};
+        var cov = orghCard('Sanctions coverage', 'shield');
+        cov.appendChild(orghStat('List', c.source || 'OFAC SDN'));
+        cov.appendChild(orghStat('Addresses', c.addresses ? Number(c.addresses).toLocaleString() : '—'));
+        cov.appendChild(orghStat('Dated', c.listDate || '—'));
+        page.appendChild(cov);
+        return page;
+    }
+
+    // What the plan is and how it changes. There is no card on file to show,
+    // because nothing here takes cards yet; saying where a change is agreed is
+    // the honest version of this screen until there is.
+    function viewBilling(me) {
+        var page = document.createElement('div');
+        var tr = me.trial || {};
+        page.appendChild(pageHead('Billing', 'The plan this organisation is on.'));
+
+        var card = orghCard('Current plan', 'card');
+        card.appendChild(orghStat('Plan', orghPlan(tr.state)));
+        if (tr.daysLeft) card.appendChild(orghStat('Days left', String(tr.daysLeft)));
+        card.appendChild(orghStat('Live checks', tr.state === 'enterprise'
+            ? t('Unmetered')
+            : (Number(tr.liveUsed || 0) + ' / ' + Number(tr.liveIncluded || 0))));
+        page.appendChild(card);
+
+        var change = orghCard('Changing plan', 'wave');
+        var body = document.createElement('div');
+        body.className = 'orgh-body';
+        var p2 = document.createElement('p');
+        p2.className = 'orgh-line';
+        p2.textContent = t('Plans are agreed with us directly, so the price matches what you screen.');
+        body.appendChild(p2);
+        var link = document.createElement('a');
+        link.className = 'btn btn-quiet orgh-act';
+        link.href = '/pricing';
+        link.textContent = t('See the plans');
+        body.appendChild(link);
+        change.appendChild(body);
+        page.appendChild(change);
+        return page;
+    }
+
+    // The organisation's own settings: what it is called, what its address is,
+    // and the way out.
+    function viewOrgSettings(me) {
+        var page = document.createElement('div');
+        var org = me.org || {};
+        page.appendChild(pageHead('Settings', 'What this organisation is called, and how to close it.'));
+
+        var may = roleAtLeastLocal(org.role, 'admin');
+
+        var nameCard = orghCard('Name', 'cog');
+        var body = document.createElement('div');
+        body.className = 'orgh-body orgh-form';
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'orgh-in';
+        input.value = org.name || '';
+        input.maxLength = 80;
+        input.disabled = !may;
+        body.appendChild(input);
+        var save = document.createElement('button');
+        save.type = 'button';
+        save.className = 'btn btn-primary';
+        save.textContent = t('Save');
+        save.disabled = true;
+        body.appendChild(save);
+        nameCard.appendChild(body);
+        if (!may) {
+            var note = document.createElement('p');
+            note.className = 'orgh-line is-quiet';
+            note.textContent = t('Only an admin or the owner can change this.');
+            nameCard.appendChild(note);
+        }
+        page.appendChild(nameCard);
+
+        input.addEventListener('input', function () {
+            var v = input.value.trim();
+            save.disabled = !v || v === (org.name || '');
+        });
+        save.addEventListener('click', function () {
+            save.disabled = true;
+            fetch('/v1/orgs/' + encodeURIComponent(org.id) + '/rename', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ name: input.value })
+            }).then(function (r) {
+                return r.json().catch(function () { return {}; }).then(function (b) {
+                    return { ok: r.ok, body: b };
+                });
+            }).then(function (r) {
+                if (!r.ok) {
+                    toast((r.body && r.body.error) || t('That did not work.'), 'bad');
+                    save.disabled = false;
+                    return;
+                }
+                // the name is on the overview heading and in the picker, so the
+                // saved one is put back where the page reads it from and the
+                // screen is drawn again rather than left showing the old one.
+                org.name = r.body.org.name;
+                if (lastMe && lastMe.org) lastMe.org.name = r.body.org.name;
+                forgetOrgCache();
+                toast(t('Name saved'), 'good');
+                render();
+            }).catch(function () {
+                toast(t('That did not work.'), 'bad');
+                save.disabled = false;
+            });
+        });
+
+        var idCard = orghCard('Address', 'key');
+        idCard.appendChild(orghStat('In the url', org.slug || '—'));
+        page.appendChild(idCard);
+
+        if (org.role === 'owner') {
+            var dangerCard = orghCard('Close this organisation', 'warn');
+            var db2 = document.createElement('div');
+            db2.className = 'orgh-body';
+            var warn = document.createElement('p');
+            warn.className = 'orgh-line';
+            warn.textContent = t('Everything in it goes with it, and none of it comes back.');
+            db2.appendChild(warn);
+            var kill = document.createElement('button');
+            kill.type = 'button';
+            kill.className = 'btn btn-danger orgh-act';
+            kill.textContent = t('Close this organisation');
+            kill.addEventListener('click', function () {
+                askCloseOrg(org, function () { location.assign(ORGS_PATH); });
+            });
+            db2.appendChild(kill);
+            dangerCard.appendChild(db2);
+            page.appendChild(dangerCard);
+        }
+        return page;
+    }
+
+    // the server decides this for real; here it only shapes the screen.
+    function roleAtLeastLocal(role, needed) {
+        var rank = { viewer: 1, analyst: 2, admin: 3, owner: 4 };
+        return (rank[role] || 0) >= (rank[needed] || 0);
+    }
+
     function viewTokens(me) {
         var page = document.createElement('div');
         page.className = 'pg';
@@ -3862,6 +4156,10 @@
         if (slug) {
             var tail = location.pathname.slice(orgHome(slug).length).replace(/^\//, '');
             if (tail === 'tokens') canvas.appendChild(viewTokens(lastMe));
+            else if (tail === 'team') canvas.appendChild(viewTeam(lastMe));
+            else if (tail === 'usage') canvas.appendChild(viewUsage(lastMe));
+            else if (tail === 'billing') canvas.appendChild(viewBilling(lastMe));
+            else if (tail === 'settings') canvas.appendChild(viewOrgSettings(lastMe));
             else if (!tail) canvas.appendChild(viewOrgHome(lastMe));
         }
     }
