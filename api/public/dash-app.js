@@ -925,6 +925,7 @@
         try { localStorage.removeItem(ME_KEY); } catch (err) {  }
         forgetTokenCache();
         forgetOrgCache();
+        forgetPrjCache();
         forgetPicked();
     }
 
@@ -2341,6 +2342,31 @@
 
     function forgetOrgCache() { orgCache.forget(); }
 
+    // The projects of one organisation. Keyed by the organisation as well as by
+    // the account, because two of them have different lists and a head start
+    // showing the wrong one is worse than showing none: the key is checked on
+    // the way out, not only on the way in.
+    var prjCache = makeCache('sp-projects', function () { return localStorage; },
+        7 * 24 * 60 * 60 * 1000);
+
+    function readPrjCache(who, orgId) {
+        var box = prjCache.read(who);
+        if (!box || !box.rows || box.rows.length === undefined) return null;
+        return String(box.orgId || '') === String(orgId || '') ? box : null;
+    }
+
+    function writePrjCache(who, orgId, rows) {
+        prjCache.write(who, {
+            orgId: String(orgId || ''),
+            rows: rows.map(function (r) {
+                return { id: r.id, name: r.name, slug: r.slug,
+                         createdAt: r.createdAt, status: r.status };
+            })
+        });
+    }
+
+    function forgetPrjCache() { prjCache.forget(); }
+
     function whenText(iso, withTime) {
         if (!iso) return '';
         var d = new Date(iso);
@@ -2633,7 +2659,9 @@
         list.className = 'prjs';
         page.appendChild(list);
 
-        var rows = [];
+        var who = (me && me.email) || '';
+        var warm = readPrjCache(who, org.id);
+        var rows = warm ? warm.rows : [];
         var may = roleAtLeastLocal(org.role, 'admin');
         make.disabled = !may;
 
@@ -2687,9 +2715,14 @@
                 })
                 .then(function (j) {
                     rows = (j && j.rows) || [];
+                    writePrjCache(who, org.id, rows);
                     draw();
                 })
                 .catch(function () {
+                    // a list already on screen beats replacing it with an error,
+                    // so only an empty page says the fetch failed
+                    forgetPrjCache();
+                    if (rows.length) return;
                     list.textContent = '';
                     list.appendChild(emptyState('That did not load.', 'Reload the page to try again.'));
                 });
@@ -2698,7 +2731,11 @@
         findIn.addEventListener('input', draw);
         make.addEventListener('click', function () { askProject(org, load); });
 
-        list.appendChild(waiting());
+        // what was here last time, straight away. an organisation whose list was
+        // empty draws its empty state rather than a skeleton, because that is
+        // what it will almost certainly say again.
+        if (warm) draw();
+        else list.appendChild(waiting());
         load();
         return page;
     }
@@ -4989,6 +5026,7 @@
                 m.shut();
                 forgetTokenCache();
                 forgetOrgCache();
+                forgetPrjCache();
                 forgetPicked();
                 toast(t('Organisation closed'), 'good');
                 done();
