@@ -2728,3 +2728,66 @@ html.is-theming .btn {
 @media (max-width: 560px) {
     .prj { gap: 0.7rem; padding: 0.85rem 0.8rem; }
 }
+
+/* the projects toolbar carries more than the picker's: a filter, an order and
+   a choice of shape. the search gives up its fixed width so they fit. */
+.orgs-pg.is-wide { max-width: 52rem; }
+.prj-bar { flex-wrap: wrap; }
+.prj-bar .bar-find { max-width: 15rem; }
+.prj-pick { flex: none; }
+.prj-pick .pick-btn { padding: 0.42rem 0.5rem 0.42rem 0.65rem; font-size: 0.82rem; }
+
+.vseg {
+    flex: none;
+    display: flex;
+    gap: 0.15rem;
+    padding: 0.15rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--canvas);
+}
+.vseg-b {
+    display: grid;
+    place-items: center;
+    width: 1.85rem;
+    height: 1.7rem;
+    border: 0;
+    border-radius: 7px;
+    background: none;
+    color: var(--ink-4);
+    cursor: pointer;
+    transition: background 0.16s ease, color 0.16s ease;
+}
+.vseg-b svg { width: 15px; height: 15px; }
+.vseg-b:hover { color: var(--ink-2); }
+.vseg-b[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(14, 35, 88, 0.12); }
+
+.prj-acts { flex: none; display: flex; align-items: center; gap: 0.1rem; }
+.prj-pill {
+    flex: none;
+    padding: 0.16rem 0.5rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--canvas);
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--ink-4);
+}
+/* an archived project is still readable, just clearly set back */
+.prj.is-off { background: var(--canvas); }
+.prj.is-off .prj-n { color: var(--ink-3); }
+.prj.is-off .prj-mark { opacity: 0.6; }
+
+/* as cards: the same row, laid out in a grid and allowed to grow taller. */
+.prjs.is-grid { grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); }
+.prjs.is-grid .prj { flex-direction: column; align-items: flex-start; gap: 0.7rem; padding: 1rem; }
+.prjs.is-grid .prj-t { width: 100%; }
+.prjs.is-grid .prj-acts { margin-top: auto; }
+.prjs.is-grid .prj-pill { position: absolute; top: 1rem; right: 1rem; }
+.prjs.is-grid .prj { position: relative; }
+
+@media (max-width: 560px) {
+    .prj-bar .bar-find { flex: 1 1 100%; max-width: none; }
+    .prj-bar .prj-pick { flex: 1 1 8rem; }
+    .prjs.is-grid { grid-template-columns: minmax(0, 1fr); }
+}

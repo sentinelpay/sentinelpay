@@ -2001,6 +2001,28 @@ app.post('/v1/orgs/:id/projects/:pid/rename', requireCloudflareOrigin, accountLi
     res.json({ ok: true, project: out.project });
 });
 
+app.post('/v1/orgs/:id/projects/:pid/archive', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const mine = await orgs.membership(me.userId, req.params.id);
+    if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
+    if (!orgs.roleAtLeast(mine.role, 'admin')) {
+        return res.status(403).json({ error: 'Only an admin or the owner can archive a project.' });
+    }
+    const on = Boolean((req.body || {}).archived);
+    const out = await projects.archive(mine.id, req.params.pid, on);
+    if (!out.ok) {
+        return res.status(out.reason === 'missing' ? 404 : 503).json({
+            error: out.reason === 'missing' ? 'No such project.'
+                : 'Accounts are not available right now. Please try again shortly.',
+        });
+    }
+    await accounts.audit(on ? 'project-archived' : 'project-restored', {
+        actor: String(me.userId), subject: out.project.id, ip: req.realIp, detail: out.project.name,
+    });
+    res.json({ ok: true, project: out.project });
+});
+
 app.post('/v1/orgs/:id/projects/:pid/delete', requireCloudflareOrigin, accountLimiter, async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;

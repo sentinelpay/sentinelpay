@@ -2473,16 +2473,30 @@
     // boundary inside the company, so a firm running an exchange and a card
     // product can keep their rules, keys and trail apart while sharing one
     // team and one bill.
+    // How the list is shown is a per-viewer preference, not data: it belongs in
+    // this browser and nowhere else, and a page that cannot read it still has
+    // to draw. Hence the try and the fallback on both sides.
+    var PRJ_VIEW_KEY = 'sp-prj-view';
+    function prjView() {
+        try {
+            var v = localStorage.getItem(PRJ_VIEW_KEY);
+            return v === 'grid' ? 'grid' : 'list';
+        } catch (err) { return 'list'; }
+    }
+    function keepPrjView(v) {
+        try { localStorage.setItem(PRJ_VIEW_KEY, v); } catch (err) {  }
+    }
+
     function viewProjects(me) {
         var page = document.createElement('div');
         // the same column the organisation picker uses. both are a list of
         // things you pick one of, so they read at the same width.
-        page.className = 'pg orgs-pg';
+        page.className = 'pg orgs-pg is-wide';
         var org = me.org || {};
         page.appendChild(pageHead('Projects'));
 
         var bar = document.createElement('div');
-        bar.className = 'bar';
+        bar.className = 'bar prj-bar';
         var find = document.createElement('div');
         find.className = 'bar-find';
         find.innerHTML = '<svg class="bar-find-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
@@ -2494,6 +2508,61 @@
         findIn.autocomplete = 'off';
         find.appendChild(findIn);
         bar.appendChild(find);
+
+        var status = 'active';
+        var order = 'name';
+
+        var statusBox = selectBox('prj-status', [{ options: [
+            { value: 'active', label: t('Status') + '  ·  ' + t('Active') },
+            { value: 'archived', label: t('Status') + '  ·  ' + t('Archived') },
+            { value: 'all', label: t('Status') + '  ·  ' + t('All') }
+        ] }], status, function (v) { status = v; draw(); });
+        statusBox.classList.add('prj-pick');
+        bar.appendChild(statusBox);
+
+        var sortBox = selectBox('prj-sort', [{ options: [
+            { value: 'name', label: t('Sorted by name') },
+            { value: 'newest', label: t('Newest first') },
+            { value: 'oldest', label: t('Oldest first') }
+        ] }], order, function (v) { order = v; draw(); });
+        sortBox.classList.add('prj-pick');
+        bar.appendChild(sortBox);
+
+        // two buttons rather than one that toggles, so the shape you are in is
+        // readable without pressing anything to find out.
+        var seg = document.createElement('div');
+        seg.className = 'vseg';
+        seg.setAttribute('role', 'group');
+        seg.setAttribute('aria-label', t('How to show the list'));
+        var asGrid = prjView() === 'grid';
+        function segBtn(kind, label, svg) {
+            var b2 = document.createElement('button');
+            b2.type = 'button';
+            b2.className = 'vseg-b';
+            b2.setAttribute('aria-label', t(label));
+            b2.setAttribute('aria-pressed', String(kind === 'grid' ? asGrid : !asGrid));
+            b2.innerHTML = svg;
+            b2.addEventListener('click', function () {
+                asGrid = kind === 'grid';
+                keepPrjView(asGrid ? 'grid' : 'list');
+                seg.querySelectorAll('.vseg-b').forEach(function (x) {
+                    x.setAttribute('aria-pressed', String(x === b2));
+                });
+                draw();
+            });
+            return b2;
+        }
+        seg.appendChild(segBtn('grid', 'Show as cards',
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" ' +
+            'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<rect x="4" y="4" width="7" height="7" rx="1.4"/><rect x="13" y="4" width="7" height="7" rx="1.4"/>' +
+            '<rect x="4" y="13" width="7" height="7" rx="1.4"/><rect x="13" y="13" width="7" height="7" rx="1.4"/></svg>'));
+        seg.appendChild(segBtn('list', 'Show as rows',
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" ' +
+            'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M4.6 7h14.8M4.6 12h14.8M4.6 17h14.8"/></svg>'));
+        bar.appendChild(seg);
+
         var make = document.createElement('button');
         make.type = 'button';
         make.className = 'btn btn-primary';
@@ -2509,16 +2578,40 @@
         var may = roleAtLeastLocal(org.role, 'admin');
         make.disabled = !may;
 
+        function sorted(a) {
+            var out = a.slice();
+            if (order === 'name') {
+                out.sort(function (x, y) { return x.name.localeCompare(y.name); });
+            } else {
+                out.sort(function (x, y) {
+                    var dx = new Date(x.createdAt).getTime() || 0;
+                    var dy = new Date(y.createdAt).getTime() || 0;
+                    return order === 'newest' ? dy - dx : dx - dy;
+                });
+            }
+            return out;
+        }
+
         function draw() {
             list.textContent = '';
+            list.classList.toggle('is-grid', asGrid);
             var q = findIn.value.trim().toLowerCase();
-            var shown = rows.filter(function (r) {
+            var shown = sorted(rows.filter(function (r) {
+                if (status !== 'all' && r.status !== status) return false;
                 return !q || r.name.toLowerCase().indexOf(q) !== -1;
-            });
+            }));
             if (!shown.length) {
-                list.appendChild(rows.length
-                    ? emptyState('Nothing matches that', 'Try a different name.')
-                    : emptyState('No projects yet', 'Make one for the first thing you screen for.'));
+                if (!rows.length) {
+                    list.appendChild(emptyState('No projects yet',
+                        'Make one for the first thing you screen for.'));
+                } else if (q) {
+                    list.appendChild(emptyState('Nothing matches that', 'Try a different name.'));
+                } else if (status === 'archived') {
+                    list.appendChild(emptyState('Nothing archived', 'Archived projects will show up here.'));
+                } else {
+                    list.appendChild(emptyState('Nothing active',
+                        'Every project here is archived. Change the status filter to see them.'));
+                }
                 return;
             }
             shown.forEach(function (r) { list.appendChild(projectCard(r, org, may, load)); });
@@ -2550,7 +2643,7 @@
 
     function projectCard(r, org, may, done) {
         var card = document.createElement('div');
-        card.className = 'prj';
+        card.className = 'prj' + (r.status === 'archived' ? ' is-off' : '');
 
         var mark = document.createElement('span');
         mark.className = 'prj-mark';
@@ -2571,28 +2664,66 @@
         txt.appendChild(sub);
         card.appendChild(txt);
 
-        if (may) {
-            var edit = document.createElement('button');
-            edit.type = 'button';
-            edit.className = 'prj-act';
-            edit.setAttribute('aria-label', t('Rename'));
-            edit.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
-                'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-                '<path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17Z"/></svg>';
-            edit.addEventListener('click', function () { askRenameProject(org, r, done); });
-            card.appendChild(edit);
+        // only the archived say so. a pill on every row reading "Active" is a
+        // word repeated until it stops being read.
+        if (r.status === 'archived') {
+            var pill = document.createElement('span');
+            pill.className = 'prj-pill';
+            pill.textContent = t('Archived');
+            card.appendChild(pill);
+        }
 
-            var kill = document.createElement('button');
-            kill.type = 'button';
-            kill.className = 'prj-act is-bad';
-            kill.setAttribute('aria-label', t('Remove'));
-            kill.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
-                'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-                '<path d="M5 7h14M9 7V5.5h6V7M7 7l1 12.5h8L17 7"/></svg>';
-            kill.addEventListener('click', function () { askRemoveProject(org, r, done); });
-            card.appendChild(kill);
+        if (may) {
+            var acts = document.createElement('span');
+            acts.className = 'prj-acts';
+
+            acts.appendChild(prjAct('Rename',
+                '<path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17Z"/>',
+                function () { askRenameProject(org, r, done); }));
+
+            var off = r.status === 'archived';
+            acts.appendChild(prjAct(off ? 'Restore' : 'Archive',
+                off ? '<path d="M12 20V9"/><path d="m8 12.6 4-4 4 4"/><path d="M4.6 5h14.8"/>'
+                    : '<path d="M3.6 5.2h16.8v3.4H3.6Z"/><path d="M5.4 8.6v10.2h13.2V8.6"/><path d="M9.8 12.4h4.4"/>',
+                function () { flipArchive(org, r, done); }));
+
+            acts.appendChild(prjAct('Remove',
+                '<path d="M5 7h14M9 7V5.5h6V7M7 7l1 12.5h8L17 7"/>',
+                function () { askRemoveProject(org, r, done); }, true));
+
+            card.appendChild(acts);
         }
         return card;
+    }
+
+    function prjAct(label, path, onClick, bad) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'prj-act' + (bad ? ' is-bad' : '');
+        b.setAttribute('aria-label', t(label));
+        b.title = t(label);
+        b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+            'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + path + '</svg>';
+        b.addEventListener('click', onClick);
+        return b;
+    }
+
+    // archiving is reversible, so it asks nothing and says what it did.
+    function flipArchive(org, project, done) {
+        var on = project.status !== 'archived';
+        fetch('/v1/orgs/' + encodeURIComponent(org.id) + '/projects/' +
+            encodeURIComponent(project.id) + '/archive', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ archived: on })
+        }).then(function (r) {
+            if (!r.ok) throw new Error('bad');
+            toast(t(on ? 'Project archived' : 'Project restored'), 'good');
+            done();
+        }).catch(function () {
+            toast(t('That did not work.'), 'bad');
+        });
     }
 
     function askProject(org, done) {
