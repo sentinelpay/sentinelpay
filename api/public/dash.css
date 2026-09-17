@@ -1690,12 +1690,14 @@ html[data-bare] .top,
     border-radius: var(--r-lg);
     background: var(--surface);
     overflow: hidden;
-    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.22s var(--ease);
+    transition: border-color 0.18s ease, background 0.18s ease;
 }
+/* a row is a row, not a card that jumps. the border coming up is enough to say
+   it can be clicked; the lift and the glow on top of it were three things
+   happening for one pointer moving across a list. */
 .org:hover {
-    border-color: var(--pill-line-hover);
-    box-shadow: var(--pill-glow);
-    transform: translateY(-1px);
+    border-color: var(--panel-line);
+    background: var(--hover);
 }
 .org-go {
     flex: 1 1 auto;
@@ -1738,7 +1740,7 @@ html[data-bare] .top,
     transition: border-color 0.18s ease, color 0.18s ease;
 }
 .org-mark svg { width: 18px; height: 18px; display: block; }
-.org:hover .org-mark { border-color: var(--pill-line-hover); color: var(--ink-2); }
+.org:hover .org-mark { color: var(--ink-2); }
 .org-t { flex: 1 1 auto; min-width: 0; }
 .org-n {
     display: block;
