@@ -1765,10 +1765,6 @@ html[data-bare] .top,
 
     .org-go { gap: 0.7rem; padding: 0.85rem 0.8rem; }
     .org-del { width: 3rem; }
-    /* the line under the name is three facts joined by dots. at this width it
-       gets a second line rather than an ellipsis, because the last of them is
-       the domain, which is how you tell two similarly named companies apart. */
-    .org-sub { white-space: normal; line-height: 1.5; }
     /* the arrow is a hint that the row opens something. on a phone the whole
        row is the tap target anyway, and the width it takes is worth more to
        the name than the hint is. */

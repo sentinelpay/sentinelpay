@@ -3361,11 +3361,13 @@
             txt.appendChild(n);
             var sub = document.createElement('span');
             sub.className = 'org-sub';
+            // your part in it and how many of you there are. the host used to be
+            // here too, but nothing ever set it: it was the domain of whoever
+            // signed up, so every row read back the same personal address.
             var bits = [roleLabel(r.role)];
             if (r.members) {
                 bits.push(r.members + ' ' + t(r.members === 1 ? 'member' : 'members'));
             }
-            if (r.host) bits.push(r.host);
             sub.textContent = bits.join('  \u00b7  ');
             txt.appendChild(sub);
             b.appendChild(txt);
