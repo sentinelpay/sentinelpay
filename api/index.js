@@ -1900,7 +1900,10 @@ app.post('/v1/orgs', requireCloudflareOrigin, accountLimiter, async (req, res) =
     const me = await requireSession(req, res);
     if (!me) return;
     const b = req.body || {};
-    const out = await orgs.create(me.userId, b.name, b.host || me.email, 'owner');
+    // only a host the caller actually gave. falling back to the signup address
+    // wrote a personal email domain into a column that means the company's own,
+    // which is where the organisation called "Aol" came from.
+    const out = await orgs.create(me.userId, b.name, b.host, 'owner');
     if (!out.ok) {
         const said = {
             'no-name': 'Give the organisation a name.',
