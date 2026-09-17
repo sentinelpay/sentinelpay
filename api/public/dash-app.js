@@ -2475,6 +2475,9 @@
     // team and one bill.
     function viewProjects(me) {
         var page = document.createElement('div');
+        // the same column the organisation picker uses. both are a list of
+        // things you pick one of, so they read at the same width.
+        page.className = 'pg orgs-pg';
         var org = me.org || {};
         page.appendChild(pageHead('Projects'));
 

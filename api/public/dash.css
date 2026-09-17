@@ -2675,12 +2675,14 @@ html.is-theming .btn {
 
 /* projects. a row rather than a tile: the list is read top to bottom and a
    name is the thing you are looking for, not a square. */
+/* the same measurements as .org in the picker: one gap, one padding, one mark
+   size, so a row of either kind is the same row. */
 .prjs { display: grid; gap: 0.5rem; }
 .prj {
     display: flex;
     align-items: center;
     gap: 0.85rem;
-    padding: 0.85rem 0.9rem;
+    padding: 0.9rem 1rem;
     border: 1px solid var(--line);
     border-radius: var(--r-lg);
     background: var(--surface);
@@ -2718,3 +2720,11 @@ html.is-theming .btn {
 .prj-act svg { width: 16px; height: 16px; }
 .prj-act:hover { border-color: var(--line); background: var(--canvas); color: var(--ink-2); }
 .prj-act.is-bad:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-bg); }
+
+/* The project row tightens on a phone by exactly what the picker's row does.
+   This block sits after .prj rather than beside the picker's own, because the
+   two selectors weigh the same and a media query adds no specificity: declared
+   earlier it simply lost to the plain rule below it. */
+@media (max-width: 560px) {
+    .prj { gap: 0.7rem; padding: 0.85rem 0.8rem; }
+}
