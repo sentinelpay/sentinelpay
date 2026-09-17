@@ -18,6 +18,7 @@ const trial = require('./trial');
 const screening = require('./screening');
 const tokens = require('./tokens');
 const orgs = require('./orgs');
+const projects = require('./projects');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -1943,6 +1944,82 @@ app.get('/v1/orgs/:id/weight', async (req, res) => {
     res.json({ ok: true, org: mine, weight: await orgs.weightOf(mine.id) });
 });
 
+// Projects, inside an organisation. Every one of these resolves the membership
+// first and passes the organisation's id into the lookup, so a project id from
+// another company does not answer here however it was come by.
+app.get('/v1/orgs/:id/projects', async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const mine = await orgs.membership(me.userId, req.params.id);
+    if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
+    res.set('Cache-Control', 'no-store, private');
+    res.json({ ok: true, rows: await projects.listFor(mine.id), role: mine.role });
+});
+
+app.post('/v1/orgs/:id/projects', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const mine = await orgs.membership(me.userId, req.params.id);
+    if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
+    if (!orgs.roleAtLeast(mine.role, 'admin')) {
+        return res.status(403).json({ error: 'Only an admin or the owner can add a project.' });
+    }
+    const out = await projects.create(mine.id, (req.body || {}).name);
+    if (!out.ok) {
+        const said = {
+            'no-name': 'Give the project a name.',
+            'too-many': 'That is as many projects as one organisation may have.',
+        };
+        return res.status(out.reason === 'unavailable' ? 503 : 400).json({
+            error: said[out.reason] || 'Accounts are not available right now. Please try again shortly.',
+        });
+    }
+    await accounts.audit('project-created', {
+        actor: String(me.userId), subject: out.project.id, ip: req.realIp, detail: out.project.name,
+    });
+    res.set('Cache-Control', 'no-store, private');
+    res.json({ ok: true, project: out.project });
+});
+
+app.post('/v1/orgs/:id/projects/:pid/rename', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const mine = await orgs.membership(me.userId, req.params.id);
+    if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
+    if (!orgs.roleAtLeast(mine.role, 'admin')) {
+        return res.status(403).json({ error: 'Only an admin or the owner can rename a project.' });
+    }
+    const out = await projects.rename(mine.id, req.params.pid, (req.body || {}).name);
+    if (!out.ok) {
+        const said = { 'no-name': 'Give the project a name.', missing: 'No such project.' };
+        return res.status(out.reason === 'unavailable' ? 503 : (out.reason === 'missing' ? 404 : 400))
+            .json({ error: said[out.reason] || 'Accounts are not available right now. Please try again shortly.' });
+    }
+    await accounts.audit('project-renamed', {
+        actor: String(me.userId), subject: out.project.id, ip: req.realIp, detail: out.project.name,
+    });
+    res.json({ ok: true, project: out.project });
+});
+
+app.post('/v1/orgs/:id/projects/:pid/delete', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const mine = await orgs.membership(me.userId, req.params.id);
+    if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
+    if (!orgs.roleAtLeast(mine.role, 'admin')) {
+        return res.status(403).json({ error: 'Only an admin or the owner can remove a project.' });
+    }
+    const out = await projects.remove(mine.id, req.params.pid);
+    if (!out.ok) {
+        return res.status(out.reason === 'missing' ? 404 : 503)
+            .json({ error: out.reason === 'missing' ? 'No such project.' : 'Accounts are not available right now. Please try again shortly.' });
+    }
+    await accounts.audit('project-removed', {
+        actor: String(me.userId), subject: out.project.id, ip: req.realIp, detail: out.project.name,
+    });
+    res.json({ ok: true });
+});
+
 app.get('/v1/orgs/:id/members', async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
@@ -2661,7 +2738,7 @@ app.listen(PORT, () => {
     // once they have made it. Nothing here invents an organisation: an account
     // with none stays with none, and is asked to make one.
     orgs.reslug()
-        .then(() => Promise.all([tokens.adopt(), screening.adopt()]))
+        .then(() => Promise.all([projects.init(), tokens.adopt(), screening.adopt()]))
         .catch((err) => console.error('[orgs] migration at boot failed: ' + err.message));
 
     const dbState = db.status();

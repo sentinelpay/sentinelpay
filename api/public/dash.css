@@ -2672,3 +2672,49 @@ html.is-theming .btn {
 }
 .orgh-in:focus { border-color: var(--sel); box-shadow: 0 0 0 3px var(--sel-bg); }
 .orgh-in[disabled] { opacity: 0.6; }
+
+/* projects. a row rather than a tile: the list is read top to bottom and a
+   name is the thing you are looking for, not a square. */
+.prjs { display: grid; gap: 0.5rem; }
+.prj {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.85rem 0.9rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    transition: border-color 0.18s ease, background 0.18s ease;
+}
+.prj:hover { border-color: var(--panel-line); background: var(--hover); }
+.prj-mark {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 2.2rem;
+    height: 2.2rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--canvas);
+    color: var(--ink-3);
+}
+.prj-mark .nav-i { width: 17px; height: 17px; }
+.prj-t { flex: 1 1 auto; min-width: 0; }
+.prj-n { display: block; font-size: 0.9rem; font-weight: 650; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prj-sub { display: block; margin-top: 0.1rem; font-size: 0.78rem; color: var(--ink-4); }
+.prj-act {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 2.1rem;
+    height: 2.1rem;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    background: none;
+    color: var(--ink-4);
+    cursor: pointer;
+    transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+.prj-act svg { width: 16px; height: 16px; }
+.prj-act:hover { border-color: var(--line); background: var(--canvas); color: var(--ink-2); }
+.prj-act.is-bad:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-bg); }
