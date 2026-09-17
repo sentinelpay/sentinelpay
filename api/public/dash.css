@@ -2848,16 +2848,27 @@ html.is-theming .btn {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.9rem 0;
+    /* the same inset every section in the panel has. it had none, so the one
+       heading that is a button started twenty pixels left of all the others. */
+    padding: 1.15rem 1.3rem;
     border: 0;
     background: none;
     font-family: var(--sp-text);
-    font-size: 0.84rem;
-    font-weight: 650;
-    color: var(--ink-2);
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--ink);
     cursor: pointer;
+    text-align: left;
 }
-.drw-adv-c { display: flex; width: 15px; height: 15px; color: var(--ink-4); transition: transform 0.24s var(--ease); }
+.drw-adv-b:hover { background: var(--hover); }
+.drw-adv-c {
+    margin-left: auto;
+    display: flex;
+    width: 15px;
+    height: 15px;
+    color: var(--ink-4);
+    transition: transform 0.24s var(--ease);
+}
 .drw-adv-c svg { display: block; width: 100%; height: 100%; }
 .drw-adv.is-open .drw-adv-c { transform: rotate(180deg); }
 .drw-adv-body {
@@ -2868,7 +2879,14 @@ html.is-theming .btn {
 }
 .drw-adv.is-open .drw-adv-body { grid-template-rows: 1fr; }
 .drw-adv-body > div { min-height: 0; overflow: hidden; }
-.drw-adv-note { margin: 0 0 0.3rem; font-size: 0.79rem; line-height: 1.55; color: var(--ink-4); }
+/* the note sits outside a section, so it is inset by hand to the same line */
+.drw-adv-note {
+    margin: 0;
+    padding: 0 1.3rem 1.05rem;
+    font-size: 0.79rem;
+    line-height: 1.55;
+    color: var(--ink-4);
+}
 .drw-adv-body .drw-sec:last-child { border-bottom: 0; }
 @media (prefers-reduced-motion: reduce) {
     .drw-adv-body, .drw-adv-c { transition-duration: 0.01ms; }
