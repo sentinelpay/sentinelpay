@@ -55,6 +55,32 @@
 
     var ACCOUNT_PATH = '/dashboard/account/preferences';
     var ORGS_PATH = '/dashboard/organisations';
+    // the american spelling reaches the same screen, and the address bar is
+    // rewritten to the one we use everywhere else rather than leaving two urls
+    // for one page.
+    var ORGS_PATH_ALT = '/dashboard/organizations';
+
+    function onOrgs() {
+        return location.pathname === ORGS_PATH || location.pathname === ORGS_PATH_ALT;
+    }
+
+    // Arriving at the dashboard means choosing which company you are working in.
+    // Having chosen, you stay chosen: the marker lives in sessionStorage, so it
+    // survives a refresh in this tab and is gone from a fresh one, which is the
+    // difference between coming back to your work and arriving at the door.
+    var PICKED_KEY = 'sp-org-picked';
+
+    function markPicked() {
+        try { sessionStorage.setItem(PICKED_KEY, '1'); } catch (err) {  }
+    }
+
+    function hasPicked() {
+        try { return sessionStorage.getItem(PICKED_KEY) === '1'; } catch (err) { return false; }
+    }
+
+    function forgetPicked() {
+        try { sessionStorage.removeItem(PICKED_KEY); } catch (err) {  }
+    }
 
     var ACCOUNT_NAV = [
         { group: 'Account settings', items: [
@@ -798,6 +824,7 @@
     function forgetMe() {
         try { localStorage.removeItem(ME_KEY); } catch (err) {  }
         forgetTokenCache();
+        forgetPicked();
     }
 
     function sameMe(a, b) {
@@ -3241,6 +3268,7 @@
                 }).then(function (res) {
                     if (!res.ok) throw new Error('bad-status-' + res.status);
                     forgetTokenCache();
+                    markPicked();
                     location.assign('/dashboard');
                 }).catch(function () {
                     b.disabled = false;
@@ -3348,6 +3376,7 @@
                 }
                 m.shut();
                 forgetTokenCache();
+                markPicked();
                 location.assign('/dashboard');
             }).catch(function () {
                 err.textContent = t('That did not work.');
@@ -3473,7 +3502,7 @@
         if (!canvas) return;
         canvas.textContent = '';
         if (!lastMe) return;
-        if (location.pathname === ORGS_PATH) {
+        if (onOrgs()) {
             canvas.appendChild(viewOrgs(lastMe));
             return;
         }
@@ -3487,7 +3516,7 @@
     function render() {
         // on the picker there is nothing to navigate to yet, so the shell drops
         // to the top bar alone
-        if (app) app.classList.toggle('is-bare', location.pathname === ORGS_PATH);
+        if (app) app.classList.toggle('is-bare', onOrgs());
         var rebuilt = paintNav(currentNav());
         applySideMode(sideMode());
         setMenu(false);
@@ -3510,7 +3539,10 @@
     window.addEventListener('popstate', render);
 
     function paintShell() {
-        if (app) app.classList.toggle('is-bare', location.pathname === ORGS_PATH);
+        if (location.pathname === ORGS_PATH_ALT && canRoute) {
+            history.replaceState({}, '', ORGS_PATH);
+        }
+        if (app) app.classList.toggle('is-bare', onOrgs());
         paintNav(currentNav());
         paintFoot();
         applySideMode(sideMode());
@@ -3533,11 +3565,17 @@
         .then(function (me) {
             if (!me) return;
             // nothing in here belongs to a person on their own, so without an
-            // organisation there is nothing to show but the choice of one.
-            if (!me.org && location.pathname !== ORGS_PATH) {
+            // organisation there is nothing to show but the choice of one. and
+            // walking in through the front door asks which company you are here
+            // for, however many you belong to.
+            if (!onOrgs() && (!me.org || !hasPicked())) {
                 location.replace(ORGS_PATH);
                 return;
             }
+            // only being inside counts as having chosen. standing on the picker
+            // does not, or walking straight to /dashboard afterwards would let
+            // you past the door you were just sent to.
+            if (me.org && !onOrgs()) markPicked();
             if (!sameMe(cached, me)) paintMe(me);
             writeMe(me);
         })
