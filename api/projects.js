@@ -30,9 +30,11 @@ CREATE TABLE IF NOT EXISTS projects (
     org_id      bigint      NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
     created_at  timestamptz NOT NULL DEFAULT now(),
     name        text        NOT NULL DEFAULT '',
-    slug        text        NOT NULL UNIQUE
+    slug        text        NOT NULL UNIQUE,
+    archived_at timestamptz
 );
 CREATE INDEX IF NOT EXISTS projects_org_idx ON projects (org_id);
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS archived_at timestamptz;
 `;
 
 let ready = null;
@@ -75,6 +77,8 @@ function shape(row) {
         name: row.name || '',
         slug: row.slug,
         createdAt: row.created_at,
+        archivedAt: row.archived_at || null,
+        status: row.archived_at ? 'archived' : 'active',
     };
 }
 
@@ -153,6 +157,29 @@ async function rename(orgId, projectId, name) {
     }
 }
 
+// Archiving is the reversible version of removing. Most of the time what
+// somebody wants is for a project to stop being in the way, not for it to stop
+// existing, and those are different wishes that deserve different buttons.
+async function archive(orgId, projectId, on) {
+    if (!(await init())) return { ok: false, reason: 'unavailable' };
+    const found = await one(orgId, projectId);
+    if (!found) return { ok: false, reason: 'missing' };
+    try {
+        await db.query(
+            'UPDATE projects SET archived_at = ' + (on ? 'now()' : 'NULL') + ' WHERE id = $1',
+            [Number(projectId)]
+        );
+        return {
+            ok: true,
+            project: { ...found, archivedAt: on ? new Date().toISOString() : null,
+                status: on ? 'archived' : 'active' },
+        };
+    } catch (err) {
+        console.error('[projects] could not archive: ' + err.message);
+        return { ok: false, reason: 'unavailable' };
+    }
+}
+
 async function remove(orgId, projectId) {
     if (!(await init())) return { ok: false, reason: 'unavailable' };
     const found = await one(orgId, projectId);
@@ -168,5 +195,5 @@ async function remove(orgId, projectId) {
 
 module.exports = {
     NAME_MAX, PER_ORG, SLUG_LENGTH, SLUG_SHAPE,
-    init, listFor, create, one, rename, remove, cleanName,
+    init, listFor, create, one, rename, archive, remove, cleanName,
 };

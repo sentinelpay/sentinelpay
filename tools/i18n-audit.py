@@ -24,6 +24,9 @@ SKIP_EXACT = {
     'sp_live_',
     # preset and scope state keys. compared in code, never shown as prose.
     'none', 'all', 'read', 'custom',
+    # how a list is shown and what a project's state is. both are compared in
+    # code and written to storage; the words a reader sees are capitalised.
+    'grid', 'list', 'active', 'archived',
     'Ceem', 'Mind', 'Chibby', 'Mind, chibby', 'Ceem, mind, chibby',
     'elektromaterijal', 'Elektromaterijal', 'racunala', 'Racunala',
     'traveler', 'Traveler', 'futura', 'Futura', 'majice', 'Majice',
