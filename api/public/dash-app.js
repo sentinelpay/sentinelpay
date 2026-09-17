@@ -3316,9 +3316,16 @@
             var b = document.createElement('button');
             b.type = 'button';
             b.className = 'org-go';
+            // an organisation is a group of people, not an initial. the letter
+            // said nothing the name beside it was not already saying.
             var mark = document.createElement('span');
             mark.className = 'org-mark';
-            mark.textContent = (r.name || '?').trim().charAt(0).toUpperCase();
+            mark.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                '<circle cx="12" cy="7" r="2.6"/>' +
+                '<circle cx="6.5" cy="16.5" r="2.6"/>' +
+                '<circle cx="17.5" cy="16.5" r="2.6"/>' +
+                '<path d="M10.1 8.7 8.4 14M13.9 8.7l1.7 5.3M9.1 16.5h5.8"/></svg>';
             b.appendChild(mark);
             var txt = document.createElement('span');
             txt.className = 'org-t';

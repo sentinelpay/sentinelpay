@@ -1719,13 +1719,14 @@ button { font: inherit; color: inherit; }
     place-items: center;
     width: 2.2rem;
     height: 2.2rem;
+    border: 1px solid var(--line);
     border-radius: 10px;
-    background: var(--avatar-bg);
-    color: var(--avatar-ink);
-    font-family: var(--sp-display);
-    font-size: 0.95rem;
-    font-weight: 700;
+    background: var(--canvas);
+    color: var(--ink-3);
+    transition: border-color 0.18s ease, color 0.18s ease;
 }
+.org-mark svg { width: 18px; height: 18px; display: block; }
+.org:hover .org-mark { border-color: var(--pill-line-hover); color: var(--ink-2); }
 .org-t { flex: 1 1 auto; min-width: 0; }
 .org-n {
     display: block;
