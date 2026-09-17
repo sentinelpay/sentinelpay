@@ -2176,7 +2176,10 @@ button { font: inherit; color: inherit; }
 .modal-msg:not(:empty) { margin-top: 0.6rem; }
 .modal-msg.is-bad { color: var(--danger); }
 
-.modal-quit { display: flex; justify-content: center; margin-top: 0.7rem; }
+/* the way out sits one row below the action, and that row is the panel's own
+   gap. the sign in modal spaces its footer the same way, and a margin on top of
+   the gap put eleven pixels between them that are in neither. */
+.modal-quit { display: flex; justify-content: center; }
 .modal-quit .btn-quiet.btn-wide { flex: 0 1 auto; width: auto; padding-left: 1.5rem; padding-right: 1.5rem; }
 .modal-row { display: flex; justify-content: flex-start; margin: 0.55rem 0 1rem; }
 .modal-link {
