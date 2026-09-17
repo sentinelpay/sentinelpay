@@ -1073,6 +1073,29 @@ button { font: inherit; color: inherit; }
     padding: 1.15rem 1.3rem;
     border-bottom: 1px solid var(--line-2);
 }
+/* inside the panel the dropdown is the name field's neighbour, so it is built to
+   the same height, padding, type size and radius. elsewhere it keeps the
+   compact size the settings rows use. */
+.drw .pick-btn {
+    padding: 0.78rem 2rem 0.78rem 0.9rem;
+    border-color: var(--field-line);
+    border-radius: 10px;
+    font-size: 0.9rem;
+    color: var(--ink);
+}
+.drw .pick-btn:focus-visible,
+.drw .pick.is-open .pick-btn {
+    border-color: var(--link);
+    background: var(--surface);
+    box-shadow: 0 0 0 3px var(--field-ring);
+}
+
+/* a row holding one control centres it against the label and its line of
+   explanation. rows holding a stack stay top aligned, because centring a tall
+   stack against two lines of text just pushes it off the top. */
+.drw-sec { align-items: start; }
+.drw-sec.is-mid { align-items: center; }
+
 .drw-sec-h { font-size: 0.86rem; font-weight: 600; color: var(--ink); }
 .drw-sec-l p { margin: 0.25rem 0 0; font-size: 0.79rem; line-height: 1.55; color: var(--ink-4); }
 .drw-sec-r { min-width: 0; }

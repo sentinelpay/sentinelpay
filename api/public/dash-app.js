@@ -2615,9 +2615,10 @@
         };
     }
 
-    function drwSection(label, hint, control) {
+    function drwSection(label, hint, control, mid) {
         var sec = document.createElement('div');
         sec.className = 'drw-sec';
+        if (mid) sec.classList.add('is-mid');
         var left = document.createElement('div');
         left.className = 'drw-sec-l';
         var lab = document.createElement('div');
@@ -2704,7 +2705,7 @@
             nameIn.value = want.name;
             nameIn.placeholder = t('e.g. Billing service');
             d.body.appendChild(drwSection('Name',
-                'Something you will recognise in this list a year from now.', nameIn));
+                'Something you will recognise in this list a year from now.', nameIn, true));
 
             d.body.appendChild(drwSection('Expires after',
                 'A token that never expires is one you can forget you issued.',
@@ -2712,7 +2713,7 @@
                     options: TTL_CHOICES.map(function (c) {
                         return { value: c.value, label: t(c.label) };
                     })
-                }], want.days, function (v) { want.days = v; })));
+                }], want.days, function (v) { want.days = v; }), true));
 
             var kinds = document.createElement('div');
             kinds.className = 'card-picks';
