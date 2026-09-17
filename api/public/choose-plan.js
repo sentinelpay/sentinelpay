@@ -5,6 +5,23 @@
         history.replaceState(null, '', location.pathname + location.search);
     }
 
+    // Where to go once a plan is chosen: back to the organisation somebody was
+    // trying to open, or to the list of them. Checked here as well as on the
+    // server, because this is the copy that runs the redirect, and a next that
+    // is not one of our own addresses is not followed.
+    function onward() {
+        var want = '';
+        try {
+            want = new URLSearchParams(location.search).get('next') || '';
+        } catch (err) { want = ''; }
+        var root = '/dashboard/org/';
+        if (want.indexOf(root) === 0 &&
+            /^[a-z0-9]{20}(\/[a-z-]{1,24})?$/.test(want.slice(root.length))) {
+            return want;
+        }
+        return '/dashboard/organisations';
+    }
+
     var gate = document.getElementById('lp-plan-gate');
     var grid = document.getElementById('choose-a-plan');
     if (!gate || !grid) return;
@@ -41,7 +58,7 @@
         if (site && domain && domain.indexOf('.') !== -1) site.value = domain;
 
         var state = (r.body.trial && r.body.trial.state) || 'none';
-        if (state !== 'none') location.replace('/dashboard');
+        if (state !== 'none') location.replace(onward());
     });
 
     function show(on) {
@@ -77,11 +94,7 @@
                 err.hidden = false;
                 return;
             }
-            if (r.body.state === 'pending') {
-                location.replace('/dashboard');
-                return;
-            }
-            location.replace('/dashboard');
+            location.replace(onward());
         }).catch(function () {
             go.disabled = false;
             err.textContent = t('Could not start the trial');
