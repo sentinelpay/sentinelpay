@@ -3333,6 +3333,7 @@
 
     function viewTeam(me) {
         var page = document.createElement('div');
+        page.className = 'pg';
         var org = me.org || {};
         page.appendChild(pageHead('Team', 'Everyone here shares the same screenings, cases and tokens.'));
 
@@ -3411,6 +3412,7 @@
     // not fit.
     function viewUsage(me) {
         var page = document.createElement('div');
+        page.className = 'pg';
         var tr = me.trial || {};
         page.appendChild(pageHead('Usage', 'What this organisation has used in the current period.'));
 
@@ -3443,6 +3445,7 @@
     // the honest version of this screen until there is.
     function viewBilling(me) {
         var page = document.createElement('div');
+        page.className = 'pg';
         var tr = me.trial || {};
         page.appendChild(pageHead('Billing', 'The plan this organisation is on.'));
 
@@ -3475,6 +3478,7 @@
     // and the way out.
     function viewOrgSettings(me) {
         var page = document.createElement('div');
+        page.className = 'pg';
         var org = me.org || {};
         page.appendChild(pageHead('Organization settings', 'What this organisation is called, and how to close it.'));
 
@@ -3594,6 +3598,7 @@
     // navigation, so they have screens now rather than a rename.
     function viewSecurity(me) {
         var page = document.createElement('div');
+        page.className = 'pg';
         page.appendChild(pageHead('Security',
             'How this account is protected and where it is signed in.'));
 
@@ -3726,6 +3731,7 @@
 
     function viewLogs(me) {
         var page = document.createElement('div');
+        page.className = 'pg';
         page.appendChild(pageHead('Audit logs',
             'What this account has done, newest first.'));
 

@@ -2947,3 +2947,15 @@ html.is-theming .btn {
     .lg-t { flex: 1 1 100%; order: 1; }
     .lg-ip { order: 3; }
 }
+
+/* Wider columns on a desktop, and only there. Below 900 the sidebar is out of
+   the flow and the page already fills the screen, so the narrower measurements
+   above are what a phone keeps: this block cannot reach them.
+
+   Two tokens carry the four pages that wanted the room. .pg is the account and
+   organisation screens, .orgs-pg is the two lists you pick something from, and
+   both stay centred on their own column as before. */
+@media (min-width: 900px) {
+    .pg { max-width: 54rem; }
+    .orgs-pg { max-width: 42rem; }
+}
