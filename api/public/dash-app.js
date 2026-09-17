@@ -2741,19 +2741,334 @@
         });
     }
 
+    // Where a project is set up. The same two step panel the token drawer uses,
+    // because it is the same kind of job: a handful of choices, some of which
+    // cannot be taken back, and a page at the end that reads them out before
+    // anything is made.
+    var PRJ_REGIONS = [
+        { value: 'eu-central-1', label: 'Frankfurt', where: 'Germany' },
+        { value: 'eu-west-1', label: 'Dublin', where: 'Ireland' },
+        { value: 'eu-west-2', label: 'London', where: 'United Kingdom' },
+        { value: 'us-east-1', label: 'Virginia', where: 'United States' },
+        { value: 'us-west-2', label: 'Oregon', where: 'United States' },
+        { value: 'ap-southeast-1', label: 'Singapore', where: 'Singapore' }
+    ];
+    var PRJ_LISTS = [
+        { key: 'ofac', label: 'OFAC SDN', hint: 'The United States list, published by the Treasury.' },
+        { key: 'eu', label: 'EU consolidated', hint: 'Everyone under European Union financial sanctions.' },
+        { key: 'uk', label: 'UK sanctions list', hint: 'Published by the FCDO.' },
+        { key: 'un', label: 'UN consolidated', hint: 'The Security Council list.' }
+    ];
+    var PRJ_GUARDS = [
+        { key: 'autoScreen', label: 'Screen every counterparty automatically',
+          hint: 'Anything this project sees is checked without being asked.' },
+        { key: 'fourEyes', label: 'Two people to clear a severe finding',
+          hint: 'Whoever raised it cannot be the one who signs it off.' },
+        { key: 'keepEvidence', label: 'Seal an evidence file for every result',
+          hint: 'The record a regulator asks for, made at the time rather than after.' }
+    ];
+
     function askProject(org, done) {
-        projectDialog({
-            title: 'New project',
-            sub: 'Name it after the thing it screens for.',
-            label: 'Name',
-            placeholder: 'e.g. Card payments',
-            value: '',
-            go: 'Create project',
-            quit: 'Cancel',
-            url: '/v1/orgs/' + encodeURIComponent(org.id) + '/projects',
-            said: 'Project created',
-            done: done
-        });
+        var want = {
+            name: '',
+            region: 'eu-central-1',
+            threshold: 'balanced',
+            lists: { ofac: true, eu: true, uk: true, un: true },
+            guards: { autoScreen: true, fourEyes: false, keepEvidence: true },
+            retention: '5y',
+            refresh: '6h',
+            engine: 'standard'
+        };
+
+        var d = drawer('New project');
+
+        function regionLabel(v) {
+            for (var i = 0; i < PRJ_REGIONS.length; i++) {
+                if (PRJ_REGIONS[i].value === v) {
+                    return t(PRJ_REGIONS[i].label) + '  ·  ' + t(PRJ_REGIONS[i].where);
+                }
+            }
+            return v;
+        }
+        function listsChosen() {
+            return PRJ_LISTS.filter(function (l) { return want.lists[l.key]; });
+        }
+        function guardsChosen() {
+            return PRJ_GUARDS.filter(function (g) { return want.guards[g.key]; });
+        }
+        function labelOf(list, v, fallback) {
+            for (var i = 0; i < list.length; i++) {
+                if (list[i].value === v) return t(list[i].label);
+            }
+            return fallback || v;
+        }
+
+        var THRESHOLDS = [
+            { value: 'strict', label: 'Strict' },
+            { value: 'balanced', label: 'Balanced' },
+            { value: 'loose', label: 'Permissive' }
+        ];
+        var RETENTIONS = [
+            { value: '1y', label: 'One year' },
+            { value: '3y', label: 'Three years' },
+            { value: '5y', label: 'Five years' },
+            { value: '7y', label: 'Seven years' }
+        ];
+        var REFRESHES = [
+            { value: '6h', label: 'Every six hours' },
+            { value: '24h', label: 'Once a day' }
+        ];
+        var ENGINES = [
+            { value: 'standard', label: 'Standard' },
+            { value: 'deep', label: 'Deep graph' }
+        ];
+
+        function stepConfigure() {
+            d.retitle('New project');
+            d.steps(1, 2, 'Configure');
+
+            // the organisation is not a choice here: you are standing in it.
+            var who = document.createElement('div');
+            who.className = 'drw-static';
+            who.textContent = org.name || t('This organisation');
+            d.body.appendChild(drwSection('Organisation',
+                'Everything in this project is billed and staffed here.', who));
+
+            var nameIn = document.createElement('input');
+            nameIn.type = 'text';
+            nameIn.id = 'prj-name';
+            nameIn.className = 'modal-in';
+            nameIn.autocomplete = 'off';
+            nameIn.maxLength = 60;
+            nameIn.value = want.name;
+            nameIn.placeholder = t('e.g. Card payments');
+            d.body.appendChild(drwSection('Name',
+                'What this project screens for, in a word or two.', nameIn));
+
+            var regionBox = selectBox('prj-region', [{
+                options: PRJ_REGIONS.map(function (r) {
+                    return { value: r.value, label: t(r.label) + '  ·  ' + t(r.where) };
+                })
+            }], want.region, function (v) { want.region = v; });
+            d.body.appendChild(drwSection('Where it is kept',
+                'Checks and evidence stay in this region. This cannot be changed later.',
+                regionBox, true));
+
+            var listHost = document.createElement('div');
+            listHost.className = 'drw-ticks';
+            PRJ_LISTS.forEach(function (l) {
+                listHost.appendChild(tickRow(l.label, l.hint, want.lists[l.key], function (on) {
+                    want.lists[l.key] = on;
+                    sync();
+                }));
+            });
+            d.body.appendChild(drwSection('What it screens against',
+                'Add a list and every check in this project starts using it.',
+                listHost, true));
+
+            var thBox = selectBox('prj-threshold', [{
+                options: THRESHOLDS.map(function (x) { return { value: x.value, label: t(x.label) }; })
+            }], want.threshold, function (v) { want.threshold = v; });
+            d.body.appendChild(drwSection('When to raise an alert',
+                'Strict raises more and clears fewer. You can change this whenever.',
+                thBox, true));
+
+            var guardHost = document.createElement('div');
+            guardHost.className = 'drw-ticks';
+            PRJ_GUARDS.forEach(function (g) {
+                guardHost.appendChild(tickRow(g.label, g.hint, want.guards[g.key], function (on) {
+                    want.guards[g.key] = on;
+                }));
+            });
+            d.body.appendChild(drwSection('How it works by default',
+                'The habits this project keeps without anyone remembering to.',
+                guardHost, true));
+
+            // folded away, because most people should never need to open it
+            var adv = document.createElement('div');
+            adv.className = 'drw-adv';
+            var advBtn = document.createElement('button');
+            advBtn.type = 'button';
+            advBtn.className = 'drw-adv-b';
+            advBtn.setAttribute('aria-expanded', 'false');
+            var advT = document.createElement('span');
+            advT.textContent = t('Advanced configuration');
+            advBtn.appendChild(advT);
+            var advC = document.createElement('span');
+            advC.className = 'drw-adv-c';
+            advC.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                '<path d="m6 9 6 6 6-6"/></svg>';
+            advBtn.appendChild(advC);
+            adv.appendChild(advBtn);
+            var advBody = document.createElement('div');
+            advBody.className = 'drw-adv-body';
+            var advInner = document.createElement('div');
+            advBody.appendChild(advInner);
+
+            var advNote = document.createElement('p');
+            advNote.className = 'drw-adv-note';
+            advNote.textContent = t('These cannot be changed after the project is made.');
+            advInner.appendChild(advNote);
+
+            var retBox = selectBox('prj-retention', [{
+                options: RETENTIONS.map(function (x) { return { value: x.value, label: t(x.label) }; })
+            }], want.retention, function (v) { want.retention = v; });
+            advInner.appendChild(drwSection('How long results are kept',
+                'Long enough for whoever audits you.', retBox, true));
+
+            var refBox = selectBox('prj-refresh', [{
+                options: REFRESHES.map(function (x) { return { value: x.value, label: t(x.label) }; })
+            }], want.refresh, function (v) { want.refresh = v; });
+            advInner.appendChild(drwSection('How often the lists are re-read',
+                'A name added to a list is only a hit once we have read it.', refBox, true));
+
+            var engBox = selectBox('prj-engine', [{
+                options: ENGINES.map(function (x) { return { value: x.value, label: t(x.label) }; })
+            }], want.engine, function (v) { want.engine = v; });
+            advInner.appendChild(drwSection('How far a check looks',
+                'Deep graph follows the money past the first hop. It costs more per check.',
+                engBox, true));
+
+            adv.appendChild(advBody);
+            advBtn.addEventListener('click', function () {
+                var open = adv.classList.toggle('is-open');
+                advBtn.setAttribute('aria-expanded', String(open));
+            });
+            d.body.appendChild(adv);
+
+            var no = document.createElement('button');
+            no.type = 'button';
+            no.className = 'btn btn-flat';
+            no.textContent = t('Cancel');
+            no.addEventListener('click', d.shut);
+            d.acts.appendChild(no);
+
+            var next = document.createElement('button');
+            next.type = 'button';
+            next.className = 'btn btn-primary';
+            next.textContent = t('Review project');
+            next.addEventListener('click', function () { d.show(stepReview); });
+            d.acts.appendChild(next);
+
+            function sync() {
+                next.disabled = !nameIn.value.trim() || !listsChosen().length;
+            }
+            nameIn.addEventListener('input', function () {
+                want.name = nameIn.value;
+                sync();
+            });
+            sync();
+            setTimeout(function () { nameIn.focus(); }, 80);
+        }
+
+        function stepReview() {
+            d.retitle('Review project');
+            d.steps(2, 2, 'Review');
+
+            var sum = document.createElement('dl');
+            sum.className = 'sum';
+            function row(k, v) {
+                var dt = document.createElement('dt');
+                dt.textContent = t(k);
+                var dd = document.createElement('dd');
+                dd.textContent = v;
+                sum.appendChild(dt);
+                sum.appendChild(dd);
+            }
+            row('Organisation', org.name || '—');
+            row('Name', want.name.trim());
+            row('Where it is kept', regionLabel(want.region));
+            row('Screens against', listsChosen().map(function (l) { return t(l.label); }).join(', '));
+            row('Raises an alert', labelOf(THRESHOLDS, want.threshold));
+            row('By default', guardsChosen().length
+                ? guardsChosen().map(function (g) { return t(g.label).toLowerCase(); }).join(', ')
+                : t('nothing automatic'));
+            row('Results kept', labelOf(RETENTIONS, want.retention));
+            row('Lists re-read', labelOf(REFRESHES, want.refresh));
+            row('Checks look', labelOf(ENGINES, want.engine));
+            // in a section, the way the token drawer's review page does it: bare
+            // in the body the list sat flush against the header.
+            var sumSec = drwSection('This project',
+                'The region and the advanced settings are fixed once it is made.', sum);
+            // nine rows of prose in the narrow right column wrapped every value
+            // onto three lines. the list gets the full width of the panel.
+            sumSec.classList.add('is-full');
+            d.body.appendChild(sumSec);
+
+            var err = document.createElement('p');
+            err.className = 'verr drw-err';
+            err.hidden = true;
+            d.body.appendChild(err);
+
+            var back = document.createElement('button');
+            back.type = 'button';
+            back.className = 'btn btn-flat';
+            back.textContent = t('Back');
+            back.addEventListener('click', function () { d.show(stepConfigure, true); });
+            d.acts.appendChild(back);
+
+            var go = document.createElement('button');
+            go.type = 'button';
+            go.className = 'btn btn-primary';
+            go.textContent = t('Create project');
+            go.addEventListener('click', function () {
+                go.disabled = true;
+                err.hidden = true;
+                fetch('/v1/orgs/' + encodeURIComponent(org.id) + '/projects', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify(want)
+                }).then(function (r) {
+                    return r.json().catch(function () { return {}; }).then(function (b) {
+                        return { ok: r.ok, body: b };
+                    });
+                }).then(function (r) {
+                    if (!r.ok) {
+                        err.textContent = (r.body && r.body.error) || t('That did not work.');
+                        err.hidden = false;
+                        go.disabled = false;
+                        return;
+                    }
+                    d.shut();
+                    toast(t('Project created'), 'good');
+                    done();
+                }).catch(function () {
+                    err.textContent = t('That did not work.');
+                    err.hidden = false;
+                    go.disabled = false;
+                });
+            });
+            d.acts.appendChild(go);
+        }
+
+        d.show(stepConfigure);
+    }
+
+    // the register modal's checkbox, the one the permission ticks use.
+    function tickRow(label, hint, on, onChange) {
+        var row = document.createElement('label');
+        row.className = 'tick';
+        var box = document.createElement('input');
+        box.type = 'checkbox';
+        box.checked = !!on;
+        box.addEventListener('change', function () { onChange(box.checked); });
+        row.appendChild(box);
+        var txt = document.createElement('span');
+        txt.className = 'tick-t';
+        var n = document.createElement('span');
+        n.className = 'tick-n';
+        n.textContent = t(label);
+        txt.appendChild(n);
+        if (hint) {
+            var h = document.createElement('span');
+            h.className = 'tick-h';
+            h.textContent = t(hint);
+            txt.appendChild(h);
+        }
+        row.appendChild(txt);
+        return row;
     }
 
     function askRenameProject(org, project, done) {
