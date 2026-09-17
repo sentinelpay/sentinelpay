@@ -597,6 +597,19 @@ app.get('/tos', (req, res) => res.redirect(301, '/terms-of-service'));
 // lands on the 404 instead of an empty shell.
 const ACCOUNT_PAGES = ['preferences', 'security', 'tokens', 'logs'];
 
+// where an organisation's own pages live, and the only shape of address the
+// plan gate will send anybody back to. a next parameter that is not one of
+// these is not followed: it is a redirect somebody else could have written.
+const ORG_ROOT = '/dashboard/org/';
+const ORGS_LIST = '/dashboard/organisations';
+function safeNext(raw) {
+    const want = String(raw || '');
+    if (want.indexOf(ORG_ROOT) !== 0) return '';
+    const rest = want.slice(ORG_ROOT.length);
+    if (!/^[a-z0-9]{20}(\/[a-z-]{1,24})?$/.test(rest)) return '';
+    return want;
+}
+
 app.get('/account', (req, res) => res.redirect(301, '/account/preferences'));
 
 // what these addresses used to be. redirected rather than dropped, because a
@@ -619,12 +632,6 @@ app.get('/account/:page', async (req, res, next) => {
     }
     res.set('Cache-Control', 'no-store, private');
     if (!DASHBOARD_NEXT) return next();
-    try {
-        const state = await trial.ensure(me.userId, me.email);
-        if (state.state === 'none') return res.redirect(302, '/choose-a-plan');
-    } catch (err) {
-        console.error('[account trial]', err.message);
-    }
     return sendPage(res, req, 'dashboard-next.html', 200, undefined, 'no-store, private');
 });
 
@@ -640,11 +647,24 @@ app.get(['/dashboard', '/dashboard/*splat'], async (req, res, next) => {
     res.set('Cache-Control', 'no-store, private');
 
     if (DASHBOARD_NEXT) {
-        try {
-            const state = await trial.ensure(me.userId, me.email);
-            if (state.state === 'none') return res.redirect(302, '/choose-a-plan');
-        } catch (err) {
-            console.error('[dashboard trial]', err.message);
+        // A plan is not what lets you in, it is what lets you work. Choosing
+        // one stands between the list of organisations and the inside of one,
+        // rather than in front of the whole dashboard: without a plan you can
+        // still see which organisations you are in, make another, and reach
+        // your own account. What you cannot do is open one and screen.
+        //
+        // The plan still hangs off the account today, so this asks about the
+        // person. When it moves to the organisation only this lookup changes,
+        // because the gate is already standing in the right doorway.
+        if (req.path.indexOf(ORG_ROOT) === 0) {
+            try {
+                const state = await trial.ensure(me.userId, me.email);
+                if (state.state === 'none') {
+                    return res.redirect(302, '/choose-a-plan?next=' + encodeURIComponent(req.path));
+                }
+            } catch (err) {
+                console.error('[dashboard trial]', err.message);
+            }
         }
         return sendPage(res, req, 'dashboard-next.html', 200, undefined, 'no-store, private');
     }
@@ -663,7 +683,9 @@ app.get('/choose-a-plan', async (req, res) => {
     }
     try {
         const state = await trial.ensure(me.userId, me.email);
-        if (state.state !== 'none') return res.redirect(302, '/dashboard');
+        if (state.state !== 'none') {
+            return res.redirect(302, safeNext(req.query.next) || ORGS_LIST);
+        }
     } catch (err) {
         console.error('[plans trial]', err.message);
     }
