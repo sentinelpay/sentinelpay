@@ -591,6 +591,43 @@ app.get('/auth', (req, res) => {
 app.get('/privacy', (req, res) => res.redirect(301, '/privacy-policy'));
 app.get('/tos', (req, res) => res.redirect(301, '/terms-of-service'));
 
+// Your own account is not inside an organisation, so its address is not inside
+// one either: /account/preferences, and the same for security, tokens and logs.
+// The four pages it has are named here rather than taking a splat, so a typo
+// lands on the 404 instead of an empty shell.
+const ACCOUNT_PAGES = ['preferences', 'security', 'tokens', 'logs'];
+
+app.get('/account', (req, res) => res.redirect(301, '/account/preferences'));
+
+// what these addresses used to be. redirected rather than dropped, because a
+// link somebody kept should not stop working over a rename.
+app.get(['/dashboard/account', '/dashboard/account/*splat'], (req, res) => {
+    const tail = req.path.replace(/^\/dashboard\/account\/?/, '').replace(/\/+$/, '');
+    const page = ACCOUNT_PAGES.indexOf(tail) === -1 ? 'preferences' : tail;
+    return res.redirect(301, '/account/' + page);
+});
+
+app.get('/account/:page', async (req, res, next) => {
+    if (ACCOUNT_PAGES.indexOf(req.params.page) === -1) return next();
+    let me;
+    try {
+        me = await currentUser(req);
+        if (!me) return res.redirect(302, '/?signin=1');
+    } catch (err) {
+        console.error('[account guard]', err.message);
+        return res.redirect(302, '/?signin=1');
+    }
+    res.set('Cache-Control', 'no-store, private');
+    if (!DASHBOARD_NEXT) return next();
+    try {
+        const state = await trial.ensure(me.userId, me.email);
+        if (state.state === 'none') return res.redirect(302, '/choose-a-plan');
+    } catch (err) {
+        console.error('[account trial]', err.message);
+    }
+    return sendPage(res, req, 'dashboard-next.html', 200, undefined, 'no-store, private');
+});
+
 app.get(['/dashboard', '/dashboard/*splat'], async (req, res, next) => {
     let me;
     try {
@@ -2174,6 +2211,24 @@ app.get('/v1/account/sessions', async (req, res) => {
     res.json({ ok: true, sessions: await accounts.listSessions(me.userId, readSessionCookie(req)) });
 });
 
+// Your own trail, and only yours: the actor filter is the whole guard here, so
+// the id comes from the session rather than from anything the caller sent.
+app.get('/v1/account/logs', async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const rows = await accounts.recentAudit({ actor: String(me.userId), limit: 100 });
+    res.set('Cache-Control', 'no-store, private');
+    res.json({
+        ok: true,
+        rows: rows.map((r) => ({
+            at: r.at,
+            kind: r.kind,
+            detail: r.detail || '',
+            ip: r.ip || '',
+        })),
+    });
+});
+
 app.post('/v1/account/sessions/revoke', requireCloudflareOrigin, accountLimiter, async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
@@ -2248,6 +2303,9 @@ app.get('/v1/entitlement', async (req, res) => {
             name: me.name,
             email: me.email,
             since: me.since,
+            // the security screen says whether a second step is on, so it has
+            // to be told rather than left to guess and say no
+            totpOn: Boolean(me.totpOn),
             org: org,
             orgs: mine,
             trial: {

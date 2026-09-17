@@ -2909,3 +2909,41 @@ html.is-theming .btn {
     background: var(--nav-on);
     border-color: transparent;
 }
+
+/* where this account is signed in, and what it has done */
+.sess { display: grid; }
+.sess-row { padding: 0.75rem 1.1rem; border-top: 1px solid var(--line-2); }
+.sess-t { display: block; min-width: 0; }
+.sess-n { display: block; font-size: 0.85rem; font-weight: 600; color: var(--ink); }
+.sess-sub { display: block; margin-top: 0.1rem; font-size: 0.78rem; color: var(--ink-4); }
+
+.lg {
+    display: flex;
+    align-items: baseline;
+    gap: 0.9rem;
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid var(--line-2);
+}
+.lg:last-child { border-bottom: 0; }
+.lg-when {
+    flex: none;
+    width: 9.5rem;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.78rem;
+    color: var(--ink-4);
+}
+.lg-t { flex: 1 1 auto; min-width: 0; }
+.lg-n { display: block; font-size: 0.85rem; font-weight: 600; color: var(--ink); }
+.lg-d { display: block; margin-top: 0.1rem; font-size: 0.78rem; color: var(--ink-3); }
+.lg-ip {
+    flex: none;
+    font-family: var(--sp-mono, ui-monospace, monospace);
+    font-size: 0.74rem;
+    color: var(--ink-4);
+}
+@media (max-width: 640px) {
+    .lg { flex-wrap: wrap; gap: 0.2rem 0.6rem; }
+    .lg-when { width: auto; order: 2; }
+    .lg-t { flex: 1 1 100%; order: 1; }
+    .lg-ip { order: 3; }
+}
