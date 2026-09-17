@@ -824,6 +824,7 @@
     function forgetMe() {
         try { localStorage.removeItem(ME_KEY); } catch (err) {  }
         forgetTokenCache();
+        forgetOrgCache();
         forgetPicked();
     }
 
@@ -2089,57 +2090,88 @@
 
     var TOKENS_PATH = '/dashboard/account/tokens';
 
-    // the token list is cached only to spare you the empty half second on the way
-    // in. every rule here exists to keep it from becoming anything more than that:
+    // A list is cached only to spare you the empty half second on the way in.
+    // Every rule here exists to keep it from becoming anything more than that:
     //
     //   sessionStorage, not localStorage, so it dies with the tab and is never
     //     carried across browser sessions or left behind on a shared machine;
     //   stamped with the address it was read for, so another account signing in
-    //     on the same tab can never be shown the previous one's tokens;
+    //     on the same tab can never be shown the previous one's anything;
     //   sixty seconds, after which it is ignored rather than shown;
     //   never the deciding answer: the list is always refetched and replaced, so
-    //     a revoked token cannot keep looking live for longer than that fetch;
+    //     something revoked or closed elsewhere cannot keep looking alive for
+    //     longer than that fetch;
     //   cleared on sign out along with the cached identity;
-    //   and it holds no secret, because the server only ever returns one once, at
-    //     creation, and this is not on that path.
-    var TOK_KEY = 'sp-tokens';
-    var TOK_GOOD_FOR = 60 * 1000;
+    //   and it holds no secret, because the server returns those once, at
+    //     creation, and none of these are on that path.
+    var CACHE_GOOD_FOR = 60 * 1000;
+
+    function sessionCache(key) {
+        return {
+            read: function (who) {
+                try {
+                    var raw = sessionStorage.getItem(key);
+                    if (!raw) return null;
+                    var box = JSON.parse(raw);
+                    if (!box || box.who !== who) return null;
+                    if (!box.at || Date.now() - box.at > CACHE_GOOD_FOR) return null;
+                    return box;
+                } catch (err) {
+                    return null;
+                }
+            },
+            write: function (who, payload) {
+                try {
+                    var box = { who: who, at: Date.now() };
+                    Object.keys(payload).forEach(function (k) { box[k] = payload[k]; });
+                    sessionStorage.setItem(key, JSON.stringify(box));
+                } catch (err) {  }
+            },
+            forget: function () {
+                try { sessionStorage.removeItem(key); } catch (err) {  }
+            }
+        };
+    }
+
+    var tokenCache = sessionCache('sp-tokens');
+    var orgCache = sessionCache('sp-orgs');
 
     function readTokenCache(who) {
-        try {
-            var raw = sessionStorage.getItem(TOK_KEY);
-            if (!raw) return null;
-            var box = JSON.parse(raw);
-            if (!box || box.who !== who) return null;
-            if (!box.at || Date.now() - box.at > TOK_GOOD_FOR) return null;
-            if (!box.rows || box.rows.length === undefined) return null;
-            return box;
-        } catch (err) {
-            return null;
-        }
+        var box = tokenCache.read(who);
+        return box && box.rows && box.rows.length !== undefined ? box : null;
     }
 
     function writeTokenCache(who, rows, scopes, groups) {
-        try {
-            sessionStorage.setItem(TOK_KEY, JSON.stringify({
-                who: who,
-                at: Date.now(),
-                scopes: scopes,
-                groups: groups,
-                rows: rows.map(function (r) {
-                    return {
-                        id: r.id, name: r.name, tail: r.tail, scopes: r.scopes,
-                        lastUsedAt: r.lastUsedAt, expiresAt: r.expiresAt, revokedAt: r.revokedAt
-                    };
-                })
-            }));
-        } catch (err) {  }
+        tokenCache.write(who, {
+            scopes: scopes,
+            groups: groups,
+            rows: rows.map(function (r) {
+                return {
+                    id: r.id, name: r.name, kind: r.kind, tail: r.tail, scopes: r.scopes,
+                    lastUsedAt: r.lastUsedAt, expiresAt: r.expiresAt, revokedAt: r.revokedAt
+                };
+            })
+        });
     }
 
-    function forgetTokenCache() {
-        try { sessionStorage.removeItem(TOK_KEY); } catch (err) {  }
+    function forgetTokenCache() { tokenCache.forget(); }
+
+    function readOrgCache(who) {
+        var box = orgCache.read(who);
+        return box && box.rows && box.rows.length !== undefined ? box : null;
     }
 
+    function writeOrgCache(who, rows, roles) {
+        orgCache.write(who, {
+            roles: roles,
+            rows: rows.map(function (r) {
+                return { id: r.id, name: r.name, host: r.host, slug: r.slug,
+                         role: r.role, members: r.members };
+            })
+        });
+    }
+
+    function forgetOrgCache() { orgCache.forget(); }
 
     function whenText(iso, withTime) {
         if (!iso) return '';
@@ -3205,7 +3237,10 @@
         list.className = 'orgs';
         page.appendChild(list);
 
-        var rows = [];
+        var who = (me && me.email) || '';
+        var warm = readOrgCache(who);
+        var rows = warm ? warm.rows : [];
+        if (warm && warm.roles && warm.roles.length) ORG_ROLES = warm.roles;
 
         function roleLabel(key) {
             for (var i = 0; i < ORG_ROLES.length; i++) {
@@ -3289,6 +3324,7 @@
                 }).then(function (res) {
                     if (!res.ok) throw new Error('bad-status-' + res.status);
                     forgetTokenCache();
+                    forgetOrgCache();
                     markPicked();
                     location.assign('/dashboard');
                 }).catch(function () {
@@ -3308,9 +3344,14 @@
                 .then(function (j) {
                     rows = (j && j.rows) || [];
                     if (j && j.roles && j.roles.length) ORG_ROLES = j.roles;
+                    writeOrgCache(who, rows, ORG_ROLES);
                     draw();
                 })
                 .catch(function () {
+                    // a cached list on screen beats replacing it with an error,
+                    // so only an empty page says the fetch failed
+                    forgetOrgCache();
+                    if (rows.length) return;
                     list.textContent = '';
                     list.appendChild(emptyState('That did not load.', 'Reload the page to try again.'));
                 });
@@ -3319,7 +3360,8 @@
         findIn.addEventListener('input', draw);
         make.addEventListener('click', function () { askOrg(load); });
 
-        list.appendChild(waiting());
+        if (warm) draw();
+        else list.appendChild(waiting());
         load();
         return page;
     }
@@ -3422,6 +3464,7 @@
                 }
                 m.shut();
                 forgetTokenCache();
+                forgetOrgCache();
                 forgetPicked();
                 toast(t('Organisation closed'), 'good');
                 done();
@@ -3499,6 +3542,7 @@
                 }
                 m.shut();
                 forgetTokenCache();
+                forgetOrgCache();
                 markPicked();
                 location.assign('/dashboard');
             }).catch(function () {
