@@ -3,6 +3,14 @@
     var COOKIE = 'sp-lang';
     var T = {
         hr: {
+            "Unmetered": "Bez ograničenja",
+            "Your role": "Vaša rola",
+            "People with access": "Osoba s pristupom",
+            "Sanctions coverage": "Pokrivenost sankcijskim listama",
+            "Live checks": "Žive provjere",
+            "History scans": "Provjere povijesti",
+            "No plan yet": "Još nema plana",
+            "Waiting to be approved": "Čeka odobrenje",
             "See all questions": "Sva pitanja",
             "Sentinelpay | Questions and answers": "Sentinelpay | Pitanja i odgovori",
             "Questions and answers": "Pitanja i odgovori",
@@ -1937,6 +1945,14 @@
             "Sales, product & support": "Prodaja, proizvod i podrška",
         },
         de: {
+            "Unmetered": "Unbegrenzt",
+            "Your role": "Ihre Rolle",
+            "People with access": "Personen mit Zugriff",
+            "Sanctions coverage": "Abdeckung der Sanktionslisten",
+            "Live checks": "Live-Prüfungen",
+            "History scans": "Verlaufsprüfungen",
+            "No plan yet": "Noch kein Plan",
+            "Waiting to be approved": "Wartet auf Freigabe",
             "See all questions": "Alle Fragen ansehen",
             "Sentinelpay | Questions and answers": "Sentinelpay | Fragen und Antworten",
             "Questions and answers": "Fragen und Antworten",
