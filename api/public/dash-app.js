@@ -2084,12 +2084,13 @@
         }
     }
 
-    function writeTokenCache(who, rows, scopes) {
+    function writeTokenCache(who, rows, scopes, groups) {
         try {
             sessionStorage.setItem(TOK_KEY, JSON.stringify({
                 who: who,
                 at: Date.now(),
                 scopes: scopes,
+                groups: groups,
                 rows: rows.map(function (r) {
                     return {
                         id: r.id, name: r.name, tail: r.tail, scopes: r.scopes,
@@ -2278,7 +2279,7 @@
         });
         sandboxItem.addEventListener('click', function () {
             openSplit(false);
-            askToken(scopes, load, 'test');
+            askToken(scopes, groups, load, 'test');
         });
 
         var card = document.createElement('div');
@@ -2289,6 +2290,7 @@
         var warm = readTokenCache(who);
         var rows = warm ? warm.rows : [];
         var scopes = warm ? (warm.scopes || []) : [];
+        var groups = warm ? (warm.groups || []) : [];
 
         function scopeLabel(key) {
             for (var i = 0; i < scopes.length; i++) {
@@ -2395,7 +2397,8 @@
                 .then(function (j) {
                     rows = (j && j.rows) || [];
                     scopes = (j && j.scopes) || [];
-                    writeTokenCache(who, rows, scopes);
+                    groups = (j && j.scopeGroups) || [];
+                    writeTokenCache(who, rows, scopes, groups);
                     draw();
                 })
                 .catch(function () {
@@ -2409,7 +2412,7 @@
         }
 
         findIn.addEventListener('input', draw);
-        make.addEventListener('click', function () { askToken(scopes, load, 'live'); });
+        make.addEventListener('click', function () { askToken(scopes, groups, load, 'live'); });
 
         if (warm) draw();
         else card.appendChild(waiting());
@@ -2506,6 +2509,12 @@
             });
         });
     }
+
+    var PRESETS = [
+        { key: 'none', label: 'No access' },
+        { key: 'read', label: 'Read only' },
+        { key: 'all', label: 'Full access' }
+    ];
 
     var TTL_CHOICES = [
         { value: '30', label: '30 days' },
@@ -2669,7 +2678,18 @@
         return b;
     }
 
-    function askToken(scopes, done, kind) {
+    function askToken(scopes, groups, done, kind) {
+        // read only and full access are worked out from the scope list itself, so
+        // a scope added on the server joins the right preset without being named
+        // here as well.
+        function presetFor(name) {
+            if (name === 'all') return scopes.map(function (s2) { return s2.key; });
+            if (name === 'read') {
+                return scopes.filter(function (s2) { return !s2.writes; })
+                    .map(function (s2) { return s2.key; });
+            }
+            return [];
+        }
         var want = {
             name: '',
             kind: kind === 'test' ? 'test' : 'live',
@@ -2740,28 +2760,158 @@
             d.body.appendChild(drwSection('What it screens against',
                 'This cannot be changed later. Issue another token instead.', kinds));
 
-            var ticks = document.createElement('div');
-            scopes.forEach(function (sc) {
-                var row = document.createElement('label');
-                row.className = 'tick';
-                var box = document.createElement('input');
-                box.type = 'checkbox';
-                box.checked = !!want.scopes[sc.key];
-                box.addEventListener('change', function () {
-                    want.scopes[sc.key] = box.checked;
+            // the permission list has outgrown the two column row: groups carry a
+            // line of explanation and a scope key, and squeezed into the right
+            // half they wrapped a word per line. the preset stays beside the
+            // heading; the groups run the full width beneath both.
+            var permSec = document.createElement('div');
+            permSec.className = 'drw-sec';
+            permSec.classList.add('is-full');
+            var permL = document.createElement('div');
+            permL.className = 'drw-sec-l';
+            var permH = document.createElement('div');
+            permH.className = 'drw-sec-h';
+            permH.textContent = t('Permissions');
+            permL.appendChild(permH);
+            var permP = document.createElement('p');
+            permP.textContent = t('Everything is off until you turn it on. Give a token the least that does its job.');
+            permL.appendChild(permP);
+            permSec.appendChild(permL);
+
+            var presetWrap = document.createElement('div');
+            presetWrap.className = 'drw-sec-r';
+            permSec.appendChild(presetWrap);
+
+            var groupsHost = document.createElement('div');
+            groupsHost.className = 'grp-list';
+            permSec.appendChild(groupsHost);
+
+            var openGroups = {};
+            var presetBox = null;
+
+            function scopesIn(gk) {
+                return scopes.filter(function (sc) { return (sc.group || 'other') === gk; });
+            }
+            function onIn(gk) {
+                return scopesIn(gk).filter(function (sc) { return want.scopes[sc.key]; }).length;
+            }
+            // which preset the current selection amounts to. derived, so it stays
+            // honest when boxes are ticked by hand.
+            function presetNow() {
+                var on = chosen().sort().join(' ');
+                if (!on) return 'none';
+                if (on === scopes.map(function (s) { return s.key; }).sort().join(' ')) return 'all';
+                var reads = scopes.filter(function (s) { return !s.writes; })
+                    .map(function (s) { return s.key; }).sort().join(' ');
+                if (on === reads) return 'read';
+                return 'custom';
+            }
+
+            function paintPreset() {
+                presetWrap.textContent = '';
+                var now = presetNow();
+                var opts = PRESETS.map(function (pr) {
+                    return { value: pr.key, label: t('Preset') + '  \u00b7  ' + t(pr.label) };
+                });
+                if (now === 'custom') {
+                    opts.push({ value: 'custom', label: t('Preset') + '  \u00b7  ' + t('Custom') });
+                }
+                presetBox = selectBox('tk-preset', [{ options: opts }], now, function (v) {
+                    if (v === 'custom') return;
+                    want.scopes = {};
+                    presetFor(v).forEach(function (k) { want.scopes[k] = true; });
+                    paintGroups();
+                    paintPreset();
                     sync();
                 });
-                row.appendChild(box);
-                var txt = document.createElement('span');
-                txt.textContent = t(sc.label);
-                row.appendChild(txt);
-                var code = document.createElement('code');
-                code.textContent = sc.key;
-                row.appendChild(code);
-                ticks.appendChild(row);
-            });
-            d.body.appendChild(drwSection('Permissions',
-                'Everything is off until you turn it on. Give it the least that does the job.', ticks));
+                presetWrap.appendChild(presetBox);
+            }
+
+            function paintGroups() {
+                groupsHost.textContent = '';
+                groups.forEach(function (g) {
+                    var mine = scopesIn(g.key);
+                    if (!mine.length) return;
+                    var box = document.createElement('div');
+                    box.className = 'grp' + (openGroups[g.key] ? ' is-open' : '');
+
+                    var head = document.createElement('button');
+                    head.type = 'button';
+                    head.className = 'grp-head';
+                    head.setAttribute('aria-expanded', openGroups[g.key] ? 'true' : 'false');
+                    var ht = document.createElement('span');
+                    ht.className = 'grp-t';
+                    var hn = document.createElement('span');
+                    hn.className = 'grp-n';
+                    hn.textContent = t(g.label);
+                    ht.appendChild(hn);
+                    var hh = document.createElement('span');
+                    hh.className = 'grp-h';
+                    hh.textContent = t(g.hint);
+                    ht.appendChild(hh);
+                    head.appendChild(ht);
+
+                    var count = document.createElement('span');
+                    var n = onIn(g.key);
+                    count.className = 'grp-c' + (n ? ' is-on' : '');
+                    count.textContent = n
+                        ? n + ' ' + t('of') + ' ' + mine.length + ' ' + t('allowed')
+                        : t('None');
+                    head.appendChild(count);
+
+                    var chev = document.createElement('span');
+                    chev.className = 'grp-chev';
+                    chev.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                        'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                        '<path d="m6 9 6 6 6-6"/></svg>';
+                    head.appendChild(chev);
+                    head.addEventListener('click', function () {
+                        openGroups[g.key] = !openGroups[g.key];
+                        paintGroups();
+                    });
+                    box.appendChild(head);
+
+                    var body = document.createElement('div');
+                    body.className = 'grp-body';
+                    mine.forEach(function (sc) {
+                        var row = document.createElement('label');
+                        row.className = 'tick';
+                        var tickBox = document.createElement('input');
+                        tickBox.type = 'checkbox';
+                        tickBox.checked = !!want.scopes[sc.key];
+                        tickBox.addEventListener('change', function () {
+                            want.scopes[sc.key] = tickBox.checked;
+                            paintGroups();
+                            paintPreset();
+                            sync();
+                        });
+                        row.appendChild(tickBox);
+                        var txt = document.createElement('span');
+                        txt.className = 'tick-t';
+                        var tn = document.createElement('span');
+                        tn.className = 'tick-n';
+                        tn.textContent = t(sc.label);
+                        txt.appendChild(tn);
+                        if (sc.hint) {
+                            var th = document.createElement('span');
+                            th.className = 'tick-h';
+                            th.textContent = t(sc.hint);
+                            txt.appendChild(th);
+                        }
+                        row.appendChild(txt);
+                        var code = document.createElement('code');
+                        code.textContent = sc.key;
+                        row.appendChild(code);
+                        body.appendChild(row);
+                    });
+                    box.appendChild(body);
+                    groupsHost.appendChild(box);
+                });
+            }
+
+            paintPreset();
+            paintGroups();
+            d.body.appendChild(permSec);
 
             var no = document.createElement('button');
             no.type = 'button';
@@ -2811,23 +2961,27 @@
             line('Expires after', ttlLabel());
             d.body.appendChild(drwSection('This token', '', sum));
 
-            var may = document.createElement('ul');
-            may.className = 'grants';
-            chosen().forEach(function (k) {
-                var li = document.createElement('li');
-                li.className = 'is-yes';
-                li.textContent = scopeLabel(k);
-                may.appendChild(li);
-            });
-            scopes.forEach(function (sc) {
-                if (want.scopes[sc.key]) return;
-                var li = document.createElement('li');
-                li.className = 'is-no';
-                li.textContent = t(sc.label);
-                may.appendChild(li);
+            var may = document.createElement('div');
+            may.className = 'grants-wrap';
+            groups.forEach(function (g) {
+                var mine = scopes.filter(function (sc) { return (sc.group || 'other') === g.key; });
+                if (!mine.length) return;
+                var h = document.createElement('div');
+                h.className = 'grants-g';
+                h.textContent = t(g.label);
+                may.appendChild(h);
+                var ul = document.createElement('ul');
+                ul.className = 'grants';
+                mine.forEach(function (sc) {
+                    var li = document.createElement('li');
+                    li.className = want.scopes[sc.key] ? 'is-yes' : 'is-no';
+                    li.textContent = t(sc.label);
+                    ul.appendChild(li);
+                });
+                may.appendChild(ul);
             });
             d.body.appendChild(drwSection('What it will be able to do',
-                'Anything not listed as allowed is refused.', may));
+                'Anything not ticked is refused, not merely hidden.', may));
 
             var err = document.createElement('p');
             err.className = 'verr drw-err';

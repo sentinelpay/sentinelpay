@@ -1836,7 +1836,13 @@ app.get('/v1/account/tokens', async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
     res.set('Cache-Control', 'no-store, private');
-    res.json({ ok: true, scopes: tokens.SCOPES, kinds: tokens.KINDS, rows: await tokens.list(me.userId) });
+    res.json({
+        ok: true,
+        scopes: tokens.SCOPES,
+        scopeGroups: tokens.SCOPE_GROUPS,
+        kinds: tokens.KINDS,
+        rows: await tokens.list(me.userId),
+    });
 });
 
 app.post('/v1/account/tokens', requireCloudflareOrigin, accountLimiter, async (req, res) => {
@@ -2110,7 +2116,7 @@ app.get('/v1/screenings/stats', async (req, res) => {
 app.get('/v1/screenings/:id/evidence', async (req, res) => {
     res.set('Cache-Control', 'no-store, private');
     try {
-        const me = await caller(req, res, 'screenings:read');
+        const me = await caller(req, res, 'evidence:read');
         if (!me) return;
         const id = Number(req.params.id);
         if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: 'Not a screening' });

@@ -3,13 +3,59 @@
 const crypto = require('crypto');
 const db = require('./db.js');
 
-// what a token can be allowed to do. only endpoints we actually serve are on
-// this list: a scope that grants nothing real is a promise we have not kept.
+// What a token can be allowed to do.
+//
+// Only endpoints we actually serve appear here: a scope that grants nothing real
+// is a promise we have not kept. The shape, though, is the finished one. Each
+// scope carries the group it belongs to, a sentence saying what it opens, and
+// whether it only reads or can change something, which is what the presets and
+// the counters are computed from. Adding the next one is a line in this list;
+// nothing downstream has to be redesigned to hold it.
+const SCOPE_GROUPS = [
+    {
+        key: 'screening',
+        label: 'Screening',
+        hint: 'Checking addresses against the lists, and the results that come back.',
+    },
+    {
+        key: 'evidence',
+        label: 'Evidence',
+        hint: 'The sealed record behind a result, the one you hand to an examiner.',
+    },
+];
+
 const SCOPES = [
-    { key: 'screenings:write', label: 'Run screenings' },
-    { key: 'screenings:read', label: 'Read screenings' },
+    {
+        key: 'screenings:write',
+        group: 'screening',
+        label: 'Run screenings',
+        hint: 'Check an address. On a live token this spends a check.',
+        writes: true,
+    },
+    {
+        key: 'screenings:read',
+        group: 'screening',
+        label: 'Read screenings',
+        hint: 'List past checks and read a single result.',
+        writes: false,
+    },
+    {
+        key: 'evidence:read',
+        group: 'evidence',
+        label: 'Download evidence',
+        hint: 'Pull the full sealed record for a check, with its digest.',
+        writes: false,
+    },
 ];
 const SCOPE_KEYS = SCOPES.map((s) => s.key);
+
+// the presets. read only and full access are derived rather than listed, so they
+// stay correct the moment a scope is added above.
+function presetScopes(name) {
+    if (name === 'all') return SCOPE_KEYS.slice();
+    if (name === 'read') return SCOPES.filter((s) => !s.writes).map((s) => s.key);
+    return [];
+}
 
 // two kinds, and the prefix says which at a glance: a live token touches the
 // customer's real screening history and spends their quota, a sandbox one does
@@ -229,6 +275,7 @@ async function read(raw) {
 }
 
 module.exports = {
-    SCOPES, SCOPE_KEYS, TTL_CHOICES, PER_USER, NAME_MAX, KINDS, KIND_KEYS,
+    SCOPES, SCOPE_KEYS, SCOPE_GROUPS, presetScopes,
+    TTL_CHOICES, PER_USER, NAME_MAX, KINDS, KIND_KEYS,
     mint, list, revoke, read, splitToken, init,
 };

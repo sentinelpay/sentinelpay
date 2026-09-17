@@ -22,6 +22,8 @@ SKIP_EXACT = {
     'auto', 'system', 'UTC',
     # the api token prefix. printed verbatim, never translated.
     'sp_live_',
+    # preset and scope state keys. compared in code, never shown as prose.
+    'none', 'all', 'read', 'custom',
     'Ceem', 'Mind', 'Chibby', 'Mind, chibby', 'Ceem, mind, chibby',
     'elektromaterijal', 'Elektromaterijal', 'racunala', 'Racunala',
     'traveler', 'Traveler', 'futura', 'Futura', 'majice', 'Majice',
