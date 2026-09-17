@@ -26,6 +26,15 @@ function iconNames() {
 // every place a glyph is chosen, with the thing it is chosen for
 function uses() {
     const out = [];
+    // a bare icon('name') call, named by the function it sits in. this was
+    // added after a padlock was put on a read-only field while already meaning
+    // Security in the rail: the rules only looked at nav items and cards, so
+    // the one kind of use that is easiest to add by hand went unchecked.
+    for (const m of SRC.matchAll(/icon\('([a-z]+)'\)/g)) {
+        const before = SRC.slice(0, m.index);
+        const fn = [...before.matchAll(/function ([A-Za-z0-9_]+)\s*\(/g)].pop();
+        out.push({ meaning: 'in ' + (fn ? fn[1] : 'top level'), icon: m[1] });
+    }
     // nav items: { key: 'x', label: 'Label', icon: 'name' }
     for (const m of SRC.matchAll(/label: '([^']+)', icon: '([a-z]+)'/g)) {
         out.push({ meaning: m[1], icon: m[2] });
@@ -44,12 +53,19 @@ function uses() {
 test('every icon a screen asks for is drawn', () => {
     const have = iconNames();
     const asked = new Set();
-    for (const m of SRC.matchAll(/icon\('([a-z]+)'\)/g)) asked.add(m[1]);
     for (const u of uses()) asked.add(u.icon);
 
     const missing = [...asked].filter((name) => !have.has(name));
     assert.deepStrictEqual(missing, [], 'icons used but never drawn: ' + missing.join(', '));
 });
+
+// A glyph may appear in more than one place when the places mean the same
+// thing. Every entry has to say why, which is the point: adding one is a
+// sentence somebody has to be willing to write.
+const SAME = new Map([
+    ['projects', 'the rail item and the mark on a project row name the same thing'],
+    ['back', 'one back arrow, wherever there is something to go back from'],
+]);
 
 test('no icon carries two meanings', () => {
     const byIcon = new Map();
@@ -58,9 +74,22 @@ test('no icon carries two meanings', () => {
         byIcon.get(u.icon).add(u.meaning);
     }
     const shared = [...byIcon.entries()]
+        .filter(([name]) => !SAME.has(name))
         .filter(([, meanings]) => meanings.size > 1)
         .map(([name, meanings]) => name + ' -> ' + [...meanings].join(' / '));
     assert.deepStrictEqual(shared, [], 'one glyph, several meanings: ' + shared.join('; '));
+});
+
+test('every allowed repeat is still a repeat', () => {
+    // an entry left behind after the second use is gone reads as a licence
+    // nobody needs and quietly weakens the rule above.
+    const byIcon = new Map();
+    for (const u of uses()) {
+        if (!byIcon.has(u.icon)) byIcon.set(u.icon, new Set());
+        byIcon.get(u.icon).add(u.meaning);
+    }
+    const stale = [...SAME.keys()].filter((name) => (byIcon.get(name) || new Set()).size < 2);
+    assert.deepStrictEqual(stale, [], 'allowed to repeat but no longer does: ' + stale.join(', '));
 });
 
 test('nothing in the map is drawn but never used', () => {
@@ -70,7 +99,6 @@ test('nothing in the map is drawn but never used', () => {
     const CHROME = new Set(['panel', 'back', 'out']);
     const have = iconNames();
     const asked = new Set();
-    for (const m of SRC.matchAll(/icon\('([a-z]+)'\)/g)) asked.add(m[1]);
     for (const u of uses()) asked.add(u.icon);
 
     const spare = [...have].filter((name) => !asked.has(name) && !CHROME.has(name));
