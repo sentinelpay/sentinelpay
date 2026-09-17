@@ -1477,17 +1477,6 @@ app.post('/v1/auth/verify', requireCloudflareOrigin, authVerifyLimiter, async (r
         if (out.session) setSessionCookie(res, out.session.token, out.session.maxAgeSeconds);
         else console.error('[auth] the account was made but no session could be opened');
 
-        // Give the new account its organisation straight away, named after the
-        // company we already know from the address they signed up with. A person
-        // who can only ever belong to one company should not be asked to declare
-        // it; they can rename it in settings, and the picker only appears once
-        // there is genuinely something to pick between.
-        if (out.userId) {
-            const host = String(email).split('@').pop() || '';
-            const made = await orgs.create(out.userId, orgs.nameFromHost(host) || out.name, host, 'owner');
-            if (made.ok) setOrgCookie(res, made.org.id);
-            else console.error('[auth] the account was made but it has no organisation');
-        }
 
         res.json({ ok: true, signedIn: Boolean(out.session), name: out.name });
     } catch (err) {
@@ -2581,13 +2570,11 @@ app.listen(PORT, () => {
 
     submissions.startRetention();
 
-    // Everything that existed before organisations did gets moved onto one, in
-    // order: give each account an organisation, then hand it that account's
-    // tokens and checks. All three are no-ops once they have run, so leaving
-    // them here costs a query at boot and nothing else.
-    orgs.backfill()
-        .then(() => Promise.all([tokens.adopt(), screening.adopt()]))
-        .catch((err) => console.error('[orgs] migration at boot failed: ' + err.message));
+    // Work that predates organisations joins whichever one its owner belongs to,
+    // once they have made it. Nothing here invents an organisation: an account
+    // with none stays with none, and is asked to make one.
+    Promise.all([tokens.adopt(), screening.adopt()])
+        .catch((err) => console.error('[orgs] adoption at boot failed: ' + err.message));
 
     const dbState = db.status();
     if (!dbState.configured) {

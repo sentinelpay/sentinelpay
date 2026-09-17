@@ -233,43 +233,8 @@ function roleAtLeast(role, needed) {
     return (ROLE_RANK[role] || 0) >= (ROLE_RANK[needed] || 0);
 }
 
-// Everyone who signed up before organisations existed gets one, named after the
-// company we already know from their trial, or from their email domain if there
-// is no trial. Runs once at boot and is a no-op afterwards, so it is safe to
-// leave in place.
-async function backfill() {
-    if (!(await init())) return { ok: false, made: 0 };
-    try {
-        const orphans = await db.query(
-            `SELECT u.id, u.email_hash, u.email_enc, t.company_host, t.company_enc
-               FROM users u
-          LEFT JOIN memberships m ON m.user_id = u.id
-          LEFT JOIN trials t ON t.user_id = u.id
-              WHERE m.user_id IS NULL`
-        );
-        if (!orphans.rowCount) return { ok: true, made: 0 };
-
-        let made = 0;
-        for (const row of orphans.rows) {
-            const email = db.open('signup-email:' + row.email_hash, row.email_enc) || '';
-            const company = row.company_enc
-                ? db.open('trial-company:' + row.id, row.company_enc) || ''
-                : '';
-            const host = row.company_host || String(email).split('@').pop() || '';
-            const name = cleanName(company) || nameFromHost(host) || 'My organisation';
-            const out = await create(row.id, name, host, 'owner');
-            if (out.ok) made++;
-        }
-        if (made) console.log('[orgs] gave ' + made + ' existing account(s) an organisation');
-        return { ok: true, made };
-    } catch (err) {
-        console.error('[orgs] backfill failed: ' + err.message);
-        return { ok: false, made: 0 };
-    }
-}
-
 module.exports = {
     ROLES, ROLE_KEYS, ROLE_RANK, NAME_MAX, ORGS_PER_USER,
-    init, create, listFor, membership, bySlug, roleAtLeast, backfill,
+    init, create, listFor, membership, bySlug, roleAtLeast,
     hostOf, nameFromHost, cleanName,
 };
