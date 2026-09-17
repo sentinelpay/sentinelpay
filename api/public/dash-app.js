@@ -3757,6 +3757,8 @@
         // on the picker there is nothing to navigate to yet, so the shell drops
         // to the top bar alone
         if (app) app.classList.toggle('is-bare', onOrgs());
+        paintTopBrand(onOrgs());
+        paintSideBrand();
         var rebuilt = paintNav(currentNav());
         applySideMode(sideMode());
         setMenu(false);
@@ -3778,11 +3780,47 @@
 
     window.addEventListener('popstate', render);
 
+    // On the picker the sidebar is gone, so the mark in the corner is the only
+    // way back out. It goes to the front page rather than to /dashboard, which
+    // would only send you back to the picker you are standing on.
+    function paintTopBrand(bare) {
+        var slot = document.getElementById('top-slot');
+        if (!slot) return;
+        var have = slot.querySelector('.top-brand');
+        if (!bare) {
+            if (have) have.remove();
+            return;
+        }
+        if (have) return;
+        var a2 = document.createElement('a');
+        a2.className = 'top-brand';
+        a2.href = '/';
+        a2.setAttribute('aria-label', 'Sentinelpay');
+        var img = document.createElement('img');
+        img.src = '/logo.svg';
+        img.alt = 'Sentinelpay';
+        img.width = 24;
+        img.height = 24;
+        a2.appendChild(img);
+        slot.appendChild(a2);
+    }
+
+    // the mark in the sidebar goes to the organisation you are in. it used to go
+    // to /dashboard, which is now a door onto the picker, so it would have thrown
+    // you out of the place it was meant to take you home to.
+    function paintSideBrand() {
+        var brand = document.querySelector('.side-brand');
+        if (!brand) return;
+        brand.setAttribute('href', atOrg ? orgHome(atOrg) : ORGS_PATH);
+    }
+
     function paintShell() {
         if (location.pathname === ORGS_PATH_ALT && canRoute) {
             history.replaceState({}, '', ORGS_PATH);
         }
         if (app) app.classList.toggle('is-bare', onOrgs());
+        paintTopBrand(onOrgs());
+        paintSideBrand();
         paintNav(currentNav());
         paintFoot();
         applySideMode(sideMode());

@@ -1660,13 +1660,17 @@ button { font: inherit; color: inherit; }
 .app.is-bare .side { width: 0; overflow: hidden; border-right: 0; }
 .app.is-bare .menu-btn { display: none; }
 .app.is-bare .top { padding-left: 1.4rem; }
-.app.is-bare .top-slot::before {
-    content: '';
-    display: block;
-    width: 22px;
-    height: 22px;
-    background: url('/logo.svg') center / contain no-repeat;
+.top-brand {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.3rem;
+    margin: -0.3rem;
+    border-radius: 8px;
+    transition: background 0.16s ease, transform 0.22s var(--ease);
 }
+.top-brand img { display: block; width: 24px; height: 24px; }
+.top-brand:hover { background: var(--hover); transform: translateY(-1px); }
+.top-brand:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
 
 .orgs-pg { max-width: 34rem; }
 .orgs { display: grid; gap: 0.5rem; }
