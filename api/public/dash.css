@@ -1523,7 +1523,10 @@ button { font: inherit; color: inherit; }
 
 .pick-pop {
     position: fixed;
-    z-index: 70;
+    /* above the dialogs and the side panel, both of which sit at eighty. the
+       popover is opened from inside them, so it has to clear them: at seventy
+       it was opening behind the panel and the click looked like it did nothing. */
+    z-index: 90;
     display: flex;
     flex-direction: column;
     min-width: 12rem;
