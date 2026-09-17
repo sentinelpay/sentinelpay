@@ -2653,9 +2653,11 @@
         line.className = 'card-pick-h';
         line.textContent = t(title);
         if (badge) {
-            var tg = document.createElement('span');
-            tg.className = 'tag tag-sbx';
-            tg.textContent = t(badge);
+            // the same bare monospace the scope keys use a few rows below. a
+            // coloured pill here and plain code there was two ways of saying
+            // the same kind of thing in one panel.
+            var tg = document.createElement('code');
+            tg.textContent = badge;
             line.appendChild(tg);
         }
         txt.appendChild(line);

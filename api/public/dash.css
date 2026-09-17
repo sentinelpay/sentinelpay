@@ -1142,7 +1142,12 @@ button { font: inherit; color: inherit; }
     font-weight: 650;
     color: var(--ink);
 }
-.card-pick-h .tag { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.card-pick-h code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.72rem;
+    font-weight: 400;
+    color: var(--ink-4);
+}
 .card-pick-p { display: block; margin-top: 0.2rem; font-size: 0.78rem; line-height: 1.5; color: var(--ink-3); }
 
 .sum { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.35rem 0.9rem; margin: 0; }
