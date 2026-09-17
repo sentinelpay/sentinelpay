@@ -1655,32 +1655,6 @@ button { font: inherit; color: inherit; }
     .tr-act { grid-row: 1; grid-column: 2; }
 }
 
-/* the organisation picker. no sidebar: everything in it belongs to an
-   organisation, so until one is chosen there is nothing there to reach. */
-/* the sidebar is in the markup, so the browser paints it before any script has
-   said where we are. the head decides that and writes it on the document, which
-   is why this keys off both: the attribute for the first frame, the class for
-   every navigation after it. */
-html[data-bare] .app,
-.app.is-bare { grid-template-columns: 0 minmax(0, 1fr); }
-html[data-bare] .side,
-.app.is-bare .side { width: 0; overflow: hidden; border-right: 0; }
-html[data-bare] .menu-btn,
-.app.is-bare .menu-btn { display: none; }
-html[data-bare] .top,
-.app.is-bare .top { padding-left: 1.4rem; }
-/* below 900 the sidebar is taken out of the flow, so the grid is one column.
-   putting the empty track back here would leave the page itself in it, which is
-   a column zero pixels wide. */
-@media (max-width: 900px) {
-    html[data-bare] .app,
-    .app.is-bare { grid-template-columns: minmax(0, 1fr); }
-}
-/* nothing happens to it on hover. it is a way out, not something to play with. */
-.top-brand { display: inline-flex; align-items: center; }
-.top-brand img { display: block; width: 24px; height: 24px; }
-.top-brand:focus-visible { outline: 2px solid var(--link); outline-offset: 3px; }
-
 .orgs-pg { max-width: 34rem; }
 .orgs { display: grid; gap: 0.5rem; }
 .org {
