@@ -486,6 +486,7 @@
             "Read what has been done on the account and by whom.": "Čitanje što je učinjeno na računu i tko je to učinio.",
             "Read members": "Čitanje članova",
             "List who is on the account and what they may do.": "Popis tko je na računu i što smije raditi.",
+            "Medium risk": "Srednji rizik",
             "Close": "Zatvori",
             "Profile saved": "Profil spremljen",
             "Primary email": "Glavni email",

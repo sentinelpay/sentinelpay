@@ -71,6 +71,12 @@
     --tick-line: rgba(14, 35, 88, 0.22);
     --tick-line-hover: rgba(0, 145, 200, 0.55);
     --tick-ring: rgba(0, 145, 200, 0.28);
+    --risk-low: #0a7b52;
+    --risk-low-bg: rgba(10, 123, 82, 0.08);
+    --risk-mid: #94620f;
+    --risk-mid-bg: rgba(148, 98, 15, 0.1);
+    --risk-high: #b4243c;
+    --risk-high-bg: rgba(180, 36, 60, 0.08);
 
     --r: 10px;
     --r-lg: 14px;
@@ -151,6 +157,12 @@
     --tick-line: rgba(233, 238, 249, 0.24);
     --tick-line-hover: rgba(123, 220, 255, 0.55);
     --tick-ring: rgba(0, 240, 255, 0.28);
+    --risk-low: #5fd6a4;
+    --risk-low-bg: rgba(95, 214, 164, 0.12);
+    --risk-mid: #e0b25e;
+    --risk-mid-bg: rgba(224, 178, 94, 0.14);
+    --risk-high: #ff8095;
+    --risk-high-bg: rgba(255, 128, 149, 0.14);
 }
 
 * { box-sizing: border-box; }
@@ -1177,7 +1189,33 @@ button { font: inherit; color: inherit; }
 }
 .grp-head:hover { background: var(--hover); }
 .grp-t { flex: 1 1 auto; min-width: 0; }
-.grp-n { display: block; font-size: 0.84rem; font-weight: 600; color: var(--ink); }
+.grp-n {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--ink);
+}
+
+/* what handing this out costs if the token gets loose. three steps, each a tint
+   of one of our own inks rather than a traffic light dropped on the page. */
+.risk {
+    flex: none;
+    padding: 0.08rem 0.4rem;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    line-height: 1.5;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.risk-low { color: var(--risk-low); background: var(--risk-low-bg); }
+.risk-medium { color: var(--risk-mid); background: var(--risk-mid-bg); }
+.risk-high { color: var(--risk-high); background: var(--risk-high-bg); }
 .grp-h { display: block; margin-top: 0.1rem; font-size: 0.76rem; line-height: 1.45; color: var(--ink-4); }
 .grp-c {
     flex: none;
@@ -1218,7 +1256,14 @@ button { font: inherit; color: inherit; }
 .grp-body .tick:has(input:checked) { border-color: var(--line-2); background: var(--sel-bg); }
 .grp-body .tick input { margin-top: 0.1rem; }
 .tick-t { flex: 1 1 auto; min-width: 0; }
-.tick-n { display: block; font-size: 0.84rem; color: var(--ink-2); }
+.tick-n {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    font-size: 0.84rem;
+    color: var(--ink-2);
+}
 .tick-soon {
     margin-left: 0.45rem;
     padding: 0.05rem 0.35rem;

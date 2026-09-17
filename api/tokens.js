@@ -31,55 +31,78 @@ const SCOPE_GROUPS = [
 // live is whether the endpoints behind a scope exist today. every scope here is
 // one we intend to serve; the flag is what tells the panel to mark the ones that
 // are not wired yet, and it is the only thing to change when they are.
+//
+// risk is what handing this scope out costs if the token gets loose, and it is
+// stated per scope rather than worked out from writes, because the two are not
+// the same thing. reading the sealed evidence changes nothing and is high;
+// generating a report writes and is only medium. the rule behind the three:
+//
+//   low     operational data that would embarrass nobody
+//   medium  customer data, or a write that only touches its own records
+//   high    the sealed record itself, or a change to what the account flags,
+//           reports, or delivers to
 const SCOPES = [
-    { key: 'screenings:write', group: 'screening', writes: true, live: true,
+    { key: 'screenings:write', group: 'screening', writes: true, live: true, risk: 'medium',
       label: 'Run screenings', hint: 'Check an address. On a live token this spends a check.' },
-    { key: 'screenings:read', group: 'screening', writes: false, live: true,
+    { key: 'screenings:read', group: 'screening', writes: false, live: true, risk: 'low',
       label: 'Read screenings', hint: 'List past checks and read a single result.' },
-    { key: 'screenings:bulk', group: 'screening', writes: true, live: false,
+    { key: 'screenings:bulk', group: 'screening', writes: true, live: false, risk: 'medium',
       label: 'Screen in bulk', hint: 'Submit many addresses in one call and collect them later.' },
 
-    { key: 'evidence:read', group: 'evidence', writes: false, live: true,
+    { key: 'evidence:read', group: 'evidence', writes: false, live: true, risk: 'high',
       label: 'Download evidence', hint: 'Pull the full sealed record for a check, with its digest.' },
-    { key: 'reports:read', group: 'evidence', writes: false, live: false,
+    { key: 'reports:read', group: 'evidence', writes: false, live: false, risk: 'high',
       label: 'Read reports', hint: 'List and download reports that have already been built.' },
-    { key: 'reports:generate', group: 'evidence', writes: true, live: false,
+    { key: 'reports:generate', group: 'evidence', writes: true, live: false, risk: 'medium',
       label: 'Build reports', hint: 'Ask for a new report over a period or a case.' },
 
-    { key: 'wallets:read', group: 'wallets', writes: false, live: false,
+    { key: 'wallets:read', group: 'wallets', writes: false, live: false, risk: 'medium',
       label: 'Read wallets', hint: 'List watched wallets and the addresses under them.' },
-    { key: 'wallets:write', group: 'wallets', writes: true, live: false,
+    { key: 'wallets:write', group: 'wallets', writes: true, live: false, risk: 'medium',
       label: 'Manage wallets', hint: 'Add, rename and stop watching a wallet.' },
-    { key: 'xpub:register', group: 'wallets', writes: true, live: false,
+    { key: 'xpub:register', group: 'wallets', writes: true, live: false, risk: 'high',
       label: 'Register an extended key', hint: 'Hand us an xpub or descriptor for us to derive and watch.' },
 
-    { key: 'alerts:read', group: 'monitoring', writes: false, live: false,
+    { key: 'alerts:read', group: 'monitoring', writes: false, live: false, risk: 'medium',
       label: 'Read alerts', hint: 'List what the watching has raised and read one.' },
-    { key: 'alerts:triage', group: 'monitoring', writes: true, live: false,
+    { key: 'alerts:triage', group: 'monitoring', writes: true, live: false, risk: 'high',
       label: 'Work alerts', hint: 'Assign, escalate and clear an alert as a false positive.' },
-    { key: 'cases:read', group: 'monitoring', writes: false, live: false,
+    { key: 'cases:read', group: 'monitoring', writes: false, live: false, risk: 'medium',
       label: 'Read cases', hint: 'List cases and read what is attached to one.' },
-    { key: 'cases:write', group: 'monitoring', writes: true, live: false,
+    { key: 'cases:write', group: 'monitoring', writes: true, live: false, risk: 'medium',
       label: 'Work cases', hint: 'Open, note, attach to and close a case.' },
 
-    { key: 'policy:read', group: 'policy', writes: false, live: false,
+    { key: 'policy:read', group: 'policy', writes: false, live: false, risk: 'low',
       label: 'Read policy', hint: 'Read the thresholds and rules in force.' },
-    { key: 'policy:write', group: 'policy', writes: true, live: false,
+    { key: 'policy:write', group: 'policy', writes: true, live: false, risk: 'high',
       label: 'Change policy', hint: 'Change what is flagged. This moves what the account reports.' },
-    { key: 'watchlists:write', group: 'policy', writes: true, live: false,
+    { key: 'watchlists:write', group: 'policy', writes: true, live: false, risk: 'high',
       label: 'Manage watchlists', hint: 'Add and remove the account own addresses of interest.' },
 
-    { key: 'webhooks:read', group: 'developers', writes: false, live: false,
+    { key: 'webhooks:read', group: 'developers', writes: false, live: false, risk: 'low',
       label: 'Read webhooks', hint: 'List endpoints we deliver to and their recent attempts.' },
-    { key: 'webhooks:manage', group: 'developers', writes: true, live: false,
+    { key: 'webhooks:manage', group: 'developers', writes: true, live: false, risk: 'high',
       label: 'Manage webhooks', hint: 'Add and remove endpoints, and replay a delivery.' },
 
-    { key: 'audit:read', group: 'organisation', writes: false, live: false,
+    { key: 'audit:read', group: 'organisation', writes: false, live: false, risk: 'medium',
       label: 'Read the audit log', hint: 'Read what has been done on the account and by whom.' },
-    { key: 'members:read', group: 'organisation', writes: false, live: false,
+    { key: 'members:read', group: 'organisation', writes: false, live: false, risk: 'low',
       label: 'Read members', hint: 'List who is on the account and what they may do.' },
 ];
 const SCOPE_KEYS = SCOPES.map((s) => s.key);
+
+const RISKS = ['low', 'medium', 'high'];
+
+// a group is as risky as the riskiest thing in it, so the heading cannot read
+// calmer than what it hides.
+function groupRisk(groupKey) {
+    let worst = -1;
+    SCOPES.forEach((sc) => {
+        if (sc.group !== groupKey) return;
+        worst = Math.max(worst, RISKS.indexOf(sc.risk || 'low'));
+    });
+    return worst < 0 ? '' : RISKS[worst];
+}
 
 // the presets. read only and full access are derived rather than listed, so they
 // stay correct the moment a scope is added above.
@@ -307,7 +330,7 @@ async function read(raw) {
 }
 
 module.exports = {
-    SCOPES, SCOPE_KEYS, SCOPE_GROUPS, presetScopes,
+    SCOPES, SCOPE_KEYS, SCOPE_GROUPS, presetScopes, RISKS, groupRisk,
     TTL_CHOICES, PER_USER, NAME_MAX, KINDS, KIND_KEYS,
     mint, list, revoke, read, splitToken, init,
 };

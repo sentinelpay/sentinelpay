@@ -2510,6 +2510,27 @@
         });
     }
 
+    var RISK_ORDER = ['low', 'medium', 'high'];
+    var RISK_LABEL = { low: 'Low risk', medium: 'Medium risk', high: 'High risk' };
+
+    // a group reads as risky as the riskiest thing inside it, worked out here so
+    // the server never has to send a number the panel could disagree with.
+    function groupRisk(scopes, groupKey) {
+        var worst = -1;
+        scopes.forEach(function (sc) {
+            if ((sc.group || 'other') !== groupKey) return;
+            worst = Math.max(worst, RISK_ORDER.indexOf(sc.risk || 'low'));
+        });
+        return worst < 0 ? '' : RISK_ORDER[worst];
+    }
+
+    function riskPill(level) {
+        var el = document.createElement('span');
+        el.className = 'risk risk-' + level;
+        el.textContent = t(RISK_LABEL[level] || level);
+        return el;
+    }
+
     var PRESETS = [
         { key: 'none', label: 'No access' },
         { key: 'read', label: 'Read only' },
@@ -2843,7 +2864,11 @@
                     ht.className = 'grp-t';
                     var hn = document.createElement('span');
                     hn.className = 'grp-n';
-                    hn.textContent = t(g.label);
+                    var hnT = document.createElement('span');
+                    hnT.textContent = t(g.label);
+                    hn.appendChild(hnT);
+                    var gr = groupRisk(scopes, g.key);
+                    if (gr) hn.appendChild(riskPill(gr));
                     ht.appendChild(hn);
                     var hh = document.createElement('span');
                     hh.className = 'grp-h';
@@ -2906,6 +2931,7 @@
                         // a scope whose endpoints are not wired yet still grants
                         // nothing, so the row says so rather than letting the
                         // tick imply otherwise.
+                        if (sc.risk) tn.appendChild(riskPill(sc.risk));
                         if (!sc.live) {
                             var soon = document.createElement('span');
                             soon.className = 'tick-soon';
