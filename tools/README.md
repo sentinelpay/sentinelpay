@@ -16,3 +16,23 @@ Run from the repo root:
 
 Exits with a per-file list and a total. Zero means every visible string has a
 croatian and german entry.
+
+# reset plan
+
+Puts an account back to having no plan, so `/dashboard` sends it to
+`/choose-a-plan` again. For trying that path more than once.
+
+    DATABASE_URL=... SP_INDEX_KEY=... node tools/reset-plan.js you@example.com
+    DATABASE_URL=... SP_INDEX_KEY=... node tools/reset-plan.js you@example.com --yes
+
+Without `--yes` it prints the current plan and stops. It refuses to run when
+`NODE_ENV=production`.
+
+The address is never stored in readable form, so the lookup hashes what you type
+with `SP_INDEX_KEY` and matches that. The key has to be the one the environment
+uses, or it finds nobody.
+
+An address listed in `DEV_PLAN_EMAILS` is granted enterprise again on the next
+dashboard load, because that grant is re-applied on every visit. Take it out of
+the variable and restart before resetting, or this will not hold. The tool warns
+when it sees the address there.
