@@ -1290,17 +1290,35 @@
 
         var current = value;
 
-        function labelFor(v) {
+        function optFor(v) {
             for (var i = 0; i < groups.length; i++) {
                 var os = groups[i].options;
                 for (var j = 0; j < os.length; j++) {
-                    if (os[j].value === v) return os[j].label;
+                    if (os[j].value === v) return os[j];
                 }
             }
-            return '';
+            return null;
+        }
+        function labelFor(v) {
+            var op = optFor(v);
+            return op ? op.label : '';
         }
 
-        function paintVal() { val.textContent = labelFor(current); }
+        // whatever mark an option carries is carried by the closed control too,
+        // so the chosen one is recognisable without opening the list.
+        function paintVal() {
+            val.textContent = '';
+            var op = optFor(current);
+            if (op && op.lead) {
+                var ld = document.createElement('span');
+                ld.className = 'pick-lead';
+                ld.innerHTML = op.lead;
+                val.appendChild(ld);
+            }
+            var tx = document.createElement('span');
+            tx.textContent = op ? op.label : '';
+            val.appendChild(tx);
+        }
 
         function draw(q) {
             list.textContent = '';
@@ -1328,6 +1346,12 @@
                     var dot = document.createElement('span');
                     dot.className = 'acct-dot';
                     b.appendChild(dot);
+                    if (op.lead) {
+                        var ld = document.createElement('span');
+                        ld.className = 'pick-lead';
+                        ld.innerHTML = op.lead;
+                        b.appendChild(ld);
+                    }
                     var tx = document.createElement('span');
                     tx.className = 'pick-t';
                     tx.textContent = op.label;
@@ -2745,14 +2769,75 @@
     // because it is the same kind of job: a handful of choices, some of which
     // cannot be taken back, and a page at the end that reads them out before
     // anything is made.
+    // Flags, drawn rather than typed: the emoji ones are not rendered on
+    // windows, where a reader gets the two letters of the country code
+    // instead of a flag. Simplified to what carries at sixteen pixels.
+    var FLAGS = {
+        de: '<rect width="24" height="5.34" y="0" fill="#000"/>' +
+            '<rect width="24" height="5.33" y="5.34" fill="#dd0000"/>' +
+            '<rect width="24" height="5.33" y="10.67" fill="#ffce00"/>',
+        ie: '<rect width="8" height="16" x="0" fill="#169b62"/>' +
+            '<rect width="8" height="16" x="8" fill="#fff"/>' +
+            '<rect width="8" height="16" x="16" fill="#ff883e"/>',
+        gb: '<rect width="24" height="16" fill="#012169"/>' +
+            '<path d="M0 0l24 16M24 0L0 16" stroke="#fff" stroke-width="3.2"/>' +
+            '<path d="M0 0l24 16M24 0L0 16" stroke="#c8102e" stroke-width="1.8"/>' +
+            '<path d="M12 0v16M0 8h24" stroke="#fff" stroke-width="5"/>' +
+            '<path d="M12 0v16M0 8h24" stroke="#c8102e" stroke-width="3"/>',
+        us: '<rect width="24" height="16" fill="#fff"/>' +
+            '<path d="M0 1.23h24M0 3.69h24M0 6.15h24M0 8.61h24M0 11.08h24M0 13.54h24" ' +
+            'stroke="#b31942" stroke-width="1.23"/>' +
+            '<rect width="10.5" height="8.61" fill="#0a3161"/>',
+        sg: '<rect width="24" height="8" y="0" fill="#ed2939"/>' +
+            '<rect width="24" height="8" y="8" fill="#fff"/>' +
+            '<circle cx="5.4" cy="4" r="2.7" fill="#fff"/>' +
+            '<circle cx="6.6" cy="4" r="2.7" fill="#ed2939"/>'
+    };
+
+    function flag(code) {
+        return '<svg class="flg" viewBox="0 0 24 16" aria-hidden="true">' +
+            (FLAGS[code] || '') + '</svg>';
+    }
+
     var PRJ_REGIONS = [
-        { value: 'eu-central-1', label: 'Frankfurt', where: 'Germany' },
-        { value: 'eu-west-1', label: 'Dublin', where: 'Ireland' },
-        { value: 'eu-west-2', label: 'London', where: 'United Kingdom' },
-        { value: 'us-east-1', label: 'Virginia', where: 'United States' },
-        { value: 'us-west-2', label: 'Oregon', where: 'United States' },
-        { value: 'ap-southeast-1', label: 'Singapore', where: 'Singapore' }
+        { value: 'eu-central-1', label: 'Frankfurt', where: 'Germany', flag: 'de' },
+        { value: 'eu-west-1', label: 'Dublin', where: 'Ireland', flag: 'ie' },
+        { value: 'eu-west-2', label: 'London', where: 'United Kingdom', flag: 'gb' },
+        { value: 'us-east-1', label: 'Virginia', where: 'United States', flag: 'us' },
+        { value: 'us-west-2', label: 'Oregon', where: 'United States', flag: 'us' },
+        { value: 'ap-southeast-1', label: 'Singapore', where: 'Singapore', flag: 'sg' }
     ];
+
+    // Which region to start on. The browser already knows roughly where it is
+    // from its own time zone, so the nearest one is offered without asking and
+    // without a word about it: it is a default, not a setting called automatic.
+    // A zone we do not recognise falls to Frankfurt, which is where the EU data
+    // residency the pricing page promises would be kept.
+    function nearestRegion() {
+        var zone = '';
+        try {
+            zone = (Intl.DateTimeFormat().resolvedOptions().timeZone || '');
+        } catch (err) { zone = ''; }
+        var area = zone.split('/')[0];
+        var city = zone.split('/')[1] || '';
+
+        if (area === 'Europe') {
+            if (city === 'London' || city === 'Belfast') return 'eu-west-2';
+            if (city === 'Dublin' || city === 'Lisbon' || city === 'Reykjavik') return 'eu-west-1';
+            return 'eu-central-1';
+        }
+        if (area === 'Africa') return 'eu-central-1';
+        if (area === 'Asia' || area === 'Australia' || area === 'Pacific' || area === 'Indian') {
+            return 'ap-southeast-1';
+        }
+        if (area === 'America') {
+            if (/Los_Angeles|Vancouver|Tijuana|Phoenix|Denver|Edmonton|Anchorage|Juneau/.test(city)) {
+                return 'us-west-2';
+            }
+            return 'us-east-1';
+        }
+        return 'eu-central-1';
+    }
     var PRJ_LISTS = [
         { key: 'ofac', label: 'OFAC SDN', hint: 'The United States list, published by the Treasury.' },
         { key: 'eu', label: 'EU consolidated', hint: 'Everyone under European Union financial sanctions.' },
@@ -2768,10 +2853,25 @@
           hint: 'The record a regulator asks for, made at the time rather than after.' }
     ];
 
+    function flagOf(region) {
+        for (var i = 0; i < PRJ_REGIONS.length; i++) {
+            if (PRJ_REGIONS[i].value === region) return flag(PRJ_REGIONS[i].flag);
+        }
+        return '';
+    }
+
+    // the only html built by hand here is our own flag markup, so anything that
+    // came from a name or a translation is escaped before it joins it.
+    function escapeText(v) {
+        var d = document.createElement('div');
+        d.textContent = String(v == null ? '' : v);
+        return d.innerHTML;
+    }
+
     function askProject(org, done) {
         var want = {
             name: '',
-            region: 'eu-central-1',
+            region: nearestRegion(),
             threshold: 'balanced',
             lists: { ofac: true, eu: true, uk: true, un: true },
             guards: { autoScreen: true, fourEyes: false, keepEvidence: true },
@@ -2830,6 +2930,10 @@
             // the organisation is not a choice here: you are standing in it.
             var who = document.createElement('div');
             who.className = 'drw-static';
+            // grey, inert, and no mark on it. a padlock here would be the
+            // second meaning for the glyph that means Security in the rail,
+            // and the colour already says this is not yours to change.
+            who.setAttribute('aria-disabled', 'true');
             who.textContent = org.name || t('This organisation');
             d.body.appendChild(drwSection('Organisation',
                 'Everything in this project is billed and staffed here.', who));
@@ -2847,7 +2951,11 @@
 
             var regionBox = selectBox('prj-region', [{
                 options: PRJ_REGIONS.map(function (r) {
-                    return { value: r.value, label: t(r.label) + '  ·  ' + t(r.where) };
+                    return {
+                        value: r.value,
+                        label: t(r.label) + '  ·  ' + t(r.where),
+                        lead: flag(r.flag)
+                    };
                 })
             }], want.region, function (v) { want.region = v; });
             d.body.appendChild(drwSection('Where it is kept',
@@ -2976,9 +3084,18 @@
                 sum.appendChild(dt);
                 sum.appendChild(dd);
             }
+            function rowHtml(k, html) {
+                var dt = document.createElement('dt');
+                dt.textContent = t(k);
+                var dd = document.createElement('dd');
+                dd.className = 'sum-flag';
+                dd.innerHTML = html;
+                sum.appendChild(dt);
+                sum.appendChild(dd);
+            }
             row('Organisation', org.name || '—');
             row('Name', want.name.trim());
-            row('Where it is kept', regionLabel(want.region));
+            rowHtml('Where it is kept', flagOf(want.region) + escapeText(regionLabel(want.region)));
             row('Screens against', listsChosen().map(function (l) { return t(l.label); }).join(', '));
             row('Raises an alert', labelOf(THRESHOLDS, want.threshold));
             row('By default', guardsChosen().length

@@ -1440,7 +1440,6 @@ button { font: inherit; color: inherit; }
     visibility: visible;
     transform: none;
     pointer-events: auto;
-    transition: opacity 0.18s ease, transform 0.18s ease, visibility 0s;
 }
 .split-opt {
     display: block;
@@ -1818,7 +1817,12 @@ html[data-bare] .top,
        popover is opened from inside them, so it has to clear them: at seventy
        it was opening behind the panel and the click looked like it did nothing. */
     z-index: 90;
-    display: flex;
+    /* Laid out only while open. Hidden it was still a box with a top of over a
+       thousand pixels, and the side panel's body is a containing block for it,
+       so seven closed popovers were holding three hundred pixels of scroll the
+       panel had no content for: the fold below them collapsed and the scroll
+       area did not. */
+    display: none;
     flex-direction: column;
     min-width: 12rem;
     padding: 0.35rem;
@@ -1830,10 +1834,20 @@ html[data-bare] .top,
     visibility: hidden;
     transform: translateY(-6px);
     pointer-events: none;
-    transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+    /* display is stepped rather than eased, so the fade needs it declared as a
+       discrete transition and a starting style to ease from. where a browser
+       does not know those, the popover simply appears: nothing breaks. */
+    transition:
+        opacity 0.18s ease,
+        transform 0.18s ease,
+        display 0.18s allow-discrete;
+}
+@starting-style {
+    .pick-pop.is-open { opacity: 0; transform: translateY(-6px); }
 }
 .pick-pop.is-up { transform: translateY(6px); }
 .pick-pop.is-open {
+    display: flex;
     opacity: 1;
     visibility: visible;
     transform: none;
@@ -2858,4 +2872,22 @@ html.is-theming .btn {
 .drw-adv-body .drw-sec:last-child { border-bottom: 0; }
 @media (prefers-reduced-motion: reduce) {
     .drw-adv-body, .drw-adv-c { transition-duration: 0.01ms; }
+}
+
+/* a flag beside a region, in a dropdown option and on the closed control */
+.flg { display: block; width: 18px; height: 12px; border-radius: 2px; }
+.pick-lead { flex: none; display: flex; align-items: center; }
+.pick-val { display: flex; align-items: center; gap: 0.45rem; }
+.sum-flag { display: flex; align-items: center; gap: 0.45rem; }
+
+/* Shown, not chosen. Greyed and locked, so it reads as fixed before anyone
+   tries to change it and finds there is nothing to click. */
+.drw-static {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: var(--ink-4);
+    font-weight: 600;
+    background: var(--nav-on);
+    border-color: transparent;
 }
