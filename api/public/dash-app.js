@@ -3448,53 +3448,6 @@
         var form = document.createElement('form');
         form.className = 'vpanel';
 
-        // what closing it costs, in the same box the token drawer uses to say a
-        // thing is serious. the member count leads, because the others are work
-        // that can be redone and a person losing access is not.
-        var weigh = document.createElement('div');
-        weigh.className = 'warn-host';
-        form.appendChild(weigh);
-
-        function paintWeight(w) {
-            var people = Math.max(1, Number(w && w.members) || 0);
-            var rest = [];
-            if (w && w.tokens) {
-                rest.push(w.tokens + ' ' + t(w.tokens === 1 ? 'live token' : 'live tokens'));
-            }
-            if (w && w.checks) {
-                rest.push(w.checks + ' ' + t(w.checks === 1 ? 'screening' : 'screenings'));
-            }
-
-            weigh.textContent = '';
-            var box = document.createElement('div');
-            box.className = 'warn';
-            var mark = document.createElement('span');
-            mark.className = 'warn-i';
-            mark.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
-                'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-                '<path d="M12 8.5v5M12 16.9v.1"/>' +
-                '<path d="M10.3 4.3 2.8 18a1.8 1.8 0 0 0 1.6 2.7h15.2A1.8 1.8 0 0 0 21.2 18L13.7 4.3a1.9 1.9 0 0 0-3.4 0Z"/></svg>';
-            box.appendChild(mark);
-            var txt = document.createElement('div');
-            txt.className = 'warn-t';
-            var h = document.createElement('div');
-            h.className = 'warn-h';
-            h.textContent = t('This removes') + ' ' + people + ' ' +
-                t(people === 1 ? 'member' : 'members');
-            txt.appendChild(h);
-            var p2 = document.createElement('p');
-            p2.textContent = rest.length
-                ? rest.join(' ' + t('and') + ' ') + ' ' + t('go with them.')
-                : t('Nothing else is in it yet.');
-            txt.appendChild(p2);
-            box.appendChild(txt);
-            weigh.appendChild(box);
-        }
-
-        // the row we already have says how many people are in it, so the box is
-        // right before the fetch answers and stays right if it never does.
-        paintWeight({ members: org.members, tokens: 0, checks: 0 });
-
         var field = document.createElement('div');
         field.className = 'vfield';
         var lab = document.createElement('label');
@@ -3524,16 +3477,6 @@
         quit.appendChild(no);
         form.appendChild(quit);
         m.body.appendChild(form);
-
-        fetch('/v1/orgs/' + encodeURIComponent(org.id) + '/weight', { credentials: 'same-origin' })
-            .then(function (r) { return r.ok ? r.json() : null; })
-            .then(function (j) {
-                // a failed count leaves the one already on screen. an empty box
-                // here would read as "nothing goes", which is the wrong thing to
-                // be wrong about.
-                if (j && j.weight) paintWeight(j.weight);
-            })
-            .catch(function () {});
 
         typed.addEventListener('input', function () {
             go2.disabled = typed.value.trim().toLowerCase() !== String(org.name).trim().toLowerCase();
