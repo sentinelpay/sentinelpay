@@ -1073,21 +1073,21 @@ button { font: inherit; color: inherit; }
     padding: 1.15rem 1.3rem;
     border-bottom: 1px solid var(--line-2);
 }
-/* inside the panel the dropdown is the name field's neighbour, so it is built to
-   the same height, padding, type size and radius. elsewhere it keeps the
-   compact size the settings rows use. */
-.drw .pick-btn {
-    padding: 0.78rem 2rem 0.78rem 0.9rem;
-    border-color: var(--field-line);
-    border-radius: 10px;
-    font-size: 0.9rem;
-    color: var(--ink);
+/* inside the panel the name field sits beside the dropdown, so it is built to
+   the dropdown's measurements: same padding, type size, radius and edge. the
+   dropdown is left as it is, here and everywhere else. */
+.drw .modal-in {
+    padding: 0.52rem 0.7rem;
+    border-color: var(--line);
+    border-radius: 9px;
+    font-size: 0.86rem;
+    color: var(--ink-2);
 }
-.drw .pick-btn:focus-visible,
-.drw .pick.is-open .pick-btn {
-    border-color: var(--link);
-    background: var(--surface);
-    box-shadow: 0 0 0 3px var(--field-ring);
+.drw .modal-in::placeholder { color: var(--ink-4); }
+.drw .modal-in:focus {
+    border-color: var(--sel);
+    background: var(--canvas);
+    box-shadow: 0 0 0 3px var(--sel-bg);
 }
 
 /* a row holding one control centres it against the label and its line of
