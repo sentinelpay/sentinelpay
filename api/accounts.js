@@ -354,6 +354,7 @@ async function verifySignup(email, code, origin) {
 
     return {
         ok: true,
+        userId,
         name: db.open('signup-name:' + emailHash, row.name_enc),
         lang: row.lang || 'en',
         session,

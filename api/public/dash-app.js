@@ -54,6 +54,7 @@
     };
 
     var ACCOUNT_PATH = '/dashboard/account/preferences';
+    var ORGS_PATH = '/dashboard/organisations';
 
     var ACCOUNT_NAV = [
         { group: 'Account settings', items: [
@@ -602,6 +603,13 @@
             onClick: function () {
                 document.getElementById('acct').classList.remove('is-open');
                 go(ACCOUNT_PATH);
+            }
+        }));
+        main.appendChild(acctRow('Organisations', {
+            icon: 'users',
+            onClick: function () {
+                document.getElementById('acct').classList.remove('is-open');
+                go(ORGS_PATH);
             }
         }));
         main.appendChild(acctRow('Feature previews', { icon: 'flask', soon: true }));
@@ -3136,6 +3144,219 @@
         d.show(stepConfigure);
     }
 
+    // Choosing which company you are working in. It has no sidebar because there
+    // is nothing to navigate to until the choice is made, and because everything
+    // in that sidebar belongs to an organisation.
+    function viewOrgs(me) {
+        var page = document.createElement('div');
+        page.className = 'pg orgs-pg';
+        page.appendChild(pageHead('Your organisations',
+            'An organisation is your company. Its screenings, cases and tokens are shared by everyone in it.'));
+
+        var bar = document.createElement('div');
+        bar.className = 'bar';
+        var find = document.createElement('label');
+        find.className = 'bar-find';
+        find.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
+            'stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle>' +
+            '<path d="m19.5 19.5-3.8-3.8"></path></svg>';
+        var findIn = document.createElement('input');
+        findIn.type = 'search';
+        findIn.autocomplete = 'off';
+        findIn.placeholder = t('Search for an organisation');
+        find.appendChild(findIn);
+        bar.appendChild(find);
+
+        var make = document.createElement('button');
+        make.type = 'button';
+        make.className = 'btn btn-primary';
+        make.textContent = t('New organisation');
+        bar.appendChild(make);
+        page.appendChild(bar);
+
+        var list = document.createElement('div');
+        list.className = 'orgs';
+        page.appendChild(list);
+
+        var rows = [];
+
+        function roleLabel(key) {
+            for (var i = 0; i < ORG_ROLES.length; i++) {
+                if (ORG_ROLES[i].key === key) return t(ORG_ROLES[i].label);
+            }
+            return key;
+        }
+
+        function draw() {
+            list.textContent = '';
+            var q = findIn.value.trim().toLowerCase();
+            var shown = rows.filter(function (r) {
+                return !q || (r.name + ' ' + r.host).toLowerCase().indexOf(q) !== -1;
+            });
+            if (!rows.length) {
+                list.appendChild(emptyState('No organisations yet',
+                    'Make one for your company, and everything you check will live in it.'));
+                return;
+            }
+            if (!shown.length) {
+                list.appendChild(emptyState('Nothing matches that', 'Try a different name.'));
+                return;
+            }
+            shown.forEach(function (r) { list.appendChild(orgCard(r)); });
+        }
+
+        function orgCard(r) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'org';
+            var mark = document.createElement('span');
+            mark.className = 'org-mark';
+            mark.textContent = (r.name || '?').trim().charAt(0).toUpperCase();
+            b.appendChild(mark);
+            var txt = document.createElement('span');
+            txt.className = 'org-t';
+            var n = document.createElement('span');
+            n.className = 'org-n';
+            n.textContent = r.name;
+            txt.appendChild(n);
+            var sub = document.createElement('span');
+            sub.className = 'org-sub';
+            var bits = [roleLabel(r.role)];
+            if (r.members) {
+                bits.push(r.members + ' ' + t(r.members === 1 ? 'member' : 'members'));
+            }
+            if (r.host) bits.push(r.host);
+            sub.textContent = bits.join('  \u00b7  ');
+            txt.appendChild(sub);
+            b.appendChild(txt);
+            var chev = document.createElement('span');
+            chev.className = 'org-chev';
+            chev.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
+                'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
+            b.appendChild(chev);
+            b.addEventListener('click', function () {
+                b.disabled = true;
+                fetch('/v1/orgs/' + encodeURIComponent(r.id) + '/use', {
+                    method: 'POST', credentials: 'same-origin'
+                }).then(function (res) {
+                    if (!res.ok) throw new Error('bad-status-' + res.status);
+                    forgetTokenCache();
+                    location.assign('/dashboard');
+                }).catch(function () {
+                    b.disabled = false;
+                    toast(t('That did not work.'), 'bad');
+                });
+            });
+            return b;
+        }
+
+        function load() {
+            fetch('/v1/orgs', { credentials: 'same-origin' })
+                .then(function (r) {
+                    if (!r.ok) throw new Error('bad-status-' + r.status);
+                    return r.json();
+                })
+                .then(function (j) {
+                    rows = (j && j.rows) || [];
+                    if (j && j.roles && j.roles.length) ORG_ROLES = j.roles;
+                    draw();
+                })
+                .catch(function () {
+                    list.textContent = '';
+                    list.appendChild(emptyState('That did not load.', 'Reload the page to try again.'));
+                });
+        }
+
+        findIn.addEventListener('input', draw);
+        make.addEventListener('click', function () { askOrg(load); });
+
+        list.appendChild(waiting());
+        load();
+        return page;
+    }
+
+    var ORG_ROLES = [
+        { key: 'owner', label: 'Owner' },
+        { key: 'admin', label: 'Admin' },
+        { key: 'analyst', label: 'Analyst' },
+        { key: 'viewer', label: 'Viewer' }
+    ];
+
+    function askOrg(done) {
+        var m = modalShell('New organisation',
+            'Name it after the company. Everyone you invite into it shares the same work.');
+        var form = document.createElement('form');
+        form.className = 'vpanel';
+
+        var field = document.createElement('div');
+        field.className = 'vfield';
+        var lab = document.createElement('label');
+        lab.textContent = t('Name');
+        lab.setAttribute('for', 'org-name');
+        field.appendChild(lab);
+        var name = document.createElement('input');
+        name.id = 'org-name';
+        name.type = 'text';
+        name.autocomplete = 'organization';
+        name.maxLength = 80;
+        name.placeholder = t('e.g. Acme Exchange');
+        field.appendChild(name);
+        form.appendChild(field);
+
+        var err = document.createElement('p');
+        err.className = 'verr';
+        err.hidden = true;
+        form.appendChild(err);
+
+        var go2 = wideBtn('Create organisation', 'cta', 'submit');
+        go2.disabled = true;
+        form.appendChild(go2);
+        var quit = document.createElement('div');
+        quit.className = 'modal-quit';
+        var no = wideBtn('Cancel', 'quiet');
+        no.addEventListener('click', m.shut);
+        quit.appendChild(no);
+        form.appendChild(quit);
+        m.body.appendChild(form);
+
+        name.addEventListener('input', function () {
+            go2.disabled = !name.value.trim();
+            if (!err.hidden) err.hidden = true;
+        });
+        setTimeout(function () { name.focus(); }, 60);
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (go2.disabled) return;
+            go2.disabled = true;
+            err.hidden = true;
+            fetch('/v1/orgs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ name: name.value })
+            }).then(function (r) {
+                return r.json().catch(function () { return {}; }).then(function (j) {
+                    return { ok: r.ok, body: j };
+                });
+            }).then(function (r) {
+                if (!r.ok) {
+                    err.textContent = (r.body && r.body.error) || t('That did not work.');
+                    err.hidden = false;
+                    go2.disabled = false;
+                    return;
+                }
+                m.shut();
+                forgetTokenCache();
+                location.assign('/dashboard');
+            }).catch(function () {
+                err.textContent = t('That did not work.');
+                err.hidden = false;
+                go2.disabled = false;
+            });
+        });
+    }
+
     function viewPreferences(me) {
         var page = document.createElement('div');
         page.className = 'pg';
@@ -3252,6 +3473,10 @@
         if (!canvas) return;
         canvas.textContent = '';
         if (!lastMe) return;
+        if (location.pathname === ORGS_PATH) {
+            canvas.appendChild(viewOrgs(lastMe));
+            return;
+        }
         if (location.pathname === ACCOUNT_PATH) {
             canvas.appendChild(viewPreferences(lastMe));
         } else if (location.pathname === TOKENS_PATH) {
@@ -3260,6 +3485,9 @@
     }
 
     function render() {
+        // on the picker there is nothing to navigate to yet, so the shell drops
+        // to the top bar alone
+        if (app) app.classList.toggle('is-bare', location.pathname === ORGS_PATH);
         var rebuilt = paintNav(currentNav());
         applySideMode(sideMode());
         setMenu(false);
@@ -3282,6 +3510,7 @@
     window.addEventListener('popstate', render);
 
     function paintShell() {
+        if (app) app.classList.toggle('is-bare', location.pathname === ORGS_PATH);
         paintNav(currentNav());
         paintFoot();
         applySideMode(sideMode());
@@ -3303,6 +3532,12 @@
         })
         .then(function (me) {
             if (!me) return;
+            // nothing in here belongs to a person on their own, so without an
+            // organisation there is nothing to show but the choice of one.
+            if (!me.org && location.pathname !== ORGS_PATH) {
+                location.replace(ORGS_PATH);
+                return;
+            }
             if (!sameMe(cached, me)) paintMe(me);
             writeMe(me);
         })

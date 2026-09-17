@@ -17,6 +17,7 @@ const sanctions = require('./sanctions');
 const trial = require('./trial');
 const screening = require('./screening');
 const tokens = require('./tokens');
+const orgs = require('./orgs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -759,6 +760,39 @@ function clearSessionCookie(res) {
     if (SESSION_COOKIE !== SESSION_COOKIE_OLD) res.clearCookie(SESSION_COOKIE_OLD, opts);
 }
 
+// Which organisation the person is working in. The cookie is only ever a hint:
+// every request looks the membership up before trusting it, so a forged or
+// stale value resolves to nothing rather than to somebody else's company.
+const ORG_COOKIE = COOKIE_SECURE ? '__Host-sp_org' : 'sp_org';
+
+function setOrgCookie(res, orgId) {
+    res.cookie(ORG_COOKIE, String(orgId), {
+        httpOnly: true,
+        secure: COOKIE_SECURE,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 400 * 24 * 60 * 60 * 1000,
+    });
+}
+
+function clearOrgCookie(res) {
+    res.clearCookie(ORG_COOKIE, { httpOnly: true, secure: COOKIE_SECURE, sameSite: 'lax', path: '/' });
+}
+
+// the organisation this request is acting in, or null when the person has to
+// choose one first. belonging to exactly one is the ordinary case, and it does
+// not ask.
+async function orgFor(req, me) {
+    const asked = readCookie(req, ORG_COOKIE);
+    if (asked) {
+        const mine = await orgs.membership(me.userId, asked);
+        if (mine) return mine;
+    }
+    const all = await orgs.listFor(me.userId);
+    if (all.length === 1) return all[0];
+    return null;
+}
+
 const SIGNUP_COOKIE = COOKIE_SECURE ? '__Host-sp_signup' : 'sp_signup';
 
 function setSignupCookie(res, value, seconds) {
@@ -800,12 +834,20 @@ async function caller(req, res, scope) {
         }
         const who = await accounts.readUser(out.userId);
         if (!who) { res.status(401).json({ error: 'That token is not valid' }); return null; }
-        return { ...who, viaToken: out.tokenId, sandbox: out.sandbox };
+        // a token carries its organisation with it, so no cookie is involved and
+        // nothing has to be chosen
+        if (!out.orgId) {
+            res.status(409).json({ error: 'That token predates organisations. Issue a new one.' });
+            return null;
+        }
+        return { ...who, org: { id: String(out.orgId) }, viaToken: out.tokenId, sandbox: out.sandbox };
     }
     const me = await currentUser(req);
     if (!me) { res.status(401).json({ error: 'Sign in first' }); return null; }
+    const org = await orgFor(req, me);
+    if (!org) { res.status(409).json({ error: 'Choose an organisation first' }); return null; }
     // the dashboard is always looking at the real thing
-    return { ...me, sandbox: false };
+    return { ...me, org: org, sandbox: false };
 }
 
 async function currentUser(req) {
@@ -1435,6 +1477,18 @@ app.post('/v1/auth/verify', requireCloudflareOrigin, authVerifyLimiter, async (r
         if (out.session) setSessionCookie(res, out.session.token, out.session.maxAgeSeconds);
         else console.error('[auth] the account was made but no session could be opened');
 
+        // Give the new account its organisation straight away, named after the
+        // company we already know from the address they signed up with. A person
+        // who can only ever belong to one company should not be asked to declare
+        // it; they can rename it in settings, and the picker only appears once
+        // there is genuinely something to pick between.
+        if (out.userId) {
+            const host = String(email).split('@').pop() || '';
+            const made = await orgs.create(out.userId, orgs.nameFromHost(host) || out.name, host, 'owner');
+            if (made.ok) setOrgCookie(res, made.org.id);
+            else console.error('[auth] the account was made but it has no organisation');
+        }
+
         res.json({ ok: true, signedIn: Boolean(out.session), name: out.name });
     } catch (err) {
         console.error('[auth verify error]', err.message);
@@ -1832,16 +1886,61 @@ app.post('/v1/account/reset-password', requireCloudflareOrigin, accountLimiter, 
 
 // managing tokens is session only on purpose: a token must never be able to mint
 // another token, or quietly widen its own reach by revoking and replacing itself.
+app.get('/v1/orgs', async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    res.set('Cache-Control', 'no-store, private');
+    const [mine, active] = await Promise.all([orgs.listFor(me.userId), orgFor(req, me)]);
+    res.json({ ok: true, rows: mine, active: active, roles: orgs.ROLES });
+});
+
+app.post('/v1/orgs', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const b = req.body || {};
+    const out = await orgs.create(me.userId, b.name, b.host || me.email, 'owner');
+    if (!out.ok) {
+        const said = {
+            'no-name': 'Give the organisation a name.',
+            'too-many': 'That is as many organisations as one person may belong to.',
+        };
+        return res.status(out.reason === 'unavailable' ? 503 : 400).json({
+            error: said[out.reason] || 'Accounts are not available right now. Please try again shortly.',
+        });
+    }
+    setOrgCookie(res, out.org.id);
+    await accounts.audit('org-created', {
+        actor: String(me.userId), subject: out.org.id, ip: req.realIp, detail: out.org.name,
+    });
+    res.set('Cache-Control', 'no-store, private');
+    res.json({ ok: true, org: out.org });
+});
+
+// switching is a membership check and nothing more: the cookie is set only after
+// the lookup says this person is in that organisation.
+app.post('/v1/orgs/:id/use', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const mine = await orgs.membership(me.userId, req.params.id);
+    if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
+    setOrgCookie(res, mine.id);
+    res.set('Cache-Control', 'no-store, private');
+    res.json({ ok: true, org: mine });
+});
+
 app.get('/v1/account/tokens', async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
     res.set('Cache-Control', 'no-store, private');
+    const org = await orgFor(req, me);
+    if (!org) return res.status(409).json({ error: 'Choose an organisation first' });
     res.json({
         ok: true,
+        org: org,
         scopes: tokens.SCOPES,
         scopeGroups: tokens.SCOPE_GROUPS,
         kinds: tokens.KINDS,
-        rows: await tokens.list(me.userId),
+        rows: await tokens.list(org.id),
     });
 });
 
@@ -1849,7 +1948,13 @@ app.post('/v1/account/tokens', requireCloudflareOrigin, accountLimiter, async (r
     const me = await requireSession(req, res);
     if (!me) return;
     const b = req.body || {};
-    const out = await tokens.mint(me.userId, b.name, b.scopes, b.days, b.kind);
+    const org = await orgFor(req, me);
+    if (!org) return res.status(409).json({ error: 'Choose an organisation first' });
+    // issuing a key into the company is an administrator's job
+    if (!orgs.roleAtLeast(org.role, 'admin')) {
+        return res.status(403).json({ error: 'Only an admin can issue a token.' });
+    }
+    const out = await tokens.mint(me.userId, org.id, b.name, b.scopes, b.days, b.kind);
     if (!out.ok) {
         const said = {
             'no-name': 'Give the token a name you will recognise later.',
@@ -1871,7 +1976,12 @@ app.post('/v1/account/tokens', requireCloudflareOrigin, accountLimiter, async (r
 app.post('/v1/account/tokens/:id/revoke', requireCloudflareOrigin, accountLimiter, async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
-    const out = await tokens.revoke(me.userId, req.params.id);
+    const org = await orgFor(req, me);
+    if (!org) return res.status(409).json({ error: 'Choose an organisation first' });
+    if (!orgs.roleAtLeast(org.role, 'admin')) {
+        return res.status(403).json({ error: 'Only an admin can revoke a token.' });
+    }
+    const out = await tokens.revoke(org.id, req.params.id);
     if (!out.ok) {
         if (out.reason === 'missing') return res.status(404).json({ error: 'That token is already gone.' });
         return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
@@ -1903,6 +2013,7 @@ app.post('/v1/account/delete', requireCloudflareOrigin, accountLimiter, async (r
     if (out.reason === 'bad-password') return res.status(401).json({ error: 'That password is not right.' });
     if (!out.ok) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
     clearSessionCookie(res);
+    clearOrgCookie(res);
     console.log('[account] deleted at the owner\'s request');
     res.json({ ok: true });
 });
@@ -1951,15 +2062,19 @@ app.get('/v1/entitlement', async (req, res) => {
     try {
         const me = await currentUser(req);
         if (!me) return res.status(401).json({ error: 'Sign in first' });
-        const [state, listed, runs] = await Promise.all([
+        const org = await orgFor(req, me);
+        const [state, listed, runs, mine] = await Promise.all([
             trial.ensure(me.userId, me.email),
             sanctions.status(),
-            screening.countFor(me.userId),
+            org ? screening.countFor(org.id) : 0,
+            orgs.listFor(me.userId),
         ]);
         res.json({
             name: me.name,
             email: me.email,
             since: me.since,
+            org: org,
+            orgs: mine,
             trial: {
                 ...state,
                 historyLeft: state.historyLeft === Infinity ? null : state.historyLeft,
@@ -2028,7 +2143,7 @@ app.post('/v1/screen', screenLimiter, async (req, res) => {
         // against the same sanctions data but spends nothing and lands in its own
         // history. nothing it does can touch what the customer reports on.
         if (me.sandbox) {
-            const out = await screening.screen(me.userId, address, kind, true);
+            const out = await screening.screen(me.userId, me.org.id, address, kind, true);
             if (!out.ok) return res.status(400).json({ error: 'That does not look like an address' });
             return res.json({ ...out, sandbox: true, trial: null });
         }
@@ -2049,7 +2164,7 @@ app.post('/v1/screen', screenLimiter, async (req, res) => {
             });
         }
 
-        const out = await screening.screen(me.userId, address, kind, false);
+        const out = await screening.screen(me.userId, me.org.id, address, kind, false);
         if (!out.ok) return res.status(400).json({ error: 'That does not look like an address' });
 
         await accounts.audit('screening', {
@@ -2073,7 +2188,7 @@ app.get('/v1/screenings', async (req, res) => {
     try {
         const me = await caller(req, res, 'screenings:read');
         if (!me) return;
-        res.json({ sandbox: me.sandbox, rows: await screening.recent(me.userId, req.query.limit, me.sandbox) });
+        res.json({ sandbox: me.sandbox, rows: await screening.recent(me.org.id, req.query.limit, me.sandbox) });
     } catch (err) {
         console.error('[screenings]', err.message);
         res.status(500).json({ error: 'Could not read the log' });
@@ -2086,7 +2201,7 @@ app.get('/v1/screenings/stats', async (req, res) => {
         const me = await caller(req, res, 'screenings:read');
         if (!me) return;
         const [numbers, listed] = await Promise.all([
-            screening.stats(me.userId, req.query.days, me.sandbox),
+            screening.stats(me.org.id, req.query.days, me.sandbox),
             sanctions.status(),
         ]);
         res.json({
@@ -2120,7 +2235,7 @@ app.get('/v1/screenings/:id/evidence', async (req, res) => {
         if (!me) return;
         const id = Number(req.params.id);
         if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: 'Not a screening' });
-        const row = await screening.byId(me.userId, id, me.sandbox);
+        const row = await screening.byId(me.org.id, id, me.sandbox);
         if (!row) return res.status(404).json({ error: 'Not found' });
         const doc = {
             document: 'Sentinelpay screening evidence',
@@ -2152,7 +2267,7 @@ app.get('/v1/screenings/:id', async (req, res) => {
         if (!me) return;
         const id = Number(req.params.id);
         if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: 'Not a screening' });
-        const row = await screening.byId(me.userId, id, me.sandbox);
+        const row = await screening.byId(me.org.id, id, me.sandbox);
         if (!row) return res.status(404).json({ error: 'Not found' });
         res.json(row);
     } catch (err) {
@@ -2465,6 +2580,14 @@ app.listen(PORT, () => {
     }
 
     submissions.startRetention();
+
+    // Everything that existed before organisations did gets moved onto one, in
+    // order: give each account an organisation, then hand it that account's
+    // tokens and checks. All three are no-ops once they have run, so leaving
+    // them here costs a query at boot and nothing else.
+    orgs.backfill()
+        .then(() => Promise.all([tokens.adopt(), screening.adopt()]))
+        .catch((err) => console.error('[orgs] migration at boot failed: ' + err.message));
 
     const dbState = db.status();
     if (!dbState.configured) {

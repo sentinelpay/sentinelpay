@@ -129,6 +129,7 @@ const SCHEMA = `
 CREATE TABLE IF NOT EXISTS api_tokens (
     id           bigserial   PRIMARY KEY,
     user_id      bigint      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    org_id       bigint      REFERENCES organisations(id) ON DELETE CASCADE,
     created_at   timestamptz NOT NULL DEFAULT now(),
     name         text        NOT NULL DEFAULT '',
     kind         text        NOT NULL DEFAULT 'live',
@@ -141,6 +142,8 @@ CREATE TABLE IF NOT EXISTS api_tokens (
 );
 CREATE INDEX IF NOT EXISTS api_tokens_user_idx ON api_tokens (user_id, created_at DESC);
 ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'live';
+ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS org_id bigint REFERENCES organisations(id) ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS api_tokens_org_idx ON api_tokens (org_id, created_at DESC);
 `;
 
 let ready = null;
@@ -219,7 +222,7 @@ function shape(row) {
     };
 }
 
-async function mint(userId, name, scopes, days, kind) {
+async function mint(userId, orgId, name, scopes, days, kind) {
     if (!(await init())) return { ok: false, reason: 'unavailable' };
 
     const keep = cleanScopes(scopes);
@@ -232,8 +235,8 @@ async function mint(userId, name, scopes, days, kind) {
 
     try {
         const live = await db.query(
-            'SELECT count(*)::int AS n FROM api_tokens WHERE user_id = $1 AND revoked_at IS NULL',
-            [userId]
+            'SELECT count(*)::int AS n FROM api_tokens WHERE org_id = $1 AND revoked_at IS NULL',
+            [orgId]
         );
         if (live.rows[0] && live.rows[0].n >= PER_USER) {
             return { ok: false, reason: 'too-many' };
@@ -241,11 +244,11 @@ async function mint(userId, name, scopes, days, kind) {
 
         const secret = crypto.randomBytes(32).toString('base64url');
         const res = await db.query(
-            `INSERT INTO api_tokens (user_id, name, kind, secret_hash, tail, scopes, expires_at)
-             VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $7 = 0 THEN NULL
-                                                  ELSE now() + ($7 || ' days')::interval END)
+            `INSERT INTO api_tokens (user_id, org_id, name, kind, secret_hash, tail, scopes, expires_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, CASE WHEN $8 = 0 THEN NULL
+                                                      ELSE now() + ($8 || ' days')::interval END)
              RETURNING *`,
-            [userId, label, flavour, hashSecret(secret), secret.slice(-4), keep.join(' '), ttl]
+            [userId, orgId, label, flavour, hashSecret(secret), secret.slice(-4), keep.join(' '), ttl]
         );
         const row = res.rows[0];
         const id = Number(row.id).toString(36);
@@ -256,14 +259,14 @@ async function mint(userId, name, scopes, days, kind) {
     }
 }
 
-async function list(userId) {
+async function list(orgId) {
     if (!(await init())) return [];
     try {
         const res = await db.query(
             `SELECT * FROM api_tokens
-             WHERE user_id = $1 AND (revoked_at IS NULL OR revoked_at > now() - interval '7 days')
+             WHERE org_id = $1 AND (revoked_at IS NULL OR revoked_at > now() - interval '7 days')
              ORDER BY revoked_at IS NOT NULL, created_at DESC`,
-            [userId]
+            [orgId]
         );
         return res.rows.map(shape);
     } catch (err) {
@@ -272,22 +275,40 @@ async function list(userId) {
     }
 }
 
-async function revoke(userId, id) {
+async function revoke(orgId, id) {
     if (!(await init())) return { ok: false, reason: 'unavailable' };
     const n = Number(id);
     if (!Number.isSafeInteger(n) || n < 1) return { ok: false, reason: 'missing' };
     try {
         const res = await db.query(
             `UPDATE api_tokens SET revoked_at = now()
-             WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL
+             WHERE id = $1 AND org_id = $2 AND revoked_at IS NULL
              RETURNING id`,
-            [n, userId]
+            [n, orgId]
         );
         if (!res.rowCount) return { ok: false, reason: 'missing' };
         return { ok: true };
     } catch (err) {
         console.error('[tokens] could not revoke: ' + err.message);
         return { ok: false, reason: 'unavailable' };
+    }
+}
+
+// every token made before organisations existed belongs to whoever made it, so
+// it takes the organisation that person was given.
+async function adopt() {
+    if (!(await init())) return 0;
+    try {
+        const res = await db.query(
+            `UPDATE api_tokens t SET org_id = m.org_id
+               FROM memberships m
+              WHERE m.user_id = t.user_id AND t.org_id IS NULL`
+        );
+        if (res.rowCount) console.log('[tokens] moved ' + res.rowCount + ' token(s) onto an organisation');
+        return res.rowCount;
+    } catch (err) {
+        console.error('[tokens] adopt failed: ' + err.message);
+        return 0;
     }
 }
 
@@ -317,6 +338,7 @@ async function read(raw) {
         return {
             ok: true,
             userId: row.user_id,
+            orgId: row.org_id,
             tokenId: String(row.id),
             name: row.name || '',
             kind: row.kind === 'test' ? 'test' : 'live',
@@ -332,5 +354,5 @@ async function read(raw) {
 module.exports = {
     SCOPES, SCOPE_KEYS, SCOPE_GROUPS, presetScopes, RISKS, groupRisk,
     TTL_CHOICES, PER_USER, NAME_MAX, KINDS, KIND_KEYS,
-    mint, list, revoke, read, splitToken, init,
+    mint, list, revoke, read, splitToken, init, adopt,
 };
