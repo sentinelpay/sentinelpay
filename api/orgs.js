@@ -98,15 +98,25 @@ function hostOf(value) {
         .toLowerCase();
 }
 
-// a readable id for the url. the random tail is what makes it unique, so two
-// companies of the same name never race for the same slug.
-function slugFor(name, host) {
-    const base = String(name || host || 'org')
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '')
-        .slice(0, 32) || 'org';
-    return base + '-' + crypto.randomBytes(3).toString('hex');
+// The id an organisation carries in the url. Twenty characters drawn at random
+// rather than made from the name, for two reasons: the name is not ours to put
+// in a link somebody may paste anywhere, and a name cannot collide with another
+// company's if it is never used. Twenty characters of this alphabet is about a
+// hundred bits, so a clash is not something that happens; the unique constraint
+// behind it is there because "not something that happens" is not a guarantee.
+const SLUG_ALPHABET = 'abcdefghijkmnopqrstuvwxyz23456789';
+const SLUG_LENGTH = 20;
+const SLUG_SHAPE = /^[a-z0-9]{20}$/;
+
+function newSlug() {
+    const bytes = crypto.randomBytes(SLUG_LENGTH * 2);
+    let out = '';
+    for (let i = 0; out.length < SLUG_LENGTH && i < bytes.length; i++) {
+        // rejection sampling, so every character is as likely as every other
+        if (bytes[i] >= 256 - (256 % SLUG_ALPHABET.length)) continue;
+        out += SLUG_ALPHABET[bytes[i] % SLUG_ALPHABET.length];
+    }
+    return out.length === SLUG_LENGTH ? out : newSlug();
 }
 
 // the name we would give a company we have only ever seen the domain of.
@@ -148,7 +158,7 @@ async function create(userId, name, host, role) {
             try {
                 const res = await db.query(
                     `INSERT INTO organisations (name, host, slug) VALUES ($1, $2, $3) RETURNING *`,
-                    [label, hostOf(host), slugFor(label, host)]
+                    [label, hostOf(host), newSlug()]
                 );
                 row = res.rows[0];
             } catch (err) {
@@ -266,8 +276,37 @@ async function weightOf(orgId) {
     }
 }
 
+// Slugs made before the twenty character format existed are replaced, once. No
+// link to one has been shared, so nothing breaks, and leaving two shapes in the
+// same column would mean neither is the rule.
+async function reslug() {
+    if (!(await init())) return 0;
+    try {
+        const old = await db.query('SELECT id, slug FROM organisations');
+        let done = 0;
+        for (const row of old.rows) {
+            if (SLUG_SHAPE.test(row.slug || '')) continue;
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    await db.query('UPDATE organisations SET slug = $1 WHERE id = $2', [newSlug(), row.id]);
+                    done++;
+                    break;
+                } catch (err) {
+                    if (err.code !== '23505') throw err;
+                }
+            }
+        }
+        if (done) console.log('[orgs] gave ' + done + ' organisation(s) the new slug shape');
+        return done;
+    } catch (err) {
+        console.error('[orgs] reslug failed: ' + err.message);
+        return 0;
+    }
+}
+
 module.exports = {
     ROLES, ROLE_KEYS, ROLE_RANK, NAME_MAX, ORGS_PER_USER,
-    init, create, listFor, membership, bySlug, roleAtLeast, remove, weightOf,
+    init, create, listFor, membership, bySlug, roleAtLeast, remove, weightOf, reslug,
+    SLUG_LENGTH, SLUG_SHAPE,
     hostOf, nameFromHost, cleanName,
 };

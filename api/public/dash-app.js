@@ -55,6 +55,31 @@
 
     var ACCOUNT_PATH = '/dashboard/account/preferences';
     var ORGS_PATH = '/dashboard/organisations';
+
+    // The organisation is in the address, not hidden in a cookie: a link opens
+    // the organisation it names, and switching is a navigation rather than a
+    // change of invisible state. The cookie is brought into line with the url on
+    // arrival, and is only ever a hint even then.
+    var ORG_ROOT = '/dashboard/org/';
+
+    function slugInPath() {
+        if (location.pathname.indexOf(ORG_ROOT) !== 0) return '';
+        var rest = location.pathname.slice(ORG_ROOT.length).split('/')[0];
+        return /^[a-z0-9]{20}$/.test(rest) ? rest : '';
+    }
+
+    function orgHome(slug) {
+        return ORG_ROOT + slug;
+    }
+
+    // where a nav item lives for the organisation we are in
+    function orgPath(slug, tail) {
+        return ORG_ROOT + slug + (tail ? '/' + tail : '');
+    }
+
+    // read straight from the address, so the first paint already knows where it
+    // is. the lookup that follows decides whether you are allowed to be here.
+    var atOrg = slugInPath();
     // the american spelling reaches the same screen, and the address bar is
     // rewritten to the one we use everywhere else rather than leaving two urls
     // for one page.
@@ -82,14 +107,17 @@
         try { sessionStorage.removeItem(PICKED_KEY); } catch (err) {  }
     }
 
+    // What belongs to you and what belongs to the company are different things,
+    // and the address says which: your preferences follow you between
+    // organisations, the tokens and the log do not.
     var ACCOUNT_NAV = [
         { group: 'Account settings', items: [
             { key: 'preferences', label: 'Preferences', icon: 'cog', href: '/dashboard/account/preferences' },
-            { key: 'tokens', label: 'Access tokens', icon: 'key', href: '/dashboard/account/tokens' },
             { key: 'security', label: 'Security', icon: 'shield', href: '/dashboard/account/security' }
         ] },
-        { group: 'Logs', items: [
-            { key: 'account-logs', label: 'Audit logs', icon: 'trail', href: '/dashboard/account/logs' }
+        { group: 'Organisation', items: [
+            { key: 'tokens', label: 'Access tokens', icon: 'key', org: 'tokens' },
+            { key: 'account-logs', label: 'Audit logs', icon: 'trail', org: 'logs' }
         ] }
     ];
 
@@ -141,7 +169,12 @@
     }
 
     function inAccount() {
-        return location.pathname.indexOf('/dashboard/account') === 0;
+        if (location.pathname.indexOf('/dashboard/account') === 0) return true;
+        // the organisation's own settings live in the same sidebar as yours
+        var slug = slugInPath();
+        if (!slug) return false;
+        var tail = location.pathname.slice(orgHome(slug).length).replace(/^\//, '');
+        return tail === 'tokens' || tail === 'logs';
     }
 
     function navFor() {
@@ -164,6 +197,13 @@
     // returns true when the list itself was rebuilt. moving between two items of
     // the same list is not a new sidebar, so it only moves the highlight: tearing
     // the list down and replaying its entrance for that read as a reload.
+    // an item declared with an org tail lives inside the organisation, so its
+    // address is only known once we know which one we are in
+    function hrefOf(item) {
+        if (item.org) return atOrg ? orgPath(atOrg, item.org) : '';
+        return item.href || '';
+    }
+
     function paintNav(active) {
         var host = document.getElementById('side-nav');
         if (!host) return false;
@@ -185,7 +225,9 @@
             bt.className = 'nav-t';
             bt.textContent = t('Back to dashboard');
             back.appendChild(bt);
-            back.addEventListener('click', function () { go('/dashboard'); });
+            back.addEventListener('click', function () {
+                go(atOrg ? orgHome(atOrg) : ORGS_PATH);
+            });
             host.appendChild(back);
         }
 
@@ -205,8 +247,9 @@
                 b.className = 'nav-btn' + (item.key === active ? ' is-on' : '');
                 b.setAttribute('data-nav', item.key);
                 if (item.key === active) b.setAttribute('aria-current', 'page');
-                if (item.href) {
-                    b.addEventListener('click', function () { go(item.href); });
+                var to = hrefOf(item);
+                if (to) {
+                    b.addEventListener('click', function () { go(to); });
                 }
                 b.innerHTML = icon(item.icon);
                 var span = document.createElement('span');
@@ -912,10 +955,11 @@
         var best = 0;
         navFor().forEach(function (g) {
             g.items.forEach(function (item) {
-                if (!item.href) return;
-                var exact = path === item.href || path.indexOf(item.href + '/') === 0;
-                if (exact && item.href.length > best) {
-                    best = item.href.length;
+                var href = hrefOf(item);
+                if (!href) return;
+                var exact = path === href || path.indexOf(href + '/') === 0;
+                if (exact && href.length > best) {
+                    best = href.length;
                     hit = item.key;
                 }
             });
@@ -2088,7 +2132,6 @@
         stepConfirm();
     }
 
-    var TOKENS_PATH = '/dashboard/account/tokens';
 
     // A list is cached only to spare you the empty half second on the way in.
     // Every rule here exists to keep it from becoming anything more than that:
@@ -3319,18 +3362,11 @@
             }
             b.addEventListener('click', function () {
                 b.disabled = true;
-                fetch('/v1/orgs/' + encodeURIComponent(r.id) + '/use', {
-                    method: 'POST', credentials: 'same-origin'
-                }).then(function (res) {
-                    if (!res.ok) throw new Error('bad-status-' + res.status);
-                    forgetTokenCache();
-                    forgetOrgCache();
-                    markPicked();
-                    location.assign('/dashboard');
-                }).catch(function () {
-                    b.disabled = false;
-                    toast(t('That did not work.'), 'bad');
-                });
+                forgetTokenCache();
+                markPicked();
+                // the address does the choosing; the page resolves the slug on
+                // arrival and the cookie follows it
+                location.assign(orgHome(r.slug));
             });
             return card;
         }
@@ -3544,7 +3580,7 @@
                 forgetTokenCache();
                 forgetOrgCache();
                 markPicked();
-                location.assign('/dashboard');
+                location.assign(orgHome(r.body.org.slug));
             }).catch(function () {
                 err.textContent = t('That did not work.');
                 err.hidden = false;
@@ -3675,8 +3711,12 @@
         }
         if (location.pathname === ACCOUNT_PATH) {
             canvas.appendChild(viewPreferences(lastMe));
-        } else if (location.pathname === TOKENS_PATH) {
-            canvas.appendChild(viewTokens(lastMe));
+            return;
+        }
+        var slug = slugInPath();
+        if (slug) {
+            var tail = location.pathname.slice(orgHome(slug).length).replace(/^\//, '');
+            if (tail === 'tokens') canvas.appendChild(viewTokens(lastMe));
         }
     }
 
@@ -3724,6 +3764,27 @@
     if (cached) paintMe(cached);
     else bindAccountMenu();
 
+    // The address names the organisation; this is where it is checked. Membership
+    // decides, the cookie is brought into line with the url rather than the other
+    // way round, and anything that does not check out lands on the picker rather
+    // than on somebody else's work.
+    function settleOrg() {
+        if (!atOrg) return Promise.resolve(true);
+        return fetch('/v1/orgs/slug/' + encodeURIComponent(atOrg), { credentials: 'same-origin' })
+            .then(function (r) {
+                if (r.status === 401) return true;
+                if (!r.ok) { location.replace(ORGS_PATH); return false; }
+                markPicked();
+                return true;
+            })
+            .catch(function () { return true; });
+    }
+
+    settleOrg().then(function (allowed) {
+        if (allowed) boot();
+    });
+
+    function boot() {
     fetch('/v1/entitlement', { credentials: 'same-origin' })
         .then(function (r) {
             if (r.status === 401) { forgetMe(); return null; }
@@ -3731,20 +3792,28 @@
         })
         .then(function (me) {
             if (!me) return;
-            // nothing in here belongs to a person on their own, so without an
-            // organisation there is nothing to show but the choice of one. and
-            // walking in through the front door asks which company you are here
-            // for, however many you belong to.
-            if (!onOrgs() && (!me.org || !hasPicked())) {
+            // /dashboard is not a place. The work lives inside an organisation
+            // and its address says which, so the bare path is a door rather than
+            // a room and it opens onto the choice. An address that claims an
+            // organisation but does not name one properly is the same thing.
+            var bare = location.pathname === '/dashboard' || location.pathname === '/dashboard/';
+            var claimsOrg = location.pathname.indexOf(ORG_ROOT) === 0;
+            if (bare || (claimsOrg && !atOrg)) {
                 location.replace(ORGS_PATH);
                 return;
             }
-            // only being inside counts as having chosen. standing on the picker
-            // does not, or walking straight to /dashboard afterwards would let
-            // you past the door you were just sent to.
+            // nothing in here belongs to a person on their own, so without an
+            // organisation there is nothing to show but the choice of one. an
+            // address that named one and passed the membership check counts,
+            // whatever the entitlement call happened to see.
+            if (!onOrgs() && !me.org && !atOrg) {
+                location.replace(ORGS_PATH);
+                return;
+            }
             if (me.org && !onOrgs()) markPicked();
             if (!sameMe(cached, me)) paintMe(me);
             writeMe(me);
         })
         .catch(function () {  });
+    }
 })();

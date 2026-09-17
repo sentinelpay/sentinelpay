@@ -1875,6 +1875,19 @@ app.post('/v1/account/reset-password', requireCloudflareOrigin, accountLimiter, 
 
 // managing tokens is session only on purpose: a token must never be able to mint
 // another token, or quietly widen its own reach by revoking and replacing itself.
+// Resolving the organisation named in the address bar. The url is the authority
+// here: a link to an organisation opens that organisation, and this is where the
+// cookie is brought into line with it rather than the other way round.
+app.get('/v1/orgs/slug/:slug', async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const mine = await orgs.bySlug(me.userId, req.params.slug);
+    if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
+    setOrgCookie(res, mine.id);
+    res.set('Cache-Control', 'no-store, private');
+    res.json({ ok: true, org: mine });
+});
+
 app.get('/v1/orgs', async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
@@ -2613,8 +2626,9 @@ app.listen(PORT, () => {
     // Work that predates organisations joins whichever one its owner belongs to,
     // once they have made it. Nothing here invents an organisation: an account
     // with none stays with none, and is asked to make one.
-    Promise.all([tokens.adopt(), screening.adopt()])
-        .catch((err) => console.error('[orgs] adoption at boot failed: ' + err.message));
+    orgs.reslug()
+        .then(() => Promise.all([tokens.adopt(), screening.adopt()]))
+        .catch((err) => console.error('[orgs] migration at boot failed: ' + err.message));
 
     const dbState = db.status();
     if (!dbState.configured) {
