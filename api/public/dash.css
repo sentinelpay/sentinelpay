@@ -2729,19 +2729,26 @@ html.is-theming .btn {
     .prj { gap: 0.7rem; padding: 0.85rem 0.8rem; }
 }
 
-/* the projects toolbar carries more than the picker's: a filter, an order and
-   a choice of shape. the search gives up its fixed width so they fit. */
-.orgs-pg.is-wide { max-width: 52rem; }
-.prj-bar { flex-wrap: wrap; }
-.prj-bar .bar-find { max-width: 15rem; }
+/* The projects toolbar carries five things in the column the picker uses for
+   two. Everything in it is sized to that: the search takes what is left rather
+   than a fixed width, the dropdowns show their value alone, and the gap is
+   tighter than the page default. */
+.prj-bar { gap: 0.4rem; flex-wrap: wrap; }
+.prj-bar .bar-find { flex: 1 1 7rem; max-width: none; }
+.prj-bar .bar-find input { padding-left: 2rem; }
 .prj-pick { flex: none; }
-.prj-pick .pick-btn { padding: 0.42rem 0.5rem 0.42rem 0.65rem; font-size: 0.82rem; }
+.prj-pick .pick-btn {
+    padding: 0.4rem 0.35rem 0.4rem 0.55rem;
+    gap: 0.15rem;
+    font-size: 0.8rem;
+}
+.prj-bar > .btn { margin-left: 0; padding-left: 0.75rem; padding-right: 0.75rem; }
 
 .vseg {
     flex: none;
     display: flex;
-    gap: 0.15rem;
-    padding: 0.15rem;
+    gap: 0.1rem;
+    padding: 0.12rem;
     border: 1px solid var(--line);
     border-radius: 10px;
     background: var(--canvas);
@@ -2749,8 +2756,8 @@ html.is-theming .btn {
 .vseg-b {
     display: grid;
     place-items: center;
-    width: 1.85rem;
-    height: 1.7rem;
+    width: 1.6rem;
+    height: 1.6rem;
     border: 0;
     border-radius: 7px;
     background: none;
@@ -2779,15 +2786,19 @@ html.is-theming .btn {
 .prj.is-off .prj-mark { opacity: 0.6; }
 
 /* as cards: the same row, laid out in a grid and allowed to grow taller. */
-.prjs.is-grid { grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); }
+.prjs.is-grid { grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); }
 .prjs.is-grid .prj { flex-direction: column; align-items: flex-start; gap: 0.7rem; padding: 1rem; }
 .prjs.is-grid .prj-t { width: 100%; }
 .prjs.is-grid .prj-acts { margin-top: auto; }
 .prjs.is-grid .prj-pill { position: absolute; top: 1rem; right: 1rem; }
 .prjs.is-grid .prj { position: relative; }
 
+/* On a phone the search takes the first row and everything else shares the
+   second. The picker's rule gives its one button the full width, which here
+   would make a third row, so the button takes what the controls leave instead. */
 @media (max-width: 560px) {
     .prj-bar .bar-find { flex: 1 1 100%; max-width: none; }
-    .prj-bar .prj-pick { flex: 1 1 8rem; }
+    .prj-bar .prj-pick { flex: 0 1 auto; }
+    .orgs-pg .prj-bar > .btn { flex: 1 1 auto; }
     .prjs.is-grid { grid-template-columns: minmax(0, 1fr); }
 }
