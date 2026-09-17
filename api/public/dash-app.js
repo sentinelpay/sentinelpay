@@ -2487,11 +2487,21 @@
         try { localStorage.setItem(PRJ_VIEW_KEY, v); } catch (err) {  }
     }
 
+    // a compact dropdown shows its value and not its field name, so the name
+    // goes where it is still reachable: to the accessible label and to the
+    // tooltip a pointer finds.
+    function namePick(wrap, id, label) {
+        var btn = wrap.querySelector('#' + id);
+        if (!btn) return;
+        btn.setAttribute('aria-label', t(label));
+        btn.title = t(label);
+    }
+
     function viewProjects(me) {
         var page = document.createElement('div');
         // the same column the organisation picker uses. both are a list of
         // things you pick one of, so they read at the same width.
-        page.className = 'pg orgs-pg is-wide';
+        page.className = 'pg orgs-pg';
         var org = me.org || {};
         page.appendChild(pageHead('Projects'));
 
@@ -2513,19 +2523,21 @@
         var order = 'name';
 
         var statusBox = selectBox('prj-status', [{ options: [
-            { value: 'active', label: t('Status') + '  ·  ' + t('Active') },
-            { value: 'archived', label: t('Status') + '  ·  ' + t('Archived') },
-            { value: 'all', label: t('Status') + '  ·  ' + t('All') }
+            { value: 'active', label: t('Active') },
+            { value: 'archived', label: t('Archived') },
+            { value: 'all', label: t('All') }
         ] }], status, function (v) { status = v; draw(); });
         statusBox.classList.add('prj-pick');
+        namePick(statusBox, 'prj-status', 'Filter by status');
         bar.appendChild(statusBox);
 
         var sortBox = selectBox('prj-sort', [{ options: [
-            { value: 'name', label: t('Sorted by name') },
-            { value: 'newest', label: t('Newest first') },
-            { value: 'oldest', label: t('Oldest first') }
+            { value: 'name', label: t('Name') },
+            { value: 'newest', label: t('Newest') },
+            { value: 'oldest', label: t('Oldest') }
         ] }], order, function (v) { order = v; draw(); });
         sortBox.classList.add('prj-pick');
+        namePick(sortBox, 'prj-sort', 'Sort by');
         bar.appendChild(sortBox);
 
         // two buttons rather than one that toggles, so the shape you are in is
@@ -2597,7 +2609,10 @@
             list.classList.toggle('is-grid', asGrid);
             var q = findIn.value.trim().toLowerCase();
             var shown = sorted(rows.filter(function (r) {
-                if (status !== 'all' && r.status !== status) return false;
+                // a row that never said reads as active: an older response, or
+                // one from a server that predates archiving, should still be
+                // shown rather than filtered into nothing.
+                if (status !== 'all' && (r.status || 'active') !== status) return false;
                 return !q || r.name.toLowerCase().indexOf(q) !== -1;
             }));
             if (!shown.length) {

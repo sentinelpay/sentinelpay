@@ -3,6 +3,10 @@
     var COOKIE = 'sp-lang';
     var T = {
         hr: {
+            "Newest": "Najnovije",
+            "Oldest": "Najstarije",
+            "Filter by status": "Filtriraj po stanju",
+            "Sort by": "Poredaj po",
             "Status": "Stanje",
             "Active": "Aktivno",
             "Archived": "Arhivirano",
@@ -2006,6 +2010,10 @@
             "Sales, product & support": "Prodaja, proizvod i podrška",
         },
         de: {
+            "Newest": "Neueste",
+            "Oldest": "Älteste",
+            "Filter by status": "Nach Status filtern",
+            "Sort by": "Sortieren nach",
             "Status": "Status",
             "Active": "Aktiv",
             "Archived": "Archiviert",
