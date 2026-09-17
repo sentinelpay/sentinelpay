@@ -2149,35 +2149,61 @@
     //     creation, and none of these are on that path.
     var CACHE_GOOD_FOR = 60 * 1000;
 
-    function sessionCache(key) {
+    // Which list goes in which store is a question about what it is, not about
+    // how convenient it would be.
+    //
+    //   The token list is metadata about credentials into a company: what exists,
+    //   what it may do, when it was last used. It dies with the tab.
+    //
+    //   The organisation list is which companies you belong to, which is the same
+    //   class of thing as your own name and address, and those already persist so
+    //   the avatar is there before the first frame. Keeping it in the same place
+    //   is what makes the picker instant on a real page load rather than only on
+    //   a second visit in the same tab.
+    //
+    // Both are cleared on sign out, both are stamped with the address they were
+    // read for, and neither is ever the deciding answer: the list is refetched
+    // and replaced every time regardless of what was painted from the cache.
+    function makeCache(key, store, goodFor) {
+        function box() {
+            try { return store(); } catch (err) { return null; }
+        }
         return {
             read: function (who) {
+                var s2 = box();
+                if (!s2) return null;
                 try {
-                    var raw = sessionStorage.getItem(key);
+                    var raw = s2.getItem(key);
                     if (!raw) return null;
-                    var box = JSON.parse(raw);
-                    if (!box || box.who !== who) return null;
-                    if (!box.at || Date.now() - box.at > CACHE_GOOD_FOR) return null;
-                    return box;
+                    var got = JSON.parse(raw);
+                    if (!got || got.who !== who) return null;
+                    if (!got.at || Date.now() - got.at > goodFor) return null;
+                    return got;
                 } catch (err) {
                     return null;
                 }
             },
             write: function (who, payload) {
+                var s2 = box();
+                if (!s2) return;
                 try {
-                    var box = { who: who, at: Date.now() };
-                    Object.keys(payload).forEach(function (k) { box[k] = payload[k]; });
-                    sessionStorage.setItem(key, JSON.stringify(box));
+                    var out = { who: who, at: Date.now() };
+                    Object.keys(payload).forEach(function (k) { out[k] = payload[k]; });
+                    s2.setItem(key, JSON.stringify(out));
                 } catch (err) {  }
             },
             forget: function () {
-                try { sessionStorage.removeItem(key); } catch (err) {  }
+                var s2 = box();
+                if (!s2) return;
+                try { s2.removeItem(key); } catch (err) {  }
             }
         };
     }
 
-    var tokenCache = sessionCache('sp-tokens');
-    var orgCache = sessionCache('sp-orgs');
+    var tokenCache = makeCache('sp-tokens', function () { return sessionStorage; }, CACHE_GOOD_FOR);
+    // a week: it is only ever a head start, and the list behind it is refetched
+    // on every visit anyway
+    var orgCache = makeCache('sp-orgs', function () { return localStorage; }, 7 * 24 * 60 * 60 * 1000);
 
     function readTokenCache(who) {
         var box = tokenCache.read(who);
