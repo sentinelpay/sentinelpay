@@ -487,6 +487,8 @@
             "Read members": "Čitanje članova",
             "List who is on the account and what they may do.": "Popis tko je na računu i što smije raditi.",
             "Medium risk": "Srednji rizik",
+            "This token will be able to do everything the account can, including the": "Ovaj token moći će sve što i sam račun, uključujući i",
+            "marked high risk below. Issue it only if something genuinely needs all of it.": "označenih visokim rizikom ispod. Izdajte ga samo ako nečemu doista treba sve to.",
             "Close": "Zatvori",
             "Profile saved": "Profil spremljen",
             "Primary email": "Glavni email",

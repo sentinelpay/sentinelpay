@@ -1165,7 +1165,44 @@ button { font: inherit; color: inherit; }
 /* a section whose control needs the whole panel: the heading keeps the left
    column and its one control the right, and the wide part runs under both. */
 .drw-sec.is-full { align-items: center; row-gap: 0.85rem; }
-.drw-sec.is-full > .grp-list { grid-column: 1 / -1; }
+.drw-sec.is-full > .grp-list,
+.drw-sec.is-full > .warn-host { grid-column: 1 / -1; }
+
+/* the same card as the notice at the top of the page, in the risk tone, for the
+   one moment worth interrupting: a token about to be given everything. */
+.warn-host:empty { display: none; }
+.warn {
+    display: flex;
+    gap: 0.7rem;
+    padding: 0.85rem 0.9rem;
+    border: 1px solid var(--risk-high);
+    border-radius: 10px;
+    background: var(--risk-high-bg);
+    animation: warnIn 0.3s var(--ease) both;
+}
+@keyframes warnIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .warn { animation: none; }
+}
+.warn-i {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-top: 0.05rem;
+    border-radius: 7px;
+    background: var(--risk-high);
+    color: var(--panel);
+}
+.warn-i svg { width: 14px; height: 14px; }
+.warn-t { min-width: 0; }
+.warn-h { font-size: 0.84rem; font-weight: 650; color: var(--ink); }
+.warn-t p { margin: 0.2rem 0 0; font-size: 0.79rem; line-height: 1.55; color: var(--ink-3); }
+
 
 .grp-list {
     border: 1px solid var(--field-line);
@@ -1189,18 +1226,12 @@ button { font: inherit; color: inherit; }
 }
 .grp-head:hover { background: var(--hover); }
 .grp-t { flex: 1 1 auto; min-width: 0; }
-.grp-n {
-    display: flex;
-    align-items: center;
-    gap: 0.45rem;
-    flex-wrap: wrap;
-    font-size: 0.84rem;
-    font-weight: 600;
-    color: var(--ink);
-}
+.grp-n { display: block; font-size: 0.84rem; font-weight: 600; color: var(--ink); }
 
-/* what handing this out costs if the token gets loose. three steps, each a tint
-   of one of our own inks rather than a traffic light dropped on the page. */
+/* what handing this one scope out costs if the token gets loose. it sits on the
+   row and not on the group heading: a group of mixed risk labelled by its worst
+   reads as if everything in it were that bad. three steps, each a tint of one of
+   our own inks rather than a traffic light dropped on the page. */
 .risk {
     flex: none;
     padding: 0.08rem 0.4rem;

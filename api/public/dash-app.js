@@ -2513,17 +2513,6 @@
     var RISK_ORDER = ['low', 'medium', 'high'];
     var RISK_LABEL = { low: 'Low risk', medium: 'Medium risk', high: 'High risk' };
 
-    // a group reads as risky as the riskiest thing inside it, worked out here so
-    // the server never has to send a number the panel could disagree with.
-    function groupRisk(scopes, groupKey) {
-        var worst = -1;
-        scopes.forEach(function (sc) {
-            if ((sc.group || 'other') !== groupKey) return;
-            worst = Math.max(worst, RISK_ORDER.indexOf(sc.risk || 'low'));
-        });
-        return worst < 0 ? '' : RISK_ORDER[worst];
-    }
-
     function riskPill(level) {
         var el = document.createElement('span');
         el.className = 'risk risk-' + level;
@@ -2803,6 +2792,10 @@
             presetWrap.className = 'drw-sec-r';
             permSec.appendChild(presetWrap);
 
+            var warnHost = document.createElement('div');
+            warnHost.className = 'warn-host';
+            permSec.appendChild(warnHost);
+
             var groupsHost = document.createElement('div');
             groupsHost.className = 'grp-list';
             permSec.appendChild(groupsHost);
@@ -2828,6 +2821,37 @@
                 return 'custom';
             }
 
+            // shown while the token is being handed everything. it counts the high
+            // risk scopes rather than saying "including high risk things", because
+            // the number is the part that makes someone stop.
+            function paintWarn() {
+                warnHost.textContent = '';
+                if (presetNow() !== 'all') return;
+                var high = scopes.filter(function (sc) { return sc.risk === 'high'; }).length;
+
+                var box = document.createElement('div');
+                box.className = 'warn';
+                var mark = document.createElement('span');
+                mark.className = 'warn-i';
+                mark.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                    '<path d="M12 8.5v5M12 16.9v.1"/>' +
+                    '<path d="M10.3 4.3 2.8 18a1.8 1.8 0 0 0 1.6 2.7h15.2A1.8 1.8 0 0 0 21.2 18L13.7 4.3a1.9 1.9 0 0 0-3.4 0Z"/></svg>';
+                box.appendChild(mark);
+                var txt = document.createElement('div');
+                txt.className = 'warn-t';
+                var h = document.createElement('div');
+                h.className = 'warn-h';
+                h.textContent = t('Full access');
+                txt.appendChild(h);
+                var p2 = document.createElement('p');
+                p2.textContent = t('This token will be able to do everything the account can, including the') +
+                    ' ' + high + ' ' + t('marked high risk below. Issue it only if something genuinely needs all of it.');
+                txt.appendChild(p2);
+                box.appendChild(txt);
+                warnHost.appendChild(box);
+            }
+
             function paintPreset() {
                 presetWrap.textContent = '';
                 var now = presetNow();
@@ -2843,6 +2867,7 @@
                     presetFor(v).forEach(function (k) { want.scopes[k] = true; });
                     paintGroups();
                     paintPreset();
+                    paintWarn();
                     sync();
                 });
                 presetWrap.appendChild(presetBox);
@@ -2864,11 +2889,7 @@
                     ht.className = 'grp-t';
                     var hn = document.createElement('span');
                     hn.className = 'grp-n';
-                    var hnT = document.createElement('span');
-                    hnT.textContent = t(g.label);
-                    hn.appendChild(hnT);
-                    var gr = groupRisk(scopes, g.key);
-                    if (gr) hn.appendChild(riskPill(gr));
+                    hn.textContent = t(g.label);
                     ht.appendChild(hn);
                     var hh = document.createElement('span');
                     hh.className = 'grp-h';
@@ -2913,6 +2934,7 @@
                             want.scopes[sc.key] = tickBox.checked;
                             paintGroups();
                             paintPreset();
+                            paintWarn();
                             sync();
                         });
                         row.appendChild(tickBox);
@@ -2950,6 +2972,7 @@
             }
 
             paintPreset();
+            paintWarn();
             paintGroups();
             d.body.appendChild(permSec);
 
