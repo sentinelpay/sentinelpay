@@ -68,6 +68,9 @@
     --field-line: rgba(14, 35, 88, 0.14);
     --field-ring: rgba(0, 145, 200, 0.12);
     --field-hint: rgba(14, 35, 88, 0.62);
+    --tick-line: rgba(14, 35, 88, 0.22);
+    --tick-line-hover: rgba(0, 145, 200, 0.55);
+    --tick-ring: rgba(0, 145, 200, 0.28);
 
     --r: 10px;
     --r-lg: 14px;
@@ -145,6 +148,9 @@
     --field-line: rgba(233, 238, 249, 0.15);
     --field-ring: rgba(0, 240, 255, 0.12);
     --field-hint: rgba(233, 238, 249, 0.38);
+    --tick-line: rgba(233, 238, 249, 0.24);
+    --tick-line-hover: rgba(123, 220, 255, 0.55);
+    --tick-ring: rgba(0, 240, 255, 0.28);
 }
 
 * { box-sizing: border-box; }
@@ -1384,7 +1390,44 @@ button { font: inherit; color: inherit; }
 .tick + .tick { margin-top: 0.4rem; }
 .tick:hover { border-color: var(--pill-line-hover); }
 .tick:has(input:checked) { border-color: var(--link); background: var(--sel-bg); }
-.tick input { accent-color: var(--link); width: 15px; height: 15px; flex: none; }
+/* the register modal's consent box, brought over as it is drawn there: eighteen
+   square, six pixel radius, and when it is on, a white tick sitting on the brand
+   gradient. painted from tokens so it holds up in the dark. */
+.tick input[type="checkbox"] {
+    -webkit-appearance: none;
+    appearance: none;
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    padding: 0;
+    border: 1.5px solid var(--tick-line);
+    border-radius: 6px;
+    background: var(--surface);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 12px 12px;
+    box-shadow: none;
+    cursor: pointer;
+    vertical-align: middle;
+    transition: border-color 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease;
+}
+.tick input[type="checkbox"]:hover { border-color: var(--tick-line-hover); }
+.tick input[type="checkbox"]:checked {
+    border-color: transparent;
+    background-color: #0091c8;
+    background-image:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E"),
+        linear-gradient(135deg, #00b4d8, #7b6cff);
+    background-size: 12px 12px, 100% 100%;
+    background-position: center, center;
+    background-origin: border-box;
+    background-clip: border-box;
+}
+.tick input[type="checkbox"]:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--tick-ring);
+}
 .tick code {
     margin-left: auto;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
