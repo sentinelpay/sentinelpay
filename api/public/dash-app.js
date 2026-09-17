@@ -167,6 +167,17 @@
     // organisation's settings, which is where the screen is reached from now,
     // and your account is behind your own avatar in the corner, where it was
     // always also reachable. A rail is for where the work is.
+    // Before an organisation is chosen there is no organisation to show, so this
+    // rail is the two things that exist either way: the list you are standing on
+    // and your own account. It is short because there is genuinely little here,
+    // not because it was trimmed.
+    var PICKER_NAV = [
+        { group: 'You', items: [
+            { key: 'orgs', label: 'Organisations', icon: 'building', href: ORGS_PATH },
+            { key: 'account', label: 'Account', icon: 'person', href: ACCOUNT_PATH }
+        ] }
+    ];
+
     var NAV = [
         { group: 'Work', items: [
             { key: 'projects', label: 'Projects', icon: 'projects', org: '' }
@@ -200,10 +211,12 @@
     }
 
     function navFor() {
+        if (onOrgs()) return PICKER_NAV;
         return inAccount() ? ACCOUNT_NAV : NAV;
     }
 
     function navKey() {
+        if (onOrgs()) return 'picker';
         return inAccount() ? 'account' : 'main';
     }
 
@@ -5207,8 +5220,6 @@
     function render() {
         // on the picker there is nothing to navigate to yet, so the shell drops
         // to the top bar alone
-        setBare(onOrgs());
-        paintTopBrand(onOrgs());
         paintSideBrand();
         var rebuilt = paintNav(currentNav());
         applySideMode(sideMode());
@@ -5231,54 +5242,22 @@
 
     window.addEventListener('popstate', render);
 
-    // On the picker the sidebar is gone, so the mark in the corner is the only
-    // way back out. It goes to the front page rather than to /dashboard, which
-    // would only send you back to the picker you are standing on.
-    function paintTopBrand(bare) {
-        var slot = document.getElementById('top-slot');
-        if (!slot) return;
-        var have = slot.querySelector('.top-brand');
-        if (!bare) {
-            if (have) have.remove();
-            return;
-        }
-        if (have) return;
-        var a2 = document.createElement('a');
-        a2.className = 'top-brand';
-        a2.href = '/';
-        a2.setAttribute('aria-label', 'Sentinelpay');
-        var img = document.createElement('img');
-        img.src = '/logo.svg';
-        img.alt = 'Sentinelpay';
-        img.width = 24;
-        img.height = 24;
-        a2.appendChild(img);
-        slot.appendChild(a2);
-    }
-
-    // the head already wrote this for the first frame; from here the class and
-    // the attribute are kept together so a navigation cannot leave one behind.
-    function setBare(on) {
-        if (app) app.classList.toggle('is-bare', on);
-        if (on) document.documentElement.setAttribute('data-bare', '1');
-        else document.documentElement.removeAttribute('data-bare');
-    }
-
     // the mark in the sidebar goes to the organisation you are in. it used to go
     // to /dashboard, which is now a door onto the picker, so it would have thrown
     // you out of the place it was meant to take you home to.
     function paintSideBrand() {
         var brand = document.querySelector('.side-brand');
         if (!brand) return;
-        brand.setAttribute('href', atOrg ? orgHome(atOrg) : ORGS_PATH);
+        // in an organisation it goes to that organisation. on the picker there
+        // is nowhere further in to go, so it is the way out to the front page,
+        // which is what the mark in the corner used to do.
+        brand.setAttribute('href', atOrg ? orgHome(atOrg) : (onOrgs() ? '/' : ORGS_PATH));
     }
 
     function paintShell() {
         if (location.pathname === ORGS_PATH_ALT && canRoute) {
             history.replaceState({}, '', ORGS_PATH);
         }
-        setBare(onOrgs());
-        paintTopBrand(onOrgs());
         paintSideBrand();
         paintNav(currentNav());
         paintFoot();

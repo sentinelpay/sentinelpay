@@ -3,6 +3,7 @@
     var COOKIE = 'sp-lang';
     var T = {
         hr: {
+            "You": "Vaše",
             "On, with an authenticator app": "Uključeno, s aplikacijom za kodove",
             "A code from your app is asked for on every new sign in.": "Kod iz vaše aplikacije traži se pri svakoj novoj prijavi.",
             "Without it, a password is the only thing between an intruder and this account.": "Bez toga je lozinka jedino što stoji između uljeza i ovog računa.",
@@ -2085,6 +2086,7 @@
             "Sales, product & support": "Prodaja, proizvod i podrška",
         },
         de: {
+            "You": "Ihr Bereich",
             "On, with an authenticator app": "An, mit einer Authenticator-App",
             "A code from your app is asked for on every new sign in.": "Bei jeder neuen Anmeldung wird ein Code aus Ihrer App verlangt.",
             "Without it, a password is the only thing between an intruder and this account.": "Ohne sie ist ein Passwort das Einzige zwischen einem Eindringling und diesem Konto.",

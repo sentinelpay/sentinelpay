@@ -27,6 +27,8 @@ SKIP_EXACT = {
     # how a list is shown and what a project's state is. both are compared in
     # code and written to storage; the words a reader sees are capitalised.
     'grid', 'list', 'active', 'archived',
+    # which sidebar is on screen. compared in code, never shown.
+    'picker',
     # the cities a region is named after. place names, printed as they are.
     'Frankfurt', 'Dublin', 'London', 'Virginia', 'Oregon', 'Singapore',
     'Ceem', 'Mind', 'Chibby', 'Mind, chibby', 'Ceem, mind, chibby',
