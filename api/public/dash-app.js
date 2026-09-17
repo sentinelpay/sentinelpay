@@ -26,32 +26,61 @@
         if (window.innerWidth > 900) setMenu(false);
     });
 
+    // One glyph, one meaning. Nothing in here is drawn twice for two different
+    // things: a reader learns an icon by what it opened last time, so the same
+    // mark on two screens teaches them something untrue. test/icons.test.js
+    // fails the build if an icon is ever given a second meaning.
     var ICONS = {
-        home: '<path d="M4 10.5 12 4l8 6.5V20H4Z"/><path d="M9.5 20v-5.5h5V20"/>',
-        inbox: '<path d="M3.5 13H8l1.5 3h5L16 13h4.5"/><path d="M5 5.5h14l1.5 7.5v5.5H3.5V13Z"/>',
-        bell: '<path d="M18 16V11a6 6 0 1 0-12 0v5l-1.5 2.5h15Z"/><path d="M10 19.5a2 2 0 0 0 4 0"/>',
-        folder: '<path d="M3.5 6.5h6l2 2.5h9v9.5h-17Z"/>',
-        search: '<circle cx="11" cy="11" r="6.5"/><path d="m19.5 19.5-3.8-3.8"/>',
-        wallet: '<path d="M4 7.5h13.5A2.5 2.5 0 0 1 20 10v7.5H4Z"/><path d="M4 7.5V6a1.5 1.5 0 0 1 1.5-1.5H16"/><circle cx="16.5" cy="13.5" r="1.1"/>',
-        list: '<path d="M9 7h11M9 12h11M9 17h11M4.5 7h.01M4.5 12h.01M4.5 17h.01"/>',
+        // the organisation's rail
+        projects: '<path d="M4 8.4 12 4.2l8 4.2-8 4.2Z"/><path d="m4 13.2 8 4.2 8-4.2"/>' +
+            '<path d="m4 17.2 8 4.2 8-4.2" opacity="0.55"/>',
+        team: '<circle cx="9.2" cy="8.4" r="3"/><path d="M3.6 19.2c0-2.9 2.5-4.8 5.6-4.8s5.6 1.9 5.6 4.8"/>' +
+            '<path d="M16.4 6.6a2.9 2.9 0 0 1 0 5.7"/><path d="M20.4 19.2c0-2.1-1.2-3.5-3-4.2"/>',
+        usage: '<path d="M4 20V4"/><path d="M4 20h16"/><rect x="7.4" y="12.6" width="2.9" height="4.6" rx="0.6"/>' +
+            '<rect x="12" y="9" width="2.9" height="8.2" rx="0.6"/><rect x="16.6" y="5.6" width="2.9" height="11.6" rx="0.6"/>',
+        billing: '<rect x="2.8" y="6" width="18.4" height="12" rx="2.2"/><path d="M2.8 10.4h18.4"/>' +
+            '<path d="M6.4 14.4h3.4"/>',
+        orgcog: '<path d="M4.4 7.2h6.4M14.6 7.2h5"/><circle cx="12.8" cy="7.2" r="1.9"/>' +
+            '<path d="M4.4 16.8h4.2M12.4 16.8h7.2"/><circle cx="10.4" cy="16.8" r="1.9"/>',
+
+        // your own account
+        prefs: '<circle cx="12" cy="12" r="2.9"/><path d="M12 3.2v2.3M12 18.5v2.3M20.8 12h-2.3M5.5 12H3.2' +
+            'M18.2 5.8l-1.7 1.7M7.5 16.5l-1.7 1.7M18.2 18.2l-1.7-1.7M7.5 7.5 5.8 5.8"/>',
+        lock: '<rect x="4.8" y="10.6" width="14.4" height="9.4" rx="2.1"/>' +
+            '<path d="M8.4 10.6V7.8a3.6 3.6 0 0 1 7.2 0v2.8"/><path d="M12 14.4v2.2"/>',
+        key: '<circle cx="7.4" cy="12" r="3.6"/><path d="M11 12h9.4"/>' +
+            '<path d="M17 12v3.4"/><path d="M20.4 12v2.4"/>',
+        audit: '<path d="M7 5.4v13.2"/><circle cx="7" cy="7.6" r="1.9"/><circle cx="7" cy="16.4" r="1.9"/>' +
+            '<path d="M11.6 7.6h8.4M11.6 16.4h6"/>',
+        person: '<circle cx="12" cy="8.2" r="3.3"/><path d="M5.6 20c0-3.4 2.9-5.6 6.4-5.6s6.4 2.2 6.4 5.6"/>',
+        building: '<path d="M4.4 20V5.2A1.2 1.2 0 0 1 5.6 4h7.6a1.2 1.2 0 0 1 1.2 1.2V20"/>' +
+            '<path d="M14.4 9.6h4A1.2 1.2 0 0 1 19.6 10.8V20"/><path d="M3.2 20h17.6"/>' +
+            '<path d="M7.6 7.6h3.6M7.6 11.2h3.6M7.6 14.8h3.6"/>',
+        flask: '<path d="M9.4 3.6h5.2v4.8l4.4 9.2a1.8 1.8 0 0 1-1.6 2.6H6.6A1.8 1.8 0 0 1 5 17.6l4.4-9.2Z"/>' +
+            '<path d="M6.8 14.4h10.4"/>',
+        changelog: '<path d="M5.6 4.4h12.8v15.2H5.6Z"/><path d="M8.6 8.4h6.8M8.6 12h6.8M8.6 15.6h4"/>',
+        globe: '<circle cx="12" cy="12" r="8.2"/><path d="M3.8 12h16.4"/>' +
+            '<path d="M12 3.8c2.2 2.3 3.4 5.1 3.4 8.2s-1.2 5.9-3.4 8.2c-2.2-2.3-3.4-5.1-3.4-8.2S9.8 6.1 12 3.8Z"/>',
+
+        // things a screen talks about
+        plan: '<path d="m12.4 3.6 7.2 7.2a2 2 0 0 1 0 2.8l-5.6 5.6a2 2 0 0 1-2.8 0L4 12V5.6a2 2 0 0 1 2-2Z"/>' +
+            '<circle cx="8.6" cy="8.6" r="1.3"/>',
+        screening: '<circle cx="10.8" cy="10.8" r="6.2"/><path d="m15.4 15.4 4.2 4.2"/>' +
+            '<path d="m8.2 10.9 1.9 1.9 3.4-3.6"/>',
+        coverage: '<path d="M12 3.4 5 6v5.4c0 4.6 3.1 7.6 7 9.2 3.9-1.6 7-4.6 7-9.2V6Z"/>' +
+            '<path d="m8.8 11.6 2.4 2.4 4-4.4"/>',
+        swap: '<path d="M4.4 9.2h13.2"/><path d="m14.6 6.2 3 3-3 3"/>' +
+            '<path d="M19.6 15.2H6.4"/><path d="m9.4 12.2-3 3 3 3"/>',
+        label: '<rect x="3.4" y="7.4" width="17.2" height="9.2" rx="2.1"/>' +
+            '<path d="M8.8 10.2v5.6"/><path d="M7.4 10.2h2.8M7.4 15.8h2.8"/>',
+        link: '<path d="M10.2 13.8a3.6 3.6 0 0 1 0-5.1l2.6-2.6a3.6 3.6 0 0 1 5.1 5.1l-1.3 1.3"/>' +
+            '<path d="M13.8 10.2a3.6 3.6 0 0 1 0 5.1l-2.6 2.6a3.6 3.6 0 0 1-5.1-5.1l1.3-1.3"/>',
         warn: '<path d="M12 8.5v5M12 16.9v.1"/><path d="M10.3 4.3 2.8 18a1.8 1.8 0 0 0 1.6 2.7h15.2A1.8 1.8 0 0 0 21.2 18L13.7 4.3a1.9 1.9 0 0 0-3.4 0Z"/>',
-        rings: '<circle cx="12" cy="12" r="3"/><path d="M12 4.5v4.4M12 15.1v4.4M4.5 12h4.4M15.1 12h4.4"/>',
-        graph: '<circle cx="6" cy="17" r="2.2"/><circle cx="12" cy="7" r="2.2"/><circle cx="18" cy="15" r="2.2"/><path d="m7.6 15.3 3-6.2M13.8 8.4l2.9 4.9"/>',
-        file: '<path d="M14 3.5v5h5"/><path d="M19 8.5V20H5V3.5h9Z"/>',
-        trail: '<path d="M6 4.5v12"/><circle cx="6" cy="18.5" r="1.6"/><path d="M10.5 8h8M10.5 12.5h8M10.5 17h5"/>',
-        shield: '<path d="M12 3.5 5 6.5v5c0 5 4.4 8.4 7 9.2 2.6-.8 7-4.2 7-9.2v-5Z"/>',
-        book: '<path d="M5 4.5h9.5A2.5 2.5 0 0 1 17 7v12.5H7.5A2.5 2.5 0 0 1 5 17Z"/><path d="M17 7h2v12.5"/>',
-        wave: '<path d="M3.5 12h3l2-5 3.5 11 3-9 2 3h3.5"/>',
-        key: '<circle cx="8" cy="12" r="3.6"/><path d="M11.6 12H21l-1.4 2M17.4 12v2.6"/>',
-        hook: '<path d="M8 5.5v6a4 4 0 0 0 8 0"/><circle cx="8" cy="4" r="1.6"/><circle cx="16" cy="4" r="1.6"/><circle cx="12" cy="19" r="1.6"/><path d="M12 15.5v1.9"/>',
-        flask: '<path d="M10 3.5v6L5.5 18a1.5 1.5 0 0 0 1.3 2.2h10.4A1.5 1.5 0 0 0 18.5 18L14 9.5v-6"/><path d="M9 3.5h6M7.8 14.5h8.4"/>',
-        users: '<circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><path d="M16 6.2A3 3 0 0 1 16 13M20.5 19c0-2.3-1.4-3.8-3.2-4.5"/>',
-        card: '<path d="M3.5 6.5h17v11h-17Z"/><path d="M3.5 10.5h17"/><path d="M7 14.5h3"/>',
-        panel: '<path d="M4.5 5.5h15v13h-15Z"/><path d="M10 5.5v13"/>',
-        clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.2V12l3.2 2"/>',
-        back: '<path d="m14 6-6 6 6 6"/>',
-        out: '<path d="M14.5 4.5H19v15h-4.5"/><path d="M10 15.5 13.5 12 10 8.5"/><path d="M13.5 12H4"/>',
-        cog: '<circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2 5.5 5.5"/>'
+
+        // chrome: the shell itself, not a destination
+        panel: '<rect x="3.4" y="4.6" width="17.2" height="14.8" rx="2.2"/><path d="M9.4 4.6v14.8"/>',
+        back: '<path d="M14.6 6.4 9 12l5.6 5.6"/>',
+        out: '<path d="M9.6 20H5.4V4h4.2"/><path d="M14 8.4l3.6 3.6-3.6 3.6"/><path d="M17.6 12H8.8"/>'
     };
 
     var ACCOUNT_PATH = '/dashboard/account/preferences';
@@ -113,12 +142,12 @@
     // organisations, the tokens and the log do not.
     var ACCOUNT_NAV = [
         { group: 'Account settings', items: [
-            { key: 'preferences', label: 'Preferences', icon: 'cog', href: '/dashboard/account/preferences' },
-            { key: 'security', label: 'Security', icon: 'shield', href: '/dashboard/account/security' }
+            { key: 'preferences', label: 'Preferences', icon: 'prefs', href: '/dashboard/account/preferences' },
+            { key: 'security', label: 'Security', icon: 'lock', href: '/dashboard/account/security' }
         ] },
         { group: 'Organisation', items: [
             { key: 'tokens', label: 'Access tokens', icon: 'key', org: 'tokens' },
-            { key: 'account-logs', label: 'Audit logs', icon: 'trail', org: 'logs' }
+            { key: 'account-logs', label: 'Audit logs', icon: 'audit', org: 'logs' }
         ] }
     ];
 
@@ -131,13 +160,13 @@
     // always also reachable. A rail is for where the work is.
     var NAV = [
         { group: 'Work', items: [
-            { key: 'projects', label: 'Projects', icon: 'rings', org: '' }
+            { key: 'projects', label: 'Projects', icon: 'projects', org: '' }
         ] },
         { group: 'Organisation', items: [
-            { key: 'team', label: 'Team', icon: 'users', org: 'team' },
-            { key: 'usage', label: 'Usage', icon: 'graph', org: 'usage' },
-            { key: 'billing', label: 'Billing', icon: 'card', org: 'billing' },
-            { key: 'settings', label: 'Organization settings', icon: 'cog', org: 'settings' }
+            { key: 'team', label: 'Team', icon: 'team', org: 'team' },
+            { key: 'usage', label: 'Usage', icon: 'usage', org: 'usage' },
+            { key: 'billing', label: 'Billing', icon: 'billing', org: 'billing' },
+            { key: 'settings', label: 'Organization settings', icon: 'orgcog', org: 'settings' }
         ] }
     ];
 
@@ -653,21 +682,21 @@
 
         main.appendChild(sep());
         main.appendChild(acctRow('Account', {
-            icon: 'cog',
+            icon: 'person',
             onClick: function () {
                 document.getElementById('acct').classList.remove('is-open');
                 go(ACCOUNT_PATH);
             }
         }));
         main.appendChild(acctRow('Organisations', {
-            icon: 'users',
+            icon: 'building',
             onClick: function () {
                 document.getElementById('acct').classList.remove('is-open');
                 go(ORGS_PATH);
             }
         }));
         main.appendChild(acctRow('Feature previews', { icon: 'flask', soon: true }));
-        main.appendChild(acctRow('Changelog', { icon: 'file', soon: true }));
+        main.appendChild(acctRow('Changelog', { icon: 'changelog', soon: true }));
 
         main.appendChild(sep());
         main.appendChild(acctLabel('Theme'));
@@ -688,7 +717,7 @@
             });
         }
 
-        var zoneRow = acctRow('Timezone', { icon: 'clock', more: true, stack: true });
+        var zoneRow = acctRow('Timezone', { icon: 'globe', more: true, stack: true });
         var zv = document.createElement('span');
         zv.className = 'acct-row-sub';
         zv.textContent = zonePref() === 'auto'
@@ -2522,7 +2551,7 @@
 
         var mark = document.createElement('span');
         mark.className = 'prj-mark';
-        mark.innerHTML = icon('rings');
+        mark.innerHTML = icon('projects');
         card.appendChild(mark);
 
         var txt = document.createElement('span');
@@ -2794,14 +2823,14 @@
         var tr = me.trial || {};
         page.appendChild(pageHead('Usage', 'What this organisation has used in the current period.'));
 
-        var plan = orghCard('Plan', 'card');
+        var plan = orghCard('Plan', 'plan');
         plan.appendChild(orghStat('Plan', orghPlan(tr.state)));
         if (tr.daysLeft) {
             plan.appendChild(orghStat('Days left', String(tr.daysLeft)));
         }
         page.appendChild(plan);
 
-        var checks = orghCard('Screening', 'search');
+        var checks = orghCard('Screening', 'screening');
         checks.appendChild(orghMeter('Live checks', tr.liveUsed, tr.liveIncluded, tr.state === 'enterprise'));
         if (!tr.historyOpen) {
             checks.appendChild(orghMeter('History scans', tr.historyUsed, tr.historyIncluded, false));
@@ -2810,7 +2839,7 @@
         page.appendChild(checks);
 
         var c = me.coverage || {};
-        var cov = orghCard('Sanctions coverage', 'shield');
+        var cov = orghCard('Sanctions coverage', 'coverage');
         cov.appendChild(orghStat('List', c.source || 'OFAC SDN'));
         cov.appendChild(orghStat('Addresses', c.addresses ? Number(c.addresses).toLocaleString() : '—'));
         cov.appendChild(orghStat('Dated', c.listDate || '—'));
@@ -2826,7 +2855,7 @@
         var tr = me.trial || {};
         page.appendChild(pageHead('Billing', 'The plan this organisation is on.'));
 
-        var card = orghCard('Current plan', 'card');
+        var card = orghCard('Plan', 'plan');
         card.appendChild(orghStat('Plan', orghPlan(tr.state)));
         if (tr.daysLeft) card.appendChild(orghStat('Days left', String(tr.daysLeft)));
         card.appendChild(orghStat('Live checks', tr.state === 'enterprise'
@@ -2834,7 +2863,7 @@
             : (Number(tr.liveUsed || 0) + ' / ' + Number(tr.liveIncluded || 0))));
         page.appendChild(card);
 
-        var change = orghCard('Changing plan', 'wave');
+        var change = orghCard('Changing plan', 'swap');
         var body = document.createElement('div');
         body.className = 'orgh-body';
         var p2 = document.createElement('p');
@@ -2860,7 +2889,7 @@
 
         var may = roleAtLeastLocal(org.role, 'admin');
 
-        var nameCard = orghCard('Name', 'cog');
+        var nameCard = orghCard('Name', 'label');
         var body = document.createElement('div');
         body.className = 'orgh-body orgh-form';
         var input = document.createElement('input');
@@ -2920,7 +2949,7 @@
             });
         });
 
-        var idCard = orghCard('Address', 'key');
+        var idCard = orghCard('Address', 'link');
         idCard.appendChild(orghStat('In the url', org.slug || '—'));
         page.appendChild(idCard);
 
