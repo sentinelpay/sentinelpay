@@ -46,6 +46,12 @@
         // your own account
         prefs: '<circle cx="12" cy="12" r="2.9"/><path d="M12 3.2v2.3M12 18.5v2.3M20.8 12h-2.3M5.5 12H3.2' +
             'M18.2 5.8l-1.7 1.7M7.5 16.5l-1.7 1.7M18.2 18.2l-1.7-1.7M7.5 7.5 5.8 5.8"/>',
+        twofa: '<rect x="7.6" y="3.4" width="8.8" height="17.2" rx="2.2"/>' +
+            '<circle cx="10.4" cy="9.6" r="0.9"/><circle cx="13.6" cy="9.6" r="0.9"/>' +
+            '<circle cx="10.4" cy="12.8" r="0.9"/><circle cx="13.6" cy="12.8" r="0.9"/>' +
+            '<path d="M10.4 17.4h3.2"/>',
+        device: '<rect x="3.2" y="5" width="17.6" height="11" rx="2"/>' +
+            '<path d="M9.4 19.6h5.2"/><path d="M12 16v3.6"/>',
         lock: '<rect x="4.8" y="10.6" width="14.4" height="9.4" rx="2.1"/>' +
             '<path d="M8.4 10.6V7.8a3.6 3.6 0 0 1 7.2 0v2.8"/><path d="M12 14.4v2.2"/>',
         key: '<circle cx="7.4" cy="12" r="3.6"/><path d="M11 12h9.4"/>' +
@@ -83,7 +89,10 @@
         out: '<path d="M9.6 20H5.4V4h4.2"/><path d="M14 8.4l3.6 3.6-3.6 3.6"/><path d="M17.6 12H8.8"/>'
     };
 
-    var ACCOUNT_PATH = '/dashboard/account/preferences';
+    // Your own account sits beside the organisations, not inside one, so its
+    // addresses say so: /account/preferences and the three beside it.
+    var ACCOUNT_ROOT = '/account/';
+    var ACCOUNT_PATH = ACCOUNT_ROOT + 'preferences';
     var ORGS_PATH = '/dashboard/organisations';
 
     // The organisation is in the address, not hidden in a cookie: a link opens
@@ -142,12 +151,12 @@
     // organisations, the tokens and the log do not.
     var ACCOUNT_NAV = [
         { group: 'Account settings', items: [
-            { key: 'preferences', label: 'Preferences', icon: 'prefs', href: '/dashboard/account/preferences' },
-            { key: 'security', label: 'Security', icon: 'lock', href: '/dashboard/account/security' }
+            { key: 'preferences', label: 'Preferences', icon: 'prefs', href: ACCOUNT_ROOT + 'preferences' },
+            { key: 'security', label: 'Security', icon: 'lock', href: ACCOUNT_ROOT + 'security' }
         ] },
-        { group: 'Organisation', items: [
-            { key: 'tokens', label: 'Access tokens', icon: 'key', org: 'tokens' },
-            { key: 'account-logs', label: 'Audit logs', icon: 'audit', org: 'logs' }
+        { group: 'Developers', items: [
+            { key: 'tokens', label: 'Access tokens', icon: 'key', href: ACCOUNT_ROOT + 'tokens' },
+            { key: 'account-logs', label: 'Audit logs', icon: 'audit', href: ACCOUNT_ROOT + 'logs' }
         ] }
     ];
 
@@ -181,12 +190,13 @@
     }
 
     function inAccount() {
-        if (location.pathname.indexOf('/dashboard/account') === 0) return true;
-        // the organisation's own settings live in the same sidebar as yours
-        var slug = slugInPath();
-        if (!slug) return false;
-        var tail = location.pathname.slice(orgHome(slug).length).replace(/^\//, '');
-        return tail === 'tokens' || tail === 'logs';
+        return location.pathname.indexOf(ACCOUNT_ROOT) === 0;
+    }
+
+    // which of the four, or '' when we are not in there at all
+    function accountPage() {
+        if (!inAccount()) return '';
+        return location.pathname.slice(ACCOUNT_ROOT.length).split('/')[0];
     }
 
     function navFor() {
@@ -3545,7 +3555,7 @@
         tb.appendChild(tp);
         var tlink = document.createElement('a');
         tlink.className = 'btn btn-quiet orgh-act';
-        tlink.href = orgPath(org.slug, 'tokens');
+        tlink.href = ACCOUNT_ROOT + 'tokens';
         tlink.textContent = t('Manage access tokens');
         tb.appendChild(tlink);
         tokCard.appendChild(tb);
@@ -3577,6 +3587,205 @@
     function roleAtLeastLocal(role, needed) {
         var rank = { viewer: 1, analyst: 2, admin: 3, owner: 4 };
         return (rank[role] || 0) >= (rank[needed] || 0);
+    }
+
+    // Security. Both of these addresses used to be in the rail with nothing
+    // behind them, which is the thing I keep taking out of other people's
+    // navigation, so they have screens now rather than a rename.
+    function viewSecurity(me) {
+        var page = document.createElement('div');
+        page.appendChild(pageHead('Security',
+            'How this account is protected and where it is signed in.'));
+
+        var two = orghCard('Two-factor', 'twofa');
+        two.appendChild(orghStat('Second step',
+            me.totpOn ? t('On, with an authenticator app') : t('Off')));
+        var twoBody = document.createElement('div');
+        twoBody.className = 'orgh-body';
+        var twoP = document.createElement('p');
+        twoP.className = 'orgh-line is-quiet';
+        twoP.textContent = me.totpOn
+            ? t('A code from your app is asked for on every new sign in.')
+            : t('Without it, a password is the only thing between an intruder and this account.');
+        twoBody.appendChild(twoP);
+        two.appendChild(twoBody);
+        page.appendChild(two);
+
+        // where this account is signed in. the one you are reading this on is
+        // marked, because "sign out everywhere else" has to be unambiguous.
+        var sess = orghCard('Signed in', 'device');
+        var host = document.createElement('div');
+        host.className = 'sess';
+        sess.appendChild(host);
+        host.appendChild(waiting());
+
+        var out = document.createElement('div');
+        out.className = 'orgh-body';
+        var outBtn = document.createElement('button');
+        outBtn.type = 'button';
+        outBtn.className = 'btn btn-quiet orgh-act';
+        outBtn.textContent = t('Sign out everywhere else');
+        outBtn.disabled = true;
+        out.appendChild(outBtn);
+        sess.appendChild(out);
+        page.appendChild(sess);
+
+        function loadSessions() {
+            fetch('/v1/account/sessions', { credentials: 'same-origin' })
+                .then(function (r) {
+                    if (!r.ok) throw new Error('bad-status-' + r.status);
+                    return r.json();
+                })
+                .then(function (j) {
+                    var rows = (j && j.sessions) || [];
+                    host.textContent = '';
+                    if (!rows.length) {
+                        host.appendChild(emptyState('Nothing signed in',
+                            'That should not happen: you are reading this.'));
+                        return;
+                    }
+                    rows.forEach(function (x) { host.appendChild(sessionRow(x)); });
+                    outBtn.disabled = rows.length < 2;
+                })
+                .catch(function () {
+                    host.textContent = '';
+                    host.appendChild(emptyState('That did not load.', 'Reload the page to try again.'));
+                });
+        }
+
+        outBtn.addEventListener('click', function () {
+            outBtn.disabled = true;
+            fetch('/v1/account/sessions/revoke', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: '{}'
+            }).then(function (r) {
+                if (!r.ok) throw new Error('bad');
+                toast(t('Signed out everywhere else'), 'good');
+                loadSessions();
+            }).catch(function () {
+                toast(t('That did not work.'), 'bad');
+                outBtn.disabled = false;
+            });
+        });
+
+        loadSessions();
+        return page;
+    }
+
+    function sessionRow(x) {
+        var row = document.createElement('div');
+        row.className = 'sess-row';
+        var txt = document.createElement('span');
+        txt.className = 'sess-t';
+        var n = document.createElement('span');
+        n.className = 'sess-n';
+        n.textContent = x.lastSeenAt
+            ? t('Last used') + '  ·  ' + new Date(x.lastSeenAt).toISOString().slice(0, 16).replace('T', ' ')
+            : t('In use');
+        if (x.current) {
+            var here = document.createElement('span');
+            here.className = 'mem-you';
+            here.textContent = t('this one');
+            n.appendChild(here);
+        }
+        txt.appendChild(n);
+        var sub = document.createElement('span');
+        sub.className = 'sess-sub';
+        sub.textContent = (x.startedAt
+            ? t('Started') + ' ' + new Date(x.startedAt).toISOString().slice(0, 10) : '') +
+            (x.mfa ? '  ·  ' + t('passed two-factor') : '');
+        txt.appendChild(sub);
+        row.appendChild(txt);
+        return row;
+    }
+
+    // What this account has done, newest first. It reads the same trail a
+    // regulator would be shown, filtered to one actor by the server.
+    var LOG_SAID = {
+        'signed-in': 'Signed in',
+        'signed-out': 'Signed out',
+        'sign-in-refused': 'A sign in was refused',
+        'password-changed': 'Password changed',
+        'password-reset': 'Password reset',
+        'totp-on': 'Two-factor turned on',
+        'totp-off': 'Two-factor turned off',
+        'profile-changed': 'Profile changed',
+        'org-created': 'Organisation created',
+        'org-renamed': 'Organisation renamed',
+        'org-removed': 'Organisation closed',
+        'project-created': 'Project created',
+        'project-renamed': 'Project renamed',
+        'project-archived': 'Project archived',
+        'project-restored': 'Project restored',
+        'project-removed': 'Project removed',
+        'token-minted': 'Access token issued',
+        'token-revoked': 'Access token revoked'
+    };
+
+    function viewLogs(me) {
+        var page = document.createElement('div');
+        page.appendChild(pageHead('Audit logs',
+            'What this account has done, newest first.'));
+
+        var card = document.createElement('div');
+        card.className = 'card';
+        page.appendChild(card);
+        card.appendChild(waiting());
+
+        fetch('/v1/account/logs', { credentials: 'same-origin' })
+            .then(function (r) {
+                if (!r.ok) throw new Error('bad-status-' + r.status);
+                return r.json();
+            })
+            .then(function (j) {
+                var rows = (j && j.rows) || [];
+                card.textContent = '';
+                if (!rows.length) {
+                    card.appendChild(emptyState('Nothing yet',
+                        'Anything this account does shows up here.'));
+                    return;
+                }
+                rows.forEach(function (r) { card.appendChild(logRow(r)); });
+            })
+            .catch(function () {
+                card.textContent = '';
+                card.appendChild(emptyState('That did not load.', 'Reload the page to try again.'));
+            });
+        return page;
+    }
+
+    function logRow(r) {
+        var row = document.createElement('div');
+        row.className = 'lg';
+        var when = document.createElement('span');
+        when.className = 'lg-when';
+        when.textContent = r.at
+            ? new Date(r.at).toISOString().slice(0, 16).replace('T', ' ') : '';
+        row.appendChild(when);
+        var txt = document.createElement('span');
+        txt.className = 'lg-t';
+        var n = document.createElement('span');
+        n.className = 'lg-n';
+        // an event we have no words for is shown by its own key rather than
+        // hidden: a trail with gaps in it is worth less than an ugly line.
+        n.textContent = LOG_SAID[r.kind] ? t(LOG_SAID[r.kind]) : r.kind;
+        txt.appendChild(n);
+        if (r.detail) {
+            var d = document.createElement('span');
+            d.className = 'lg-d';
+            d.textContent = r.detail;
+            txt.appendChild(d);
+        }
+        row.appendChild(txt);
+        if (r.ip) {
+            var ip = document.createElement('code');
+            ip.className = 'lg-ip';
+            ip.textContent = r.ip;
+            row.appendChild(ip);
+        }
+        return row;
     }
 
     function viewTokens(me) {
@@ -4969,8 +5178,12 @@
             canvas.appendChild(viewOrgs(lastMe));
             return;
         }
-        if (location.pathname === ACCOUNT_PATH) {
-            canvas.appendChild(viewPreferences(lastMe));
+        var page = accountPage();
+        if (page) {
+            if (page === 'preferences') canvas.appendChild(viewPreferences(lastMe));
+            else if (page === 'security') canvas.appendChild(viewSecurity(lastMe));
+            else if (page === 'tokens') canvas.appendChild(viewTokens(lastMe));
+            else if (page === 'logs') canvas.appendChild(viewLogs(lastMe));
             return;
         }
         var slug = slugInPath();

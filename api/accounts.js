@@ -509,13 +509,15 @@ function audit(kind, { actor, subject, ip, detail } = {}) {
         );
     }).catch((err) => console.error('[accounts] could not write an audit event: ' + err.message));
 }
-async function recentAudit({ limit = 100, kind = '', subject = '' } = {}) {
+async function recentAudit({ limit = 100, kind = '', subject = '', actor = '' } = {}) {
     if (!(await init())) return [];
     const max = Math.min(Math.max(Number(limit) || 100, 1), 500);
     const where = [];
     const args = [];
     if (kind) { args.push(String(kind).slice(0, 48)); where.push('kind = $' + args.length); }
     if (subject) { args.push(String(subject).slice(0, 120)); where.push('subject = $' + args.length); }
+    // by actor, so an account can be shown its own trail and nobody else's
+    if (actor) { args.push(String(actor).slice(0, 120)); where.push('actor = $' + args.length); }
     args.push(max);
     try {
         const res = await db.query(
