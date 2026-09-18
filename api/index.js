@@ -459,7 +459,16 @@ function renderPage(file, req, forcedLang) {
         '<a class="sp-ns-link" href="' + escapeHtml(url) + '" rel="noopener nofollow" target="_blank">' + escapeHtml(copy.link) + '</a>' +
         '</div>';
     const geo = geoZone(req);
-    const attrs = ' data-geo-lang="' + lang + '"' +
+    // Chrome offers to translate a page whose language is not the reader's, and
+    // ours is english in the markup until our own script swaps the words for
+    // croatian or german a moment later. By then the offer is already on
+    // screen, over the top right of the page, proposing to translate a site
+    // that translates itself. translate="no" is the html standard way to
+    // decline; the google meta beside it is the one chrome documents. Neither
+    // touches our own translation, which replaces text nodes rather than asking
+    // the browser for anything.
+    const attrs = ' translate="no"' +
+        ' data-geo-lang="' + lang + '"' +
         (geo.zone ? ' data-geo-tz="' + geo.zone + '"' : '') +
         (geo.src ? ' data-geo-src="' + geo.src + '"' : '') +
         (forcedLang ? ' data-force-lang="' + forcedLang + '"' : '') +
