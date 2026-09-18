@@ -3050,27 +3050,6 @@ html { scroll-behavior: auto; }}
 .sp-dash-out { min-height: 44px; }
 .sp-dash-link { min-height: 44px; display: inline-flex; align-items: center; }}
 #auth-nav-container.auth-nav-asking .auth-nav-btn { visibility: hidden; }
-.auth-nav-mark {
-    flex: 0 0 auto;
-    width: 34px;
-    height: 34px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #00b4d8, #7b6cff);
-    color: #ffffff;
-    font-size: 0.76rem;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    text-decoration: none;
-    text-transform: uppercase;
-    transition: transform 0.16s ease, box-shadow 0.16s ease;
-}
-.auth-nav-mark:hover { transform: translateY(-1px); box-shadow: 0 4px 12px -4px rgba(0, 145, 200, 0.6); }
-.auth-nav-mark:focus-visible { outline: 2px solid #0091c8; outline-offset: 2px; }
-@media (pointer: coarse) {
-.auth-nav-mark { width: 40px; height: 40px; }}
 .sp-dash-staff[hidden] { display: none; }
 html.theme-light .lp-hero {
     min-height: 100svh;

@@ -7,31 +7,19 @@
     var mLogin = document.getElementById('lp-mm-login');
     var mRegister = document.getElementById('lp-mm-register');
 
-    function initials(name) {
-        var parts = String(name || '').trim().split(/\s+/).filter(Boolean);
-        if (!parts.length) return '?';
-        var first = parts[0].charAt(0);
-        var last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : '';
-        return (first + last).toUpperCase();
-    }
+    // One button, and it is the one that does something. The initials beside it
+    // went to the same address, so the front page was offering the same door
+    // twice and spending the wider of the two slots on the half that only said
+    // who you are. Who you are is on every page behind it.
     function signedIn(me) {
         var label = t('Dashboard');
         if (login && register) {
-            var mark = document.createElement('a');
-            mark.className = 'auth-nav-mark';
-            mark.classList.add('lp-desktop-auth');
-            mark.href = '/dashboard';
-            mark.textContent = initials(me.name);
-
-            mark.setAttribute('aria-label', me.name || t('Your account'));
-            mark.title = me.name || '';
             var go = document.createElement('a');
             go.className = 'auth-nav-btn';
             go.classList.add('lp-btn-solid', 'lp-desktop-auth');
             go.id = 'nav-dashboard-btn';
             go.href = '/dashboard';
             go.textContent = label;
-            box.insertBefore(mark, login);
             box.insertBefore(go, login);
             login.remove();
             register.remove();
