@@ -2930,6 +2930,9 @@ html.is-theming .btn {
    organisation screens, .orgs-pg is the two lists you pick something from, and
    both stay centred on their own column as before. */
 @media (min-width: 900px) {
+    /* One column on a desktop. The two lists you pick something from held a
+       narrower one of their own, which made walking from an account page to
+       the picker a change of measurements for no reason. They keep their own
+       width below this, where the narrower column is what fits. */
     .pg { max-width: 54rem; }
-    .orgs-pg { max-width: 42rem; }
 }
