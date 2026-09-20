@@ -19,6 +19,7 @@ const screening = require('./screening');
 const tokens = require('./tokens');
 const orgs = require('./orgs');
 const projects = require('./projects');
+const live = require('./live');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -1272,7 +1273,13 @@ app.get('/v1/security-status', requireStaff('security status'), (req, res) => {
     res.set('Cache-Control', 'no-store, private');
     res.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
     const checks = securityPosture().map((c) => ({ check: c.key, ok: c.ok, serious: c.grave, detail: c.says }));
-    if (String(req.query.format || '') === 'json') return res.json({ ok: checks.every((c) => c.ok), checks });
+    // how many screens are holding a live connection. a number that climbs and
+    // never falls is the shape a leak makes, and this is where somebody would
+    // look for it.
+    const streams = live.status();
+    if (String(req.query.format || '') === 'json') {
+        return res.json({ ok: checks.every((c) => c.ok), checks, live: streams });
+    }
     res.set('Content-Security-Policy',
         "default-src 'none'; style-src 'unsafe-inline'; style-src-attr 'unsafe-inline'; form-action 'none'");
     res.type('html').send(
@@ -1284,6 +1291,8 @@ app.get('/v1/security-status', requireStaff('security status'), (req, res) => {
         '<h1 style="font-size:20px;font-weight:800;margin:0 0 4px;">security status</h1>' +
         '<p style="margin:0 0 18px;color:rgba(14,35,88,0.6);font-size:13px;">' +
         'what this deploy is actually running with. no values, only whether something is on.</p>' +
+        '<p style="margin:0 0 18px;color:rgba(14,35,88,0.6);font-size:13px;">live connections: ' +
+        streams.connections + ' held by ' + streams.people + ' account(s).</p>' +
         checks.map((c) =>
             '<div style="padding:10px 0;border-bottom:1px solid rgba(14,35,88,0.08);">' +
             '<span style="font-weight:700;color:' + (c.ok ? '#0f7b4f' : (c.serious ? '#b3261e' : '#8a6d00')) + ';">' +
@@ -1897,6 +1906,7 @@ app.post('/v1/account/totp/confirm', requireCloudflareOrigin, authTotpLimiter, a
     if (out.reason === 'bad-code') return res.status(400).json({ error: 'That code is not right. Check your app and try again.' });
     if (!out.ok) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
     res.set('Cache-Control', 'no-store, private');
+    tellMe(me.userId, { topic: 'me' });
     res.json({ ok: true, codes: out.codes });
 });
 
@@ -1906,6 +1916,7 @@ app.post('/v1/account/totp/off', requireCloudflareOrigin, authTotpLimiter, async
     const out = await accounts.disableTotp(me.userId, String((req.body || {}).password || ''));
     if (out.reason === 'bad-password') return res.status(401).json({ error: 'That password is not right.' });
     if (!out.ok) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
+    tellMe(me.userId, { topic: 'me' });
     res.json({ ok: true });
 });
 
@@ -1937,6 +1948,7 @@ app.post('/v1/account/password', requireCloudflareOrigin, accountLimiter, async 
     if (!out.ok) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
 
     const ended = await accounts.revokeOtherSessions(me.userId, readSessionCookie(req));
+    tellMe(me.userId, { topic: 'me' });
     res.json({ ok: true, otherSessionsEnded: ended });
 
     if (out.email) {
@@ -1972,6 +1984,7 @@ app.post('/v1/account/profile', requireCloudflareOrigin, accountLimiter, async (
         return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
     }
     res.set('Cache-Control', 'no-store, private');
+    tellMe(me.userId, { topic: 'me' });
     res.json({ ok: true, name });
 });
 
@@ -2038,6 +2051,7 @@ app.post('/v1/orgs', requireCloudflareOrigin, accountLimiter, async (req, res) =
     await accounts.audit('org-created', {
         actor: String(me.userId), subject: out.org.id, ip: req.realIp, detail: out.org.name,
     });
+    tellMe(me.userId, { topic: 'orgs' });
     res.set('Cache-Control', 'no-store, private');
     res.json({ ok: true, org: out.org });
 });
@@ -2097,6 +2111,7 @@ app.post('/v1/orgs/:id/projects', requireCloudflareOrigin, accountLimiter, async
     await accounts.audit('project-created', {
         actor: String(me.userId), subject: out.project.id, ip: req.realIp, detail: out.project.name,
     });
+    await tellOrg(mine.id, { topic: 'org', id: String(mine.id) });
     res.set('Cache-Control', 'no-store, private');
     res.json({ ok: true, project: out.project });
 });
@@ -2118,6 +2133,7 @@ app.post('/v1/orgs/:id/projects/:pid/rename', requireCloudflareOrigin, accountLi
     await accounts.audit('project-renamed', {
         actor: String(me.userId), subject: out.project.id, ip: req.realIp, detail: out.project.name,
     });
+    await tellOrg(mine.id, { topic: 'org', id: String(mine.id) });
     res.json({ ok: true, project: out.project });
 });
 
@@ -2140,6 +2156,7 @@ app.post('/v1/orgs/:id/projects/:pid/archive', requireCloudflareOrigin, accountL
     await accounts.audit(on ? 'project-archived' : 'project-restored', {
         actor: String(me.userId), subject: out.project.id, ip: req.realIp, detail: out.project.name,
     });
+    await tellOrg(mine.id, { topic: 'org', id: String(mine.id) });
     res.json({ ok: true, project: out.project });
 });
 
@@ -2159,6 +2176,7 @@ app.post('/v1/orgs/:id/projects/:pid/delete', requireCloudflareOrigin, accountLi
     await accounts.audit('project-removed', {
         actor: String(me.userId), subject: out.project.id, ip: req.realIp, detail: out.project.name,
     });
+    await tellOrg(mine.id, { topic: 'org', id: String(mine.id) });
     res.json({ ok: true });
 });
 
@@ -2193,6 +2211,10 @@ app.post('/v1/orgs/:id/members/:uid/role', requireCloudflareOrigin, accountLimit
     await accounts.audit('member-role-changed', {
         actor: String(me.userId), subject: String(req.params.uid), ip: req.realIp, detail: out.role,
     });
+    // the one whose role changed hears it on every screen they have open, and
+    // so does everyone looking at the team list
+    await tellOrg(req.params.id, { topic: 'org', id: String(req.params.id) });
+    tellMe(req.params.uid, { topic: 'orgs' });
     res.json({ ok: true, role: out.role });
 });
 
@@ -2215,6 +2237,11 @@ app.post('/v1/orgs/:id/members/:uid/remove', requireCloudflareOrigin, accountLim
     // walking out of the last organisation you were in leaves the cookie
     // pointing at somewhere you can no longer go
     if (out.left) clearOrgCookie(res);
+    // told before they are gone from the list would be too early, and after
+    // they are gone the org address no longer includes them, so the person who
+    // left is named on their own
+    await tellOrg(req.params.id, { topic: 'org', id: String(req.params.id) });
+    tellMe(req.params.uid, { topic: 'orgs' });
     await accounts.audit(out.left ? 'member-left' : 'member-removed', {
         actor: String(me.userId), subject: String(req.params.uid), ip: req.realIp, detail: '',
     });
@@ -2239,6 +2266,8 @@ app.post('/v1/orgs/:id/rename', requireCloudflareOrigin, accountLimiter, async (
     await accounts.audit('org-renamed', {
         actor: String(me.userId), subject: out.org.id, ip: req.realIp, detail: out.org.name,
     });
+    await tellOrg(out.org.id, { topic: 'orgs' });
+    await tellOrg(out.org.id, { topic: 'org', id: String(out.org.id) });
     res.set('Cache-Control', 'no-store, private');
     res.json({ ok: true, org: out.org });
 });
@@ -2256,6 +2285,8 @@ app.post('/v1/orgs/:id/delete', requireCloudflareOrigin, accountLimiter, async (
         return res.status(400).json({ error: 'That is not the name of this organisation.' });
     }
 
+    // gathered first: once it is closed there is no membership left to ask
+    const wasIn = await orgs.memberIds(mine.id);
     const out = await orgs.remove(me.userId, mine.id);
     if (!out.ok) {
         if (out.reason === 'not-owner') {
@@ -2267,6 +2298,7 @@ app.post('/v1/orgs/:id/delete', requireCloudflareOrigin, accountLimiter, async (
         return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
     }
     if (readCookie(req, ORG_COOKIE) === String(mine.id)) clearOrgCookie(res);
+    live.publish(wasIn, { topic: 'orgs' });
     await accounts.audit('org-closed', {
         actor: String(me.userId), subject: mine.id, ip: req.realIp, detail: mine.name,
     });
@@ -2310,6 +2342,7 @@ app.post('/v1/account/tokens', requireCloudflareOrigin, accountLimiter, async (r
             error: said[out.reason] || 'Accounts are not available right now. Please try again shortly.',
         });
     }
+    await tellOrg(org.id, { topic: 'org', id: String(org.id) });
     await accounts.audit('token-created', {
         actor: String(me.userId), subject: out.row.id, ip: req.realIp,
         detail: out.row.kind + ' ' + out.row.scopes.join(' '),
@@ -2331,6 +2364,7 @@ app.post('/v1/account/tokens/:id/revoke', requireCloudflareOrigin, accountLimite
         if (out.reason === 'missing') return res.status(404).json({ error: 'That token is already gone.' });
         return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
     }
+    await tellOrg(org.id, { topic: 'org', id: String(org.id) });
     await accounts.audit('token-revoked', {
         actor: String(me.userId), subject: String(req.params.id), ip: req.realIp,
     });
@@ -2346,6 +2380,31 @@ app.get('/v1/account/sessions', async (req, res) => {
 
 // Your own trail, and only yours: the actor filter is the whole guard here, so
 // the id comes from the session rather than from anything the caller sent.
+// Two ways to address a notice. An organisation's members all see the same
+// change, so they are told together; anything about one account goes to that
+// account's own screens.
+async function tellOrg(orgId, event) {
+    try {
+        live.publish(await orgs.memberIds(orgId), event);
+    } catch (err) {
+        console.error('[live] could not tell an organisation: ' + err.message);
+    }
+}
+function tellMe(userId, event) {
+    live.publish([userId], event);
+}
+
+// The connection that carries notices. Held open, so it is deliberately not
+// behind the rate limiter that counts requests: one screen opens one of these
+// and keeps it.
+app.get('/v1/live', async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const close = live.open(res, me.userId);
+    req.on('close', close);
+    req.on('error', close);
+});
+
 app.get('/v1/account/logs', async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
@@ -2366,6 +2425,7 @@ app.post('/v1/account/sessions/revoke', requireCloudflareOrigin, accountLimiter,
     const me = await requireSession(req, res);
     if (!me) return;
     const ended = await accounts.revokeOtherSessions(me.userId, readSessionCookie(req));
+    tellMe(me.userId, { topic: 'me' });
     res.json({ ok: true, ended });
 });
 
@@ -2500,6 +2560,8 @@ app.post('/v1/trial/activate', trialActivateLimiter, async (req, res) => {
             };
             return res.status(400).json({ error: said[out.reason] || 'Could not start the trial' });
         }
+        await tellOrg(org.id, { topic: 'org', id: String(org.id) });
+        await tellOrg(org.id, { topic: 'orgs' });
         await accounts.audit('trial-activated', {
             actor: String(me.userId), subject: String(me.userId), ip: req.realIp,
             detail: out.state + ' ' + out.companyHost,
@@ -2551,6 +2613,7 @@ app.post('/v1/screen', screenLimiter, async (req, res) => {
         const out = await screening.screen(me.userId, me.org.id, address, kind, false);
         if (!out.ok) return res.status(400).json({ error: 'That does not look like an address' });
 
+        await tellOrg(me.org.id, { topic: 'org', id: String(me.org.id) });
         await accounts.audit('screening', {
             actor: String(me.userId), subject: String(me.userId), ip: req.realIp,
             detail: out.verdict + ' ' + (out.asset || '?'),

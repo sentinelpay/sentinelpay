@@ -322,6 +322,22 @@ function roleAtLeast(role, needed) {
     return (ROLE_RANK[role] || 0) >= (ROLE_RANK[needed] || 0);
 }
 
+// Who is in an organisation, as ids. Used to address a notice to the people a
+// change concerns, which is everyone in it: a screen showing an organisation is
+// out of date for all of them at once.
+async function memberIds(orgId) {
+    if (!(await init())) return [];
+    const n = Number(orgId);
+    if (!Number.isSafeInteger(n) || n < 1) return [];
+    try {
+        const res = await db.query('SELECT user_id FROM memberships WHERE org_id = $1', [n]);
+        return res.rows.map((r) => String(r.user_id));
+    } catch (err) {
+        console.error('[orgs] could not list member ids: ' + err.message);
+        return [];
+    }
+}
+
 // Changing what somebody may do here.
 //
 // The rules are about who is left holding the place rather than about rank:
@@ -442,7 +458,7 @@ async function reslug() {
 module.exports = {
     ROLES, ROLE_KEYS, ROLE_RANK, NAME_MAX, ORGS_PER_USER,
     init, create, listFor, membership, bySlug, roleAtLeast, remove, weightOf, reslug,
-    members, rename, setRole, removeMember,
+    members, memberIds, rename, setRole, removeMember,
     SLUG_LENGTH, SLUG_SHAPE,
     hostOf, nameFromHost, cleanName,
 };

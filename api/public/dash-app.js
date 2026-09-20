@@ -2726,6 +2726,7 @@
 
         findIn.addEventListener('input', draw);
         make.addEventListener('click', function () { askProject(org, load); });
+        onLive(function (e) { if (e.topic === 'org' && String(e.id) === String(org.id)) load(); });
 
         // what was here last time, straight away. an organisation whose list was
         // empty draws its empty state rather than a skeleton, because that is
@@ -3460,6 +3461,8 @@
         }
 
         findIn.addEventListener('input', function () { if (rows.length) draw(); });
+        // a role changed or somebody was taken out while this was open
+        onLive(function (e) { if (e.topic === 'org' && String(e.id) === String(org.id)) load(); });
         load();
         return page;
     }
@@ -3967,6 +3970,8 @@
             });
         });
 
+        // signing out everywhere else, from somewhere else
+        onLive(function (e) { if (e.topic === 'me') loadSessions(); });
         loadSessions();
         return page;
     }
@@ -4032,25 +4037,31 @@
         page.appendChild(card);
         card.appendChild(waiting());
 
-        fetch('/v1/account/logs', { credentials: 'same-origin' })
-            .then(function (r) {
-                if (!r.ok) throw new Error('bad-status-' + r.status);
-                return r.json();
-            })
-            .then(function (j) {
-                var rows = (j && j.rows) || [];
-                card.textContent = '';
-                if (!rows.length) {
-                    card.appendChild(emptyState('Nothing yet',
-                        'Anything this account does shows up here.'));
-                    return;
-                }
-                rows.forEach(function (r) { card.appendChild(logRow(r)); });
-            })
-            .catch(function () {
-                card.textContent = '';
-                card.appendChild(emptyState('That did not load.', 'Reload the page to try again.'));
-            });
+        function load() {
+            fetch('/v1/account/logs', { credentials: 'same-origin' })
+                .then(function (r) {
+                    if (!r.ok) throw new Error('bad-status-' + r.status);
+                    return r.json();
+                })
+                .then(function (j) {
+                    var rows = (j && j.rows) || [];
+                    card.textContent = '';
+                    if (!rows.length) {
+                        card.appendChild(emptyState('Nothing yet',
+                            'Anything this account does shows up here.'));
+                        return;
+                    }
+                    rows.forEach(function (r) { card.appendChild(logRow(r)); });
+                })
+                .catch(function () {
+                    card.textContent = '';
+                    card.appendChild(emptyState('That did not load.', 'Reload the page to try again.'));
+                });
+        }
+
+        // every notice means this account did something, which is a line here
+        onLive(load);
+        load();
         return page;
     }
 
@@ -4307,6 +4318,7 @@
 
         findIn.addEventListener('input', draw);
         make.addEventListener('click', function () { askToken(scopes, groups, load, 'live'); });
+        onLive(function (e) { if (e.topic === 'org') load(); });
 
         if (warm) draw();
         else card.appendChild(waiting());
@@ -5305,6 +5317,8 @@
 
         findIn.addEventListener('input', draw);
         make.addEventListener('click', function () { askOrg(load); });
+        // somebody on another screen made one, renamed one or closed one
+        onLive(function (e) { if (e.topic === 'orgs') load(); });
 
         if (served || warm) draw();
         else list.appendChild(waiting());
@@ -5585,9 +5599,75 @@
 
     var lastMe = null;
 
+    // The other screens this account has open.
+    //
+    // One connection for the whole app, not one per view: a laptop and a phone
+    // signed in as the same person each hold one, and what arrives is a notice
+    // that something moved rather than the thing itself. Whatever is listening
+    // then asks for it through the endpoint it always used, so a notice can
+    // never show somebody data they could not already fetch.
+    var liveOn = [];
+    var liveWired = false;
+
+    function onLive(fn) {
+        liveOn.push(fn);
+        return function () {
+            var at = liveOn.indexOf(fn);
+            if (at !== -1) liveOn.splice(at, 1);
+        };
+    }
+
+    function wireLive() {
+        if (liveWired || typeof EventSource === 'undefined') return;
+        liveWired = true;
+        var src;
+        try {
+            src = new EventSource('/v1/live');
+        } catch (err) {
+            return;
+        }
+        src.addEventListener('message', function (e) {
+            var got = null;
+            try { got = JSON.parse(e.data); } catch (err) { return; }
+            if (!got || !got.topic) return;
+            // the shell reads the account and the organisation, so it is
+            // refreshed whatever moved; the screens decide for themselves
+            refreshMe();
+            liveOn.slice().forEach(function (fn) {
+                try { fn(got); } catch (err) {  }
+            });
+        });
+        // EventSource reconnects on its own, so an error is not ours to handle:
+        // stepping in would only race with it.
+    }
+
+    // The shell: the name in the corner, the plan badge, the organisation. Asked
+    // for again rather than patched from the notice, so one path builds it.
+    var refreshing = false;
+    function refreshMe() {
+        if (refreshing) return;
+        refreshing = true;
+        fetch('/v1/entitlement', { credentials: 'same-origin' })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (me) {
+                if (!me) return;
+                writeMe(me);
+                // an organisation you were taken out of, or one that was closed
+                // while you were standing in it
+                if (atOrg && !me.org) { location.replace(ORGS_PATH); return; }
+                if (!sameMe(lastMe, me)) paintMe(me);
+                else lastMe = me;
+            })
+            .catch(function () {  })
+            .then(function () { refreshing = false; });
+    }
+
     function paintCanvas() {
         var canvas = document.getElementById('canvas');
         if (!canvas) return;
+        // whatever the last screen was listening for, it is gone now. only
+        // screens subscribe, so clearing here is the whole lifecycle.
+        liveOn.length = 0;
         canvas.textContent = '';
         if (!lastMe) return;
         if (onOrgs()) {
@@ -5680,6 +5760,8 @@
             return null;
         }
     }
+
+    wireLive();
 
     var given = served();
     var cached = given || readMe();
