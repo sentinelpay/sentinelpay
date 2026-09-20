@@ -2936,3 +2936,28 @@ html.is-theming .btn {
        width below this, where the narrower column is what fits. */
     .pg { max-width: 54rem; }
 }
+
+/* which plan is running in an organisation, on its row in the picker */
+.org-plan {
+    flex: none;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    margin-right: 0.15rem;
+    padding: 0.2rem 0.55rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--canvas);
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: var(--ink-3);
+    white-space: nowrap;
+}
+.org-plan-d { font-weight: 500; color: var(--ink-4); }
+/* the two that stop you working say so */
+.org-plan.is-off { border-color: var(--risk-high); background: var(--risk-high-bg); color: var(--risk-high); }
+.org-plan.is-off .org-plan-d { color: inherit; }
+.org-plan.is-wait { border-color: var(--line-2); color: var(--ink-4); }
+@media (max-width: 560px) {
+    .org-plan-d { display: none; }
+}

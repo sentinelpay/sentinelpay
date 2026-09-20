@@ -135,6 +135,20 @@ function shape(row) {
         createdAt: row.created_at,
         role: row.role || '',
         members: row.members === undefined ? undefined : Number(row.members),
+        plan: row.plan_state === undefined ? undefined : planOf(row),
+    };
+}
+
+// What the list says about an organisation's plan. Expiry is worked out here
+// rather than read off the row, because a trial whose date has passed is not
+// the plan it still says it is.
+function planOf(row) {
+    const state = row.plan_state || 'none';
+    const ends = row.plan_expires ? new Date(row.plan_expires).getTime() : 0;
+    const over = ends && ends < Date.now() && (state === 'starter' || state === 'verified');
+    return {
+        state: over ? 'expired' : state,
+        daysLeft: ends ? Math.max(0, Math.ceil((ends - Date.now()) / 86400000)) : 0,
     };
 }
 
@@ -181,11 +195,17 @@ async function create(userId, name, host, role) {
 async function listFor(userId) {
     if (!(await init())) return [];
     try {
+        // the plan comes along, because the list is where somebody decides
+        // which organisation to walk into and a company with no plan cannot be
+        // worked in. left joined: an organisation without one is not an error.
         const res = await db.query(
             `SELECT o.*, m.role,
-                    (SELECT count(*)::int FROM memberships m2 WHERE m2.org_id = o.id) AS members
+                    (SELECT count(*)::int FROM memberships m2 WHERE m2.org_id = o.id) AS members,
+                    t.state AS plan_state,
+                    t.expires_at AS plan_expires
                FROM memberships m
                JOIN organisations o ON o.id = m.org_id
+          LEFT JOIN trials t ON t.org_id = o.id
               WHERE m.user_id = $1
            ORDER BY o.created_at`,
             [userId]

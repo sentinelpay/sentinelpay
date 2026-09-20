@@ -4852,6 +4852,26 @@
             shown.forEach(function (r) { list.appendChild(orgCard(r)); });
         }
 
+        // The plan running in one organisation. Two companies can be on two
+        // different plans, so this is per row rather than a line about the
+        // account. The ones worth noticing are the ones that stop you working:
+        // no plan and a trial that has run out are marked.
+        function planPill(plan) {
+            var state = (plan && plan.state) || 'none';
+            var pill = document.createElement('span');
+            pill.className = 'org-plan';
+            if (state === 'none' || state === 'expired') pill.classList.add('is-off');
+            if (state === 'pending') pill.classList.add('is-wait');
+            pill.textContent = orghPlan(state);
+            if (plan && plan.daysLeft && (state === 'starter' || state === 'verified')) {
+                var d = document.createElement('span');
+                d.className = 'org-plan-d';
+                d.textContent = plan.daysLeft + ' ' + t(plan.daysLeft === 1 ? 'day left' : 'days left');
+                pill.appendChild(d);
+            }
+            return pill;
+        }
+
         function orgCard(r) {
             var card = document.createElement('div');
             card.className = 'org';
@@ -4887,6 +4907,7 @@
             sub.textContent = bits.join('  \u00b7  ');
             txt.appendChild(sub);
             b.appendChild(txt);
+            b.appendChild(planPill(r.plan));
             var chev = document.createElement('span');
             chev.className = 'org-chev';
             chev.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +

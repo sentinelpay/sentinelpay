@@ -667,9 +667,16 @@ app.get(['/dashboard', '/dashboard/*splat'], async (req, res, next) => {
         // because the gate is already standing in the right doorway.
         if (req.path.indexOf(ORG_ROOT) === 0) {
             try {
-                const state = await trial.ensure(me.userId, me.email);
-                if (state.state === 'none') {
-                    return res.redirect(302, '/choose-a-plan?next=' + encodeURIComponent(req.path));
+                // the plan of the organisation in the address, not of whoever
+                // is signed in: two companies, two plans, and being paid up in
+                // one says nothing about the other.
+                const slug = req.path.slice(ORG_ROOT.length).split('/')[0];
+                const mine = await orgs.bySlug(me.userId, slug);
+                if (mine) {
+                    const state = await trial.ensure(mine.id, me.userId, me.email);
+                    if (state.state === 'none') {
+                        return res.redirect(302, '/choose-a-plan?next=' + encodeURIComponent(req.path));
+                    }
                 }
             } catch (err) {
                 console.error('[dashboard trial]', err.message);
@@ -690,11 +697,21 @@ app.get('/choose-a-plan', async (req, res) => {
         console.error('[plans guard]', err.message);
         return res.redirect(302, '/?signin=1');
     }
+    // A plan is chosen for an organisation, so this needs to know which. The
+    // address that sent us here names it; failing that, the one last used. With
+    // neither there is nothing to choose a plan for, so it asks for one first.
     try {
-        const state = await trial.ensure(me.userId, me.email);
-        if (state.state !== 'none') {
-            return res.redirect(302, safeNext(req.query.next) || ORGS_LIST);
-        }
+        const want = safeNext(req.query.next);
+        const slug = want ? want.slice(ORG_ROOT.length).split('/')[0] : '';
+        const mine = slug ? await orgs.bySlug(me.userId, slug) : await orgFor(req, me);
+        if (!mine) return res.redirect(302, ORGS_LIST);
+        // the page posts to activate, which reads the organisation from the
+        // cookie, so the one named in the address becomes the current one.
+        // without this a plan chosen here would land on whichever organisation
+        // happened to be open last.
+        setOrgCookie(res, mine.id);
+        const state = await trial.ensure(mine.id, me.userId, me.email);
+        if (state.state !== 'none') return res.redirect(302, want || ORGS_LIST);
     } catch (err) {
         console.error('[plans trial]', err.message);
     }
@@ -2325,7 +2342,9 @@ app.get('/v1/entitlement', async (req, res) => {
         if (!me) return res.status(401).json({ error: 'Sign in first' });
         const org = await orgFor(req, me);
         const [state, listed, runs, mine] = await Promise.all([
-            trial.ensure(me.userId, me.email),
+            // the plan of the organisation in front of you. without one there
+            // is nothing for a plan to belong to, so it comes back as none.
+            org ? trial.ensure(org.id, me.userId, me.email) : trial.get(0),
             sanctions.status(),
             org ? screening.countFor(org.id) : 0,
             orgs.listFor(me.userId),
@@ -2363,7 +2382,12 @@ app.post('/v1/trial/activate', trialActivateLimiter, async (req, res) => {
         const me = await currentUser(req);
         if (!me) return res.status(401).json({ error: 'Sign in first' });
         const b = req.body || {};
-        const out = await trial.activate(me.userId, {
+        const org = await orgFor(req, me);
+        if (!org) return res.status(400).json({ error: 'Choose an organisation first.' });
+        if (!orgs.roleAtLeast(org.role, 'admin')) {
+            return res.status(403).json({ error: 'Only an admin or the owner can start a plan.' });
+        }
+        const out = await trial.activate(org.id, me.userId, {
             email: me.email,
             website: b.website,
             company: b.company,
@@ -2412,7 +2436,7 @@ app.post('/v1/screen', screenLimiter, async (req, res) => {
             return res.json({ ...out, sandbox: true, trial: null });
         }
 
-        const spent = await trial.spend(me.userId, kind);
+        const spent = await trial.spend(me.org.id, kind);
         if (!spent.ok) {
             const said = {
                 'no-trial': 'Start your trial first',
@@ -2436,7 +2460,7 @@ app.post('/v1/screen', screenLimiter, async (req, res) => {
             detail: out.verdict + ' ' + (out.asset || '?'),
         });
 
-        const left = await trial.get(me.userId);
+        const left = await trial.get(me.org.id);
         res.json({
             ...out,
             trial: { ...left, historyLeft: left.historyLeft === Infinity ? null : left.historyLeft },
@@ -2849,7 +2873,7 @@ app.listen(PORT, () => {
     // once they have made it. Nothing here invents an organisation: an account
     // with none stays with none, and is asked to make one.
     orgs.reslug()
-        .then(() => Promise.all([projects.init(), tokens.adopt(), screening.adopt()]))
+        .then(() => Promise.all([projects.init(), tokens.adopt(), screening.adopt(), trial.adopt()]))
         .catch((err) => console.error('[orgs] migration at boot failed: ' + err.message));
 
     const dbState = db.status();

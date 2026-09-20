@@ -1,7 +1,11 @@
 'use strict';
 
-// Puts an account back to having no plan, so /dashboard sends it to
-// /choose-a-plan again.
+// Puts an account's organisations back to having no plan, so opening one sends
+// it to /choose-a-plan again.
+//
+// A plan belongs to an organisation, so this clears every organisation the
+// address is a member of. That is what you want on staging: one person, their
+// own companies, all back to the start.
 //
 // It refuses to run against production, and it will not change anything unless
 // you pass --yes. Without that it prints what it would do and stops.
@@ -50,22 +54,34 @@ async function main() {
         process.exit(1);
     }
 
-    const found = await db.query(
-        `SELECT u.id, t.state, t.note, t.expires_at
-           FROM users u
-           LEFT JOIN trials t ON t.user_id = u.id
-          WHERE u.email_hash = $1`,
-        [hash]
-    );
-    if (!found.rowCount) {
+    const who = await db.query('SELECT id FROM users WHERE email_hash = $1', [hash]);
+    if (!who.rowCount) {
         console.error('no account with that address in this database');
         process.exit(1);
     }
-    const row = found.rows[0];
+    const userId = who.rows[0].id;
 
-    console.log('account      ' + row.id);
-    console.log('plan now     ' + (row.state || 'none') + (row.note ? '  (' + row.note + ')' : ''));
-    console.log('would set    none');
+    const found = await db.query(
+        `SELECT o.id, o.name, m.role, t.state, t.note
+           FROM memberships m
+           JOIN organisations o ON o.id = m.org_id
+      LEFT JOIN trials t ON t.org_id = o.id
+          WHERE m.user_id = $1
+       ORDER BY o.created_at`,
+        [userId]
+    );
+
+    console.log('account      ' + userId);
+    if (!found.rowCount) {
+        console.log('');
+        console.log('this account is in no organisation, so it has no plan to reset.');
+        process.exit(0);
+    }
+    found.rows.forEach((r) => {
+        console.log('  ' + String(r.name || '(unnamed)').padEnd(24) +
+            (r.state || 'none') + (r.note ? '  (' + r.note + ')' : ''));
+    });
+    console.log('would set    none, on ' + found.rowCount + ' organisation(s)');
 
     const stillGranted = DEV_PLAN_EMAILS.indexOf(String(email).trim().toLowerCase()) !== -1;
     if (stillGranted) {
@@ -94,12 +110,12 @@ async function main() {
                 requested_at = NULL,
                 note = 'reset for dev',
                 updated_at = now()
-          WHERE user_id = $1`,
-        [row.id]
+          WHERE org_id IN (SELECT org_id FROM memberships WHERE user_id = $1)`,
+        [userId]
     );
 
     console.log('');
-    console.log('done. the next visit to /dashboard goes to /choose-a-plan.');
+    console.log('done. opening any of those organisations now goes to /choose-a-plan.');
     if (stillGranted) {
         console.log('but see the warning above: take the address out of DEV_PLAN_EMAILS or');
         console.log('this comes straight back.');
