@@ -2396,6 +2396,14 @@
     // heading comes along with the value so that "Off" on a phone is not a word
     // on its own: the reader is told what is off. Hidden again when the real
     // heading row is visible, so it is never said twice.
+    // Holds the middle columns of a row. It is not a column itself: on a wide
+    // screen it is told to disappear so its children sit in the row's own grid.
+    function factsBox() {
+        var box = document.createElement('div');
+        box.className = 'tr-facts';
+        return box;
+    }
+
     function dimCell(labelKey) {
         var cell = document.createElement('div');
         cell.className = 'tr-dim';
@@ -3546,6 +3554,7 @@
         who.appendChild(txt);
         row.appendChild(who);
 
+        var facts = factsBox();
         var conds = document.createElement('div');
         conds.className = 'tr-tags';
         if (i.needMfa || i.sameDomain) {
@@ -3556,11 +3565,12 @@
         }
         if (i.needMfa) conds.appendChild(tag(t('Two-factor first')));
         if (i.sameDomain) conds.appendChild(tag(t('Same domain')));
-        row.appendChild(conds);
+        facts.appendChild(conds);
 
         var role = dimCell('Role');
         role.appendChild(document.createTextNode(orghRole(i.role)));
-        row.appendChild(role);
+        facts.appendChild(role);
+        row.appendChild(facts);
 
         var act = document.createElement('div');
         act.className = 'tr-act';
@@ -3618,13 +3628,18 @@
 
         // stated rather than coloured when it is on: an account without a second
         // step is the one worth noticing on a screen about who can do what.
+        // the two facts about them travel together: side by side on a phone,
+        // and on a wide screen this box disappears into the grid so each one
+        // still lands under its own column heading
+        var facts = factsBox();
         var mfa = dimCell('Two-factor');
         mfa.appendChild(m.mfa ? tag(t('On'), 'ok') : tag(t('Off'), 'mid'));
-        row.appendChild(mfa);
+        facts.appendChild(mfa);
 
         var role = dimCell('Role');
         role.appendChild(document.createTextNode(orghRole(m.role)));
-        row.appendChild(role);
+        facts.appendChild(role);
+        row.appendChild(facts);
 
         var act = document.createElement('div');
         act.className = 'tr-act';

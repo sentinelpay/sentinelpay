@@ -3008,6 +3008,10 @@ html.is-theming .btn {
    may do, and the one thing you can do about it. */
 .tr.is-team { grid-template-columns: minmax(0, 2fr) minmax(0, 0.8fr) minmax(0, 0.8fr) auto; }
 .mem-who { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+/* the middle columns are held in one box so a phone can lay them out as a
+   line. On a wide screen the box is not there at all: its children are the
+   row's own grid items, each under the heading that explains it. */
+.tr-facts { display: contents; }
 .tr-t { min-width: 0; }
 /* The same two colours the risk pills use, so one colour means one thing
    across the product. An account without a second step is not an error, which
@@ -3036,12 +3040,13 @@ html.is-theming .btn {
        block reads as one person rather than as a new column starting */
     .tr.is-team { grid-template-columns: minmax(0, 1fr) auto; gap: 0.35rem 0.8rem; }
     .tr.is-team > .mem-who { grid-column: 1; }
-    .tr.is-team > :not(.mem-who):not(.tr-act) {
+    .tr.is-team .tr-dim,
+    .tr.is-team .tr-tags {
         grid-column: 1 / -1;
         padding-left: calc(2.1rem + 0.75rem);
     }
     /* an empty conditions cell would still be a gap in the stack */
-    .tr.is-team > .tr-tags:empty { display: none; }
+    .tr.is-team .tr-tags:empty { display: none; }
     .tr.is-team.th { display: none; }
     .tr.is-team > .tr-act { grid-row: 1; grid-column: 2; align-self: start; }
     .tr-k {
@@ -3059,10 +3064,41 @@ html.is-theming .btn {
    leaves a column that breaks "zutimeps@gmail.com" across two lines in the
    middle of a word. The name takes the width and the action goes to the bottom
    of the row, still at the right, where it is the last thing read and the
-   easiest thing to reach with a thumb. */
+   easiest thing to reach with a thumb.
+
+   Below this width the row stops being a table and becomes what it actually
+   is: a person, and two short facts about them. The facts sit on one line
+   beside each other rather than on a line each, so a single member is a
+   three-line block instead of a tall, mostly empty one. */
 @media (max-width: 560px) {
-    .tr.is-team { grid-template-columns: minmax(0, 1fr); }
-    .tr.is-team > .tr-act { grid-row: auto; grid-column: 1; margin-top: 0.15rem; }
+    .tr.is-team {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.3rem 0.8rem;
+    }
+    .tr.is-team > .mem-who { flex: 1 1 100%; }
+    /* the facts become a line of their own, indented to the name rather than
+       to the avatar beside it. Wrapping happens inside this box, so a fact
+       pushed onto a second line keeps the same indent instead of starting
+       under the picture. */
+    .tr-facts {
+        display: flex;
+        flex: 1 1 12rem;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.3rem 1.15rem;
+        min-width: 0;
+        margin-left: calc(2.1rem + 0.75rem);
+    }
+    .tr.is-team .tr-dim,
+    .tr.is-team .tr-tags { grid-column: auto; padding-left: 0; }
+    /* the action joins the end of that line when there is room for it, and
+       drops below when there is not */
+    .tr.is-team > .tr-act { flex: 0 0 auto; margin-left: auto; }
+    /* on one line the heading is read straight into its value, so a column
+       width would only push the two of them apart */
+    .tr-k { min-width: 0; }
 }
 
 /* Three things do not fit across a phone: the field is squeezed to nothing and
