@@ -2961,3 +2961,49 @@ html.is-theming .btn {
 @media (max-width: 560px) {
     .org-plan-d { display: none; }
 }
+
+/* A row coming apart. The layer sits over the page at the row's own place and
+   touches nothing: the tiles are clones, so they must not be reachable by a
+   pointer, a caret or a screen reader. */
+.dust {
+    position: fixed;
+    z-index: 95;
+    pointer-events: none;
+    user-select: none;
+}
+.dust-bit {
+    position: absolute;
+    left: 0;
+    top: 0;
+    margin: 0;
+    transform-origin: center;
+    will-change: transform, opacity, filter;
+    animation: orgDust 620ms cubic-bezier(0.3, 0.1, 0.28, 1) both;
+}
+/* a tile is a picture of a row, not a row: nothing in it reacts */
+.dust-bit * { pointer-events: none !important; }
+.dust-bit:hover { border-color: var(--line); background: var(--surface); }
+@keyframes orgDust {
+    to {
+        transform: translate(var(--dx, 40px), var(--dy, -18px)) rotate(var(--rot, 8deg)) scale(0.55);
+        opacity: 0;
+        filter: blur(2.5px);
+    }
+}
+
+/* the gap closes under the pieces while they are still in the air */
+.org.is-dust {
+    overflow: hidden;
+    opacity: 0;
+    /* an even close rather than the page's usual curve, which throws almost all
+       of its travel into the first instant and snaps the gap shut before the
+       pieces have gone anywhere */
+    transition:
+        height 560ms cubic-bezier(0.4, 0.05, 0.3, 1),
+        opacity 160ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dust-bit { animation: none; opacity: 0; }
+    .org.is-dust { transition: none; }
+}

@@ -4094,6 +4094,83 @@
         return box;
     }
 
+    // Taking a row apart. It is cloned into a grid of tiles, each clipped to its
+    // own square of the original, and the tiles are thrown outward and faded.
+    // Cloning rather than drawing means every tile is the real row - its text,
+    // its pill, its border - so what comes apart is what was there, in both
+    // themes, without rasterising anything or asking for a library.
+    //
+    // The row itself collapses underneath at the same time, so the list closes
+    // the gap while the pieces are still in the air.
+    var DUST_COLS = 14;
+    var DUST_ROWS = 3;
+
+    function dissolve(el, done) {
+        var finish = function () { if (done) done(); };
+        if (!el || !el.parentNode) return finish();
+
+        var slow = false;
+        try {
+            slow = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        } catch (err) { slow = false; }
+        // asked for less motion: the row simply goes, which is the same outcome
+        if (slow) { el.remove(); return finish(); }
+
+        var box = el.getBoundingClientRect();
+        if (!box.width || !box.height) { el.remove(); return finish(); }
+
+        var layer = document.createElement('div');
+        layer.className = 'dust';
+        layer.setAttribute('aria-hidden', 'true');
+        layer.style.left = box.left + 'px';
+        layer.style.top = box.top + 'px';
+        layer.style.width = box.width + 'px';
+        layer.style.height = box.height + 'px';
+
+        var tw = box.width / DUST_COLS;
+        var th = box.height / DUST_ROWS;
+        for (var y = 0; y < DUST_ROWS; y++) {
+            for (var x = 0; x < DUST_COLS; x++) {
+                var tile = el.cloneNode(true);
+                tile.removeAttribute('id');
+                tile.className = el.className + ' dust-bit';
+                tile.style.width = box.width + 'px';
+                tile.style.height = box.height + 'px';
+                tile.style.clipPath = 'inset(' + (y * th) + 'px ' +
+                    (box.width - (x + 1) * tw) + 'px ' +
+                    (box.height - (y + 1) * th) + 'px ' + (x * tw) + 'px)';
+                // rightward and a little upward, the way ash goes, with enough
+                // scatter that no two pieces travel together
+                var lean = x / DUST_COLS;
+                tile.style.setProperty('--dx', (18 + lean * 46 + Math.random() * 26).toFixed(1) + 'px');
+                // the top band lifts, the bottom one falls a little, so the
+                // pieces open out into a plume instead of all sliding together
+                var band = y - (DUST_ROWS - 1) / 2;
+                tile.style.setProperty('--dy',
+                    (band * 15 - 20 * Math.random() - lean * 6).toFixed(1) + 'px');
+                tile.style.setProperty('--rot', ((Math.random() - 0.5) * 34).toFixed(1) + 'deg');
+                // swept from the left, so it reads as one thing coming apart
+                // rather than everything vanishing at once
+                tile.style.animationDelay = (lean * 260 + Math.random() * 90).toFixed(0) + 'ms';
+                layer.appendChild(tile);
+            }
+        }
+        document.body.appendChild(layer);
+
+        el.style.height = box.height + 'px';
+        el.classList.add('is-dust');
+        void el.offsetWidth;
+        el.style.height = '0px';
+
+        // the last tile starts at about 350ms and runs for 620, so anything
+        // shorter than this cuts the rightmost pieces off mid flight
+        setTimeout(function () {
+            if (layer.parentNode) layer.remove();
+            if (el.parentNode) el.remove();
+            finish();
+        }, 1050);
+    }
+
     function emptyState(title, sub) {
         var box = document.createElement('div');
         box.className = 'empty';
@@ -4928,7 +5005,7 @@
                     '<path d="M6 7l1 12.5h10L18 7M9.5 7V4.5h5V7"/></svg>';
                 kill.addEventListener('click', function (e) {
                     e.stopPropagation();
-                    askCloseOrg(r, load);
+                    askCloseOrg(r, function () { dissolve(card, load); });
                 });
                 card.appendChild(kill);
             }
