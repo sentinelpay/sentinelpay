@@ -139,16 +139,17 @@ function shape(row) {
     };
 }
 
-// What the list says about an organisation's plan. Expiry is worked out here
-// rather than read off the row, because a trial whose date has passed is not
-// the plan it still says it is.
+// What the list says about an organisation's plan.
+//
+// The date it ends, not the days remaining. A countdown is only true at the
+// moment it is computed, and this row is cached in the browser for a week, so
+// sending a number would mean a plan that ended on tuesday still reading "nine
+// days left" on the following monday. The date stays true, and whoever draws it
+// works out the rest.
 function planOf(row) {
-    const state = row.plan_state || 'none';
-    const ends = row.plan_expires ? new Date(row.plan_expires).getTime() : 0;
-    const over = ends && ends < Date.now() && (state === 'starter' || state === 'verified');
     return {
-        state: over ? 'expired' : state,
-        daysLeft: ends ? Math.max(0, Math.ceil((ends - Date.now()) / 86400000)) : 0,
+        state: row.plan_state || 'none',
+        endsAt: row.plan_expires || null,
     };
 }
 

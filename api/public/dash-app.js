@@ -2330,14 +2330,14 @@
         return box && box.rows && box.rows.length !== undefined ? box : null;
     }
 
+    // The whole row, not a hand written list of its fields. Listing them meant
+    // that adding one to the screen and forgetting it here showed a row drawn
+    // from a cache that was missing it, which is how organisations spent the
+    // first half second of every visit claiming to have no plan. The server
+    // already decides what a row is and it holds nothing secret, so the cache
+    // keeps what it was given.
     function writeOrgCache(who, rows, roles) {
-        orgCache.write(who, {
-            roles: roles,
-            rows: rows.map(function (r) {
-                return { id: r.id, name: r.name, host: r.host, slug: r.slug,
-                         role: r.role, members: r.members };
-            })
-        });
+        orgCache.write(who, { roles: roles, rows: rows });
     }
 
     function forgetOrgCache() { orgCache.forget(); }
@@ -2355,14 +2355,10 @@
         return String(box.orgId || '') === String(orgId || '') ? box : null;
     }
 
+    // same as the organisations: whatever a project row is, that is what is
+    // kept, so the next field added to it cannot go missing here.
     function writePrjCache(who, orgId, rows) {
-        prjCache.write(who, {
-            orgId: String(orgId || ''),
-            rows: rows.map(function (r) {
-                return { id: r.id, name: r.name, slug: r.slug,
-                         createdAt: r.createdAt, status: r.status };
-            })
-        });
+        prjCache.write(who, { orgId: String(orgId || ''), rows: rows });
     }
 
     function forgetPrjCache() { prjCache.forget(); }
@@ -4939,16 +4935,24 @@
         // account. The ones worth noticing are the ones that stop you working:
         // no plan and a trial that has run out are marked.
         function planPill(plan) {
+            // the countdown is worked out here rather than taken as given,
+            // because this row may have come out of a cache written days ago:
+            // the date it ends is still true, the number of days left is not.
             var state = (plan && plan.state) || 'none';
+            var ends = plan && plan.endsAt ? new Date(plan.endsAt).getTime() : 0;
+            var left = ends ? Math.ceil((ends - Date.now()) / 86400000) : 0;
+            var trialing = state === 'starter' || state === 'verified';
+            if (trialing && ends && left <= 0) { state = 'expired'; left = 0; }
+
             var pill = document.createElement('span');
             pill.className = 'org-plan';
             if (state === 'none' || state === 'expired') pill.classList.add('is-off');
             if (state === 'pending') pill.classList.add('is-wait');
             pill.textContent = orghPlan(state);
-            if (plan && plan.daysLeft && (state === 'starter' || state === 'verified')) {
+            if (trialing && left > 0) {
                 var d = document.createElement('span');
                 d.className = 'org-plan-d';
-                d.textContent = plan.daysLeft + ' ' + t(plan.daysLeft === 1 ? 'day left' : 'days left');
+                d.textContent = left + ' ' + t(left === 1 ? 'day left' : 'days left');
                 pill.appendChild(d);
             }
             return pill;
