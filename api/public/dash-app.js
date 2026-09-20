@@ -82,6 +82,9 @@
         link: '<path d="M10.2 13.8a3.6 3.6 0 0 1 0-5.1l2.6-2.6a3.6 3.6 0 0 1 5.1 5.1l-1.3 1.3"/>' +
             '<path d="M13.8 10.2a3.6 3.6 0 0 1 0 5.1l-2.6 2.6a3.6 3.6 0 0 1-5.1-5.1l1.3-1.3"/>',
         warn: '<path d="M12 8.5v5M12 16.9v.1"/><path d="M10.3 4.3 2.8 18a1.8 1.8 0 0 0 1.6 2.7h15.2A1.8 1.8 0 0 0 21.2 18L13.7 4.3a1.9 1.9 0 0 0-3.4 0Z"/>',
+        // an invitation that has gone out and not been answered. deliberately
+        // not the person mark: nobody is there yet, an envelope is.
+        mail: '<rect x="3" y="5.5" width="18" height="13" rx="2.2"/><path d="m3.8 7 7.1 5.3a1.8 1.8 0 0 0 2.2 0L20.2 7"/>',
 
         // chrome: the shell itself, not a destination
         panel: '<rect x="3.4" y="4.6" width="17.2" height="14.8" rx="2.2"/><path d="M9.4 4.6v14.8"/>',
@@ -3401,6 +3404,21 @@
         findIn.autocomplete = 'off';
         find.appendChild(findIn);
         bar.appendChild(find);
+
+        // sits at the end of the row the way the other lists put their primary
+        // action, with the quiet one beside it
+        var docs = document.createElement('a');
+        docs.className = 'btn btn-quiet bar-end';
+        docs.href = '/faq';
+        docs.textContent = t('Docs');
+        bar.appendChild(docs);
+
+        var ask = document.createElement('button');
+        ask.type = 'button';
+        ask.className = 'btn btn-primary';
+        ask.textContent = t('Invite members');
+        ask.disabled = !may;
+        bar.appendChild(ask);
         page.appendChild(bar);
 
         var card = document.createElement('div');
@@ -3409,12 +3427,16 @@
         card.appendChild(waiting());
 
         var rows = [];
+        var asked = [];
 
         function draw() {
             card.textContent = '';
             var q = findIn.value.trim().toLowerCase();
             var shown = rows.filter(function (m) {
                 return !q || (m.name + ' ' + m.email).toLowerCase().indexOf(q) !== -1;
+            });
+            var waiting_ = asked.filter(function (i) {
+                return !q || i.email.toLowerCase().indexOf(q) !== -1;
             });
             if (!shown.length) {
                 card.appendChild(rows.length
@@ -3434,12 +3456,17 @@
             card.appendChild(th);
 
             shown.forEach(function (m) { card.appendChild(memberRow(m, org, may, load)); });
+            // the people who have been asked but have not arrived, under the
+            // ones who have: they are not members yet and the list should not
+            // read as though they are
+            waiting_.forEach(function (i) { card.appendChild(inviteRow(i, org, may, load)); });
 
             // how many of you there are, under the list rather than in the
             // heading, where it is a fact about what you just read
             var foot = document.createElement('div');
             foot.className = 'tr-foot';
-            foot.textContent = rows.length + ' ' + t(rows.length === 1 ? 'member' : 'members');
+            foot.textContent = rows.length + ' ' + t(rows.length === 1 ? 'member' : 'members') +
+                (asked.length ? '  \u00b7  ' + asked.length + ' ' + t('invited') : '');
             card.appendChild(foot);
         }
 
@@ -3452,7 +3479,15 @@
                 .then(function (jj) {
                     rows = (jj && jj.rows) || [];
                     if (jj && jj.roles && jj.roles.length) ORG_ROLES = jj.roles;
-                    draw();
+                    // the invitations are a second list on the same screen, so
+                    // the screen waits for both rather than drawing twice
+                    return fetch('/v1/orgs/' + encodeURIComponent(org.id) + '/invites',
+                        { credentials: 'same-origin' })
+                        .then(function (r) { return r.ok ? r.json() : null; })
+                        .then(function (j2) {
+                            asked = (j2 && j2.rows) || [];
+                            draw();
+                        });
                 })
                 .catch(function () {
                     card.textContent = '';
@@ -3463,8 +3498,74 @@
         findIn.addEventListener('input', function () { if (rows.length) draw(); });
         // a role changed or somebody was taken out while this was open
         onLive(function (e) { if (e.topic === 'org' && String(e.id) === String(org.id)) load(); });
+        ask.addEventListener('click', function () { askInvite(org, load); });
         load();
         return page;
+    }
+
+    // Somebody who has been asked but has not arrived. The same row, set back,
+    // because they are not a member yet.
+    function inviteRow(i, org, may, done) {
+        var row = document.createElement('div');
+        row.className = 'tr is-team is-asked';
+
+        var who = document.createElement('div');
+        who.className = 'mem-who';
+        var av = document.createElement('span');
+        av.className = 'mem-av is-empty';
+        av.innerHTML = icon('mail');
+        who.appendChild(av);
+        var txt = document.createElement('div');
+        txt.className = 'tr-t';
+        var nm = document.createElement('div');
+        nm.className = 'tr-name';
+        nm.textContent = i.email;
+        nm.appendChild(tag(t(inviteWord(i.state)), i.state === 'sent' ? '' : 'mid'));
+        txt.appendChild(nm);
+        var sub = document.createElement('div');
+        sub.className = 'tr-sub';
+        sub.textContent = i.state === 'sent'
+            ? t('Invited') + '  \u00b7  ' + t('until') + ' ' + whenText(i.expiresAt)
+            : t('Invited') + '  \u00b7  ' + whenText(i.createdAt);
+        txt.appendChild(sub);
+        who.appendChild(txt);
+        row.appendChild(who);
+
+        var conds = document.createElement('div');
+        conds.className = 'tr-tags';
+        if (i.needMfa) conds.appendChild(tag(t('Two-factor first')));
+        if (i.sameDomain) conds.appendChild(tag(t('Same domain')));
+        row.appendChild(conds);
+
+        var role = document.createElement('div');
+        role.className = 'tr-dim';
+        role.textContent = orghRole(i.role);
+        row.appendChild(role);
+
+        var act = document.createElement('div');
+        act.className = 'tr-act';
+        if (may && i.state === 'sent') {
+            var pull = rowBtn('Withdraw', function () {
+                fetch('/v1/orgs/' + encodeURIComponent(org.id) + '/invites/' +
+                    encodeURIComponent(i.id) + '/revoke', {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' }, body: '{}'
+                }).then(function (r) {
+                    if (!r.ok) throw new Error('bad');
+                    toast(t('Invitation withdrawn'), 'good');
+                    done();
+                }).catch(function () { toast(t('That did not work.'), 'bad'); });
+            });
+            pull.classList.add('is-bad');
+            act.appendChild(pull);
+        }
+        row.appendChild(act);
+        return row;
+    }
+
+    function inviteWord(state) {
+        var said = { sent: 'Waiting', expired: 'Expired', withdrawn: 'Withdrawn' };
+        return said[state] || state;
     }
 
     function memberRow(m, org, may, done) {
@@ -3520,6 +3621,182 @@
         }
         row.appendChild(act);
         return row;
+    }
+
+    // Asking people in. The two step panel the tokens and projects use, because
+    // it is the same job: choices, some of which cannot be taken back once the
+    // mail is out, and a page at the end saying what actually happened.
+    //
+    // What it asks is ours rather than copied. A single sign on upsell is not
+    // something we sell. Two conditions are, and both exist because of what
+    // this product is: nobody should hold a compliance tool behind a password
+    // alone, and a colleague's personal address should not become a way in.
+    function askInvite(org, done) {
+        var want = {
+            emails: '',
+            role: 'analyst',
+            days: 7,
+            needMfa: true,
+            sameDomain: false
+        };
+
+        var d = drawer('Invite members');
+
+        function stepAsk() {
+            d.retitle('Invite members');
+            d.steps(1, 2, 'Choose');
+
+            var who = document.createElement('div');
+            who.className = 'drw-static';
+            who.setAttribute('aria-disabled', 'true');
+            who.textContent = org.name || t('This organisation');
+            d.body.appendChild(drwSection('Organisation',
+                'They join this one, and see everything in it.', who));
+
+            // the roles as cards, the way the token drawer offers live against
+            // sandbox: each one is a decision with a consequence worth reading
+            var picks = document.createElement('div');
+            picks.className = 'card-picks';
+            (ORG_ROLES || []).filter(function (r) { return r.key !== 'owner'; })
+                .forEach(function (r) {
+                    var c = pickCard(r.label, r.hint || '', want.role === r.key);
+                    c.addEventListener('click', function () {
+                        want.role = r.key;
+                        [].forEach.call(picks.children, function (x) {
+                            x.classList.remove('is-on');
+                            x.setAttribute('aria-checked', 'false');
+                        });
+                        c.classList.add('is-on');
+                        c.setAttribute('aria-checked', 'true');
+                    });
+                    picks.appendChild(c);
+                });
+            var roleSec = drwSection('Role', 'What they may do here. It can be changed later.', picks, true);
+            roleSec.classList.add('is-full');
+            d.body.appendChild(roleSec);
+
+            var box = document.createElement('textarea');
+            box.className = 'modal-in drw-area';
+            box.rows = 3;
+            box.placeholder = 'name@company.com, second@company.com';
+            box.value = want.emails;
+            d.body.appendChild(drwSection('Email addresses',
+                'One or several, separated by commas. Each gets its own link.', box, true));
+
+            var daysBox = selectBox('inv-days', [{
+                options: [1, 3, 7, 14, 30].map(function (n) {
+                    return { value: String(n), label: n + ' ' + t(n === 1 ? 'day' : 'days') };
+                })
+            }], String(want.days), function (v) { want.days = Number(v); });
+            d.body.appendChild(drwSection('The link stops working after',
+                'An invitation nobody uses should not still be open months from now.',
+                daysBox, true));
+
+            var guards = document.createElement('div');
+            guards.className = 'drw-ticks';
+            guards.appendChild(tickRow('Only with two-factor on',
+                'They cannot join until their own account has a second step.',
+                want.needMfa, function (on) { want.needMfa = on; }));
+            guards.appendChild(tickRow('Only from this company’s domain',
+                'A personal address cannot accept, even if the mail is forwarded.',
+                want.sameDomain, function (on) { want.sameDomain = on; }));
+            d.body.appendChild(drwSection('Conditions',
+                'Checked when they accept, not when you send.', guards, true));
+
+            var no = document.createElement('button');
+            no.type = 'button';
+            no.className = 'btn btn-flat';
+            no.textContent = t('Cancel');
+            no.addEventListener('click', d.shut);
+            d.acts.appendChild(no);
+
+            var go = document.createElement('button');
+            go.type = 'button';
+            go.className = 'btn btn-primary';
+            go.textContent = t('Send invitations');
+            go.disabled = true;
+            go.addEventListener('click', send);
+            d.acts.appendChild(go);
+
+            box.addEventListener('input', function () {
+                want.emails = box.value;
+                go.disabled = !box.value.trim();
+            });
+            setTimeout(function () { box.focus(); }, 80);
+
+            function send() {
+                go.disabled = true;
+                go.textContent = t('Sending…');
+                fetch('/v1/orgs/' + encodeURIComponent(org.id) + '/invites', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify(want)
+                }).then(function (r) {
+                    return r.json().catch(function () { return {}; }).then(function (b) {
+                        return { ok: r.ok, body: b };
+                    });
+                }).then(function (r) {
+                    if (!r.ok) {
+                        toast((r.body && r.body.error) || t('That did not work.'), 'bad');
+                        go.disabled = false;
+                        go.textContent = t('Send invitations');
+                        return;
+                    }
+                    d.show(function () { stepSent(r.body.results || []); });
+                }).catch(function () {
+                    toast(t('That did not work.'), 'bad');
+                    go.disabled = false;
+                    go.textContent = t('Send invitations');
+                });
+            }
+        }
+
+        // What happened, one line each. Addresses are answered for separately,
+        // so a typo among five does not throw the other four away, and this is
+        // where that is made visible rather than averaged into one message.
+        function stepSent(results) {
+            d.retitle('Invitations');
+            d.steps(2, 2, 'Sent');
+
+            var list = document.createElement('div');
+            list.className = 'inv-out';
+            results.forEach(function (r) {
+                var line = document.createElement('div');
+                line.className = 'inv-line' + (r.ok ? '' : ' is-bad');
+
+                var who = document.createElement('div');
+                who.className = 'inv-who';
+                who.textContent = r.email;
+                line.appendChild(who);
+
+                var what = document.createElement('div');
+                what.className = 'inv-what';
+                what.textContent = r.ok
+                    ? (r.mailed ? t('Sent') : t('Link ready, no mail went out'))
+                    : r.error;
+                line.appendChild(what);
+
+                // the link is shown whether or not the mail went, because an
+                // environment with no mail configured can still invite somebody
+                // by passing it along, and because a mail that silently failed
+                // should not leave you with nothing
+                if (r.ok && r.link) line.appendChild(copyBtn(function () { return r.link; }));
+                list.appendChild(line);
+            });
+            var sec = drwSection('What happened', '', list);
+            sec.classList.add('is-full');
+            d.body.appendChild(sec);
+
+            var fin = document.createElement('button');
+            fin.type = 'button';
+            fin.className = 'btn btn-primary';
+            fin.textContent = t('Done');
+            fin.addEventListener('click', function () { d.shut(); done(); });
+            d.acts.appendChild(fin);
+        }
+
+        d.show(stepAsk);
     }
 
     function rowBtn(label, onClick) {

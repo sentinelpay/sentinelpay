@@ -2042,6 +2042,9 @@ button { font: inherit; color: inherit; }
 [data-theme="dark"] .btn-danger { color: #2a0812; }
 .btn-danger:hover:not([disabled]) { background: var(--danger-hover); }
 .btn-quiet { background: var(--hover); color: var(--ink-2); }
+/* a button that happens to be a link is still a button: the browser's underline
+   makes it read as prose sitting inside the toolbar */
+a.btn { text-decoration: none; }
 .btn-quiet:hover:not([disabled]) { background: var(--nav-on); }
 
 .modal-back {
@@ -3026,4 +3029,41 @@ html.is-theming .btn {
     .tr.is-team > :nth-child(3) { grid-column: 1; }
     .tr.is-team.th { display: none; }
     .tr.is-team > .tr-act { grid-row: 1; grid-column: 2; }
+}
+
+/* the quiet action sits away from the primary one, at the end of the toolbar */
+.bar-end { margin-left: auto; }
+.bar .bar-end + .btn { margin-left: 0; }
+
+/* a person who has been asked but has not arrived */
+.tr.is-team.is-asked { background: var(--canvas); }
+.tr.is-team.is-asked .tr-name { color: var(--ink-2); }
+.mem-av.is-empty { background: var(--canvas); border: 1px dashed var(--line); color: var(--ink-4); }
+.mem-av.is-empty .nav-i { width: 15px; height: 15px; }
+
+/* several addresses at once, so the field is a box rather than a line */
+.drw-area {
+    width: 100%;
+    min-height: 4.6rem;
+    resize: vertical;
+    line-height: 1.55;
+}
+
+/* what happened to each address */
+.inv-out { display: grid; gap: 0.1rem; }
+.inv-line {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--line-2);
+}
+.inv-line:last-child { border-bottom: 0; }
+.inv-who { font-size: 0.85rem; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; }
+.inv-what { font-size: 0.78rem; color: var(--ink-4); }
+.inv-line.is-bad .inv-what { color: var(--danger); }
+@media (max-width: 560px) {
+    .inv-line { grid-template-columns: minmax(0, 1fr) auto; }
+    .inv-what { grid-column: 1 / -1; }
 }

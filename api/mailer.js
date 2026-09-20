@@ -488,6 +488,50 @@ function resetLinkMessage({ to, link, lang, minutes }) {
 }
 async function sendResetLink(opts) { return send(resetLinkMessage(opts)); }
 
+const INVITE_COPY = {
+    en: {
+        subject: (o) => o + ' invited you to Sentinelpay',
+        eyebrow: 'Invitation',
+        title: (o) => 'Join ' + o + ' on Sentinelpay',
+        intro: (o, r, d) => 'You have been invited to join ' + o + ' as ' + r.toLowerCase() +
+            '. The link below is meant for this address only and stops working in ' + d + ' days.',
+        label: 'Join the team',
+        footnote: 'If you were not expecting this, ignore the mail. Nothing happens until the link is used, and it expires on its own.',
+    },
+    hr: {
+        subject: (o) => o + ' vas poziva na Sentinelpay',
+        eyebrow: 'Pozivnica',
+        title: (o) => 'Pridružite se organizaciji ' + o,
+        intro: (o, r, d) => 'Pozvani ste u organizaciju ' + o + ' u ulozi ' + r.toLowerCase() +
+            '. Poveznica ispod namijenjena je samo ovoj adresi i prestaje vrijediti za ' + d + ' dana.',
+        label: 'Pridruži se timu',
+        footnote: 'Ako ovo niste očekivali, zanemarite mail. Ništa se ne događa dok se poveznica ne iskoristi, a ona istječe sama od sebe.',
+    },
+    de: {
+        subject: (o) => o + ' lädt Sie zu Sentinelpay ein',
+        eyebrow: 'Einladung',
+        title: (o) => 'Treten Sie ' + o + ' bei',
+        intro: (o, r, d) => 'Sie wurden eingeladen, ' + o + ' als ' + r.toLowerCase() +
+            ' beizutreten. Der Link unten gilt nur für diese Adresse und verfällt in ' + d + ' Tagen.',
+        label: 'Dem Team beitreten',
+        footnote: 'Wenn Sie das nicht erwartet haben, ignorieren Sie die E-Mail. Es geschieht nichts, bis der Link benutzt wird, und er verfällt von selbst.',
+    },
+};
+function inviteMessage({ to, link, lang, org, role, days }) {
+    const copy = INVITE_COPY[lang] || INVITE_COPY.en;
+    return {
+        to: to,
+        lang: lang,
+        subject: copy.subject(org),
+        eyebrow: copy.eyebrow,
+        title: copy.title(org),
+        intro: copy.intro(org, role, days),
+        cta: { href: link, label: copy.label },
+        footnote: copy.footnote,
+    };
+}
+async function sendInvite(opts) { return send(inviteMessage(opts)); }
+
 const CHANGED_COPY = {
     en: {
         subject: 'Your Sentinelpay password was changed',
@@ -621,7 +665,7 @@ function render(name, lang) {
     return Object.assign({ name: name, lang: lang }, compose(msg));
 }
 module.exports = {
-    send, compose, sendTrialWelcome, sendSignupCode, sendResetLink,
+    send, compose, sendTrialWelcome, sendSignupCode, sendResetLink, sendInvite,
     render, previewNames, isConfigured, domainStatus, MAIL_FROM, MAIL_TO,
     sendPasswordChanged, sendNewSignIn,
 };

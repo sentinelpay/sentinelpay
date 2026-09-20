@@ -20,6 +20,7 @@ const tokens = require('./tokens');
 const orgs = require('./orgs');
 const projects = require('./projects');
 const live = require('./live');
+const invites = require('./invites');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -679,6 +680,12 @@ app.get(['/dashboard', '/dashboard/*splat'], async (req, res, next) => {
     }
     res.set('Cache-Control', 'no-store, private');
 
+    // somebody who followed an invitation, signed in, and landed here. the
+    // journey is finished where it was going rather than left half done with a
+    // cookie nobody looks at again.
+    const pending = readCookie(req, INVITE_COOKIE);
+    if (pending) return res.redirect(302, '/invite/' + encodeURIComponent(pending));
+
     if (DASHBOARD_NEXT) {
         // A plan is not what lets you in, it is what lets you work. Choosing
         // one stands between the list of organisations and the inside of one,
@@ -752,6 +759,54 @@ app.get('/choose-a-plan', async (req, res) => {
         console.error('[plans trial]', err.message);
     }
     return sendPage(res, req, 'choose-a-plan.html', 200, undefined, 'no-store, private');
+});
+
+// Where an invitation link lands.
+//
+// The secret is in the path, so it must not survive the visit: whatever happens
+// the browser is sent somewhere without it, and the page that renders never
+// carries it. Signed out, the sign in modal opens first and the link is kept in
+// a short lived cookie so coming back completes the journey.
+const INVITE_COOKIE = 'sp_invite';
+
+app.get('/invite/:secret', async (req, res) => {
+    res.set('Cache-Control', 'no-store, private');
+    res.set('Referrer-Policy', 'no-referrer');
+    res.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
+
+    const secret = String(req.params.secret || '');
+    let me = null;
+    try {
+        me = await currentUser(req);
+    } catch (err) {
+        me = null;
+    }
+
+    if (!me) {
+        res.cookie(INVITE_COOKIE, secret, {
+            httpOnly: true, sameSite: 'lax', secure: COOKIE_SECURE,
+            maxAge: 30 * 60 * 1000, path: '/',
+        });
+        return res.redirect(302, '/?signin=1&invited=1');
+    }
+
+    const out = await invites.accept(secret, me);
+    res.clearCookie(INVITE_COOKIE, { path: '/' });
+    if (!out.ok) {
+        const where = {
+            missing: 'gone', expired: 'expired', withdrawn: 'gone', accepted: 'used',
+            'not-yours': 'address', 'need-mfa': 'two-factor',
+        };
+        return res.redirect(302, '/dashboard/organisations?invite=' + (where[out.reason] || 'failed'));
+    }
+
+    setOrgCookie(res, out.invite.orgId);
+    await accounts.audit('invite-accepted', {
+        actor: String(me.userId), subject: out.invite.id, ip: req.realIp, detail: out.invite.role,
+    });
+    await tellOrg(out.invite.orgId, { topic: 'org', id: String(out.invite.orgId) });
+    tellMe(me.userId, { topic: 'orgs' });
+    return res.redirect(302, '/dashboard/org/' + out.invite.orgSlug);
 });
 
 app.get('/reset-password', async (req, res) => {
@@ -2189,6 +2244,112 @@ app.get('/v1/orgs/:id/members', async (req, res) => {
     res.json({ ok: true, rows, roles: orgs.ROLES });
 });
 
+// the word for a role, for a mail that has to read as a sentence
+function roleLabel(key) {
+    const found = orgs.ROLES.filter((r) => r.key === key)[0];
+    return found ? found.label : String(key || '');
+}
+
+app.get('/v1/orgs/:id/invites', async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const mine = await orgs.membership(me.userId, req.params.id);
+    if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
+    res.set('Cache-Control', 'no-store, private');
+    res.json({ ok: true, rows: await invites.listFor(mine.id), days: invites.DAY_OPTIONS });
+});
+
+// Sending them. One request carries however many addresses were typed, and each
+// is answered for separately: one bad address does not throw the rest away, and
+// the caller is told which is which.
+app.post('/v1/orgs/:id/invites', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const mine = await orgs.membership(me.userId, req.params.id);
+    if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
+    if (!orgs.roleAtLeast(mine.role, 'admin')) {
+        return res.status(403).json({ error: 'Only an admin or the owner can invite people.' });
+    }
+
+    const b = req.body || {};
+    const wanted = String(b.emails || '')
+        .split(/[\s,;]+/)
+        .map((x) => invites.cleanEmail(x))
+        .filter(Boolean);
+    if (!wanted.length) return res.status(400).json({ error: 'Give at least one address.' });
+    if (wanted.length > 20) return res.status(400).json({ error: 'Twenty addresses at a time.' });
+
+    const said = {
+        'bad-email': 'That is not an address.',
+        'bad-role': 'That is not a role.',
+        'already-in': 'They are already in this organisation.',
+        'wrong-domain': 'That address is not on this organisation\'s domain.',
+        'too-many': 'There are as many open invitations as this organisation may have.',
+    };
+    const out = [];
+    for (const email of wanted) {
+        const made = await invites.create(mine.id, me.userId, {
+            email,
+            role: b.role,
+            days: b.days,
+            needMfa: b.needMfa === true,
+            sameDomain: b.sameDomain === true,
+            domain: invites.domainOf(me.email),
+        });
+        if (!made.ok) {
+            out.push({ email, ok: false, error: said[made.reason] || 'Could not send that one.' });
+            continue;
+        }
+        const link = SITE_URL + '/invite/' + made.secret;
+        // the mail is the usual way in, but the link is returned either way:
+        // an environment with no mail configured can still invite somebody by
+        // passing it along, and saying so beats a screen that looks like it
+        // worked when nothing left the building.
+        let mailed = false;
+        try {
+            if (mailer.isConfigured()) {
+                await mailer.sendInvite({
+                    to: email, link, lang: geoLang(req), org: mine.name,
+                    role: roleLabel(b.role), days: Number(b.days) || invites.DEFAULT_DAYS,
+                });
+                mailed = true;
+            }
+        } catch (err) {
+            console.error('[invites] mail failed: ' + err.message);
+        }
+        await accounts.audit('invite-sent', {
+            actor: String(me.userId), subject: made.invite.id, ip: req.realIp,
+            detail: made.invite.role + (mailed ? ' mailed' : ' link only'),
+        });
+        out.push({ email, ok: true, mailed, link, invite: made.invite });
+    }
+
+    await tellOrg(mine.id, { topic: 'org', id: String(mine.id) });
+    res.set('Cache-Control', 'no-store, private');
+    res.json({ ok: out.some((r) => r.ok), results: out });
+});
+
+app.post('/v1/orgs/:id/invites/:inviteId/revoke', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const mine = await orgs.membership(me.userId, req.params.id);
+    if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
+    if (!orgs.roleAtLeast(mine.role, 'admin')) {
+        return res.status(403).json({ error: 'Only an admin or the owner can withdraw an invitation.' });
+    }
+    const out = await invites.revoke(mine.id, req.params.inviteId);
+    if (!out.ok) {
+        return res.status(out.reason === 'missing' ? 404 : 503)
+            .json({ error: out.reason === 'missing' ? 'That invitation is already gone.'
+                : 'Accounts are not available right now. Please try again shortly.' });
+    }
+    await accounts.audit('invite-withdrawn', {
+        actor: String(me.userId), subject: String(req.params.inviteId), ip: req.realIp, detail: '',
+    });
+    await tellOrg(mine.id, { topic: 'org', id: String(mine.id) });
+    res.json({ ok: true });
+});
+
 app.post('/v1/orgs/:id/members/:uid/role', requireCloudflareOrigin, accountLimiter, async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
@@ -3032,7 +3193,7 @@ app.listen(PORT, () => {
     // once they have made it. Nothing here invents an organisation: an account
     // with none stays with none, and is asked to make one.
     orgs.reslug()
-        .then(() => Promise.all([projects.init(), tokens.adopt(), screening.adopt(), trial.adopt()]))
+        .then(() => Promise.all([projects.init(), invites.init(), tokens.adopt(), screening.adopt(), trial.adopt()]))
         .catch((err) => console.error('[orgs] migration at boot failed: ' + err.message));
 
     const dbState = db.status();
