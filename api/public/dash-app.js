@@ -2391,6 +2391,21 @@
         return Math.ceil((d - Date.now()) / 86400000);
     }
 
+    // A cell in a row that has a column heading above it on a wide screen and
+    // nothing above it on a narrow one, where the columns are stacked. The
+    // heading comes along with the value so that "Off" on a phone is not a word
+    // on its own: the reader is told what is off. Hidden again when the real
+    // heading row is visible, so it is never said twice.
+    function dimCell(labelKey) {
+        var cell = document.createElement('div');
+        cell.className = 'tr-dim';
+        var key = document.createElement('span');
+        key.className = 'tr-k';
+        key.textContent = t(labelKey);
+        cell.appendChild(key);
+        return cell;
+    }
+
     function tag(text, kind) {
         var el = document.createElement('span');
         el.className = 'tag' + (kind ? ' tag-' + kind : '');
@@ -3392,7 +3407,7 @@
         page.appendChild(pageHead('Team', 'Everyone here shares the same screenings, cases and tokens.'));
 
         var bar = document.createElement('div');
-        bar.className = 'bar';
+        bar.className = 'bar team-bar';
         var find = document.createElement('div');
         find.className = 'bar-find';
         find.innerHTML = '<svg class="bar-find-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
@@ -3533,13 +3548,18 @@
 
         var conds = document.createElement('div');
         conds.className = 'tr-tags';
+        if (i.needMfa || i.sameDomain) {
+            var ck = document.createElement('span');
+            ck.className = 'tr-k';
+            ck.textContent = t('Conditions');
+            conds.appendChild(ck);
+        }
         if (i.needMfa) conds.appendChild(tag(t('Two-factor first')));
         if (i.sameDomain) conds.appendChild(tag(t('Same domain')));
         row.appendChild(conds);
 
-        var role = document.createElement('div');
-        role.className = 'tr-dim';
-        role.textContent = orghRole(i.role);
+        var role = dimCell('Role');
+        role.appendChild(document.createTextNode(orghRole(i.role)));
         row.appendChild(role);
 
         var act = document.createElement('div');
@@ -3598,14 +3618,12 @@
 
         // stated rather than coloured when it is on: an account without a second
         // step is the one worth noticing on a screen about who can do what.
-        var mfa = document.createElement('div');
-        mfa.className = 'tr-dim';
+        var mfa = dimCell('Two-factor');
         mfa.appendChild(m.mfa ? tag(t('On'), 'ok') : tag(t('Off'), 'mid'));
         row.appendChild(mfa);
 
-        var role = document.createElement('div');
-        role.className = 'tr-dim';
-        role.textContent = orghRole(m.role);
+        var role = dimCell('Role');
+        role.appendChild(document.createTextNode(orghRole(m.role)));
         row.appendChild(role);
 
         var act = document.createElement('div');

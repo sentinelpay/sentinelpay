@@ -1489,6 +1489,8 @@ button { font: inherit; color: inherit; }
 }
 .tr.is-off { opacity: 0.55; }
 .tr-name { font-size: 0.86rem; font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+/* a mark after a name is a second thing, not the end of the first one */
+.tr-name .tag { margin-left: 0.4rem; }
 .tr-sub { margin-top: 0.1rem; font-size: 0.76rem; color: var(--ink-4); }
 .tr-dim { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; font-size: 0.8rem; color: var(--ink-3); }
 .tr-tags { display: flex; gap: 0.3rem; flex-wrap: wrap; }
@@ -3022,13 +3024,57 @@ html.is-theming .btn {
 }
 .modal-p.is-left { text-align: left; }
 
-@media (max-width: 720px) {
-    /* the second step and the role go under the name rather than off the edge */
-    .tr.is-team { grid-template-columns: minmax(0, 1fr) auto; gap: 0.5rem 0.8rem; }
-    .tr.is-team > :nth-child(2),
-    .tr.is-team > :nth-child(3) { grid-column: 1; }
+/* the column heading repeated beside the value, for the width at which the
+   heading row is gone and the columns are stacked under the name */
+.tr-k { display: none; }
+
+/* 800px, not 720: that is where the heading row above these columns is taken
+   away, and a value whose heading has gone has to carry its own. */
+@media (max-width: 800px) {
+    /* the second step, the role and the conditions go under the name rather
+       than off the edge, indented to the name and not to the avatar, so the
+       block reads as one person rather than as a new column starting */
+    .tr.is-team { grid-template-columns: minmax(0, 1fr) auto; gap: 0.35rem 0.8rem; }
+    .tr.is-team > .mem-who { grid-column: 1; }
+    .tr.is-team > :not(.mem-who):not(.tr-act) {
+        grid-column: 1 / -1;
+        padding-left: calc(2.1rem + 0.75rem);
+    }
+    /* an empty conditions cell would still be a gap in the stack */
+    .tr.is-team > .tr-tags:empty { display: none; }
     .tr.is-team.th { display: none; }
-    .tr.is-team > .tr-act { grid-row: 1; grid-column: 2; }
+    .tr.is-team > .tr-act { grid-row: 1; grid-column: 2; align-self: start; }
+    .tr-k {
+        /* a width rather than a gap, so the values line up under each other
+           instead of starting wherever the word before them happened to end */
+        display: inline-block;
+        min-width: 5.4rem;
+        margin-right: 0.45rem;
+        color: var(--ink-4);
+        font-size: 0.76rem;
+    }
+}
+
+/* On a phone an address is nearly as wide as the screen, so a button beside it
+   leaves a column that breaks "zutimeps@gmail.com" across two lines in the
+   middle of a word. The name takes the width and the action goes to the bottom
+   of the row, still at the right, where it is the last thing read and the
+   easiest thing to reach with a thumb. */
+@media (max-width: 560px) {
+    .tr.is-team { grid-template-columns: minmax(0, 1fr); }
+    .tr.is-team > .tr-act { grid-row: auto; grid-column: 1; margin-top: 0.15rem; }
+}
+
+/* Three things do not fit across a phone: the field is squeezed to nothing and
+   the button's label breaks over two lines. So the field takes the row, and the
+   two actions share the one under it, the primary one wider because it is the
+   one being reached for. */
+@media (max-width: 560px) {
+    .team-bar { flex-wrap: wrap; gap: 0.55rem; }
+    .team-bar .bar-find { flex: 1 1 100%; max-width: none; }
+    .team-bar .bar-end { margin-left: 0; flex: 0 1 auto; }
+    .team-bar > .btn { margin-left: 0; }
+    .team-bar .bar-end + .btn { flex: 1 1 auto; justify-content: center; }
 }
 
 /* the quiet action sits away from the primary one, at the end of the toolbar */
@@ -3064,6 +3110,12 @@ html.is-theming .btn {
 .inv-what { font-size: 0.78rem; color: var(--ink-4); }
 .inv-line.is-bad .inv-what { color: var(--danger); }
 @media (max-width: 560px) {
+    /* the address and the one thing you can do with it stay on the same line;
+       what happened to it goes underneath, where there is room to say it in
+       words. Placed rather than left to flow, or the button lands in the wide
+       first column on a row of its own and stretches across the drawer. */
     .inv-line { grid-template-columns: minmax(0, 1fr) auto; }
-    .inv-what { grid-column: 1 / -1; }
+    .inv-who { grid-row: 1; grid-column: 1; }
+    .inv-line > .copy { grid-row: 1; grid-column: 2; justify-self: end; }
+    .inv-what { grid-row: 2; grid-column: 1 / -1; }
 }
