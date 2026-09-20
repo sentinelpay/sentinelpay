@@ -4102,8 +4102,13 @@
     //
     // The row itself collapses underneath at the same time, so the list closes
     // the gap while the pieces are still in the air.
-    var DUST_COLS = 14;
-    var DUST_ROWS = 3;
+    // Fine enough to read as particles rather than torn paper, and no finer.
+    // Every tile is a clone of the row, so the count is also the cost: seventy
+    // two of them are built in about forty milliseconds, where a hundred and
+    // thirty took a hundred and fifty and stalled the frame before the
+    // animation had begun.
+    var DUST_COLS = 18;
+    var DUST_ROWS = 4;
 
     function dissolve(el, done) {
         var finish = function () { if (done) done(); };
@@ -4139,19 +4144,19 @@
                 tile.style.clipPath = 'inset(' + (y * th) + 'px ' +
                     (box.width - (x + 1) * tw) + 'px ' +
                     (box.height - (y + 1) * th) + 'px ' + (x * tw) + 'px)';
-                // rightward and a little upward, the way ash goes, with enough
-                // scatter that no two pieces travel together
+                // Upward, with only a little lean. Throwing the pieces sideways
+                // read as a row sliding off; rising and shrinking reads as one
+                // coming apart, which is what happened.
                 var lean = x / DUST_COLS;
-                tile.style.setProperty('--dx', (18 + lean * 46 + Math.random() * 26).toFixed(1) + 'px');
-                // the top band lifts, the bottom one falls a little, so the
-                // pieces open out into a plume instead of all sliding together
-                var band = y - (DUST_ROWS - 1) / 2;
-                tile.style.setProperty('--dy',
-                    (band * 15 - 20 * Math.random() - lean * 6).toFixed(1) + 'px');
-                tile.style.setProperty('--rot', ((Math.random() - 0.5) * 34).toFixed(1) + 'deg');
+                tile.style.setProperty('--dx', (lean * 10 + Math.random() * 7 - 2).toFixed(1) + 'px');
+                // the higher the tile started, the further it gets
+                var up = 14 + (DUST_ROWS - y) * 5 + Math.random() * 14;
+                tile.style.setProperty('--dy', (-up).toFixed(1) + 'px');
+                // barely any turn: on pieces this small a big one only smears
+                tile.style.setProperty('--rot', ((Math.random() - 0.5) * 12).toFixed(1) + 'deg');
                 // swept from the left, so it reads as one thing coming apart
                 // rather than everything vanishing at once
-                tile.style.animationDelay = (lean * 260 + Math.random() * 90).toFixed(0) + 'ms';
+                tile.style.animationDelay = (lean * 230 + Math.random() * 70).toFixed(0) + 'ms';
                 layer.appendChild(tile);
             }
         }
@@ -4168,7 +4173,7 @@
             if (layer.parentNode) layer.remove();
             if (el.parentNode) el.remove();
             finish();
-        }, 1050);
+        }, 960);
     }
 
     function emptyState(title, sub) {

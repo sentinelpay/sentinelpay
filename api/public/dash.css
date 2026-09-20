@@ -2977,17 +2977,22 @@ html.is-theming .btn {
     top: 0;
     margin: 0;
     transform-origin: center;
-    will-change: transform, opacity, filter;
-    animation: orgDust 620ms cubic-bezier(0.3, 0.1, 0.28, 1) both;
+    /* no filter here: blurring a hundred clones is what made the old version
+       look smeared, and it is the most expensive thing to animate */
+    will-change: transform, opacity;
+    animation: orgDust 480ms cubic-bezier(0.22, 0.61, 0.24, 1) both;
 }
 /* a tile is a picture of a row, not a row: nothing in it reacts */
 .dust-bit * { pointer-events: none !important; }
 .dust-bit:hover { border-color: var(--line); background: var(--surface); }
+/* Out at the halfway mark rather than at the end, so the pieces are gone while
+   they are still moving. Fading all the way to the last frame leaves faint
+   rectangles hanging about, which is the part that looked untidy. */
 @keyframes orgDust {
+    40% { opacity: 0.55; }
     to {
-        transform: translate(var(--dx, 40px), var(--dy, -18px)) rotate(var(--rot, 8deg)) scale(0.55);
+        transform: translate(var(--dx, 6px), var(--dy, -26px)) rotate(var(--rot, 3deg)) scale(0.26);
         opacity: 0;
-        filter: blur(2.5px);
     }
 }
 
