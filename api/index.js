@@ -2171,6 +2171,56 @@ app.get('/v1/orgs/:id/members', async (req, res) => {
     res.json({ ok: true, rows, roles: orgs.ROLES });
 });
 
+app.post('/v1/orgs/:id/members/:uid/role', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const out = await orgs.setRole(me.userId, req.params.id, req.params.uid, (req.body || {}).role);
+    if (!out.ok) {
+        const said = {
+            'bad-role': 'That is not a role.',
+            missing: 'You are not in that organisation.',
+            'not-allowed': 'Only an admin or the owner can change what someone may do.',
+            'not-yourself': 'You cannot change your own role.',
+            'not-a-member': 'They are not in this organisation.',
+            'not-the-owner': "The owner's role cannot be changed here.",
+            'one-owner': 'An organisation has one owner.',
+        };
+        const code = out.reason === 'missing' || out.reason === 'not-a-member' ? 404
+            : (out.reason === 'not-allowed' ? 403 : 400);
+        return res.status(out.reason === 'unavailable' ? 503 : code)
+            .json({ error: said[out.reason] || 'Accounts are not available right now. Please try again shortly.' });
+    }
+    await accounts.audit('member-role-changed', {
+        actor: String(me.userId), subject: String(req.params.uid), ip: req.realIp, detail: out.role,
+    });
+    res.json({ ok: true, role: out.role });
+});
+
+app.post('/v1/orgs/:id/members/:uid/remove', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const out = await orgs.removeMember(me.userId, req.params.id, req.params.uid);
+    if (!out.ok) {
+        const said = {
+            missing: 'You are not in that organisation.',
+            'not-allowed': 'Only an admin or the owner can take someone out.',
+            'not-a-member': 'They are not in this organisation.',
+            'not-the-owner': 'The owner stays until the organisation is closed.',
+        };
+        const code = out.reason === 'missing' || out.reason === 'not-a-member' ? 404
+            : (out.reason === 'not-allowed' ? 403 : 400);
+        return res.status(out.reason === 'unavailable' ? 503 : code)
+            .json({ error: said[out.reason] || 'Accounts are not available right now. Please try again shortly.' });
+    }
+    // walking out of the last organisation you were in leaves the cookie
+    // pointing at somewhere you can no longer go
+    if (out.left) clearOrgCookie(res);
+    await accounts.audit(out.left ? 'member-left' : 'member-removed', {
+        actor: String(me.userId), subject: String(req.params.uid), ip: req.realIp, detail: '',
+    });
+    res.json({ ok: true, left: Boolean(out.left) });
+});
+
 app.post('/v1/orgs/:id/rename', requireCloudflareOrigin, accountLimiter, async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;

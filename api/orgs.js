@@ -274,7 +274,8 @@ async function members(userId, orgId) {
     if (!mine) return null;
     try {
         const res = await db.query(
-            `SELECT u.id, u.email_hash, u.email_enc, u.name_enc, m.role, m.created_at
+            `SELECT u.id, u.email_hash, u.email_enc, u.name_enc, u.totp_at,
+                    m.role, m.created_at
                FROM memberships m
                JOIN users u ON u.id = m.user_id
               WHERE m.org_id = $1
@@ -287,6 +288,10 @@ async function members(userId, orgId) {
             email: db.open('signup-email:' + row.email_hash, row.email_enc) || '',
             role: row.role,
             joinedAt: row.created_at,
+            // whether this person has a second step on their own account. a team
+            // that clears sanctions alerts should be able to see at a glance who
+            // among them is protected by a password alone.
+            mfa: Boolean(row.totp_at),
             you: String(row.id) === String(userId),
         }));
     } catch (err) {
@@ -315,6 +320,62 @@ async function rename(userId, orgId, name) {
 
 function roleAtLeast(role, needed) {
     return (ROLE_RANK[role] || 0) >= (ROLE_RANK[needed] || 0);
+}
+
+// Changing what somebody may do here.
+//
+// The rules are about who is left holding the place rather than about rank:
+// an owner is not demoted by an admin, because that is how an organisation
+// ends up with nobody who can close it or pay for it, and nobody sets their own
+// role, because a permission you can hand yourself is not a permission.
+async function setRole(actorId, orgId, userId, role) {
+    if (!(await init())) return { ok: false, reason: 'unavailable' };
+    if (ROLE_KEYS.indexOf(role) === -1) return { ok: false, reason: 'bad-role' };
+
+    const mine = await membership(actorId, orgId);
+    if (!mine) return { ok: false, reason: 'missing' };
+    if (!roleAtLeast(mine.role, 'admin')) return { ok: false, reason: 'not-allowed' };
+    if (String(actorId) === String(userId)) return { ok: false, reason: 'not-yourself' };
+
+    const theirs = await membership(userId, orgId);
+    if (!theirs) return { ok: false, reason: 'not-a-member' };
+    if (theirs.role === 'owner') return { ok: false, reason: 'not-the-owner' };
+    if (role === 'owner') return { ok: false, reason: 'one-owner' };
+
+    try {
+        await db.query('UPDATE memberships SET role = $1 WHERE org_id = $2 AND user_id = $3',
+            [role, Number(orgId), Number(userId)]);
+        return { ok: true, role };
+    } catch (err) {
+        console.error('[orgs] could not change a role: ' + err.message);
+        return { ok: false, reason: 'unavailable' };
+    }
+}
+
+// Taking somebody out, and walking out yourself: the same row is removed, so it
+// is the same function, and the difference is only in what is allowed.
+async function removeMember(actorId, orgId, userId) {
+    if (!(await init())) return { ok: false, reason: 'unavailable' };
+    const mine = await membership(actorId, orgId);
+    if (!mine) return { ok: false, reason: 'missing' };
+
+    const leaving = String(actorId) === String(userId);
+    if (!leaving && !roleAtLeast(mine.role, 'admin')) return { ok: false, reason: 'not-allowed' };
+
+    const theirs = leaving ? mine : await membership(userId, orgId);
+    if (!theirs) return { ok: false, reason: 'not-a-member' };
+    // the owner stays until the organisation is closed or handed on, whether
+    // they are being removed or are trying to walk out of their own company
+    if (theirs.role === 'owner') return { ok: false, reason: 'not-the-owner' };
+
+    try {
+        await db.query('DELETE FROM memberships WHERE org_id = $1 AND user_id = $2',
+            [Number(orgId), Number(userId)]);
+        return { ok: true, left: leaving };
+    } catch (err) {
+        console.error('[orgs] could not remove a member: ' + err.message);
+        return { ok: false, reason: 'unavailable' };
+    }
 }
 
 // Closing an organisation. Only an owner may, and the cascade takes its tokens
@@ -381,7 +442,7 @@ async function reslug() {
 module.exports = {
     ROLES, ROLE_KEYS, ROLE_RANK, NAME_MAX, ORGS_PER_USER,
     init, create, listFor, membership, bySlug, roleAtLeast, remove, weightOf, reslug,
-    members, rename,
+    members, rename, setRole, removeMember,
     SLUG_LENGTH, SLUG_SHAPE,
     hostOf, nameFromHost, cleanName,
 };

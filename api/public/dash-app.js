@@ -3377,73 +3377,319 @@
         });
     }
 
+    // The people in one organisation, on the table the tokens screen uses, so
+    // the two lists in this product are one list drawn twice rather than two
+    // that happen to look alike.
     function viewTeam(me) {
         var page = document.createElement('div');
         page.className = 'pg';
         var org = me.org || {};
+        var may = roleAtLeastLocal(org.role, 'admin');
         page.appendChild(pageHead('Team', 'Everyone here shares the same screenings, cases and tokens.'));
+
+        var bar = document.createElement('div');
+        bar.className = 'bar';
+        var find = document.createElement('div');
+        find.className = 'bar-find';
+        find.innerHTML = '<svg class="bar-find-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            'stroke-width="1.8" stroke-linecap="round" aria-hidden="true">' +
+            '<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>';
+        var findIn = document.createElement('input');
+        findIn.type = 'search';
+        findIn.placeholder = t('Filter members');
+        findIn.autocomplete = 'off';
+        find.appendChild(findIn);
+        bar.appendChild(find);
+        page.appendChild(bar);
 
         var card = document.createElement('div');
         card.className = 'card';
         page.appendChild(card);
         card.appendChild(waiting());
 
-        fetch('/v1/orgs/' + encodeURIComponent(org.id) + '/members', { credentials: 'same-origin' })
-            .then(function (r) {
-                if (!r.ok) throw new Error('bad-status-' + r.status);
-                return r.json();
-            })
-            .then(function (jj) {
-                var rows = (jj && jj.rows) || [];
-                if (jj && jj.roles && jj.roles.length) ORG_ROLES = jj.roles;
-                card.textContent = '';
-                if (!rows.length) {
-                    card.appendChild(emptyState('Nobody here yet',
-                        'That should not happen: you are in it.'));
-                    return;
-                }
-                rows.forEach(function (m) { card.appendChild(memberRow(m)); });
-            })
-            .catch(function () {
-                card.textContent = '';
-                card.appendChild(emptyState('That did not load.', 'Reload the page to try again.'));
+        var rows = [];
+
+        function draw() {
+            card.textContent = '';
+            var q = findIn.value.trim().toLowerCase();
+            var shown = rows.filter(function (m) {
+                return !q || (m.name + ' ' + m.email).toLowerCase().indexOf(q) !== -1;
             });
+            if (!shown.length) {
+                card.appendChild(rows.length
+                    ? emptyState('Nobody matches that', 'Try a different name.')
+                    : emptyState('Nobody here yet', 'That should not happen: you are in it.'));
+                return;
+            }
+
+            var th = document.createElement('div');
+            th.className = 'tr is-team th';
+            ['Member', 'Two-factor', 'Role'].forEach(function (h) {
+                var cl = document.createElement('div');
+                cl.textContent = t(h);
+                th.appendChild(cl);
+            });
+            th.appendChild(document.createElement('div'));
+            card.appendChild(th);
+
+            shown.forEach(function (m) { card.appendChild(memberRow(m, org, may, load)); });
+
+            // how many of you there are, under the list rather than in the
+            // heading, where it is a fact about what you just read
+            var foot = document.createElement('div');
+            foot.className = 'tr-foot';
+            foot.textContent = rows.length + ' ' + t(rows.length === 1 ? 'member' : 'members');
+            card.appendChild(foot);
+        }
+
+        function load() {
+            fetch('/v1/orgs/' + encodeURIComponent(org.id) + '/members', { credentials: 'same-origin' })
+                .then(function (r) {
+                    if (!r.ok) throw new Error('bad-status-' + r.status);
+                    return r.json();
+                })
+                .then(function (jj) {
+                    rows = (jj && jj.rows) || [];
+                    if (jj && jj.roles && jj.roles.length) ORG_ROLES = jj.roles;
+                    draw();
+                })
+                .catch(function () {
+                    card.textContent = '';
+                    card.appendChild(emptyState('That did not load.', 'Reload the page to try again.'));
+                });
+        }
+
+        findIn.addEventListener('input', function () { if (rows.length) draw(); });
+        load();
         return page;
     }
 
-    function memberRow(m) {
+    function memberRow(m, org, may, done) {
         var row = document.createElement('div');
-        row.className = 'mem';
+        row.className = 'tr is-team';
+
+        var who = document.createElement('div');
+        who.className = 'mem-who';
         var av = document.createElement('span');
         av.className = 'mem-av';
         av.textContent = initialsOf(m.name || m.email);
-        row.appendChild(av);
-        var txt = document.createElement('span');
-        txt.className = 'mem-t';
-        var n = document.createElement('span');
-        n.className = 'mem-n';
-        n.textContent = m.name || m.email || '—';
-        if (m.you) {
-            var you = document.createElement('span');
-            you.className = 'mem-you';
-            you.textContent = t('you');
-            n.appendChild(you);
-        }
-        txt.appendChild(n);
+        who.appendChild(av);
+        var txt = document.createElement('div');
+        txt.className = 'tr-t';
+        var nm = document.createElement('div');
+        nm.className = 'tr-name';
+        nm.textContent = m.name || m.email || '—';
+        if (m.you) nm.appendChild(tag(t('you')));
+        txt.appendChild(nm);
         // somebody who signed up without a name is shown by their address, so
-        // the line under it would otherwise repeat the line above it.
+        // the line under it would otherwise repeat the line above it
         if (m.name && m.email) {
-            var sub = document.createElement('span');
-            sub.className = 'mem-sub';
+            var sub = document.createElement('div');
+            sub.className = 'tr-sub';
             sub.textContent = m.email;
             txt.appendChild(sub);
         }
-        row.appendChild(txt);
-        var role = document.createElement('span');
-        role.className = 'mem-role';
+        who.appendChild(txt);
+        row.appendChild(who);
+
+        // stated rather than coloured when it is on: an account without a second
+        // step is the one worth noticing on a screen about who can do what.
+        var mfa = document.createElement('div');
+        mfa.className = 'tr-dim';
+        mfa.appendChild(m.mfa ? tag(t('On'), 'ok') : tag(t('Off'), 'mid'));
+        row.appendChild(mfa);
+
+        var role = document.createElement('div');
+        role.className = 'tr-dim';
         role.textContent = orghRole(m.role);
         row.appendChild(role);
+
+        var act = document.createElement('div');
+        act.className = 'tr-act';
+        if (m.you) {
+            // the owner has nowhere to walk out to: the organisation is theirs
+            // until it is closed
+            if (m.role !== 'owner') {
+                act.appendChild(rowBtn('Leave', function () { askLeave(org, m, done); }));
+            }
+        } else if (may && m.role !== 'owner') {
+            act.appendChild(rowBtn('Manage access', function () { askAccess(org, m, done); }));
+        }
+        row.appendChild(act);
         return row;
+    }
+
+    function rowBtn(label, onClick) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'rowbtn';
+        b.textContent = t(label);
+        b.addEventListener('click', onClick);
+        return b;
+    }
+
+    // One panel for both things you can do to a colleague, because they are one
+    // decision: what they may do here, or nothing at all.
+    function askAccess(org, m, done) {
+        var mdl = modalShell('Manage access', m.name || m.email);
+        var form = document.createElement('form');
+        form.className = 'vpanel';
+
+        var chosen = m.role;
+        var field = document.createElement('div');
+        field.className = 'vfield';
+        var lab = document.createElement('label');
+        lab.textContent = t('Role');
+        field.appendChild(lab);
+        var pick = selectBox('mem-role', [{
+            options: (ORG_ROLES || []).filter(function (r) { return r.key !== 'owner'; })
+                .map(function (r) { return { value: r.key, label: t(r.label) }; })
+        }], chosen, function (v) { chosen = v; save.disabled = v === m.role; });
+        field.appendChild(pick);
+        form.appendChild(field);
+
+        var hint = document.createElement('p');
+        hint.className = 'modal-p is-left';
+        hint.textContent = roleHint(m.role);
+        form.appendChild(hint);
+        pick.addEventListener('click', function () {
+            setTimeout(function () { hint.textContent = roleHint(chosen); }, 0);
+        });
+
+        var err = document.createElement('p');
+        err.className = 'verr';
+        err.hidden = true;
+        form.appendChild(err);
+
+        var save = wideBtn('Save role', 'cta', 'submit');
+        save.disabled = true;
+        form.appendChild(save);
+
+        var quit = document.createElement('div');
+        quit.className = 'modal-quit';
+        var out = wideBtn('Take out of this organisation', 'quiet');
+        out.classList.add('is-danger');
+        out.addEventListener('click', function () {
+            mdl.shut();
+            askRemoveMember(org, m, done);
+        });
+        quit.appendChild(out);
+        form.appendChild(quit);
+        mdl.body.appendChild(form);
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (save.disabled) return;
+            save.disabled = true;
+            err.hidden = true;
+            fetch('/v1/orgs/' + encodeURIComponent(org.id) + '/members/' +
+                encodeURIComponent(m.id) + '/role', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ role: chosen })
+            }).then(function (r) {
+                return r.json().catch(function () { return {}; }).then(function (b) {
+                    return { ok: r.ok, body: b };
+                });
+            }).then(function (r) {
+                if (!r.ok) {
+                    err.textContent = (r.body && r.body.error) || t('That did not work.');
+                    err.hidden = false;
+                    save.disabled = false;
+                    return;
+                }
+                mdl.shut();
+                toast(t('Role changed'), 'good');
+                done();
+            }).catch(function () {
+                err.textContent = t('That did not work.');
+                err.hidden = false;
+                save.disabled = false;
+            });
+        });
+    }
+
+    function roleHint(key) {
+        var list = ORG_ROLES || [];
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].key === key) return t(list[i].hint || '');
+        }
+        return '';
+    }
+
+    function askRemoveMember(org, m, done) {
+        confirmOut({
+            title: 'Take them out',
+            sub: 'They lose this organisation. Their own account stays.',
+            go: 'Take them out',
+            said: 'Taken out of this organisation',
+            url: '/v1/orgs/' + encodeURIComponent(org.id) + '/members/' +
+                encodeURIComponent(m.id) + '/remove',
+            done: done
+        });
+    }
+
+    function askLeave(org, m, done) {
+        confirmOut({
+            title: 'Leave this organisation',
+            sub: 'You lose its screenings, cases and tokens. Somebody in it can let you back in.',
+            go: 'Leave',
+            said: 'You left',
+            url: '/v1/orgs/' + encodeURIComponent(org.id) + '/members/' +
+                encodeURIComponent(m.id) + '/remove',
+            done: function () { location.assign(ORGS_PATH); }
+        });
+    }
+
+    function confirmOut(o) {
+        var mdl = modalShell(o.title, o.sub);
+        var form = document.createElement('form');
+        form.className = 'vpanel';
+
+        var err = document.createElement('p');
+        err.className = 'verr';
+        err.hidden = true;
+        form.appendChild(err);
+
+        var go = wideBtn(o.go, 'cta', 'submit');
+        form.appendChild(go);
+        var quit = document.createElement('div');
+        quit.className = 'modal-quit';
+        var no = wideBtn('Cancel', 'quiet');
+        no.addEventListener('click', mdl.shut);
+        quit.appendChild(no);
+        form.appendChild(quit);
+        mdl.body.appendChild(form);
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            go.disabled = true;
+            fetch(o.url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: '{}'
+            }).then(function (r) {
+                return r.json().catch(function () { return {}; }).then(function (b) {
+                    return { ok: r.ok, body: b };
+                });
+            }).then(function (r) {
+                if (!r.ok) {
+                    err.textContent = (r.body && r.body.error) || t('That did not work.');
+                    err.hidden = false;
+                    go.disabled = false;
+                    return;
+                }
+                mdl.shut();
+                toast(t(o.said), 'good');
+                o.done();
+            }).catch(function () {
+                err.textContent = t('That did not work.');
+                err.hidden = false;
+                go.disabled = false;
+            });
+        });
     }
 
     function initialsOf(who) {
@@ -4025,7 +4271,7 @@
             if (!r.revokedAt) {
                 var kill = document.createElement('button');
                 kill.type = 'button';
-                kill.className = 'rowbtn';
+                kill.className = 'rowbtn is-bad';
                 kill.textContent = t('Revoke');
                 kill.addEventListener('click', function () { askRevoke(r, load); });
                 act.appendChild(kill);
