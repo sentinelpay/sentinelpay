@@ -4901,8 +4901,14 @@
         page.appendChild(list);
 
         var who = (me && me.email) || '';
-        var warm = readOrgCache(who);
-        var rows = warm ? warm.rows : [];
+        // The page was served with this list, so prefer it over anything kept
+        // from a previous visit: it was read from the database for this very
+        // request. Only a stored copy is old enough to be worth second
+        // guessing. An empty list served is still an answer, so the screen says
+        // there are none rather than pretending to be loading.
+        var served = Array.isArray(me && me.orgs) ? me.orgs : null;
+        var warm = served ? null : readOrgCache(who);
+        var rows = served || (warm ? warm.rows : []);
         if (warm && warm.roles && warm.roles.length) ORG_ROLES = warm.roles;
 
         function roleLabel(key) {
@@ -5054,7 +5060,7 @@
         findIn.addEventListener('input', draw);
         make.addEventListener('click', function () { askOrg(load); });
 
-        if (warm) draw();
+        if (served || warm) draw();
         else list.appendChild(waiting());
         load();
         return page;
@@ -5414,9 +5420,26 @@
     }
     paintShell();
 
-    var cached = readMe();
+    // What the page was served with. The server knew who was asking, so it
+    // wrote the answer into the document: no request, nothing to wait for, and
+    // the first frame is the finished screen. The stored copy is the fallback
+    // for a page that somehow arrives without it.
+    function served() {
+        var tag = document.getElementById('sp-state');
+        if (!tag) return null;
+        try {
+            var got = JSON.parse(tag.textContent || 'null');
+            return got && got.email ? got : null;
+        } catch (err) {
+            return null;
+        }
+    }
+
+    var given = served();
+    var cached = given || readMe();
     if (cached) paintMe(cached);
     else bindAccountMenu();
+    if (given) writeMe(given);
 
     // The address names the organisation; this is where it is checked. Membership
     // decides, the cookie is brought into line with the url rather than the other
@@ -5439,6 +5462,9 @@
     });
 
     function boot() {
+    // the page already carries this when it was served to a signed-in reader.
+    // the call still runs, because the screen may sit open while something
+    // changes, but by now it only confirms rather than reveals.
     fetch('/v1/entitlement', { credentials: 'same-origin' })
         .then(function (r) {
             if (r.status === 401) { forgetMe(); return null; }
@@ -5456,11 +5482,13 @@
                 location.replace(ORGS_PATH);
                 return;
             }
-            // nothing in here belongs to a person on their own, so without an
-            // organisation there is nothing to show but the choice of one. an
-            // address that named one and passed the membership check counts,
-            // whatever the entitlement call happened to see.
-            if (!onOrgs() && !me.org && !atOrg) {
+            // The work belongs to an organisation, so without one there is
+            // nothing to show but the choice of one. Your own account is the
+            // exception and always was: preferences, security, tokens and the
+            // trail are yours whether or not any organisation is open, and
+            // before this they were thrown back to the picker the moment the
+            // entitlement said no organisation was current.
+            if (!onOrgs() && !inAccount() && !me.org && !atOrg) {
                 location.replace(ORGS_PATH);
                 return;
             }

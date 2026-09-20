@@ -440,7 +440,23 @@ function stagingRibbon() {
         '</div>';
 }
 
-function renderPage(file, req, forcedLang) {
+// State written into the page rather than fetched by it.
+//
+// It goes in a script of type application/json, which is a data block: the
+// browser does not execute it, so the content policy has nothing to allow and
+// no hash to know in advance, which a dynamic inline script would need.
+//
+// The escaping matters. A name or an organisation could contain the characters
+// that end a script element or open a comment, and inside a script element
+// there is no markup parsing to save us, so every < is written as its escape.
+function stateBlock(state) {
+    if (!state) return '';
+    return '<script type="application/json" id="sp-state">' +
+        JSON.stringify(state).replace(/</g, '\\u003c') +
+        '</' + 'script>';
+}
+
+function renderPage(file, req, forcedLang, state) {
     const full = path.join(__dirname, 'public', file);
     const stamp = fsSync.statSync(full).mtimeMs;
     let entry = pageCache.get(file);
@@ -475,18 +491,19 @@ function renderPage(file, req, forcedLang) {
         (STATUS_MESSAGE ? ' data-status' : '') +
         (STATUS_BLOCKS_MAIL ? ' data-mail-down' : '');
     return html
+        .replace('<!--SP_STATE-->', () => stateBlock(state))
         .replace('<!--SP_NOSCRIPT-->', notice)
         .replace('<!--SP_HREFLANG-->', () => homepageLinkTags(forcedLang))
         .replace(/<html lang="en">/, '<html lang="en"' + attrs + '>')
         .replace('<body class="lp-body">', () => '<body class="lp-body">' + statusBanner() + stagingRibbon());
 }
 
-function sendPage(res, req, file, status, forcedLang, cache) {
+function sendPage(res, req, file, status, forcedLang, cache, state) {
     res.status(status || 200)
         .set('Cache-Control', cache || 'no-cache')
         .set('Vary', 'CF-IPCountry, CF-Timezone, User-Agent')
         .type('html')
-        .send(renderPage(file, req, forcedLang));
+        .send(renderPage(file, req, forcedLang, state));
 }
 
 app.use(rateLimit({
@@ -641,7 +658,13 @@ app.get('/account/:page', async (req, res, next) => {
     }
     res.set('Cache-Control', 'no-store, private');
     if (!DASHBOARD_NEXT) return next();
-    return sendPage(res, req, 'dashboard-next.html', 200, undefined, 'no-store, private');
+    let state = null;
+    try {
+        state = await entitlementFor(req, me);
+    } catch (err) {
+        console.error('[account state]', err.message);
+    }
+    return sendPage(res, req, 'dashboard-next.html', 200, undefined, 'no-store, private', state);
 });
 
 app.get(['/dashboard', '/dashboard/*splat'], async (req, res, next) => {
@@ -665,15 +688,19 @@ app.get(['/dashboard', '/dashboard/*splat'], async (req, res, next) => {
         // The plan still hangs off the account today, so this asks about the
         // person. When it moves to the organisation only this lookup changes,
         // because the gate is already standing in the right doorway.
+        let here = null;
         if (req.path.indexOf(ORG_ROOT) === 0) {
             try {
                 // the plan of the organisation in the address, not of whoever
                 // is signed in: two companies, two plans, and being paid up in
                 // one says nothing about the other.
                 const slug = req.path.slice(ORG_ROOT.length).split('/')[0];
-                const mine = await orgs.bySlug(me.userId, slug);
-                if (mine) {
-                    const state = await trial.ensure(mine.id, me.userId, me.email);
+                here = await orgs.bySlug(me.userId, slug);
+                if (here) {
+                    // the address wins over the cookie, and says so for the
+                    // requests that follow
+                    setOrgCookie(res, here.id);
+                    const state = await trial.ensure(here.id, me.userId, me.email);
                     if (state.state === 'none') {
                         return res.redirect(302, '/choose-a-plan?next=' + encodeURIComponent(req.path));
                     }
@@ -682,7 +709,15 @@ app.get(['/dashboard', '/dashboard/*splat'], async (req, res, next) => {
                 console.error('[dashboard trial]', err.message);
             }
         }
-        return sendPage(res, req, 'dashboard-next.html', 200, undefined, 'no-store, private');
+        // the page arrives knowing who is reading it, so the first frame is the
+        // finished screen instead of an empty one waiting on a request
+        let state = null;
+        try {
+            state = await entitlementFor(req, me, here);
+        } catch (err) {
+            console.error('[dashboard state]', err.message);
+        }
+        return sendPage(res, req, 'dashboard-next.html', 200, undefined, 'no-store, private', state);
     }
     return next();
 });
@@ -2335,41 +2370,52 @@ app.get('/v1/auth/me', authMeLimiter, async (req, res) => {
     }
 });
 
+// Everything a signed-in dashboard needs to draw itself. One function, because
+// it is answered twice: over the wire to /v1/entitlement, and written into the
+// page itself so the first frame is the finished screen rather than an empty
+// one waiting on a request.
+async function entitlementFor(req, me, known) {
+    // the organisation can be named by the address, which is better than the
+    // cookie: a page opened by its own link should not have to wait for a
+    // round trip to learn which organisation it is showing.
+    const org = known || await orgFor(req, me);
+    const [state, listed, runs, mine] = await Promise.all([
+        // the plan of the organisation in front of you. without one there is
+        // nothing for a plan to belong to, so it comes back as none.
+        org ? trial.ensure(org.id, me.userId, me.email) : trial.get(0),
+        sanctions.status(),
+        org ? screening.countFor(org.id) : 0,
+        orgs.listFor(me.userId),
+    ]);
+    return {
+        name: me.name,
+        email: me.email,
+        since: me.since,
+        // the security screen says whether a second step is on, so it has to be
+        // told rather than left to guess and say no
+        totpOn: Boolean(me.totpOn),
+        org: org,
+        orgs: mine,
+        trial: {
+            ...state,
+            historyLeft: state.historyLeft === Infinity ? null : state.historyLeft,
+        },
+        screeningsRun: runs,
+        coverage: {
+            source: 'OFAC SDN',
+            listDate: listed.listDate || '',
+            addresses: listed.addressCount || 0,
+            refreshedAt: listed.refreshedAt || null,
+        },
+    };
+}
+
 app.get('/v1/entitlement', async (req, res) => {
     res.set('Cache-Control', 'no-store, private');
     try {
         const me = await currentUser(req);
         if (!me) return res.status(401).json({ error: 'Sign in first' });
-        const org = await orgFor(req, me);
-        const [state, listed, runs, mine] = await Promise.all([
-            // the plan of the organisation in front of you. without one there
-            // is nothing for a plan to belong to, so it comes back as none.
-            org ? trial.ensure(org.id, me.userId, me.email) : trial.get(0),
-            sanctions.status(),
-            org ? screening.countFor(org.id) : 0,
-            orgs.listFor(me.userId),
-        ]);
-        res.json({
-            name: me.name,
-            email: me.email,
-            since: me.since,
-            // the security screen says whether a second step is on, so it has
-            // to be told rather than left to guess and say no
-            totpOn: Boolean(me.totpOn),
-            org: org,
-            orgs: mine,
-            trial: {
-                ...state,
-                historyLeft: state.historyLeft === Infinity ? null : state.historyLeft,
-            },
-            screeningsRun: runs,
-            coverage: {
-                source: 'OFAC SDN',
-                listDate: listed.listDate || '',
-                addresses: listed.addressCount || 0,
-                refreshedAt: listed.refreshedAt || null,
-            },
-        });
+        res.json(await entitlementFor(req, me));
     } catch (err) {
         console.error('[entitlement]', err.message);
         res.status(500).json({ error: 'Could not read the account' });
