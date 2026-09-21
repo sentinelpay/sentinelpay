@@ -4275,64 +4275,123 @@
     }
 
     function viewUsage(me) {
+        // Two pieces rather than one: the band runs the full width of the
+        // screen the way a header does, and the page keeps the same centred
+        // column every other screen has. The band holds its own copy of that
+        // column inside, so the title still lines up with what is under it.
+        var out_ = document.createDocumentFragment();
         var page = document.createElement('div');
         page.className = 'pg';
-        page.appendChild(pageHead('Usage',
-            'What this organisation has screened, and what its plan allows.'));
 
         var org = me.org || {};
         var want = { period: '', scope: 'live' };
 
+        // The title and the two controls are one band, and it stays at the top
+        // while the sections go past underneath. Which period you are looking at
+        // is the one fact every number below depends on, so it should not be
+        // something you have to scroll back up to check.
+        var top = document.createElement('div');
+        top.className = 'use-top';
+        var inner = document.createElement('div');
+        inner.className = 'use-top-in';
+        top.appendChild(inner);
+        var h1 = document.createElement('h1');
+        h1.className = 'pg-h1 use-h1';
+        h1.textContent = t('Usage');
+        inner.appendChild(h1);
+
         var bar = document.createElement('div');
-        bar.className = 'bar use-bar';
-        page.appendChild(bar);
+        bar.className = 'use-bar';
+        inner.appendChild(bar);
+        out_.appendChild(top);
+        out_.appendChild(page);
 
         var body = document.createElement('div');
+        body.className = 'use-body';
         page.appendChild(body);
         body.appendChild(waiting());
 
+        // Built once, then updated. A live notice reloads this screen, and
+        // rebuilding the band would shut a dropdown somebody had just opened
+        // and take the keyboard focus with it.
+        var built = null;
+        var periodPick = null;
+        var planSlot = null;
+        var whenSlot = null;
+
         function pickers(out) {
-            bar.textContent = '';
             var periods = (out && out.periods) || [];
-            bar.appendChild(selectBox('use-period', [{
-                options: periods.map(function (p) {
-                    return { value: p.key, label: usePeriodLabel(p) };
-                })
-            }], (out.period && out.period.key) || 'c0', function (v) {
-                want.period = v;
-                load();
-            }));
+            var shape = periods.map(function (p) { return p.key + ':' + usePeriodLabel(p); }).join('|');
 
-            // the sandbox is a separate world on purpose: it screens against
-            // the same lists but spends nothing, so mixing it into these
-            // numbers would overstate the work and understate the quota
-            bar.appendChild(selectBox('use-scope', [{
-                options: [
-                    { value: 'live', label: t('Production') },
-                    { value: 'sandbox', label: t('Sandbox') }
-                ]
-            }], want.scope, function (v) {
-                want.scope = v;
-                load();
-            }));
+            if (built !== shape) {
+                built = shape;
+                bar.textContent = '';
+                var left = document.createElement('div');
+                left.className = 'use-bar-l';
+                bar.appendChild(left);
 
-            var right = document.createElement('div');
-            right.className = 'use-bar-r';
-            var plan = document.createElement('span');
-            plan.className = 'use-plan';
-            plan.textContent = t('This organisation is on') + ' ';
-            plan.appendChild(planWord(out.plan));
-            right.appendChild(plan);
-            var when = document.createElement('span');
-            when.className = 'use-when';
-            when.textContent = useSpan(out.period);
-            right.appendChild(when);
-            bar.appendChild(right);
+                periodPick = selectBox('use-period', [{
+                    options: periods.map(function (p) {
+                        return { value: p.key, label: usePeriodLabel(p) };
+                    })
+                }], (out.period && out.period.key) || 'c0', function (v) {
+                    want.period = v;
+                    load();
+                });
+                left.appendChild(periodPick);
+
+                // the sandbox is a separate world on purpose: it screens against
+                // the same lists but spends nothing, so mixing it into these
+                // numbers would overstate the work and understate the quota
+                left.appendChild(selectBox('use-scope', [{
+                    options: [
+                        { value: 'live', label: t('Production') },
+                        { value: 'sandbox', label: t('Sandbox') }
+                    ]
+                }], want.scope, function (v) {
+                    want.scope = v;
+                    load();
+                }));
+
+                var right = document.createElement('div');
+                right.className = 'use-bar-r';
+                planSlot = document.createElement('span');
+                planSlot.className = 'use-plan';
+                right.appendChild(planSlot);
+                var sep = document.createElement('span');
+                sep.className = 'use-sep';
+                sep.setAttribute('aria-hidden', 'true');
+                sep.textContent = '/';
+                right.appendChild(sep);
+                whenSlot = document.createElement('span');
+                whenSlot.className = 'use-when';
+                right.appendChild(whenSlot);
+                bar.appendChild(right);
+            } else if (periodPick && out.period) {
+                periodPick.spSet(out.period.key);
+            }
+
+            planSlot.textContent = t('This organisation is on') + ' ';
+            planSlot.appendChild(planWord(out.plan));
+            // a trial's most consequential number is when it stops, and this is
+            // the one place on the screen already saying which plan it is on
+            var left = (out.plan && out.plan.daysLeft) || 0;
+            var trialish = out.plan && (out.plan.state === 'starter' || out.plan.state === 'verified');
+            if (trialish && left > 0) {
+                // the same two words the picker uses, rather than a third way
+                // of saying it that croatian would have to count separately
+                planSlot.appendChild(tag(left + ' ' + t(left === 1 ? 'day left' : 'days left'),
+                    left <= 3 ? 'mid' : ''));
+            }
+            whenSlot.textContent = useSpan(out.period);
         }
 
+        // the plan is a link, because reading which one you are on is the
+        // moment somebody wonders what the others are
         function planWord(plan) {
-            var el = document.createElement('strong');
+            var el = document.createElement('a');
             el.className = 'use-plan-n';
+            el.href = '/dashboard/org/' + encodeURIComponent(org.slug || '') + '/billing';
             el.textContent = orghPlan((plan && plan.state) || 'none');
             return el;
         }
@@ -4582,7 +4641,7 @@
         // a screening anywhere in this organisation is a number on this page
         onLive(load);
         load();
-        return page;
+        return out_;
     }
 
     // What the plan is and how it changes. There is no card on file to show,

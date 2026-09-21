@@ -3162,17 +3162,52 @@ html.is-theming .btn {
    kind gets tiles and a chart, because the question is "how much, and when".
    The second is a list of plain facts, because the question is "how much is
    left", and a chart of one number is decoration. */
-.use-bar { flex-wrap: wrap; gap: 0.6rem; }
+/* The band at the top: the title and the two controls, with a rule under them.
+   It sticks while the sections go past underneath, because which period you are
+   looking at is the one fact every number below depends on, and it should not
+   be something you scroll back up to check. */
+.use-top {
+    position: sticky;
+    top: -1.6rem;
+    z-index: 5;
+    /* out to the edges of the scrolling area, so the rule under it runs the
+       full width the way a header's does rather than stopping at the column */
+    margin: -1.6rem -1.4rem 1.6rem;
+    padding: 1.6rem 1.4rem 0.85rem;
+    background: var(--canvas);
+    border-bottom: 1px solid var(--line);
+}
+/* the band's contents keep the column the rest of the page uses, so the title
+   sits above the first tile and not off to one side of it */
+.use-top-in { max-width: 46rem; margin-inline: auto; }
+@media (min-width: 900px) {
+    .use-top-in { max-width: 54rem; }
+}
+.use-h1 { margin-bottom: 0.9rem; }
+.use-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+.use-bar-l { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
 .use-bar-r {
     margin-left: auto;
     display: flex;
     align-items: baseline;
-    gap: 0.55rem;
+    gap: 0.5rem;
     font-size: 0.82rem;
     color: var(--ink-4);
 }
-.use-plan-n { color: var(--ink-2); font-weight: 600; }
-.use-when { padding-left: 0.55rem; border-left: 1px solid var(--line); }
+.use-plan-n {
+    color: var(--link);
+    font-weight: 600;
+    text-decoration: none;
+}
+.use-plan-n:hover { text-decoration: underline; }
+.use-sep { color: var(--line); }
+/* the countdown is a second thing after the plan's name, not part of it */
+.use-plan .tag { margin-left: 0.45rem; }
 
 .use-verdict { margin: 0 0 1.1rem; font-size: 0.86rem; color: var(--ink-3); }
 .use-verdict.is-over { color: var(--risk-mid); font-weight: 600; }
@@ -3312,13 +3347,19 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     .use-tile-v { font-size: 1.1rem; }
     .use-tile-h { font-size: 0.74rem; }
     .use-tile-s { font-size: 0.72rem; }
+    /* the band is not sticky on a phone: it would eat a third of a short
+       screen, and there is no long sideways scan to keep your place in */
+    .use-top { position: static; top: auto; padding-bottom: 0.9rem; }
+    .use-bar-l { flex: 1 1 100%; }
+    /* the slash divides two things sitting side by side. once they are stacked
+       it is a mark dangling at the end of a line, dividing nothing. */
+    .use-sep { display: none; }
     .use-bar-r {
         margin-left: 0;
         flex: 1 1 100%;
         flex-wrap: wrap;
         gap: 0.2rem 0.5rem;
     }
-    .use-when { padding-left: 0; border-left: 0; }
     .use-foot { flex-direction: column; align-items: stretch; }
     .use-foot .btn { justify-content: center; }
     .use-share-l { grid-template-columns: minmax(0, 5.5rem) minmax(0, 1fr) auto; }
