@@ -22,6 +22,8 @@ const projects = require('./projects');
 const live = require('./live');
 const invites = require('./invites');
 const usage = require('./usage.js');
+const billing = require('./billing.js');
+const plans = require('./plans.js');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -2150,9 +2152,12 @@ app.get('/v1/orgs/:id/projects', async (req, res) => {
 // their own company's work, and a viewer who cannot see how much was screened
 // cannot check the number they are being asked about.
 async function usageFor(req, mine) {
-    const plan = await trial.get(mine.id);
+    // What a period is depends on what was bought. A subscription's periods
+    // are months from the day it started, and that row is the truth: the trial
+    // is only the anchor for an organisation that has not bought anything yet.
+    const [sub, plan] = await Promise.all([billing.get(mine.id), trial.get(mine.id)]);
     return usage.forOrg(mine.id, {
-        anchor: plan.startedAt || mine.createdAt,
+        anchor: (sub && sub.startedAt) || plan.startedAt || mine.createdAt,
         period: String(req.query.period || ''),
         scope: String(req.query.scope || ''),
     });
@@ -2164,14 +2169,16 @@ app.get('/v1/orgs/:id/usage', async (req, res) => {
     const mine = await orgs.membership(me.userId, req.params.id);
     if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
     res.set('Cache-Control', 'no-store, private');
-    const [out, plan, listed] = await Promise.all([
+    const [out, plan, listed, sub] = await Promise.all([
         usageFor(req, mine),
         trial.get(mine.id),
         sanctions.status(),
+        billing.get(mine.id),
     ]);
     res.json({
         ...out,
         plan: { ...plan, historyLeft: plan.historyLeft === Infinity ? null : plan.historyLeft },
+        subscription: sub,
         coverage: {
             source: 'OFAC SDN',
             listDate: listed.listDate || '',
@@ -2203,6 +2210,67 @@ app.get('/v1/orgs/:id/usage.csv', async (req, res) => {
         detail: mine.slug + ' ' + out.period.from.slice(0, 10),
     });
     res.send(usage.csv(out, mine));
+});
+
+// What this organisation is on, what it costs, when it renews, and what it has
+// been on before. Any member may read it: the plan decides what everybody here
+// can do, so it is not an owner's private business.
+app.get('/v1/orgs/:id/subscription', async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const mine = await orgs.membership(me.userId, req.params.id);
+    if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
+    res.set('Cache-Control', 'no-store, private');
+    const [sub, past] = await Promise.all([billing.get(mine.id), billing.history(mine.id, 50)]);
+    res.json({ ok: true, subscription: sub, history: past, catalogue: plans.catalogue() });
+});
+
+// Taking a plan is spending the company's money, so it is the owner's or an
+// admin's to do, the same as closing the organisation is.
+app.post('/v1/orgs/:id/subscription', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const mine = await orgs.membership(me.userId, req.params.id);
+    if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
+    if (!orgs.roleAtLeast(mine.role, 'admin')) {
+        return res.status(403).json({ error: 'Only an admin or the owner can change the plan.' });
+    }
+    const body = req.body || {};
+    const out = await billing.start(mine.id, me.userId, { plan: body.plan, term: body.term });
+    if (!out.ok) {
+        const said = {
+            'bad-plan': 'That is not one of the plans.',
+            'bad-term': 'That is not one of the billing terms.',
+            'unavailable': 'Not available right now.',
+        };
+        return res.status(400).json({ error: said[out.reason] || 'Could not change the plan.' });
+    }
+    await tellOrg(mine.id, { topic: 'org', id: String(mine.id) });
+    await tellOrg(mine.id, { topic: 'orgs' });
+    await accounts.audit('plan-started', {
+        actor: String(me.userId), subject: String(me.userId), ip: req.realIp,
+        detail: mine.slug + ' ' + out.subscription.plan + '/' + out.subscription.term,
+    });
+    res.json(out);
+});
+
+app.post('/v1/orgs/:id/subscription/cancel', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const mine = await orgs.membership(me.userId, req.params.id);
+    if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
+    if (!orgs.roleAtLeast(mine.role, 'admin')) {
+        return res.status(403).json({ error: 'Only an admin or the owner can change the plan.' });
+    }
+    const back = String((req.body || {}).resume || '') === 'yes';
+    const out = back ? await billing.resume(mine.id, me.userId) : await billing.cancel(mine.id, me.userId);
+    if (!out.ok) return res.status(400).json({ error: 'There is nothing to change.' });
+    await tellOrg(mine.id, { topic: 'org', id: String(mine.id) });
+    await accounts.audit(back ? 'plan-resumed' : 'plan-cancelled', {
+        actor: String(me.userId), subject: String(me.userId), ip: req.realIp,
+        detail: mine.slug,
+    });
+    res.json(out);
 });
 
 app.post('/v1/orgs/:id/projects', requireCloudflareOrigin, accountLimiter, async (req, res) => {
@@ -2710,13 +2778,14 @@ async function entitlementFor(req, me, known) {
     // cookie: a page opened by its own link should not have to wait for a
     // round trip to learn which organisation it is showing.
     const org = known || await orgFor(req, me);
-    const [state, listed, runs, mine] = await Promise.all([
+    const [state, listed, runs, mine, sub] = await Promise.all([
         // the plan of the organisation in front of you. without one there is
         // nothing for a plan to belong to, so it comes back as none.
         org ? trial.ensure(org.id, me.userId, me.email) : trial.get(0),
         sanctions.status(),
         org ? screening.countFor(org.id) : 0,
         orgs.listFor(me.userId),
+        org ? billing.get(org.id) : null,
     ]);
     return {
         name: me.name,
@@ -2732,6 +2801,7 @@ async function entitlementFor(req, me, known) {
             historyLeft: state.historyLeft === Infinity ? null : state.historyLeft,
         },
         screeningsRun: runs,
+        subscription: sub,
         coverage: {
             source: 'OFAC SDN',
             listDate: listed.listDate || '',
@@ -3253,7 +3323,7 @@ app.listen(PORT, () => {
     // once they have made it. Nothing here invents an organisation: an account
     // with none stays with none, and is asked to make one.
     orgs.reslug()
-        .then(() => Promise.all([projects.init(), invites.init(), tokens.adopt(), screening.adopt(), trial.adopt()]))
+        .then(() => Promise.all([projects.init(), invites.init(), billing.init(), tokens.adopt(), screening.adopt(), trial.adopt()]))
         .catch((err) => console.error('[orgs] migration at boot failed: ' + err.message));
 
     const dbState = db.status();

@@ -1,6 +1,7 @@
 'use strict';
 
 const db = require('./db.js');
+const months = require('./months.js');
 
 // What an organisation has done in a period.
 //
@@ -23,21 +24,11 @@ const db = require('./db.js');
 
 const CYCLES_BACK = 3;
 
-function atUTC(y, m, d) {
-    return new Date(Date.UTC(y, m, d, 0, 0, 0, 0));
-}
-
-// The 31st of a month does not exist in the next one. Clamping down keeps every
-// cycle a whole month and keeps them touching, with no day belonging to two
-// cycles or to none.
-function addMonths(date, n) {
-    const y = date.getUTCFullYear();
-    const m = date.getUTCMonth();
-    const d = date.getUTCDate();
-    const target = atUTC(y, m + n, 1);
-    const last = atUTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0).getUTCDate();
-    return atUTC(target.getUTCFullYear(), target.getUTCMonth(), Math.min(d, last));
-}
+// One copy of the month arithmetic, shared with billing. Two copies would be
+// two answers to "which month is this", and the day they disagree is the day a
+// screening is counted in a period it did not happen in.
+const atUTC = months.atUTC;
+const addMonths = months.addMonths;
 
 // Every cycle boundary from the anchor, newest first. `back` of them.
 function cycles(anchorAt, now, back) {

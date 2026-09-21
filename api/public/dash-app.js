@@ -4040,6 +4040,20 @@
         return days === 90 ? t('Last 90 days') : t('Last 30 days');
     }
 
+    // cents, because a price is not a float. 'agreed' where there is no list
+    // price to print: per-scan bills what was used, and enterprise is a number
+    // somebody shook hands on.
+    function useMoney(cents, currency) {
+        if (cents === null || cents === undefined) return t('Agreed with you');
+        try {
+            return new Intl.NumberFormat(navLang(), {
+                style: 'currency', currency: currency || 'EUR', maximumFractionDigits: 2
+            }).format(cents / 100);
+        } catch (err) {
+            return (cents / 100).toFixed(2) + ' ' + (currency || 'EUR');
+        }
+    }
+
     function useSpan(p) {
         if (!p) return '';
         if (p.days) return useWindowWord(p.days);
@@ -4047,6 +4061,14 @@
         // shown as its last is the day before
         var end = new Date(new Date(p.to).getTime() - 1);
         return whenText(p.from) + ' – ' + whenText(end.toISOString());
+    }
+
+    // whole words, one key each: a term is not a number and never needs joining
+    function useTermWord(term) {
+        if (term === 'yearly') return 'Yearly';
+        if (term === 'quarterly') return 'Quarterly';
+        if (term === 'scan') return 'Per scan';
+        return term;
     }
 
     function usePeriodLabel(p) {
@@ -4372,34 +4394,58 @@
             }
 
             planSlot.textContent = t('This organisation is on') + ' ';
-            planSlot.appendChild(planWord(out.plan));
-            // a trial's most consequential number is when it stops, and this is
-            // the one place on the screen already saying which plan it is on
-            var left = (out.plan && out.plan.daysLeft) || 0;
-            var trialish = out.plan && (out.plan.state === 'starter' || out.plan.state === 'verified');
-            if (trialish && left > 0) {
-                // the same two words the picker uses, rather than a third way
-                // of saying it that croatian would have to count separately
-                planSlot.appendChild(tag(left + ' ' + t(left === 1 ? 'day left' : 'days left'),
-                    left <= 3 ? 'mid' : ''));
-            }
+            planSlot.appendChild(planWord(out.subscription, out.plan));
+            planSlot.appendChild(planMark(out.subscription, out.plan));
             whenSlot.textContent = useSpan(out.period);
         }
 
         // the plan is a link, because reading which one you are on is the
-        // moment somebody wonders what the others are
-        function planWord(plan) {
+        // moment somebody wonders what the others are.
+        //
+        // A bought plan wins over the trial. They are two different things with
+        // one word between them: a trial has a state, an organisation has a
+        // subscription, and what is shown is whichever of the two exists.
+        function planWord(sub, plan) {
             var el = document.createElement('a');
             el.className = 'use-plan-n';
             el.href = '/dashboard/org/' + encodeURIComponent(org.slug || '') + '/billing';
-            el.textContent = orghPlan((plan && plan.state) || 'none');
+            el.textContent = sub ? sub.planName : orghPlan((plan && plan.state) || 'none');
             return el;
+        }
+
+        // The one thing worth saying next to the name: when it stops. A trial
+        // counts down, a cancelled plan says the date it runs to, and anything
+        // still renewing says nothing, because nothing is about to happen.
+        function planMark(sub, plan) {
+            var box = document.createDocumentFragment();
+            if (sub) {
+                box.appendChild(tag(t(useTermWord(sub.term))));
+                if (sub.cancelledAt && sub.termEndsAt) {
+                    box.appendChild(tag(t('Ends') + ' ' + whenText(sub.termEndsAt), 'mid'));
+                } else if (!sub.paid) {
+                    // agreed but not paid for is a real state, and the people
+                    // inside the company are the ones who can do something
+                    // about it, so it is not hidden from them
+                    box.appendChild(tag(t('Not paid yet'), 'mid'));
+                }
+                return box;
+            }
+            var left = (plan && plan.daysLeft) || 0;
+            var trialish = plan && (plan.state === 'starter' || plan.state === 'verified');
+            if (trialish && left > 0) {
+                // the same two words the picker uses, rather than a third way
+                // of saying it that croatian would have to count separately
+                box.appendChild(tag(left + ' ' + t(left === 1 ? 'day left' : 'days left'),
+                    left <= 3 ? 'mid' : ''));
+            }
+            return box;
         }
 
         function draw(out) {
             body.textContent = '';
             var s = out.screenings || {};
             var plan = out.plan || {};
+            var sub = out.subscription || null;
             var shape = out.org || {};
             var sandbox = out.scope === 'sandbox';
 
@@ -4422,7 +4468,24 @@
                 to: 'use-flagged',
                 sub: s.total ? t('Share') + '  ' + Math.round((s.flagged / s.total) * 100) + '%' : t('Nothing yet')
             }));
-            if (!sandbox) {
+            if (!sandbox && sub && sub.included) {
+                // a bought plan's allowance is per month and this screen is
+                // already counting a month, so the two are the same number
+                var inc = sub.included.screenings || 0;
+                grid.appendChild(useTile('Screenings left this period',
+                    useNum(Math.max(0, inc - s.total)), {
+                        to: 'use-plan',
+                        used: s.total,
+                        of: inc,
+                        sub: t('Included') + '  ' + useNum(inc)
+                    }));
+                grid.appendChild(useTile('Seats', useNum(shape.members), {
+                    to: 'use-team',
+                    used: shape.members,
+                    of: sub.included.seats || 0,
+                    sub: t('Included') + '  ' + useNum(sub.included.seats)
+                }));
+            } else if (!sandbox) {
                 grid.appendChild(useTile('Checks left on this plan',
                     plan.state === 'enterprise' ? t('Unmetered') : useNum(plan.liveLeft), {
                         to: 'use-plan',
@@ -4522,21 +4585,43 @@
             if (!sandbox) {
                 var pl = useSection('use-plan', 'Plan', 'plan',
                     'What this organisation is allowed, and how much of it is left.');
-                pl.body.appendChild(useSide([
+                pl.body.appendChild(useSide(sub ? [
+                    'What is included is per period, so it starts again when the next one does.',
+                    'Running out stops further checks rather than adding to a bill: nothing here can charge you by surprise.'
+                ] : [
                     'These are counted from the day the plan started, not from the day this period did, so they do not reset when a period does.',
                     'Running out stops further checks rather than adding to a bill: nothing here can charge you by surprise.'
                 ]));
                 var pmain = useMain();
-                pmain.appendChild(useFacts([
-                    ['Plan', orghPlan(plan.state)],
-                    ['Live checks included', plan.state === 'enterprise' ? t('Unmetered') : useNum(plan.liveIncluded)],
-                    // said in full, because the number above it counts a period
-                    // and this one does not: two counts that disagree are worse
-                    // than one that explains itself
-                    ['Live checks used since the plan started', useNum(plan.liveUsed)],
-                    ['History scans', plan.historyOpen ? t('Unmetered') : useNum(plan.historyUsed) + ' / ' + useNum(plan.historyIncluded)],
-                    ['This period', useSpan(out.period)]
-                ]));
+                if (sub) {
+                    var rows = [
+                        ['Plan', sub.planName],
+                        ['Billing', t(useTermWord(sub.term))],
+                        ['Price', useMoney(sub.priceCents, sub.currency)],
+                        ['Started', whenText(sub.startedAt)]
+                    ];
+                    if (sub.termEndsAt) {
+                        rows.push([sub.cancelledAt ? 'Ends' : 'Renews', whenText(sub.termEndsAt)]);
+                    }
+                    rows.push(['This period', useSpan(out.period)]);
+                    if (sub.included) {
+                        rows.push(['Screenings included', useNum(sub.included.screenings)]);
+                        rows.push(['Seats included', useNum(sub.included.seats)]);
+                    }
+                    if (!sub.paid) rows.push(['Paid', t('Not paid yet')]);
+                    pmain.appendChild(useFacts(rows));
+                } else {
+                    pmain.appendChild(useFacts([
+                        ['Plan', orghPlan(plan.state)],
+                        ['Live checks included', plan.state === 'enterprise' ? t('Unmetered') : useNum(plan.liveIncluded)],
+                        // said in full, because the number above it counts a period
+                        // and this one does not: two counts that disagree are worse
+                        // than one that explains itself
+                        ['Live checks used since the plan started', useNum(plan.liveUsed)],
+                        ['History scans', plan.historyOpen ? t('Unmetered') : useNum(plan.historyUsed) + ' / ' + useNum(plan.historyIncluded)],
+                        ['This period', useSpan(out.period)]
+                    ]));
+                }
                 pl.body.appendChild(pmain);
                 body.appendChild(pl);
             }
