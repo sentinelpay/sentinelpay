@@ -39,6 +39,10 @@ function uses() {
     for (const m of SRC.matchAll(/label: '([^']+)', icon: '([a-z]+)'/g)) {
         out.push({ meaning: m[1], icon: m[2] });
     }
+    // usage sections: useSection('anchor', 'Title', 'name', 'hint')
+    for (const m of SRC.matchAll(/useSection\('[a-z-]+', '([^']+)', '([a-z]+)'/g)) {
+        out.push({ meaning: m[1], icon: m[2] });
+    }
     // cards: orghCard('Title', 'name')
     for (const m of SRC.matchAll(/orghCard\('([^']+)', '([a-z]+)'\)/g)) {
         out.push({ meaning: m[1], icon: m[2] });

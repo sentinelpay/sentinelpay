@@ -21,6 +21,7 @@ const orgs = require('./orgs');
 const projects = require('./projects');
 const live = require('./live');
 const invites = require('./invites');
+const usage = require('./usage.js');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -2143,6 +2144,65 @@ app.get('/v1/orgs/:id/projects', async (req, res) => {
     if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
     res.set('Cache-Control', 'no-store, private');
     res.json({ ok: true, rows: await projects.listFor(mine.id), role: mine.role });
+});
+
+// What this organisation has done in a period. Every member may read it: it is
+// their own company's work, and a viewer who cannot see how much was screened
+// cannot check the number they are being asked about.
+async function usageFor(req, mine) {
+    const plan = await trial.get(mine.id);
+    return usage.forOrg(mine.id, {
+        anchor: plan.startedAt || mine.createdAt,
+        period: String(req.query.period || ''),
+        scope: String(req.query.scope || ''),
+    });
+}
+
+app.get('/v1/orgs/:id/usage', async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const mine = await orgs.membership(me.userId, req.params.id);
+    if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
+    res.set('Cache-Control', 'no-store, private');
+    const [out, plan, listed] = await Promise.all([
+        usageFor(req, mine),
+        trial.get(mine.id),
+        sanctions.status(),
+    ]);
+    res.json({
+        ...out,
+        plan: { ...plan, historyLeft: plan.historyLeft === Infinity ? null : plan.historyLeft },
+        coverage: {
+            source: 'OFAC SDN',
+            listDate: listed.listDate || '',
+            addresses: listed.addressCount || 0,
+            refreshedAt: listed.refreshedAt || null,
+        },
+    });
+});
+
+// The same period as a file, because this page is also evidence: somebody is
+// asked what was screened in March and has to hand over something that can be
+// kept and read without an account.
+app.get('/v1/orgs/:id/usage.csv', async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const mine = await orgs.membership(me.userId, req.params.id);
+    if (!mine) return res.status(404).send('You are not in that organisation.');
+    const out = await usageFor(req, mine);
+    if (!out.ok) return res.status(503).send('Not available right now.');
+    const name = 'sentinelpay-usage-' + out.period.from.slice(0, 10) + '.csv';
+    res.set('Cache-Control', 'no-store, private');
+    res.set('Content-Type', 'text/csv; charset=utf-8');
+    res.set('Content-Disposition', 'attachment; filename="' + name + '"');
+    // a browser that decides for itself what a downloaded file is can decide it
+    // is html, and a csv full of somebody's addresses is not a page to render
+    res.set('X-Content-Type-Options', 'nosniff');
+    await accounts.audit('usage-export', {
+        actor: String(me.userId), subject: String(me.userId), ip: req.realIp,
+        detail: mine.slug + ' ' + out.period.from.slice(0, 10),
+    });
+    res.send(usage.csv(out, mine));
 });
 
 app.post('/v1/orgs/:id/projects', requireCloudflareOrigin, accountLimiter, async (req, res) => {

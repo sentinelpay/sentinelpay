@@ -1,0 +1,267 @@
+'use strict';
+
+const db = require('./db.js');
+
+// What an organisation has done in a period.
+//
+// The screenings table is already the record: every check is a row with the
+// time it happened, the organisation it belonged to, what came back, and
+// whether it was sandbox work. So this file counts what is there rather than
+// keeping a second set of counters beside it. Two counters for one fact drift
+// apart, and on a compliance tool the number on this screen is the one somebody
+// may have to stand behind.
+//
+// The quota counters on the trials row are a different thing and stay where
+// they are: they are what the plan has left, counted since the plan started,
+// not what was done between two dates.
+//
+// Periods are monthly, anchored on the day the plan started. A month is what an
+// invoice covers, and anchoring on the plan rather than on the calendar means
+// the page and the invoice describe the same window. Without a plan the
+// organisation's own birthday is the anchor, so the page still works before
+// anybody has paid for anything.
+
+const CYCLES_BACK = 3;
+
+function atUTC(y, m, d) {
+    return new Date(Date.UTC(y, m, d, 0, 0, 0, 0));
+}
+
+// The 31st of a month does not exist in the next one. Clamping down keeps every
+// cycle a whole month and keeps them touching, with no day belonging to two
+// cycles or to none.
+function addMonths(date, n) {
+    const y = date.getUTCFullYear();
+    const m = date.getUTCMonth();
+    const d = date.getUTCDate();
+    const target = atUTC(y, m + n, 1);
+    const last = atUTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0).getUTCDate();
+    return atUTC(target.getUTCFullYear(), target.getUTCMonth(), Math.min(d, last));
+}
+
+// Every cycle boundary from the anchor, newest first. `back` of them.
+function cycles(anchorAt, now, back) {
+    const anchor = new Date(anchorAt || Date.now());
+    const today = new Date(now || Date.now());
+    const day = anchor.getUTCDate();
+
+    // the most recent boundary at or before today: this month's anchor day if
+    // it has already been and gone, otherwise last month's
+    const lastOfThis = atUTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0).getUTCDate();
+    let start = atUTC(today.getUTCFullYear(), today.getUTCMonth(), Math.min(day, lastOfThis));
+    if (start.getTime() > today.getTime()) start = addMonths(start, -1);
+
+    const out = [];
+    for (let i = 0; i < Math.max(1, back || CYCLES_BACK); i++) {
+        const from = addMonths(start, -i);
+        const to = addMonths(from, 1);
+        // a cycle that begins before the anchor is a month this organisation
+        // did not exist for, and an empty window nobody asked about
+        if (to.getTime() <= anchor.getTime()) break;
+        out.push({
+            key: 'c' + i,
+            from: (from.getTime() < anchor.getTime() ? anchor : from).toISOString(),
+            to: to.toISOString(),
+            current: i === 0,
+        });
+    }
+    return out;
+}
+
+// A plan that started this morning makes for a cycle that started this morning,
+// and a page that says almost nothing although the organisation has been
+// working for months. So the periods on offer are not only the invoice's: a
+// plain rolling window answers "how much do we screen" without anybody having
+// to think about billing at all.
+function rolling(days, now) {
+    const end = new Date(now || Date.now());
+    const from = new Date(end.getTime() - days * 86400000);
+    return { key: 'd' + days, from: from.toISOString(), to: end.toISOString(), days };
+}
+
+function periods(anchorAt, now) {
+    const when = now || Date.now();
+    return cycles(anchorAt, when, CYCLES_BACK).concat([rolling(30, when), rolling(90, when)]);
+}
+
+function pickCycle(list, key) {
+    for (let i = 0; i < list.length; i++) {
+        if (list[i].key === key) return list[i];
+    }
+    return list[0];
+}
+
+// Every day in the window, including the ones nothing happened on. A chart with
+// the quiet days left out is a chart that lies about the shape of the work.
+function fillDays(rows, from, to) {
+    const seen = new Map(rows.map((r) => [r.d, r]));
+    const out = [];
+    const start = new Date(from);
+    const end = new Date(to);
+    const cursor = atUTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate());
+    const stop = Math.min(end.getTime(), Date.now());
+    while (cursor.getTime() <= stop) {
+        const key = cursor.toISOString().slice(0, 10);
+        const row = seen.get(key);
+        out.push({ day: key, n: row ? row.n : 0, flagged: row ? row.flagged : 0 });
+        cursor.setUTCDate(cursor.getUTCDate() + 1);
+        if (out.length > 400) break;
+    }
+    return out;
+}
+
+async function screeningsIn(orgId, from, to, sandbox) {
+    const args = [Number(orgId), from, to, Boolean(sandbox)];
+    const [sum, days, verdicts, assets] = await Promise.all([
+        db.query(
+            `SELECT count(*)::int AS n,
+                    count(*) FILTER (WHERE verdict <> 'clear')::int AS flagged,
+                    count(DISTINCT address)::int AS addresses,
+                    count(DISTINCT NULLIF(asset, ''))::int AS assets
+               FROM screenings
+              WHERE org_id = $1 AND at >= $2 AND at < $3 AND sandbox = $4`,
+            args
+        ),
+        db.query(
+            `SELECT to_char(date_trunc('day', at AT TIME ZONE 'UTC'), 'YYYY-MM-DD') AS d,
+                    count(*)::int AS n,
+                    count(*) FILTER (WHERE verdict <> 'clear')::int AS flagged
+               FROM screenings
+              WHERE org_id = $1 AND at >= $2 AND at < $3 AND sandbox = $4
+           GROUP BY 1 ORDER BY 1`,
+            args
+        ),
+        db.query(
+            `SELECT verdict, count(*)::int AS n
+               FROM screenings
+              WHERE org_id = $1 AND at >= $2 AND at < $3 AND sandbox = $4
+           GROUP BY 1`,
+            args
+        ),
+        db.query(
+            `SELECT COALESCE(NULLIF(asset, ''), 'other') AS asset, count(*)::int AS n
+               FROM screenings
+              WHERE org_id = $1 AND at >= $2 AND at < $3 AND sandbox = $4
+           GROUP BY 1 ORDER BY n DESC, 1 LIMIT 12`,
+            args
+        ),
+    ]);
+
+    const head = sum.rows[0] || { n: 0, flagged: 0, addresses: 0, assets: 0 };
+    const byVerdict = {};
+    verdicts.rows.forEach((r) => { byVerdict[r.verdict] = r.n; });
+    return {
+        total: head.n,
+        flagged: head.flagged,
+        clear: head.n - head.flagged,
+        addresses: head.addresses,
+        assetCount: head.assets,
+        days: fillDays(days.rows, from, to),
+        verdicts: byVerdict,
+        assets: assets.rows.map((r) => ({ asset: r.asset, n: r.n })),
+    };
+}
+
+// The organisation itself: things that are true now rather than counted over a
+// window, plus the two that are (a token used, a person let in).
+async function shapeOf(orgId, from, to) {
+    const [members, projects, tokens, invited] = await Promise.all([
+        db.query('SELECT count(*)::int AS n FROM memberships WHERE org_id = $1', [Number(orgId)]),
+        db.query(
+            `SELECT count(*)::int AS n,
+                    count(*) FILTER (WHERE archived_at IS NULL)::int AS live
+               FROM projects WHERE org_id = $1`,
+            [Number(orgId)]
+        ),
+        db.query(
+            `SELECT count(*) FILTER (WHERE revoked_at IS NULL
+                        AND (expires_at IS NULL OR expires_at > now()))::int AS live,
+                    count(*) FILTER (WHERE last_used_at >= $2 AND last_used_at < $3)::int AS used
+               FROM api_tokens WHERE org_id = $1`,
+            [Number(orgId), from, to]
+        ),
+        db.query(
+            `SELECT count(*)::int AS n FROM memberships
+              WHERE org_id = $1 AND created_at >= $2 AND created_at < $3`,
+            [Number(orgId), from, to]
+        ),
+    ]);
+    return {
+        members: members.rows[0].n,
+        projects: projects.rows[0].live,
+        projectsAll: projects.rows[0].n,
+        tokens: tokens.rows[0].live,
+        tokensUsed: tokens.rows[0].used,
+        joined: invited.rows[0].n,
+    };
+}
+
+// The whole screen's worth, for one organisation and one period.
+async function forOrg(orgId, opts) {
+    const o = opts || {};
+    const list = periods(o.anchor, Date.now());
+    const period = pickCycle(list, o.period);
+    const sandbox = o.scope === 'sandbox';
+
+    if (!db.available()) {
+        return { ok: false, reason: 'unavailable', period, periods: list, scope: sandbox ? 'sandbox' : 'live' };
+    }
+
+    try {
+        const [work, shape] = await Promise.all([
+            screeningsIn(orgId, period.from, period.to, sandbox),
+            shapeOf(orgId, period.from, period.to),
+        ]);
+        return {
+            ok: true,
+            period,
+            periods: list,
+            scope: sandbox ? 'sandbox' : 'live',
+            screenings: work,
+            org: shape,
+        };
+    } catch (err) {
+        console.error('[usage] could not read: ' + err.message);
+        return { ok: false, reason: 'unavailable', period, periods: list, scope: sandbox ? 'sandbox' : 'live' };
+    }
+}
+
+function csvCell(value) {
+    const s = String(value === null || value === undefined ? '' : value);
+    // a cell that begins with one of these is run as a formula by a spreadsheet,
+    // which is how a file of numbers becomes something that does things
+    const safe = /^[=+\-@\t\r]/.test(s) ? "'" + s : s;
+    return /[",\n]/.test(safe) ? '"' + safe.replace(/"/g, '""') + '"' : safe;
+}
+
+// The same period as a file. This exists because on a compliance tool the usage
+// page is also evidence: somebody is asked how much was screened in March and
+// has to hand over something an auditor can keep.
+function csv(out, org) {
+    const lines = [];
+    const put = (a, b) => lines.push(csvCell(a) + ',' + csvCell(b));
+    lines.push('Sentinelpay usage');
+    put('Organisation', (org && org.name) || '');
+    put('From', out.period.from);
+    put('To', out.period.to);
+    put('Scope', out.scope === 'sandbox' ? 'sandbox' : 'production');
+    put('Generated', new Date().toISOString());
+    lines.push('');
+    put('Screenings', out.screenings.total);
+    put('Flagged', out.screenings.flagged);
+    put('Clear', out.screenings.clear);
+    put('Distinct addresses', out.screenings.addresses);
+    put('Assets seen', out.screenings.assetCount);
+    put('Members', out.org.members);
+    put('Projects', out.org.projects);
+    put('Tokens in use', out.org.tokensUsed);
+    lines.push('');
+    lines.push('Day,Screenings,Flagged');
+    out.screenings.days.forEach((d) => {
+        lines.push([csvCell(d.day), csvCell(d.n), csvCell(d.flagged)].join(','));
+    });
+    // a trailing newline, so the last row is a row and not the end of the file
+    return lines.join('\r\n') + '\r\n';
+}
+
+module.exports = { forOrg, cycles, periods, csv, addMonths, CYCLES_BACK };

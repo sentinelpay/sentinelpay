@@ -82,6 +82,13 @@
         link: '<path d="M10.2 13.8a3.6 3.6 0 0 1 0-5.1l2.6-2.6a3.6 3.6 0 0 1 5.1 5.1l-1.3 1.3"/>' +
             '<path d="M13.8 10.2a3.6 3.6 0 0 1 0 5.1l-2.6 2.6a3.6 3.6 0 0 1-5.1-5.1l1.3-1.3"/>',
         warn: '<path d="M12 8.5v5M12 16.9v.1"/><path d="M10.3 4.3 2.8 18a1.8 1.8 0 0 0 1.6 2.7h15.2A1.8 1.8 0 0 0 21.2 18L13.7 4.3a1.9 1.9 0 0 0-3.4 0Z"/>',
+        // a check that came back as something other than clear. a marker put in
+        // by a person, not a warning sign: it says look here, not stop.
+        flag: '<path d="M6 21V4.6a.6.6 0 0 1 .35-.55C7.6 3.5 9 3.2 10.4 3.2c2.9 0 4.3 1.6 7.2 1.6.9 0 1.7-.1 2.4-.3v8.6c-.7.2-1.5.3-2.4.3-2.9 0-4.3-1.6-7.2-1.6-1.4 0-2.8.3-4.4.9"/>',
+        // a chain: the thing an address is on. two links of one, rather than a
+        // coin, because what is counted is the network and not the money.
+        coin: '<rect x="2.6" y="8.8" width="10.2" height="6.4" rx="3.2"/>' +
+            '<rect x="11.2" y="8.8" width="10.2" height="6.4" rx="3.2"/>',
         // an invitation that has gone out and not been answered. deliberately
         // not the person mark: nobody is there yet, an envelope is.
         mail: '<rect x="3" y="5.5" width="18" height="13" rx="2.2"/><path d="m3.8 7 7.1 5.3a1.8 1.8 0 0 0 2.2 0L20.2 7"/>',
@@ -4015,33 +4022,566 @@
 
     // The rail from the overview, with room to breathe and the figures it could
     // not fit.
+    // ---------------------------------------------------------------- usage
+    //
+    // What this organisation has screened, and what its plan allows. Two
+    // different kinds of number share the screen and are kept apart on purpose:
+    // what was done between two dates, which is counted from the screenings
+    // themselves, and what the plan has left, which is counted since the plan
+    // started and does not reset when a period does.
+
+    function useNum(n) {
+        return Number(n || 0).toLocaleString(navLang());
+    }
+
+    // Whole sentences rather than a number glued to a fragment: croatian needs
+    // three plural forms, and a joined fragment cannot be given any of them.
+    function useWindowWord(days) {
+        return days === 90 ? t('Last 90 days') : t('Last 30 days');
+    }
+
+    function useSpan(p) {
+        if (!p) return '';
+        if (p.days) return useWindowWord(p.days);
+        // the end of a period is the moment the next one begins, so the day
+        // shown as its last is the day before
+        var end = new Date(new Date(p.to).getTime() - 1);
+        return whenText(p.from) + ' – ' + whenText(end.toISOString());
+    }
+
+    function usePeriodLabel(p) {
+        if (p.days) return useWindowWord(p.days);
+        if (p.current) return t('Current billing cycle');
+        return useSpan(p);
+    }
+
+    // The work, day by day. Drawn rather than pulled in: a chart library is a
+    // lot of somebody else's code for thirty numbers, and this one has to match
+    // the page in both themes, which is most of what a library would be doing.
+    function useChart(days) {
+        var box = document.createElement('div');
+        box.className = 'use-chart';
+        var top = 1;
+        days.forEach(function (d) { if (d.n > top) top = d.n; });
+
+        var w = Math.max(days.length, 1);
+        var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 ' + (w * 10) + ' 100');
+        svg.setAttribute('preserveAspectRatio', 'none');
+        svg.setAttribute('class', 'use-chart-svg');
+        svg.setAttribute('role', 'img');
+        svg.setAttribute('aria-label', t('Screenings per day'));
+
+        days.forEach(function (d, i) {
+            var h = d.n > 0 ? Math.max(2, Math.round((d.n / top) * 92)) : 0;
+            var x = i * 10 + 1.5;
+            if (h > 0) {
+                var bar = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                bar.setAttribute('x', String(x));
+                bar.setAttribute('y', String(100 - h));
+                bar.setAttribute('width', '7');
+                bar.setAttribute('height', String(h));
+                bar.setAttribute('rx', '1.5');
+                bar.setAttribute('class', 'use-bar-run');
+                svg.appendChild(bar);
+                if (d.flagged > 0) {
+                    // the flagged part sits inside the same column rather than
+                    // beside it: they are the same checks, not extra ones
+                    var fh = Math.max(2, Math.round((d.flagged / d.n) * h));
+                    var hit = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    hit.setAttribute('x', String(x));
+                    hit.setAttribute('y', String(100 - fh));
+                    hit.setAttribute('width', '7');
+                    hit.setAttribute('height', String(fh));
+                    hit.setAttribute('rx', '1.5');
+                    hit.setAttribute('class', 'use-bar-flag');
+                    svg.appendChild(hit);
+                }
+            }
+            // a day with nothing on it still answers when it is pointed at
+            var lane = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            lane.setAttribute('x', String(i * 10));
+            lane.setAttribute('y', '0');
+            lane.setAttribute('width', '10');
+            lane.setAttribute('height', '100');
+            lane.setAttribute('class', 'use-bar-lane');
+            var title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+            title.textContent = whenText(d.day) + '  ·  ' + t('Screenings') + ' ' + useNum(d.n) +
+                (d.flagged ? '  ·  ' + t('Flagged') + ' ' + useNum(d.flagged) : '');
+            lane.appendChild(title);
+            svg.appendChild(lane);
+        });
+
+        box.appendChild(svg);
+        var foot = document.createElement('div');
+        foot.className = 'use-chart-f';
+        var a = document.createElement('span');
+        a.textContent = days.length ? whenText(days[0].day) : '';
+        var b = document.createElement('span');
+        b.textContent = days.length ? whenText(days[days.length - 1].day) : '';
+        foot.appendChild(a);
+        foot.appendChild(b);
+        box.appendChild(foot);
+        return box;
+    }
+
+    // A list where the length of each line is its share. Used for what came
+    // back and for which chains were asked about.
+    function useShare(rows, total, kindOf) {
+        var list = document.createElement('div');
+        list.className = 'use-share';
+        rows.forEach(function (r) {
+            var line = document.createElement('div');
+            line.className = 'use-share-l';
+            var name = document.createElement('span');
+            name.className = 'use-share-n';
+            name.textContent = r.label;
+            line.appendChild(name);
+            var track = document.createElement('span');
+            track.className = 'use-share-t';
+            var fill = document.createElement('span');
+            fill.className = 'use-share-f' + (kindOf && kindOf(r) ? ' is-' + kindOf(r) : '');
+            fill.style.width = (total > 0 ? Math.max(2, Math.round((r.n / total) * 100)) : 0) + '%';
+            track.appendChild(fill);
+            line.appendChild(track);
+            var fig = document.createElement('span');
+            fig.className = 'use-share-v';
+            fig.textContent = useNum(r.n);
+            line.appendChild(fig);
+            list.appendChild(line);
+        });
+        return list;
+    }
+
+    // One number with its name above it. `of` makes it a meter, `to` makes it
+    // a link down to the section that explains it.
+    function useTile(label, value, opts) {
+        var o = opts || {};
+        var tile = document.createElement(o.to ? 'a' : 'div');
+        tile.className = 'use-tile';
+        if (o.to) {
+            // an anchor, so it can be tabbed to and its target is announced,
+            // but the scrolling is ours: the page scrolls inside a box rather
+            // than as a document, and a fragment jump does not move that box.
+            tile.href = '#' + o.to;
+            tile.addEventListener('click', function (e) {
+                var target = document.getElementById(o.to);
+                if (!target) return;
+                e.preventDefault();
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        }
+        var head = document.createElement('div');
+        head.className = 'use-tile-h';
+        head.textContent = t(label);
+        if (o.to) {
+            var chev = document.createElement('span');
+            chev.className = 'use-tile-go';
+            chev.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                '<path d="m9 6 6 6-6 6"/></svg>';
+            head.appendChild(chev);
+        }
+        tile.appendChild(head);
+        var v = document.createElement('div');
+        v.className = 'use-tile-v';
+        v.textContent = value;
+        tile.appendChild(v);
+        if (o.sub) {
+            var s = document.createElement('div');
+            s.className = 'use-tile-s';
+            s.textContent = o.sub;
+            tile.appendChild(s);
+        }
+        if (o.of) {
+            var track = document.createElement('div');
+            track.className = 'orgh-track';
+            var fill = document.createElement('span');
+            fill.className = 'orgh-fill';
+            var pct = o.of > 0 ? Math.min(100, Math.round((o.used / o.of) * 100)) : 0;
+            fill.style.width = pct + '%';
+            if (pct >= 100) fill.classList.add('is-full');
+            track.appendChild(fill);
+            tile.appendChild(track);
+        }
+        return tile;
+    }
+
+    function useSection(id, title, ico, hint) {
+        var sec = document.createElement('section');
+        sec.className = 'use-sec';
+        sec.id = id;
+        var head = document.createElement('div');
+        head.className = 'use-sec-h';
+        var mark = document.createElement('span');
+        mark.className = 'orgh-ico';
+        mark.innerHTML = icon(ico);
+        head.appendChild(mark);
+        var txt = document.createElement('div');
+        var h = document.createElement('h2');
+        h.className = 'use-sec-t';
+        h.textContent = t(title);
+        txt.appendChild(h);
+        if (hint) {
+            var p = document.createElement('p');
+            p.className = 'use-sec-p';
+            p.textContent = t(hint);
+            txt.appendChild(p);
+        }
+        head.appendChild(txt);
+        sec.appendChild(head);
+        var body = document.createElement('div');
+        body.className = 'use-sec-b';
+        sec.appendChild(body);
+        sec.body = body;
+        return sec;
+    }
+
+    function useSide(paras) {
+        var side = document.createElement('div');
+        side.className = 'use-side';
+        paras.forEach(function (text) {
+            var p = document.createElement('p');
+            p.textContent = t(text);
+            side.appendChild(p);
+        });
+        return side;
+    }
+
+    function useMain() {
+        var main = document.createElement('div');
+        main.className = 'use-main';
+        return main;
+    }
+
+    // Included / used / left, as three lines rather than a sentence: a number
+    // with a name beside it can be read off, and a sentence has to be unpicked.
+    function useFacts(rows) {
+        var box = document.createElement('div');
+        box.className = 'use-facts';
+        rows.forEach(function (r) {
+            var line = document.createElement('div');
+            line.className = 'use-fact';
+            var k = document.createElement('span');
+            k.textContent = t(r[0]);
+            line.appendChild(k);
+            var v = document.createElement('span');
+            v.className = 'use-fact-v';
+            v.textContent = r[1];
+            line.appendChild(v);
+            box.appendChild(line);
+        });
+        return box;
+    }
+
     function viewUsage(me) {
         var page = document.createElement('div');
         page.className = 'pg';
-        var tr = me.trial || {};
-        page.appendChild(pageHead('Usage', 'What this organisation has used in the current period.'));
+        page.appendChild(pageHead('Usage',
+            'What this organisation has screened, and what its plan allows.'));
 
-        var plan = orghCard('Plan', 'plan');
-        plan.appendChild(orghStat('Plan', orghPlan(tr.state)));
-        if (tr.daysLeft) {
-            plan.appendChild(orghStat('Days left', String(tr.daysLeft)));
+        var org = me.org || {};
+        var want = { period: '', scope: 'live' };
+
+        var bar = document.createElement('div');
+        bar.className = 'bar use-bar';
+        page.appendChild(bar);
+
+        var body = document.createElement('div');
+        page.appendChild(body);
+        body.appendChild(waiting());
+
+        function pickers(out) {
+            bar.textContent = '';
+            var periods = (out && out.periods) || [];
+            bar.appendChild(selectBox('use-period', [{
+                options: periods.map(function (p) {
+                    return { value: p.key, label: usePeriodLabel(p) };
+                })
+            }], (out.period && out.period.key) || 'c0', function (v) {
+                want.period = v;
+                load();
+            }));
+
+            // the sandbox is a separate world on purpose: it screens against
+            // the same lists but spends nothing, so mixing it into these
+            // numbers would overstate the work and understate the quota
+            bar.appendChild(selectBox('use-scope', [{
+                options: [
+                    { value: 'live', label: t('Production') },
+                    { value: 'sandbox', label: t('Sandbox') }
+                ]
+            }], want.scope, function (v) {
+                want.scope = v;
+                load();
+            }));
+
+            var right = document.createElement('div');
+            right.className = 'use-bar-r';
+            var plan = document.createElement('span');
+            plan.className = 'use-plan';
+            plan.textContent = t('This organisation is on') + ' ';
+            plan.appendChild(planWord(out.plan));
+            right.appendChild(plan);
+            var when = document.createElement('span');
+            when.className = 'use-when';
+            when.textContent = useSpan(out.period);
+            right.appendChild(when);
+            bar.appendChild(right);
         }
-        page.appendChild(plan);
 
-        var checks = orghCard('Screening', 'screening');
-        checks.appendChild(orghMeter('Live checks', tr.liveUsed, tr.liveIncluded, tr.state === 'enterprise'));
-        if (!tr.historyOpen) {
-            checks.appendChild(orghMeter('History scans', tr.historyUsed, tr.historyIncluded, false));
+        function planWord(plan) {
+            var el = document.createElement('strong');
+            el.className = 'use-plan-n';
+            el.textContent = orghPlan((plan && plan.state) || 'none');
+            return el;
         }
-        checks.appendChild(orghStat('Screenings run', Number(me.screeningsRun || 0).toLocaleString()));
-        page.appendChild(checks);
 
-        var c = me.coverage || {};
-        var cov = orghCard('Sanctions coverage', 'coverage');
-        cov.appendChild(orghStat('List', c.source || 'OFAC SDN'));
-        cov.appendChild(orghStat('Addresses', c.addresses ? Number(c.addresses).toLocaleString() : '—'));
-        cov.appendChild(orghStat('Dated', c.listDate || '—'));
-        page.appendChild(cov);
+        function draw(out) {
+            body.textContent = '';
+            var s = out.screenings || {};
+            var plan = out.plan || {};
+            var shape = out.org || {};
+            var sandbox = out.scope === 'sandbox';
+
+            var verdict = document.createElement('p');
+            verdict.className = 'use-verdict';
+            var overQuota = !sandbox && plan.liveIncluded > 0 && plan.liveLeft === 0;
+            verdict.textContent = overQuota
+                ? t('You have used every check this plan includes.')
+                : t('Nothing has gone past its limit in this period.');
+            if (overQuota) verdict.classList.add('is-over');
+            body.appendChild(verdict);
+
+            var grid = document.createElement('div');
+            grid.className = 'use-grid';
+            grid.appendChild(useTile('Screenings', useNum(s.total), {
+                to: 'use-screening',
+                sub: t('Addresses') + '  ' + useNum(s.addresses)
+            }));
+            grid.appendChild(useTile('Flagged', useNum(s.flagged), {
+                to: 'use-flagged',
+                sub: s.total ? t('Share') + '  ' + Math.round((s.flagged / s.total) * 100) + '%' : t('Nothing yet')
+            }));
+            if (!sandbox) {
+                grid.appendChild(useTile('Checks left on this plan',
+                    plan.state === 'enterprise' ? t('Unmetered') : useNum(plan.liveLeft), {
+                        to: 'use-plan',
+                        used: plan.liveUsed,
+                        of: plan.state === 'enterprise' ? 0 : plan.liveIncluded,
+                        sub: plan.state === 'enterprise'
+                            ? t('Counted, not capped')
+                            : t('Used') + '  ' + useNum(plan.liveUsed) + ' / ' + useNum(plan.liveIncluded)
+                    }));
+                grid.appendChild(useTile('History scans',
+                    plan.historyOpen ? t('Unmetered') : useNum(plan.historyUsed), {
+                        to: 'use-plan',
+                        used: plan.historyUsed,
+                        of: plan.historyOpen ? 0 : plan.historyIncluded,
+                        sub: plan.historyOpen ? t('Counted, not capped')
+                            : t('Used') + '  ' + useNum(plan.historyUsed) + ' / ' + useNum(plan.historyIncluded)
+                    }));
+            }
+            grid.appendChild(useTile('Chains seen', useNum(s.assetCount), {
+                to: 'use-assets',
+                sub: (s.assets && s.assets.length) ? t('Most seen') + '  ' + s.assets[0].asset : t('Nothing yet')
+            }));
+            grid.appendChild(useTile('Tokens used', useNum(shape.tokensUsed), {
+                to: 'use-team',
+                sub: t('Able to screen') + '  ' + useNum(shape.tokens)
+            }));
+            grid.appendChild(useTile('Members', useNum(shape.members), { to: 'use-team' }));
+            grid.appendChild(useTile('Projects', useNum(shape.projects), { to: 'use-team' }));
+            body.appendChild(grid);
+
+            // ---- screening
+            var sec = useSection('use-screening', 'Screening', 'screening',
+                'Every address this organisation checked in the period.');
+            sec.body.appendChild(useSide([
+                'One screening is one address checked against the lists at that moment.',
+                sandbox
+                    ? 'Sandbox checks read the same lists and spend nothing, so they are counted here but never billed.'
+                    : 'A check is counted when it runs, whether it came from this dashboard or from a token.'
+            ]));
+            var main = useMain();
+            main.appendChild(useFacts([
+                ['Screenings', useNum(s.total)],
+                ['Addresses', useNum(s.addresses)],
+                ['Busiest day', busiest(s.days)]
+            ]));
+            if (s.total > 0) {
+                main.appendChild(useChart(s.days || []));
+            } else {
+                main.appendChild(emptyState('Nothing screened in this period',
+                    'Anything checked from here or from a token shows up straight away.'));
+            }
+            sec.body.appendChild(main);
+            body.appendChild(sec);
+
+            // ---- what came back
+            var flag = useSection('use-flagged', 'What came back', 'flag',
+                'How the checks answered.');
+            flag.body.appendChild(useSide([
+                'Anything other than clear is worth a person looking at it.',
+                'A flag is not a verdict about the customer: it is the list saying it knows the address.'
+            ]));
+            var fmain = useMain();
+            // no summary above the list: the list already says clear and what
+            // was not, and a total repeated two inches above itself is one more
+            // number to keep in agreement with the other one
+            var vrows = Object.keys(s.verdicts || {}).map(function (k) {
+                return { label: verdictWord(k), n: s.verdicts[k], key: k };
+            }).sort(function (a, b) { return b.n - a.n; });
+            if (vrows.length) {
+                fmain.appendChild(useShare(vrows, s.total, function (r) {
+                    return r.key === 'clear' ? 'ok' : (r.key === 'severe' ? 'bad' : 'mid');
+                }));
+            } else {
+                fmain.appendChild(emptyState('Nothing to show yet', ''));
+            }
+            flag.body.appendChild(fmain);
+            body.appendChild(flag);
+
+            // ---- chains
+            var ass = useSection('use-assets', 'Chains', 'coin',
+                'Which chains the addresses were on.');
+            ass.body.appendChild(useSide([
+                'Addresses are recognised by their shape, so this is what was asked about rather than what was declared.'
+            ]));
+            var amain = useMain();
+            if (s.assets && s.assets.length) {
+                amain.appendChild(useShare(s.assets.map(function (a) {
+                    return { label: a.asset === 'other' ? t('Not recognised') : a.asset, n: a.n };
+                }), s.total));
+            } else {
+                amain.appendChild(emptyState('Nothing to show yet', ''));
+            }
+            ass.body.appendChild(amain);
+            body.appendChild(ass);
+
+            // ---- plan
+            if (!sandbox) {
+                var pl = useSection('use-plan', 'Plan', 'plan',
+                    'What this organisation is allowed, and how much of it is left.');
+                pl.body.appendChild(useSide([
+                    'These are counted from the day the plan started, not from the day this period did, so they do not reset when a period does.',
+                    'Running out stops further checks rather than adding to a bill: nothing here can charge you by surprise.'
+                ]));
+                var pmain = useMain();
+                pmain.appendChild(useFacts([
+                    ['Plan', orghPlan(plan.state)],
+                    ['Live checks included', plan.state === 'enterprise' ? t('Unmetered') : useNum(plan.liveIncluded)],
+                    // said in full, because the number above it counts a period
+                    // and this one does not: two counts that disagree are worse
+                    // than one that explains itself
+                    ['Live checks used since the plan started', useNum(plan.liveUsed)],
+                    ['History scans', plan.historyOpen ? t('Unmetered') : useNum(plan.historyUsed) + ' / ' + useNum(plan.historyIncluded)],
+                    ['This period', useSpan(out.period)]
+                ]));
+                pl.body.appendChild(pmain);
+                body.appendChild(pl);
+            }
+
+            // ---- coverage
+            var c = out.coverage || {};
+            var cov = useSection('use-coverage', 'Sanctions coverage', 'coverage',
+                'What the checks were run against.');
+            cov.body.appendChild(useSide([
+                'Every check in this period was run against this list, at the version it was on that day.'
+            ]));
+            var cmain = useMain();
+            cmain.appendChild(useFacts([
+                ['List', c.source || 'OFAC SDN'],
+                ['Addresses on it', c.addresses ? useNum(c.addresses) : '—'],
+                // the list publishes its own date in american order, which is
+                // not how it is read anywhere this is sold
+                ['List dated', c.listDate ? (whenText(listDay(c.listDate)) || c.listDate) : '—'],
+                ['Last refreshed', c.refreshedAt ? whenText(c.refreshedAt, true) : '—']
+            ]));
+            cov.body.appendChild(cmain);
+            body.appendChild(cov);
+
+            // ---- team
+            var team = useSection('use-team', 'Team', 'team',
+                'Who and what can reach this organisation.');
+            team.body.appendChild(useSide([
+                'A token that has not been used in a long time is worth withdrawing: it can still screen until it is.'
+            ]));
+            var tmain = useMain();
+            tmain.appendChild(useFacts([
+                ['Members', useNum(shape.members)],
+                ['Joined in this period', useNum(shape.joined)],
+                ['Projects', useNum(shape.projects)],
+                ['Tokens that can be used', useNum(shape.tokens)],
+                ['Tokens used in this period', useNum(shape.tokensUsed)]
+            ]));
+            team.body.appendChild(tmain);
+            body.appendChild(team);
+
+            // ---- take it with you
+            var foot = document.createElement('div');
+            foot.className = 'use-foot';
+            var note = document.createElement('p');
+            note.textContent = t('A file of this period, to keep or to hand over.');
+            foot.appendChild(note);
+            var get = document.createElement('a');
+            get.className = 'btn btn-quiet';
+            get.href = '/v1/orgs/' + encodeURIComponent(org.id) + '/usage.csv?period=' +
+                encodeURIComponent(out.period.key) + '&scope=' + encodeURIComponent(out.scope);
+            get.setAttribute('download', '');
+            get.textContent = t('Download CSV');
+            foot.appendChild(get);
+            body.appendChild(foot);
+        }
+
+        // OFAC writes 09/18/2026. Turned into a date only when it is plainly
+        // that shape, so anything else is passed through as written rather than
+        // guessed at.
+        function listDay(raw) {
+            var m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(raw || '').trim());
+            return m ? m[3] + '-' + m[1] + '-' + m[2] + 'T00:00:00Z' : '';
+        }
+
+        function busiest(days) {
+            var best = null;
+            (days || []).forEach(function (d) {
+                if (!best || d.n > best.n) best = d;
+            });
+            if (!best || !best.n) return '—';
+            return whenText(best.day) + '  ·  ' + useNum(best.n);
+        }
+
+        function verdictWord(key) {
+            if (key === 'clear') return t('Clear');
+            if (key === 'severe') return t('Sanctioned');
+            if (key === 'review') return t('Worth a look');
+            return key;
+        }
+
+        function load() {
+            if (!org.id) return;
+            var url = '/v1/orgs/' + encodeURIComponent(org.id) + '/usage?period=' +
+                encodeURIComponent(want.period) + '&scope=' + encodeURIComponent(want.scope);
+            fetch(url, { credentials: 'same-origin' })
+                .then(function (r) {
+                    if (!r.ok) throw new Error('bad-status-' + r.status);
+                    return r.json();
+                })
+                .then(function (out) {
+                    if (!out || !out.ok) throw new Error('not-ok');
+                    want.period = out.period.key;
+                    pickers(out);
+                    draw(out);
+                })
+                .catch(function () {
+                    body.textContent = '';
+                    body.appendChild(emptyState('That did not load.', 'Reload the page to try again.'));
+                });
+        }
+
+        // a screening anywhere in this organisation is a number on this page
+        onLive(load);
+        load();
         return page;
     }
 

@@ -3155,3 +3155,171 @@ html.is-theming .btn {
     .inv-line > .copy { grid-row: 1; grid-column: 2; justify-self: end; }
     .inv-what { grid-row: 2; grid-column: 1 / -1; }
 }
+
+/* ---------------------------------------------------------------- usage
+   Two kinds of number share this screen: what was done between two dates, and
+   what the plan has left. They are laid out differently on purpose. The first
+   kind gets tiles and a chart, because the question is "how much, and when".
+   The second is a list of plain facts, because the question is "how much is
+   left", and a chart of one number is decoration. */
+.use-bar { flex-wrap: wrap; gap: 0.6rem; }
+.use-bar-r {
+    margin-left: auto;
+    display: flex;
+    align-items: baseline;
+    gap: 0.55rem;
+    font-size: 0.82rem;
+    color: var(--ink-4);
+}
+.use-plan-n { color: var(--ink-2); font-weight: 600; }
+.use-when { padding-left: 0.55rem; border-left: 1px solid var(--line); }
+
+.use-verdict { margin: 0 0 1.1rem; font-size: 0.86rem; color: var(--ink-3); }
+.use-verdict.is-over { color: var(--risk-mid); font-weight: 600; }
+
+/* Tiles are a summary, so they are small and there are several. Two across:
+   three would make each one narrower than the numbers it has to hold once a
+   figure runs into five digits. */
+.use-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+    margin-bottom: 2.2rem;
+}
+.use-tile {
+    display: block;
+    padding: 0.85rem 0.95rem;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--card);
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.18s ease, background 0.18s ease;
+}
+a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover); }
+.use-tile-h {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.78rem;
+    color: var(--ink-4);
+}
+.use-tile-go { display: inline-flex; width: 13px; height: 13px; }
+.use-tile-go svg { width: 100%; height: 100%; }
+.use-tile-v {
+    margin-top: 0.25rem;
+    font-family: var(--sp-display);
+    font-size: 1.35rem;
+    color: var(--ink);
+}
+.use-tile-s { margin-top: 0.15rem; font-size: 0.76rem; color: var(--ink-4); }
+.use-tile .orgh-track { margin-top: 0.55rem; }
+
+/* a tile jumps to its section, so the section needs room above it or the
+   heading lands flush against the top of the window */
+.use-sec { padding-top: 1.6rem; border-top: 1px solid var(--line-2); scroll-margin-top: 1.2rem; }
+.use-sec + .use-sec { margin-top: 1.6rem; }
+.use-sec-h { display: flex; align-items: flex-start; gap: 0.6rem; margin-bottom: 1rem; }
+.use-sec-t { margin: 0; font-family: var(--sp-display); font-size: 1rem; color: var(--ink); }
+.use-sec-p { margin: 0.15rem 0 0; font-size: 0.82rem; color: var(--ink-4); }
+/* the explanation on the left, the numbers on the right: the words are read
+   once and the numbers are read every time */
+.use-sec-b {
+    display: grid;
+    grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+    gap: 1.6rem;
+}
+.use-side p { margin: 0 0 0.7rem; font-size: 0.82rem; line-height: 1.6; color: var(--ink-4); }
+.use-side p:last-child { margin-bottom: 0; }
+.use-main { min-width: 0; }
+
+.use-facts { margin-bottom: 1rem; }
+.use-fact {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.45rem 0;
+    border-bottom: 1px solid var(--line-2);
+    font-size: 0.82rem;
+    color: var(--ink-4);
+}
+.use-fact:last-child { border-bottom: 0; }
+.use-fact-v { color: var(--ink-2); font-weight: 600; text-align: right; }
+
+/* The chart is drawn rather than pulled in. It has no axis: the numbers above
+   it are the numbers, and an axis on thirty bars is furniture. */
+.use-chart {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--card);
+    padding: 0.8rem 0.8rem 0.5rem;
+}
+.use-chart-svg { display: block; width: 100%; height: 132px; }
+.use-bar-run { fill: var(--link); opacity: 0.75; }
+.use-bar-flag { fill: var(--risk-mid); }
+/* an invisible column per day, so a day with nothing on it can still be
+   pointed at and say so */
+.use-bar-lane { fill: transparent; }
+.use-bar-lane:hover { fill: var(--hover); }
+.use-chart-f {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.4rem;
+    font-size: 0.72rem;
+    color: var(--ink-4);
+}
+
+.use-share-l {
+    display: grid;
+    grid-template-columns: minmax(0, 7rem) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.3rem 0;
+    font-size: 0.8rem;
+}
+.use-share-n { color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.use-share-t {
+    height: 7px;
+    border-radius: 999px;
+    background: var(--line-2);
+    overflow: hidden;
+}
+.use-share-f { display: block; height: 100%; border-radius: 999px; background: var(--link); }
+.use-share-f.is-ok { background: var(--risk-low); }
+.use-share-f.is-mid { background: var(--risk-mid); }
+.use-share-f.is-bad { background: var(--risk-high); }
+.use-share-v { color: var(--ink-2); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.use-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding-top: 1.2rem;
+    border-top: 1px solid var(--line-2);
+}
+.use-foot p { margin: 0; font-size: 0.82rem; color: var(--ink-4); }
+
+@media (max-width: 720px) {
+    /* The explanation goes above the numbers rather than beside them. The tiles
+       stay two across: one across turns eight short numbers into a page and a
+       half of scrolling, and none of these numbers is long enough to need the
+       width. They lose some padding and a little type instead. */
+    .use-sec-b { grid-template-columns: minmax(0, 1fr); gap: 0.9rem; }
+    .use-tile { padding: 0.7rem 0.75rem; }
+    .use-tile-v { font-size: 1.1rem; }
+    .use-tile-h { font-size: 0.74rem; }
+    .use-tile-s { font-size: 0.72rem; }
+    .use-bar-r {
+        margin-left: 0;
+        flex: 1 1 100%;
+        flex-wrap: wrap;
+        gap: 0.2rem 0.5rem;
+    }
+    .use-when { padding-left: 0; border-left: 0; }
+    .use-foot { flex-direction: column; align-items: stretch; }
+    .use-foot .btn { justify-content: center; }
+    .use-share-l { grid-template-columns: minmax(0, 5.5rem) minmax(0, 1fr) auto; }
+}

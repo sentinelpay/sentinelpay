@@ -113,6 +113,11 @@ for f in sorted(x for x in os.listdir(PUB) if x.endswith('.js')):
     # would otherwise never be checked.
     TRANSLATING_HELPERS = r"(?:acctLabel|acctRow|head|card|crumb|sectionTitle|sectionNote)"
     lits += re.findall(TRANSLATING_HELPERS + r"\(\s*'((?:[^'\\]|\\.)+)'", src)
+    # the usage screen's own two: a tile is a label and a number, and a section
+    # is an anchor, a title and a hint. both translate inside, and both are
+    # often a single word, which the sweep below would never look at.
+    lits += re.findall(r"useTile\(\s*'((?:[^'\\]|\\.)+)'", src)
+    lits += re.findall(r"useSection\(\s*'[a-z-]+',\s*'((?:[^'\\]|\\.)+)'", src)
     CODEY = re.compile(r'^[^a-zA-Z]|[\\\[\]{}<>=()]|^https?:|\bdata-|\baria-')
     CLASSY = re.compile(r'^[a-z0-9-]+(?: [a-z0-9-]+)*$')
     def codey(lit):
