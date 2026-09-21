@@ -4059,8 +4059,19 @@
         if (p.days) return useWindowWord(p.days);
         // the end of a period is the moment the next one begins, so the day
         // shown as its last is the day before
+        var from = new Date(p.from);
         var end = new Date(new Date(p.to).getTime() - 1);
-        return whenText(p.from) + ' – ' + whenText(end.toISOString());
+        var a = whenText(p.from);
+        var b = whenText(end.toISOString());
+        // one year, said once. a range inside a single year that prints it at
+        // both ends is the same four characters twice, and this line has to fit
+        // beside two controls.
+        if (from.getUTCFullYear() === end.getUTCFullYear()) {
+            var year = String(from.getUTCFullYear());
+            var at = a.lastIndexOf(year);
+            if (at !== -1) a = a.slice(0, at).replace(/[\s,.]+$/, '');
+        }
+        return a + ' \u2013 ' + b;
     }
 
     // whole words, one key each: a term is not a number and never needs joining
@@ -4375,19 +4386,19 @@
                     load();
                 }));
 
+                // The dates of the period sit beside the control that chooses
+                // it, not beside the plan. Next to the plan they read as the
+                // plan's own dates, which on a yearly subscription says it runs
+                // for a month.
+                whenSlot = document.createElement('span');
+                whenSlot.className = 'use-when';
+                left.appendChild(whenSlot);
+
                 var right = document.createElement('div');
                 right.className = 'use-bar-r';
                 planSlot = document.createElement('span');
                 planSlot.className = 'use-plan';
                 right.appendChild(planSlot);
-                var sep = document.createElement('span');
-                sep.className = 'use-sep';
-                sep.setAttribute('aria-hidden', 'true');
-                sep.textContent = '/';
-                right.appendChild(sep);
-                whenSlot = document.createElement('span');
-                whenSlot.className = 'use-when';
-                right.appendChild(whenSlot);
                 bar.appendChild(right);
             } else if (periodPick && out.period) {
                 periodPick.spSet(out.period.key);
@@ -4420,9 +4431,14 @@
             var box = document.createDocumentFragment();
             if (sub) {
                 box.appendChild(tag(t(useTermWord(sub.term))));
+                // the date that belongs to the plan is when the plan changes,
+                // which is not the same date as the period being read
                 if (sub.cancelledAt && sub.termEndsAt) {
                     box.appendChild(tag(t('Ends') + ' ' + whenText(sub.termEndsAt), 'mid'));
-                } else if (!sub.paid) {
+                } else if (sub.renewsAt) {
+                    box.appendChild(tag(t('Renews') + ' ' + whenText(sub.renewsAt)));
+                }
+                if (!sub.paid) {
                     // agreed but not paid for is a real state, and the people
                     // inside the company are the ones who can do something
                     // about it, so it is not hidden from them

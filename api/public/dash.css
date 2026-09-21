@@ -3205,8 +3205,9 @@ html.is-theming .btn {
     text-decoration: none;
 }
 .use-plan-n:hover { text-decoration: underline; }
-.use-sep { color: var(--line); }
-/* the countdown is a second thing after the plan's name, not part of it */
+/* the dates of the period, beside the control that chooses it */
+.use-when { font-size: 0.82rem; color: var(--ink-4); }
+/* the marks after the plan's name are second things, not part of it */
 .use-plan .tag { margin-left: 0.45rem; }
 
 .use-verdict { margin: 0 0 1.1rem; font-size: 0.86rem; color: var(--ink-3); }
@@ -3351,9 +3352,6 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
        screen, and there is no long sideways scan to keep your place in */
     .use-top { position: static; top: auto; padding-bottom: 0.9rem; }
     .use-bar-l { flex: 1 1 100%; }
-    /* the slash divides two things sitting side by side. once they are stacked
-       it is a mark dangling at the end of a line, dividing nothing. */
-    .use-sep { display: none; }
     .use-bar-r {
         margin-left: 0;
         flex: 1 1 100%;
