@@ -4244,6 +4244,62 @@
         return tile;
     }
 
+    // What the plan allows, and how much of it is gone.
+    //
+    // Only things a plan actually limits belong here. The tiles below carry
+    // what happened -- how many were flagged, which chains, who is in the
+    // organisation -- and mixing the two means a reader cannot tell which of
+    // these numbers can run out.
+    function useAllowance(rows, head, agreed) {
+        var box = document.createElement('section');
+        box.className = 'use-allow';
+        var top = document.createElement('div');
+        top.className = 'use-allow-h';
+        var lab = document.createElement('span');
+        lab.textContent = t('What this plan includes');
+        top.appendChild(lab);
+        var right = document.createElement('span');
+        right.className = 'use-allow-p';
+        right.textContent = head;
+        if (agreed) {
+            // a number somebody shook hands on, not the one on the pricing page
+            right.appendChild(tag(t('Agreed')));
+        }
+        top.appendChild(right);
+        box.appendChild(top);
+
+        rows.forEach(function (r) {
+            var line = document.createElement('div');
+            line.className = 'use-allow-r';
+            var name = document.createElement('span');
+            name.className = 'use-allow-n';
+            name.textContent = t(r.label);
+            line.appendChild(name);
+
+            var fig = document.createElement('span');
+            fig.className = 'use-allow-v';
+            fig.textContent = r.unmetered
+                ? t('Unmetered')
+                : useNum(r.used) + ' / ' + useNum(r.of);
+            line.appendChild(fig);
+
+            var track = document.createElement('span');
+            track.className = 'use-allow-t';
+            if (!r.unmetered) {
+                var fill = document.createElement('span');
+                fill.className = 'use-allow-f';
+                var pct = r.of > 0 ? Math.min(100, Math.round((r.used / r.of) * 100)) : 0;
+                fill.style.width = pct + '%';
+                if (pct >= 100) fill.classList.add('is-full');
+                else if (pct >= 80) fill.classList.add('is-near');
+                track.appendChild(fill);
+            }
+            line.appendChild(track);
+            box.appendChild(line);
+        });
+        return box;
+    }
+
     function useSection(id, title, ico, hint) {
         var sec = document.createElement('section');
         sec.className = 'use-sec';
@@ -4493,14 +4549,26 @@
             var shape = out.org || {};
             var sandbox = out.scope === 'sandbox';
 
+            // The verdict is read off the same rows the block below draws, or
+            // it ends up saying nothing has gone past its limit while one of
+            // them sits full and red two inches underneath.
+            var allow = sandbox ? { rows: [] } : allowanceRows(sub, plan, s, shape);
+            var full = allow.rows.filter(function (r) {
+                return !r.unmetered && r.of > 0 && r.used >= r.of;
+            });
+
             var verdict = document.createElement('p');
             verdict.className = 'use-verdict';
-            var overQuota = !sandbox && plan.liveIncluded > 0 && plan.liveLeft === 0;
-            verdict.textContent = overQuota
-                ? t('You have used every check this plan includes.')
+            verdict.textContent = full.length
+                ? t(full.length === 1 ? 'One thing has reached its limit.' : 'Some things have reached their limit.')
                 : t('Nothing has gone past its limit in this period.');
-            if (overQuota) verdict.classList.add('is-over');
+            if (full.length) verdict.classList.add('is-over');
             body.appendChild(verdict);
+
+            // the contract first, then what happened under it
+            if (allow.rows.length) {
+                body.appendChild(useAllowance(allow.rows, allow.head, allow.agreed));
+            }
 
             var grid = document.createElement('div');
             grid.className = 'use-grid';
@@ -4512,42 +4580,6 @@
                 to: 'use-flagged',
                 sub: s.total ? t('Share') + '  ' + Math.round((s.flagged / s.total) * 100) + '%' : t('Nothing yet')
             }));
-            if (!sandbox && sub && sub.included) {
-                // a bought plan's allowance is per month and this screen is
-                // already counting a month, so the two are the same number
-                var inc = sub.included.screenings || 0;
-                grid.appendChild(useTile('Screenings left this period',
-                    useNum(Math.max(0, inc - s.total)), {
-                        to: 'use-plan',
-                        used: s.total,
-                        of: inc,
-                        sub: t('Included') + '  ' + useNum(inc)
-                    }));
-                grid.appendChild(useTile('Seats', useNum(shape.members), {
-                    to: 'use-team',
-                    used: shape.members,
-                    of: sub.included.seats || 0,
-                    sub: t('Included') + '  ' + useNum(sub.included.seats)
-                }));
-            } else if (!sandbox) {
-                grid.appendChild(useTile('Checks left on this plan',
-                    plan.state === 'enterprise' ? t('Unmetered') : useNum(plan.liveLeft), {
-                        to: 'use-plan',
-                        used: plan.liveUsed,
-                        of: plan.state === 'enterprise' ? 0 : plan.liveIncluded,
-                        sub: plan.state === 'enterprise'
-                            ? t('Counted, not capped')
-                            : t('Used') + '  ' + useNum(plan.liveUsed) + ' / ' + useNum(plan.liveIncluded)
-                    }));
-                grid.appendChild(useTile('History scans',
-                    plan.historyOpen ? t('Unmetered') : useNum(plan.historyUsed), {
-                        to: 'use-plan',
-                        used: plan.historyUsed,
-                        of: plan.historyOpen ? 0 : plan.historyIncluded,
-                        sub: plan.historyOpen ? t('Counted, not capped')
-                            : t('Used') + '  ' + useNum(plan.historyUsed) + ' / ' + useNum(plan.historyIncluded)
-                    }));
-            }
             grid.appendChild(useTile('Chains seen', useNum(s.assetCount), {
                 to: 'use-assets',
                 sub: (s.assets && s.assets.length) ? t('Most seen') + '  ' + s.assets[0].asset : t('Nothing yet')
@@ -4730,6 +4762,46 @@
         function listDay(raw) {
             var m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(raw || '').trim());
             return m ? m[3] + '-' + m[1] + '-' + m[2] + 'T00:00:00Z' : '';
+        }
+
+        // Which rows belong in the allowance block, and what the heading beside
+        // it says. Two kinds of plan, counted differently on purpose:
+        //
+        //   a bought plan allows so much per period, and this screen already
+        //   counts a period, so the two are the same number
+        //
+        //   a trial allows so much in total, counted since it started, which is
+        //   why those rows do not reset when a period does
+        //
+        // Addresses monitored is left out of both. It is on the cards, but
+        // nothing monitors an address yet, and a quota for something that does
+        // not exist is not a promise, it is a decoration.
+        function allowanceRows(sub, plan, s, shape) {
+            if (sub && sub.included) {
+                var rows = [];
+                if (sub.included.screenings !== null) {
+                    rows.push({ label: 'Screenings', used: s.total, of: sub.included.screenings });
+                }
+                if (sub.included.seats !== null) {
+                    rows.push({ label: 'Seats', used: shape.members, of: sub.included.seats });
+                }
+                return { rows: rows, head: sub.planName, agreed: Boolean(sub.agreed) };
+            }
+            if (!plan || plan.state === 'none' || plan.state === 'pending') {
+                return { rows: [], head: '', agreed: false };
+            }
+            if (plan.state === 'enterprise') {
+                return {
+                    rows: [{ label: 'Screenings', used: plan.liveUsed, unmetered: true }],
+                    head: orghPlan(plan.state),
+                    agreed: false
+                };
+            }
+            var trial = [{ label: 'Live checks', used: plan.liveUsed, of: plan.liveIncluded }];
+            if (!plan.historyOpen) {
+                trial.push({ label: 'History scans', used: plan.historyUsed, of: plan.historyIncluded });
+            }
+            return { rows: trial, head: orghPlan(plan.state), agreed: false };
         }
 
         function busiest(days) {

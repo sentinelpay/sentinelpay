@@ -3369,3 +3369,53 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     .use-foot .btn { justify-content: center; }
     .use-share-l { grid-template-columns: minmax(0, 5.5rem) minmax(0, 1fr) auto; }
 }
+
+/* What the plan allows, above what happened under it. A short block rather
+   than more tiles: these are the only numbers on the screen that can run out,
+   and putting them beside the ones that cannot is how a reader stops being able
+   to tell the difference. */
+.use-allow {
+    margin-bottom: 1.6rem;
+    padding: 0.9rem 1.1rem 1rem;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--card);
+}
+.use-allow-h {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.7rem;
+    font-size: 0.8rem;
+    color: var(--ink-4);
+}
+.use-allow-p { color: var(--ink-2); font-weight: 600; }
+.use-allow-r {
+    display: grid;
+    grid-template-columns: minmax(0, 8rem) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.32rem 0;
+    font-size: 0.82rem;
+}
+.use-allow-n { color: var(--ink-3); }
+.use-allow-v { color: var(--ink-2); font-weight: 600; font-variant-numeric: tabular-nums; }
+.use-allow-t {
+    height: 6px;
+    border-radius: 999px;
+    background: var(--line-2);
+    overflow: hidden;
+}
+.use-allow-f { display: block; height: 100%; border-radius: 999px; background: var(--link); }
+/* near the edge is worth seeing before it is reached, and reaching it is the
+   moment screening stops rather than a bill growing */
+.use-allow-f.is-near { background: var(--risk-mid); }
+.use-allow-f.is-full { background: var(--risk-high); }
+
+@media (max-width: 720px) {
+    /* the bar goes under the numbers: at this width it would be a few
+       millimetres wide and say nothing */
+    .use-allow-r { grid-template-columns: minmax(0, 1fr) auto; gap: 0.3rem 0.8rem; }
+    .use-allow-t { grid-column: 1 / -1; }
+}

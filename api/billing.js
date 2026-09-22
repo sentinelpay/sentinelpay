@@ -57,6 +57,16 @@ CREATE TABLE IF NOT EXISTS subscriptions (
 -- as a column rather than a note, because the day somebody asks which of these
 -- were real, a note is not something you can filter on.
 ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS paid_at timestamptz;
+-- What this customer's plan allows, when it is not what the catalogue says.
+--
+-- Starter and Growth are bought off the page and leave these empty, so raising
+-- an allowance later raises it for everybody on that plan. Enterprise is agreed
+-- one customer at a time, and the number somebody agreed to is the number their
+-- screen has to show: printing the listed 50,000 at a company that bought
+-- 120,000 is the same kind of lie as a price that is not the one they paid.
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS included_screenings integer;
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS included_seats integer;
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS included_addresses integer;
 -- one live subscription per organisation. partial, because an organisation
 -- that has been on three plans has three rows and only one of them is now.
 CREATE UNIQUE INDEX IF NOT EXISTS subs_one_live
@@ -129,9 +139,30 @@ function shape(row) {
         endedAt: row.ended_at,
         paidAt: row.paid_at || null,
         paid: Boolean(row.paid_at),
-        // what the plan allows, read from the catalogue rather than stored: a
-        // quota is a promise we keep now, not a fact about the day it was sold
-        included: p ? { screenings: p.screenings, addresses: p.addresses, seats: p.seats } : null,
+        // What the plan allows. The row wins where it has something, the
+        // catalogue fills in the rest: a listed allowance is a promise we keep
+        // now and can raise for everybody, an agreed one belongs to one
+        // customer and nothing else may change it.
+        included: allowance(row, p),
+        agreed: hasOverride(row),
+    };
+}
+
+function hasOverride(row) {
+    return row.included_screenings !== null || row.included_seats !== null ||
+        row.included_addresses !== null;
+}
+
+function pick(own, listed) {
+    return own === null || own === undefined ? (listed === undefined ? null : listed) : Number(own);
+}
+
+function allowance(row, p) {
+    if (!p && !hasOverride(row)) return null;
+    return {
+        screenings: pick(row.included_screenings, p && p.screenings),
+        addresses: pick(row.included_addresses, p && p.addresses),
+        seats: pick(row.included_seats, p && p.seats),
     };
 }
 
@@ -228,6 +259,14 @@ async function freshen(row) {
     }
 }
 
+// An allowance is a count of things, so half of one is not an answer, and a
+// negative one is somebody's typo rather than a generous contract.
+function whole(value) {
+    if (value === null || value === undefined || value === '') return null;
+    const n = Math.floor(Number(value));
+    return Number.isSafeInteger(n) && n >= 0 ? n : null;
+}
+
 // Take a plan. Returns the new subscription, and ends whatever was there.
 async function start(orgId, userId, input) {
     if (!(await init())) return { ok: false, reason: 'unavailable' };
@@ -262,15 +301,17 @@ async function start(orgId, userId, input) {
             `INSERT INTO subscriptions
                 (org_id, plan, term, price_cents, currency, started_at, term_ends_at,
                  period_start, period_end, renews_at, started_by,
-                 note, paid_at)
-             VALUES ($1, $2, $3, $4, $5, now(), $6, $7, $8, $6, $9, $10, $11)
+                 note, paid_at, included_screenings, included_seats, included_addresses)
+             VALUES ($1, $2, $3, $4, $5, now(), $6, $7, $8, $6, $9, $10, $11, $12, $13, $14)
              RETURNING *`,
             [Number(orgId), planKey, termKey, price, plans.CURRENCY,
              termEnds ? termEnds.toISOString() : null,
              period.from.toISOString(), period.to.toISOString(),
              userId ? Number(userId) : null,
              String((input && input.note) || '').slice(0, 200),
-             input && input.paid ? new Date().toISOString() : null]
+             input && input.paid ? new Date().toISOString() : null,
+             whole(input && input.screenings), whole(input && input.seats),
+             whole(input && input.addresses)]
         );
         const row = res.rows[0];
         await record(db, orgId, row.id, before ? 'changed' : 'started', row, userId,

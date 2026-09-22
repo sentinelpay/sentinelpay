@@ -8,6 +8,7 @@
 // the product reads -- no special case, no second source of truth.
 //
 //   DATABASE_URL=... node tools/set-plan.js <org-slug> <plan> <term> [--paid] [--note "..."]
+//                        [--screenings N] [--seats N] [--addresses N]
 //   DATABASE_URL=... node tools/set-plan.js <org-slug> --cancel
 //   DATABASE_URL=... node tools/set-plan.js <org-slug> --show
 //
@@ -17,6 +18,12 @@
 // Without --yes it prints what it would do and stops. --paid records that the
 // money arrived; leave it off for a plan agreed but not yet paid, which is a
 // real state and one you want to be able to find later.
+//
+// --screenings, --seats and --addresses are for enterprise, which is agreed one
+// customer at a time. Leave them off and the plan carries the catalogue's
+// numbers, which is what starter and growth want: raise an allowance on the
+// pricing page later and everybody on that plan gets it. Pass them and this
+// customer's screen shows what this customer agreed to, whatever the page says.
 
 const db = require('../api/db.js');
 const billing = require('../api/billing.js');
@@ -29,7 +36,18 @@ const value = (name) => {
     const at = args.indexOf('--' + name);
     return at === -1 ? '' : (args[at + 1] || '');
 };
-const plain = args.filter((a, i) => !a.startsWith('--') && !(i > 0 && args[i - 1] === '--note'));
+const TAKES_VALUE = ['--note', '--screenings', '--seats', '--addresses'];
+const plain = args.filter((a, i) => !a.startsWith('--') && !(i > 0 && TAKES_VALUE.indexOf(args[i - 1]) !== -1));
+const count = (name) => {
+    const raw = value(name);
+    if (!raw) return null;
+    const n = Math.floor(Number(raw));
+    if (!Number.isSafeInteger(n) || n < 0) {
+        console.error('--' + name + ' has to be a whole number, not ' + JSON.stringify(raw));
+        process.exit(1);
+    }
+    return n;
+};
 
 const slug = plain[0];
 const planKey = plain[1];
@@ -47,6 +65,16 @@ function day(value) {
     return isNaN(d.getTime()) ? String(value) : d.toISOString().slice(0, 10);
 }
 
+function allowance(sub) {
+    if (!sub || !sub.included) return '';
+    const bits = [];
+    if (sub.included.screenings !== null) bits.push(sub.included.screenings.toLocaleString('en-GB') + ' screenings');
+    if (sub.included.seats !== null) bits.push(sub.included.seats.toLocaleString('en-GB') + ' seats');
+    if (sub.included.addresses !== null) bits.push(sub.included.addresses.toLocaleString('en-GB') + ' addresses');
+    if (!bits.length) return '';
+    return '\n  allows ' + bits.join(', ') + (sub.agreed ? '   (agreed, not the listed ones)' : '   (from the catalogue)');
+}
+
 function line(sub) {
     if (!sub) return '  (no plan)';
     return '  ' + sub.plan + ' / ' + sub.term +
@@ -54,7 +82,8 @@ function line(sub) {
         (sub.paid ? '   paid' : '   NOT PAID') +
         '\n  term   ' + day(sub.startedAt) + ' -> ' + (sub.termEndsAt ? day(sub.termEndsAt) : 'open') +
         (sub.renewsAt ? '   renews ' + day(sub.renewsAt) : '   does not renew') +
-        '\n  period ' + day(sub.periodStart) + ' -> ' + day(sub.periodEnd);
+        '\n  period ' + day(sub.periodStart) + ' -> ' + day(sub.periodEnd) +
+        allowance(sub);
 }
 
 async function main() {
@@ -135,6 +164,10 @@ async function main() {
     console.log('would set   ' + planKey + ' / ' + termKey + '   ' + money(price, plans.CURRENCY) +
         (flag('paid') ? '   paid' : '   NOT PAID'));
     if (now) console.log('            replacing what is above, which is kept in the history');
+    const agreed = ['screenings', 'seats', 'addresses']
+        .map((k) => (count(k) === null ? '' : count(k).toLocaleString('en-GB') + ' ' + k))
+        .filter(Boolean);
+    if (agreed.length) console.log('            agreed allowance: ' + agreed.join(', '));
     if (plans.plan(planKey).negotiated && price !== null) {
         console.log('note: the pricing page says "from" for this plan. the listed price is');
         console.log('      being written. change it in the row if what was agreed differs.');
@@ -151,6 +184,9 @@ async function main() {
         term: termKey,
         paid: flag('paid'),
         note: value('note'),
+        screenings: count('screenings'),
+        seats: count('seats'),
+        addresses: count('addresses'),
     });
     if (!out.ok) {
         console.error('failed: ' + out.reason);
