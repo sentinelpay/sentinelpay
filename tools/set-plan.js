@@ -21,6 +21,7 @@
 const db = require('../api/db.js');
 const billing = require('../api/billing.js');
 const plans = require('../api/plans.js');
+const usage = require('../api/usage.js');
 
 const args = process.argv.slice(2);
 const flag = (name) => args.includes('--' + name);
@@ -69,7 +70,7 @@ async function main() {
         process.exit(1);
     }
 
-    const found = await db.query('SELECT id, name, slug FROM organisations WHERE slug = $1', [slug]);
+    const found = await db.query('SELECT id, name, slug, created_at FROM organisations WHERE slug = $1', [slug]);
     if (!found.rowCount) {
         console.error('no organisation with that slug');
         process.exit(1);
@@ -81,7 +82,27 @@ async function main() {
     console.log('now:');
     console.log(line(now));
 
-    if (flag('show')) process.exit(0);
+    if (flag('show')) {
+        // Where the usage screen's dates come from, which is the question
+        // somebody is actually asking when they point at them. Three sources,
+        // in order, and only the first one that exists is used.
+        const trial = await db.query('SELECT state, started_at FROM trials WHERE org_id = $1', [org.id]);
+        const t = trial.rows[0] || null;
+        const anchor = (now && now.startedAt) || (t && t.started_at) || org.created_at;
+        const from = (now && now.startedAt) ? 'the subscription'
+            : (t && t.started_at) ? 'the trial' : 'the organisation being created';
+        const list = usage.periods(anchor);
+        console.log('');
+        console.log('usage dates:');
+        console.log('  trial state  ' + ((t && t.state) || 'none'));
+        console.log('  anchored on  ' + day(anchor) + '   (' + from + ')');
+        list.forEach((p) => {
+            const last = new Date(new Date(p.to).getTime() - 1);
+            console.log('  ' + (p.current ? '> ' : '  ') + p.key.padEnd(5) +
+                day(p.from) + ' -> ' + day(last) + (p.days ? '   (rolling)' : ''));
+        });
+        process.exit(0);
+    }
 
     if (flag('cancel')) {
         console.log('');
