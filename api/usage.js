@@ -295,20 +295,29 @@ async function forOrg(orgId, opts) {
     }
 
     try {
+        // A window before this one only exists if the organisation did. A plan
+        // taken on the day the company was created has nothing behind it, and
+        // "+100% on nothing" is a sentence about arithmetic rather than about
+        // the business.
         const before = previousOf(period);
+        const born = o.birth ? months.startOfDay(o.birth).getTime() : null;
+        const comparable = !born || new Date(before.from).getTime() >= born;
+
         const [work, shape, past, marks] = await Promise.all([
             screeningsIn(orgId, period.from, period.to, sandbox, zone),
             shapeOf(orgId, period.from, period.to),
-            db.query(
-                `SELECT count(*)::int AS n,
-                        count(*) FILTER (WHERE verdict <> 'clear')::int AS flagged
-                   FROM screenings
-                  WHERE org_id = $1 AND at >= $2 AND at < $3 AND sandbox = $4`,
-                [Number(orgId), before.from, before.to, sandbox]
-            ),
+            comparable
+                ? db.query(
+                    `SELECT count(*)::int AS n,
+                            count(*) FILTER (WHERE verdict <> 'clear')::int AS flagged
+                       FROM screenings
+                      WHERE org_id = $1 AND at >= $2 AND at < $3 AND sandbox = $4`,
+                    [Number(orgId), before.from, before.to, sandbox]
+                )
+                : Promise.resolve({ rows: [] }),
             marksIn(orgId, period.from, period.to),
         ]);
-        const head = past.rows[0] || { n: 0, flagged: 0 };
+        const head = past.rows[0] || null;
         return {
             ok: true,
             period,
@@ -317,12 +326,12 @@ async function forOrg(orgId, opts) {
             zone,
             screenings: work,
             marks,
-            previous: {
+            previous: head ? {
                 from: before.from, to: before.to,
                 total: head.n, flagged: head.flagged,
                 // the same stretch of it, not all of it, while this one runs
                 partial: Boolean(before.partial),
-            },
+            } : null,
             org: shape,
         };
     } catch (err) {

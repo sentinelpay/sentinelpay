@@ -4486,7 +4486,7 @@
             big.appendChild(of);
         }
         row.appendChild(big);
-        var d = delta(s.total, prev && prev.total);
+        var d = delta(s.total, prev);
         if (d) row.appendChild(d);
         box.appendChild(row);
 
@@ -4516,16 +4516,17 @@
     // Up or down against the window before this one. Nothing at all when there
     // is nothing to compare with: a first period has no trend, and a made-up
     // "+100%" against zero is a number that means only that it started.
-    function delta(now, before) {
-        if (before === null || before === undefined) return null;
-        if (!before && !now) return null;
+    // Up or down against the window before this one, measured over the same
+    // stretch of it so a period two days old is not held against a whole month.
+    //
+    // Nothing at all where there is nothing to compare with. A plan taken on
+    // the day the organisation was created has no period behind it, and a
+    // percentage against zero says only that something started.
+    function delta(now, prev) {
+        if (!prev || !prev.total) return null;
+        var before = prev.total;
         var el = document.createElement('div');
         el.className = 'use-delta';
-        if (!before) {
-            el.classList.add('is-new');
-            el.textContent = t('First period with anything in it');
-            return el;
-        }
         var pct = Math.round(((now - before) / before) * 100);
         var up = pct > 0;
         if (pct !== 0) el.classList.add(up ? 'is-up' : 'is-down');
@@ -4539,7 +4540,7 @@
         el.appendChild(fig);
         var says = document.createElement('span');
         says.className = 'use-delta-w';
-        says.textContent = t('vs the period before') + '  ·  ' + useNum(before);
+        says.textContent = t('vs the period before');
         el.appendChild(says);
         return el;
     }
@@ -4903,25 +4904,36 @@
                 return !r.unmetered && r.of > 0 && r.used >= r.of;
             });
 
-            var verdict = document.createElement('p');
-            verdict.className = 'use-verdict';
-            verdict.textContent = full.length
-                ? t(full.length === 1 ? 'One thing has reached its limit.' : 'Some things have reached their limit.')
-                : t('Nothing has gone past its limit in this period.');
-            if (full.length) verdict.classList.add('is-over');
-            body.appendChild(verdict);
+            // What a plan allows belongs to the period that plan is charged
+            // for. Over a rolling window, or a cycle that has already been
+            // invoiced, the plan may have been a different one for part of it:
+            // an organisation that moved from starter to growth in august did
+            // not have ten thousand screenings all month. Used against included
+            // over those windows is two numbers that never stood side by side.
+            var onPlan = Boolean(out.period && out.period.current && !out.period.days);
 
-            // the screenings row of the allowance, if this plan caps them
+            if (onPlan) {
+                var verdict = document.createElement('p');
+                verdict.className = 'use-verdict';
+                verdict.textContent = full.length
+                    ? t(full.length === 1 ? 'One thing has reached its limit.' : 'Some things have reached their limit.')
+                    : t('Nothing has gone past its limit in this period.');
+                if (full.length) verdict.classList.add('is-over');
+                body.appendChild(verdict);
+            }
+
             var capped = null;
-            allow.rows.forEach(function (r) {
-                if (!r.unmetered && r.label === 'Screenings' && r.of > 0) capped = r.of;
-            });
+            if (onPlan) {
+                allow.rows.forEach(function (r) {
+                    if (!r.unmetered && r.label === 'Screenings' && r.of > 0) capped = r.of;
+                });
+            }
             body.appendChild(useHeadline(s, out.previous, out.period, capped));
 
             // shown only when something is actually limited. a block whose
             // every row reads "unmetered" is a heading, a plan name and no
             // information, which is worse than the space it takes.
-            var limited = allow.rows.filter(function (r) { return !r.unmetered; });
+            var limited = onPlan ? allow.rows.filter(function (r) { return !r.unmetered; }) : [];
             if (limited.length) {
                 body.appendChild(useAllowance(allow.rows, allow.head, allow.agreed));
             }

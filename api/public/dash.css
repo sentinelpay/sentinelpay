@@ -42,6 +42,10 @@
     --sb-thumb-hover: rgba(0, 145, 200, 0.5);
 
     --brand: linear-gradient(120deg, #00f0ff, #7b6cff, #a020f0);
+    /* the violet out of the mark above, for the one place a second brand
+       colour is doing work rather than decoration: a fall, against the blue
+       that means a rise */
+    --fall: #6f5ae0;
     --dot: rgba(14, 35, 88, 0.14);
     --tint-a: rgba(160, 32, 240, 0.05);
     --tint-b: rgba(0, 190, 220, 0.05);
@@ -141,6 +145,8 @@
     --cta-bg-hover: #ffffff;
     --cta-glow: 0 12px 32px -8px rgba(123, 108, 255, 0.6);
     --link: #7bdcff;
+    /* lifted for a dark ground, the way every other colour here is */
+    --fall: #b3a4ff;
     --link-hover: #b2ecff;
     --link-line: rgba(123, 220, 255, 0.3);
     --mark-ink: #7bdcff;
@@ -3592,8 +3598,11 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     color: var(--ink-4);
 }
 .use-delta strong { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+/* the two halves of our own mark: blue for a rise, violet for a fall. not
+   green and red -- neither direction is good or bad here, they are just up
+   and down, and a red number on a compliance screen means something else */
 .use-delta.is-up .use-arrow, .use-delta.is-up strong { color: var(--link); }
-.use-delta.is-down .use-arrow, .use-delta.is-down strong { color: var(--risk-low); }
+.use-delta.is-down .use-arrow, .use-delta.is-down strong { color: var(--fall); }
 .use-arrow { font-size: 0.9rem; }
 .use-delta-w { color: var(--ink-4); }
 
