@@ -4373,7 +4373,7 @@
         box.className = 'use-head';
 
         // The window being charted, at the top of the thing it is charting.
-        // Beside the plan's name it was read as the plan's own dates; on the
+        // Next to the name of the plan it was read as that plan's dates; on the
         // card whose chart it labels there is nothing else it could mean.
         var top = document.createElement('div');
         top.className = 'use-head-t';
