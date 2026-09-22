@@ -4054,24 +4054,28 @@
         }
     }
 
-    function useSpan(p) {
-        if (!p) return '';
-        if (p.days) return useWindowWord(p.days);
-        // the end of a period is the moment the next one begins, so the day
-        // shown as its last is the day before
-        var from = new Date(p.from);
-        var end = new Date(new Date(p.to).getTime() - 1);
-        var a = whenText(p.from);
-        var b = whenText(end.toISOString());
-        // one year, said once. a range inside a single year that prints it at
-        // both ends is the same four characters twice, and this line has to fit
-        // beside two controls.
-        if (from.getUTCFullYear() === end.getUTCFullYear()) {
+    // A range of two dates. One year, said once: a range inside a single year
+    // that prints it at both ends is the same four characters twice, on a line
+    // that has to fit beside two controls.
+    function useRange(fromIso, toIso) {
+        var from = new Date(fromIso);
+        var to = new Date(toIso);
+        var a = whenText(fromIso);
+        var b = whenText(toIso);
+        if (from.getUTCFullYear() === to.getUTCFullYear()) {
             var year = String(from.getUTCFullYear());
             var at = a.lastIndexOf(year);
             if (at !== -1) a = a.slice(0, at).replace(/[\s,.]+$/, '');
         }
         return a + ' \u2013 ' + b;
+    }
+
+    function useSpan(p) {
+        if (!p) return '';
+        if (p.days) return useWindowWord(p.days);
+        // the end of a period is the moment the next one begins, so the day
+        // shown as its last is the day before
+        return useRange(p.from, new Date(new Date(p.to).getTime() - 1).toISOString());
     }
 
     // whole words, one key each: a term is not a number and never needs joining
@@ -4351,6 +4355,7 @@
         var periodPick = null;
         var planSlot = null;
         var whenSlot = null;
+        var sep = null;
 
         function pickers(out) {
             var periods = (out && out.periods) || [];
@@ -4395,7 +4400,7 @@
                 planSlot = document.createElement('span');
                 planSlot.className = 'use-plan';
                 right.appendChild(planSlot);
-                var sep = document.createElement('span');
+                sep = document.createElement('span');
                 sep.className = 'use-sep';
                 sep.setAttribute('aria-hidden', 'true');
                 sep.textContent = '/';
@@ -4411,7 +4416,12 @@
             planSlot.textContent = t('This organisation is on') + ' ';
             planSlot.appendChild(planWord(out.subscription, out.plan));
             planSlot.appendChild(planMark(out.subscription, out.plan));
-            whenSlot.textContent = useSpan(out.period);
+            // the plan's own dates: when this plan started and when it ends.
+            // not the period being counted -- that one is what the control to
+            // the left of it chooses, and it changes when you change it.
+            var span = planSpan(out.subscription, out.plan);
+            whenSlot.textContent = span;
+            sep.hidden = !span;
         }
 
         // the plan is a link, because reading which one you are on is the
@@ -4428,35 +4438,40 @@
             return el;
         }
 
-        // The one thing worth saying next to the name: when it stops. A trial
-        // counts down, a cancelled plan says the date it runs to, and anything
-        // still renewing says nothing, because nothing is about to happen.
+        // How long this plan runs: from the day it started to the day it ends.
+        //
+        // Some plans have no end. A staging grant pushes its own expiry a year
+        // forward on every page load, so the date it carries is one that never
+        // arrives; per-scan has no term at all. Both are endless, and the only
+        // honest way to draw an end that does not exist is to say so.
+        function planSpan(sub, plan) {
+            if (sub) {
+                if (!sub.termEndsAt) return whenText(sub.startedAt) + ' \u2013 \u221e';
+                return useRange(sub.startedAt, sub.termEndsAt);
+            }
+            if (!plan || plan.state === 'none' || plan.state === 'pending') return '';
+            if (!plan.startedAt) return '';
+            if (plan.devGrant) return whenText(plan.startedAt) + ' \u2013 \u221e';
+            if (!plan.expiresAt) return whenText(plan.startedAt) + ' \u2013 \u221e';
+            return useRange(plan.startedAt, plan.expiresAt);
+        }
+
+        // What is worth saying beside the name, now that the dates say when it
+        // ends: which term it is on, whether it will renew, and whether it has
+        // been paid for. Nothing that the range already tells you.
         function planMark(sub, plan) {
             var box = document.createDocumentFragment();
             if (sub) {
                 box.appendChild(tag(t(useTermWord(sub.term))));
-                // the date that belongs to the plan is when the plan changes,
-                // which is not the same date as the period being read
-                if (sub.cancelledAt && sub.termEndsAt) {
-                    box.appendChild(tag(t('Ends') + ' ' + whenText(sub.termEndsAt), 'mid'));
-                } else if (sub.renewsAt) {
-                    box.appendChild(tag(t('Renews') + ' ' + whenText(sub.renewsAt)));
-                }
+                // the range says when it ends; this says whether that is the
+                // end of it, which the range cannot tell you
+                if (sub.cancelledAt) box.appendChild(tag(t('Does not renew'), 'mid'));
                 if (!sub.paid) {
                     // agreed but not paid for is a real state, and the people
                     // inside the company are the ones who can do something
                     // about it, so it is not hidden from them
                     box.appendChild(tag(t('Not paid yet'), 'mid'));
                 }
-                return box;
-            }
-            // granted on staging rather than bought, and it renews itself every
-            // time this page is opened: there is no end date to print, so the
-            // mark says there is none
-            if (plan && plan.devGrant) {
-                var ever = tag('\u221e');
-                ever.title = t('This plan does not expire');
-                box.appendChild(ever);
                 return box;
             }
             var left = (plan && plan.daysLeft) || 0;
