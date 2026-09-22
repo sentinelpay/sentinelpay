@@ -4386,19 +4386,23 @@
                     load();
                 }));
 
-                // The dates of the period sit beside the control that chooses
-                // it, not beside the plan. Next to the plan they read as the
-                // plan's own dates, which on a yearly subscription says it runs
-                // for a month.
-                whenSlot = document.createElement('span');
-                whenSlot.className = 'use-when';
-                left.appendChild(whenSlot);
-
+                // Plan first, then the period it is being read in, divided by a
+                // rule. The two belong to the same sentence -- which plan, over
+                // which month -- and reading them as one line is what the mark
+                // between them is for.
                 var right = document.createElement('div');
                 right.className = 'use-bar-r';
                 planSlot = document.createElement('span');
                 planSlot.className = 'use-plan';
                 right.appendChild(planSlot);
+                var sep = document.createElement('span');
+                sep.className = 'use-sep';
+                sep.setAttribute('aria-hidden', 'true');
+                sep.textContent = '/';
+                right.appendChild(sep);
+                whenSlot = document.createElement('span');
+                whenSlot.className = 'use-when';
+                right.appendChild(whenSlot);
                 bar.appendChild(right);
             } else if (periodPick && out.period) {
                 periodPick.spSet(out.period.key);
