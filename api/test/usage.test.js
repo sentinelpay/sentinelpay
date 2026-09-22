@@ -51,11 +51,12 @@ test('nothing is offered from before the organisation existed', () => {
     assert.equal(list[0].from.slice(0, 10), '2026-09-01');
 });
 
-test('the first cycle begins when the plan did, not on the boundary before it', () => {
+test('the first cycle begins on the day the plan did, not on the boundary before it', () => {
     // a plan started mid-cycle has not been running for the whole of it, and a
-    // page that says otherwise is claiming work from before there was a plan
+    // page that says otherwise is claiming work from before there was a plan.
+    // the day it began, though, not the minute: a cycle is whole days.
     const list = usage.cycles('2026-09-14T08:00:00Z', day('2026-09-20T12:00:00Z'), 3);
-    assert.equal(list[0].from, '2026-09-14T08:00:00.000Z');
+    assert.equal(list[0].from, '2026-09-14T00:00:00.000Z');
 });
 
 test('rolling windows are offered as well as the invoice\'s', () => {

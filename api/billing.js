@@ -77,6 +77,17 @@ CREATE TABLE IF NOT EXISTS subscription_events (
     detail      text        NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS sub_events_org_idx ON subscription_events (org_id, at DESC);
+-- Periods written before they were whole days carry the time of day they were
+-- bought at, which puts the same date at both ends of the window on screen.
+-- Explicitly in UTC: date_trunc on a timestamptz otherwise follows whatever
+-- timezone the session happens to be in, which is how a boundary moves by an
+-- hour depending on who connected.
+UPDATE subscriptions
+   SET period_start = date_trunc('day', period_start AT TIME ZONE 'UTC') AT TIME ZONE 'UTC',
+       period_end   = date_trunc('day', period_end   AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'
+ WHERE ended_at IS NULL
+   AND (period_start <> date_trunc('day', period_start AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'
+     OR period_end   <> date_trunc('day', period_end   AT TIME ZONE 'UTC') AT TIME ZONE 'UTC');
 `;
 
 let ready = null;

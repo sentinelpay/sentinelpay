@@ -32,7 +32,9 @@ const addMonths = months.addMonths;
 
 // Every cycle boundary from the anchor, newest first. `back` of them.
 function cycles(anchorAt, now, back) {
-    const anchor = new Date(anchorAt || Date.now());
+    // the day it began, not the minute: a cycle is whole days, or the date it
+    // starts on is also the date the one before it appears to end on
+    const anchor = months.startOfDay(anchorAt || Date.now());
     const today = new Date(now || Date.now());
     const day = anchor.getUTCDate();
 

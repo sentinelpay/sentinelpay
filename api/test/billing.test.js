@@ -46,16 +46,27 @@ test('the period around a moment contains it, and the next one begins where it e
 test('periods never overlap and never leave a gap, month after month', () => {
     // a year of them from a 31st anchor, which is where clamping could make two
     // periods share a day or skip one
-    let cursor = at('2026-01-31T09:00:00Z');
+    const anchor = at('2026-01-31T09:00:00Z');
+    let cursor = months.startOfDay(anchor);
     for (let i = 0; i < 24; i++) {
         const next = months.addMonths(cursor, 1);
-        const inside = months.periodAround(at('2026-01-31T09:00:00Z'),
-            cursor.getTime() + 60000);
+        const inside = months.periodAround(anchor, cursor.getTime() + 60000);
         assert.equal(inside.from.getTime(), cursor.getTime(),
             'period ' + i + ' does not begin where the last one ended');
         assert.equal(inside.to.getTime(), next.getTime());
         cursor = next;
     }
+});
+
+test('a period is whole days, so no date is both its last and the next one\'s first', () => {
+    // bought at 17:37, the period used to run 17:37 to 17:37: its last instant
+    // fell on the same date its successor began on, and the screen showed that
+    // date at both ends of a window that then looked a day too long
+    const p = months.periodAround(at('2026-09-20T17:37:07Z'), at('2026-10-01T00:00:00Z').getTime());
+    assert.equal(p.from.toISOString(), '2026-09-20T00:00:00.000Z');
+    assert.equal(p.to.toISOString(), '2026-10-20T00:00:00.000Z');
+    const lastInstant = new Date(p.to.getTime() - 1);
+    assert.equal(day(lastInstant), '2026-10-19', 'the period still ends on the day it next begins');
 });
 
 test('a period that has not started yet is the first one, not a walk backwards', () => {

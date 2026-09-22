@@ -29,9 +29,19 @@ function addMonths(date, n) {
     return out;
 }
 
+// A billing period is whole days. Anchoring it on the moment something was
+// bought gives a window that runs from 17:37 to 17:37, whose last instant falls
+// on the same date its successor begins on -- so the screen shows the same day
+// at both ends and the period looks a day too long. Terms keep their exact time
+// so a yearly one does not drift; periods start at midnight.
+function startOfDay(date) {
+    const d = new Date(date);
+    return atUTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+}
+
 // The month-long window, anchored on `anchor`, that `now` falls inside.
 function periodAround(anchor, now) {
-    const at = new Date(anchor);
+    const at = startOfDay(anchor);
     const when = new Date(now || Date.now());
     if (when.getTime() < at.getTime()) {
         return { from: at, to: addMonths(at, 1) };
@@ -48,4 +58,4 @@ function periodAround(anchor, now) {
     return { from, to: addMonths(from, 1) };
 }
 
-module.exports = { atUTC, addMonths, periodAround };
+module.exports = { atUTC, addMonths, startOfDay, periodAround };
