@@ -4390,9 +4390,19 @@
                 // it, not beside the plan. Next to the plan they read as the
                 // plan's own dates, which on a yearly subscription says it runs
                 // for a month.
+                // The dates are given their name. Three separate times somebody
+                // pointed at this and asked what it was, and every one of those
+                // was a person who had built the thing: a bare date beside two
+                // dropdowns says nothing about which question it answers.
+                var whenBox = document.createElement('span');
+                whenBox.className = 'use-when';
+                var whenKey = document.createElement('span');
+                whenKey.className = 'use-when-k';
+                whenKey.textContent = t('Period');
+                whenBox.appendChild(whenKey);
                 whenSlot = document.createElement('span');
-                whenSlot.className = 'use-when';
-                left.appendChild(whenSlot);
+                whenBox.appendChild(whenSlot);
+                left.appendChild(whenBox);
 
                 var right = document.createElement('div');
                 right.className = 'use-bar-r';

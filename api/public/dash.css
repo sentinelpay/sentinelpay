@@ -3205,8 +3205,10 @@ html.is-theming .btn {
     text-decoration: none;
 }
 .use-plan-n:hover { text-decoration: underline; }
-/* the dates of the period, beside the control that chooses it */
+/* the dates of the period, beside the control that chooses it, and named:
+   a date on its own does not say which question it is the answer to */
 .use-when { font-size: 0.82rem; color: var(--ink-4); }
+.use-when-k { margin-right: 0.4rem; color: var(--ink-4); opacity: 0.75; }
 /* the marks after the plan's name are second things, not part of it */
 .use-plan .tag { margin-left: 0.45rem; }
 
