@@ -124,6 +124,10 @@ function shape(row) {
         historyIncluded: quota.historyScans,
         historyLeft: quota.historyOpen ? Infinity : Math.max(0, quota.historyScans - row.history_used),
         historyOpen: quota.historyOpen,
+        // A staging grant moves its own expiry forward on every dashboard load,
+        // so the date it carries is one that never arrives. Saying so is the
+        // only honest thing the screen can do with it.
+        devGrant: row.note === 'staging dev grant',
         phoneVerified: Boolean(row.verified_at),
         startedAt: row.started_at,
         expiresAt: row.expires_at,

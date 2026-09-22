@@ -4450,6 +4450,15 @@
                 }
                 return box;
             }
+            // granted on staging rather than bought, and it renews itself every
+            // time this page is opened: there is no end date to print, so the
+            // mark says there is none
+            if (plan && plan.devGrant) {
+                var ever = tag('\u221e');
+                ever.title = t('This plan does not expire');
+                box.appendChild(ever);
+                return box;
+            }
             var left = (plan && plan.daysLeft) || 0;
             var trialish = plan && (plan.state === 'starter' || plan.state === 'verified');
             if (trialish && left > 0) {
@@ -4631,8 +4640,10 @@
                     if (!sub.paid) rows.push(['Paid', t('Not paid yet')]);
                     pmain.appendChild(useFacts(rows));
                 } else {
-                    pmain.appendChild(useFacts([
-                        ['Plan', orghPlan(plan.state)],
+                    var trows = [['Plan', orghPlan(plan.state)]];
+                    if (plan.devGrant) trows.push(['Ends', '\u221e  ' + t('Never')]);
+                    else if (plan.expiresAt) trows.push(['Ends', whenText(plan.expiresAt)]);
+                    pmain.appendChild(useFacts(trows.concat([
                         ['Live checks included', plan.state === 'enterprise' ? t('Unmetered') : useNum(plan.liveIncluded)],
                         // said in full, because the number above it counts a period
                         // and this one does not: two counts that disagree are worse
@@ -4640,7 +4651,7 @@
                         ['Live checks used since the plan started', useNum(plan.liveUsed)],
                         ['History scans', plan.historyOpen ? t('Unmetered') : useNum(plan.historyUsed) + ' / ' + useNum(plan.historyIncluded)],
                         ['This period', useSpan(out.period)]
-                    ]));
+                    ])));
                 }
                 pl.body.appendChild(pmain);
                 body.appendChild(pl);
