@@ -203,14 +203,18 @@ async function get(orgId) {
 // cannot silently stop working.
 async function freshen(row) {
     const now = Date.now();
-    if (new Date(row.period_end).getTime() > now) return row;
-
     const term = plans.term(row.term);
     const ends = row.term_ends_at ? new Date(row.term_ends_at).getTime() : null;
+    const stale = new Date(row.period_end).getTime() <= now;
+    const over = ends !== null && ends <= now;
 
-    // a term that has run out and does not renew is over. it is not this
-    // function's job to decide that quietly, so it ends the row and says so.
-    if (ends !== null && ends <= now && !row.renews_at) {
+    if (!stale && !over) return row;
+
+    // A term that has run out and does not renew is over. Checked on its own
+    // rather than inside the period roll: a quarterly term ends on the same day
+    // a period begins, and gating this on a stale period meant the term sat
+    // expired for a month while the periods kept turning over it.
+    if (over && !row.renews_at) {
         try {
             const done = await db.query(
                 `UPDATE subscriptions SET ended_at = $2
@@ -227,12 +231,21 @@ async function freshen(row) {
         return row;
     }
 
-    const next = months.periodAround(row.period_start, now);
+    // It renewed. Possibly more than once, if nobody has looked in a while:
+    // each term starts where the last one ended, so a year away is four
+    // quarters and not one long one.
     let termEnds = row.term_ends_at;
-    if (ends !== null && ends <= now && row.renews_at && term && term.termMonths) {
-        // it renewed: the next term starts where the last one ended
-        termEnds = months.addMonths(new Date(ends), term.termMonths).toISOString();
+    let renewals = 0;
+    if (over && term && term.termMonths) {
+        let edge = new Date(ends);
+        while (edge.getTime() <= now && renewals < 240) {
+            edge = months.addMonths(edge, term.termMonths);
+            renewals++;
+        }
+        termEnds = edge.toISOString();
     }
+
+    const next = stale ? months.periodAround(row.period_start, now) : null;
 
     try {
         const out = await db.query(
@@ -240,40 +253,27 @@ async function freshen(row) {
             // value and once inside a CASE, and postgres refuses to guess a
             // type for a parameter used in two places that disagree
             `UPDATE subscriptions
-                SET period_start = $2::timestamptz,
-                    period_end = $3::timestamptz,
+                SET period_start = COALESCE($2::timestamptz, period_start),
+                    period_end = COALESCE($3::timestamptz, period_end),
                     term_ends_at = $4::timestamptz,
                     renews_at = CASE WHEN renews_at IS NULL THEN NULL ELSE $4::timestamptz END
               WHERE id = $1 AND ended_at IS NULL
           RETURNING *`,
-            [row.id, next.from.toISOString(), next.to.toISOString(), termEnds]
+            [row.id,
+             next ? next.from.toISOString() : null,
+             next ? next.to.toISOString() : null,
+             termEnds]
         );
         if (!out.rowCount) return row;
-        if (termEnds !== row.term_ends_at) {
-            await record(db, row.org_id, row.id, 'renewed', out.rows[0], null, '');
+        if (renewals) {
+            await record(db, row.org_id, row.id, 'renewed', out.rows[0], null,
+                renewals > 1 ? renewals + ' terms at once' : '');
         }
         return out.rows[0];
     } catch (err) {
         console.error('[billing] could not roll the period: ' + err.message);
         return row;
     }
-}
-
-// A date, or now. Never the future: a plan that starts next week is a plan
-// nobody is on yet, and the periods counted from it would be counting nothing.
-function startedOn(value) {
-    if (!value) return new Date();
-    const when = new Date(String(value).length === 10 ? value + 'T00:00:00Z' : value);
-    if (isNaN(when.getTime()) || when.getTime() > Date.now()) return new Date();
-    return when;
-}
-
-// An allowance is a count of things, so half of one is not an answer, and a
-// negative one is somebody's typo rather than a generous contract.
-function whole(value) {
-    if (value === null || value === undefined || value === '') return null;
-    const n = Math.floor(Number(value));
-    return Number.isSafeInteger(n) && n >= 0 ? n : null;
 }
 
 // Take a plan. Returns the new subscription, and ends whatever was there.

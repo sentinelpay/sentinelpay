@@ -15,6 +15,7 @@
 //   - it never touches anything it did not write
 //
 //   DATABASE_URL=... node tools/seed-usage.js <org-slug> [--days 45] [--yes]
+//   DATABASE_URL=... node tools/seed-usage.js <org-slug> --from 2026-06-20 [--yes]
 //   DATABASE_URL=... node tools/seed-usage.js <org-slug> --clear [--yes]
 //   DATABASE_URL=... node tools/seed-usage.js <org-slug> --show
 
@@ -30,7 +31,7 @@ const value = (name) => {
     const at = args.indexOf('--' + name);
     return at === -1 ? '' : (args[at + 1] || '');
 };
-const TAKES_VALUE = ['--days'];
+const TAKES_VALUE = ['--days', '--from'];
 const plain = args.filter((a, i) => !a.startsWith('--') && !(i > 0 && TAKES_VALUE.indexOf(args[i - 1]) !== -1));
 const slug = plain[0];
 
@@ -103,7 +104,36 @@ async function main() {
         process.exit(0);
     }
 
-    const days = Math.min(Math.max(Number(value('days')) || 45, 1), 365);
+    // --from is the same thing said the other way round, and it is the way
+    // somebody actually thinks about a fixture: this customer has been with us
+    // since June, not for ninety-five days.
+    let days = Math.min(Math.max(Number(value('days')) || 45, 1), 365);
+    const fromDay = String(value('from') || '').trim();
+    if (fromDay) {
+        const when = new Date(fromDay + 'T00:00:00Z');
+        if (isNaN(when.getTime()) || when.getTime() > Date.now()) {
+            console.error('--from wants a past date like 2026-06-20');
+            process.exit(1);
+        }
+        days = Math.min(Math.ceil((Date.now() - when.getTime()) / 86400000) + 1, 400);
+
+        // An organisation cannot have been working before it existed, and the
+        // usage screen knows it: a rolling window is cut at the day the
+        // organisation was created, so traffic written before that would be
+        // written and then hidden. The fixture is made whole instead.
+        const born = await db.query('SELECT created_at FROM organisations WHERE id = $1', [org.id]);
+        const existed = born.rows[0] && new Date(born.rows[0].created_at).getTime();
+        if (existed && existed > when.getTime()) {
+            console.log('');
+            console.log('this organisation was created on ' + new Date(existed).toISOString().slice(0, 10) +
+                ', after the date asked for.');
+            console.log('it will be moved back to ' + fromDay + ' so the traffic is not hidden.');
+            if (flag('yes')) {
+                await db.query('UPDATE organisations SET created_at = $2 WHERE id = $1',
+                    [org.id, when.toISOString()]);
+            }
+        }
+    }
     console.log('');
     console.log('would add roughly ' + (days * 9) + ' screenings across the last ' + days + ' days,');
     console.log('marked as samples so --clear can take them out again.');

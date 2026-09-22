@@ -4861,9 +4861,12 @@
         function planMark(sub, plan) {
             var box = document.createDocumentFragment();
             if (sub) {
-                box.appendChild(tag(t(useTermWord(sub.term))));
-                // the range says when it ends; this says whether that is the
-                // end of it, which the range cannot tell you
+                // Which term it is on is on the billing screen, next to the
+                // price it belongs to. Here it sat between the plan's name and
+                // the plan's dates and told a reader nothing those two did not.
+                //
+                // What the dates cannot say stays: that this one stops at the
+                // end rather than carrying on.
                 if (sub.cancelledAt) box.appendChild(tag(t('Does not renew'), 'mid'));
                 if (!sub.paid) {
                     // agreed but not paid for is a real state, and the people
