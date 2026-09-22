@@ -93,25 +93,59 @@ function pickCycle(list, key) {
 
 // Every day in the window, including the ones nothing happened on. A chart with
 // the quiet days left out is a chart that lies about the shape of the work.
-function fillDays(rows, from, to) {
+//
+// It stops at today. The rest of a billing period has not happened yet, and a
+// line drawn flat across it says there was no work on days nobody has lived.
+//
+// Days are stepped from the middle of each one rather than its start: midday is
+// the same date in every timezone and on both sides of a clock change, so the
+// walk cannot skip a day or count one twice.
+function dayIn(ms, zone) {
+    try {
+        return new Intl.DateTimeFormat('en-CA', {
+            timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit',
+        }).format(new Date(ms));
+    } catch (err) {
+        return new Date(ms).toISOString().slice(0, 10);
+    }
+}
+
+function fillDays(rows, from, to, zone) {
     const seen = new Map(rows.map((r) => [r.d, r]));
     const out = [];
-    const start = new Date(from);
-    const end = new Date(to);
-    const cursor = atUTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate());
-    const stop = Math.min(end.getTime(), Date.now());
-    while (cursor.getTime() <= stop) {
-        const key = cursor.toISOString().slice(0, 10);
-        const row = seen.get(key);
-        out.push({ day: key, n: row ? row.n : 0, flagged: row ? row.flagged : 0 });
-        cursor.setUTCDate(cursor.getUTCDate() + 1);
-        if (out.length > 400) break;
+    const noon = 12 * 3600 * 1000;
+    const stop = Math.min(new Date(to).getTime(), Date.now());
+    let cursor = new Date(from).getTime() + noon;
+    let guard = 0;
+    let last = '';
+    while (cursor - noon <= stop && guard++ < 400) {
+        const key = dayIn(cursor, zone);
+        if (key !== last) {
+            const row = seen.get(key);
+            out.push({ day: key, n: row ? row.n : 0, flagged: row ? row.flagged : 0 });
+            last = key;
+        }
+        cursor += 86400000;
+    }
+    // the day being lived through, whether or not the walk landed on it
+    const today = dayIn(stop, zone);
+    if (!out.length || out[out.length - 1].day !== today) {
+        const row = seen.get(today);
+        out.push({ day: today, n: row ? row.n : 0, flagged: row ? row.flagged : 0 });
     }
     return out;
 }
 
-async function screeningsIn(orgId, from, to, sandbox) {
-    const args = [Number(orgId), from, to, Boolean(sandbox)];
+// Only a real zone name, and postgres is asked to hold it in a parameter
+// rather than have it pasted into the statement.
+function safeZone(value) {
+    const zone = String(value || '').trim();
+    return /^[A-Za-z][A-Za-z0-9_+-]*(?:\/[A-Za-z0-9_+-]+){0,2}$/.test(zone) && zone.length < 64
+        ? zone : 'UTC';
+}
+
+async function screeningsIn(orgId, from, to, sandbox, zone) {
+    const args = [Number(orgId), from, to, Boolean(sandbox), zone];
     const [sum, days, verdicts, assets] = await Promise.all([
         db.query(
             `SELECT count(*)::int AS n,
@@ -120,10 +154,14 @@ async function screeningsIn(orgId, from, to, sandbox) {
                     count(DISTINCT NULLIF(asset, ''))::int AS assets
                FROM screenings
               WHERE org_id = $1 AND at >= $2 AND at < $3 AND sandbox = $4`,
-            args
+            args.slice(0, 4)
         ),
         db.query(
-            `SELECT to_char(date_trunc('day', at AT TIME ZONE 'UTC'), 'YYYY-MM-DD') AS d,
+            // A day is the reader's day. Bucketing in utc puts an evening in
+            // one column for somebody in Zagreb and the next column for
+            // somebody in New York, and both of them are looking at their own
+            // working day.
+            `SELECT to_char(date_trunc('day', at AT TIME ZONE $5), 'YYYY-MM-DD') AS d,
                     count(*)::int AS n,
                     count(*) FILTER (WHERE verdict <> 'clear')::int AS flagged
                FROM screenings
@@ -136,14 +174,14 @@ async function screeningsIn(orgId, from, to, sandbox) {
                FROM screenings
               WHERE org_id = $1 AND at >= $2 AND at < $3 AND sandbox = $4
            GROUP BY 1`,
-            args
+            args.slice(0, 4)
         ),
         db.query(
             `SELECT COALESCE(NULLIF(asset, ''), 'other') AS asset, count(*)::int AS n
                FROM screenings
               WHERE org_id = $1 AND at >= $2 AND at < $3 AND sandbox = $4
            GROUP BY 1 ORDER BY n DESC, 1 LIMIT 12`,
-            args
+            args.slice(0, 4)
         ),
     ]);
 
@@ -156,7 +194,7 @@ async function screeningsIn(orgId, from, to, sandbox) {
         clear: head.n - head.flagged,
         addresses: head.addresses,
         assetCount: head.assets,
-        days: fillDays(days.rows, from, to),
+        days: fillDays(days.rows, from, to, zone),
         verdicts: byVerdict,
         assets: assets.rows.map((r) => ({ asset: r.asset, n: r.n })),
     };
@@ -250,6 +288,7 @@ async function forOrg(orgId, opts) {
     const list = periods(o.anchor, Date.now(), o.birth);
     const period = pickCycle(list, o.period);
     const sandbox = o.scope === 'sandbox';
+    const zone = safeZone(o.zone);
 
     if (!db.available()) {
         return { ok: false, reason: 'unavailable', period, periods: list, scope: sandbox ? 'sandbox' : 'live' };
@@ -258,7 +297,7 @@ async function forOrg(orgId, opts) {
     try {
         const before = previousOf(period);
         const [work, shape, past, marks] = await Promise.all([
-            screeningsIn(orgId, period.from, period.to, sandbox),
+            screeningsIn(orgId, period.from, period.to, sandbox, zone),
             shapeOf(orgId, period.from, period.to),
             db.query(
                 `SELECT count(*)::int AS n,
@@ -275,6 +314,7 @@ async function forOrg(orgId, opts) {
             period,
             periods: list,
             scope: sandbox ? 'sandbox' : 'live',
+            zone,
             screenings: work,
             marks,
             previous: {

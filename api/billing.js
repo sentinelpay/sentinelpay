@@ -259,6 +259,15 @@ async function freshen(row) {
     }
 }
 
+// A date, or now. Never the future: a plan that starts next week is a plan
+// nobody is on yet, and the periods counted from it would be counting nothing.
+function startedOn(value) {
+    if (!value) return new Date();
+    const when = new Date(String(value).length === 10 ? value + 'T00:00:00Z' : value);
+    if (isNaN(when.getTime()) || when.getTime() > Date.now()) return new Date();
+    return when;
+}
+
 // An allowance is a count of things, so half of one is not an answer, and a
 // negative one is somebody's typo rather than a generous contract.
 function whole(value) {
@@ -282,9 +291,13 @@ async function start(orgId, userId, input) {
         ? Math.max(0, Math.round(input.priceCents))
         : plans.listPrice(planKey, termKey);
 
-    const now = new Date();
+    // A plan can start on a day that has passed. Somebody agrees a contract on
+    // the fifteenth and it is entered on the twentieth, and the customer's
+    // periods, their renewal and their history all run from the day they
+    // agreed rather than the day we got round to typing it in.
+    const now = startedOn(input && input.started);
     const termEnds = term.termMonths ? months.addMonths(now, term.termMonths) : null;
-    const period = months.periodAround(now, now.getTime());
+    const period = months.periodAround(now, Date.now());
 
     try {
         const live = await db.query(
@@ -302,7 +315,7 @@ async function start(orgId, userId, input) {
                 (org_id, plan, term, price_cents, currency, started_at, term_ends_at,
                  period_start, period_end, renews_at, started_by,
                  note, paid_at, included_screenings, included_seats, included_addresses)
-             VALUES ($1, $2, $3, $4, $5, now(), $6, $7, $8, $6, $9, $10, $11, $12, $13, $14)
+             VALUES ($1, $2, $3, $4, $5, $15, $6, $7, $8, $6, $9, $10, $11, $12, $13, $14)
              RETURNING *`,
             [Number(orgId), planKey, termKey, price, plans.CURRENCY,
              termEnds ? termEnds.toISOString() : null,
@@ -311,7 +324,7 @@ async function start(orgId, userId, input) {
              String((input && input.note) || '').slice(0, 200),
              input && input.paid ? new Date().toISOString() : null,
              whole(input && input.screenings), whole(input && input.seats),
-             whole(input && input.addresses)]
+             whole(input && input.addresses), now.toISOString()]
         );
         const row = res.rows[0];
         await record(db, orgId, row.id, before ? 'changed' : 'started', row, userId,

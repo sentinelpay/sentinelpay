@@ -2192,6 +2192,9 @@ async function usageFor(req, mine) {
         birth: mine.createdAt,
         period: String(req.query.period || ''),
         scope: String(req.query.scope || ''),
+        // whose day a day is. the screen knows which zone the reader chose, so
+        // it says, and the counting follows rather than assuming utc.
+        zone: String(req.query.tz || ''),
     });
 }
 

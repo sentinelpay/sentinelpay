@@ -8,7 +8,7 @@
 // the product reads -- no special case, no second source of truth.
 //
 //   DATABASE_URL=... node tools/set-plan.js <org-slug> <plan> <term> [--paid] [--note "..."]
-//                        [--screenings N] [--seats N] [--addresses N]
+//                        [--screenings N] [--seats N] [--addresses N] [--started YYYY-MM-DD]
 //   DATABASE_URL=... node tools/set-plan.js <org-slug> --cancel
 //   DATABASE_URL=... node tools/set-plan.js <org-slug> --show
 //
@@ -36,7 +36,7 @@ const value = (name) => {
     const at = args.indexOf('--' + name);
     return at === -1 ? '' : (args[at + 1] || '');
 };
-const TAKES_VALUE = ['--note', '--screenings', '--seats', '--addresses'];
+const TAKES_VALUE = ['--note', '--screenings', '--seats', '--addresses', '--started'];
 const plain = args.filter((a, i) => !a.startsWith('--') && !(i > 0 && TAKES_VALUE.indexOf(args[i - 1]) !== -1));
 const count = (name) => {
     const raw = value(name);
@@ -168,6 +168,7 @@ async function main() {
         .map((k) => (count(k) === null ? '' : count(k).toLocaleString('en-GB') + ' ' + k))
         .filter(Boolean);
     if (agreed.length) console.log('            agreed allowance: ' + agreed.join(', '));
+    if (value('started')) console.log('            starting from ' + value('started') + ' rather than today');
     if (plans.plan(planKey).negotiated && price !== null) {
         console.log('note: the pricing page says "from" for this plan. the listed price is');
         console.log('      being written. change it in the row if what was agreed differs.');
@@ -187,6 +188,7 @@ async function main() {
         screenings: count('screenings'),
         seats: count('seats'),
         addresses: count('addresses'),
+        started: value('started'),
     });
     if (!out.ok) {
         console.error('failed: ' + out.reason);

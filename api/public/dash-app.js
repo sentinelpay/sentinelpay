@@ -4102,11 +4102,14 @@
     // ellipse and text comes out unreadable; the stroke survives because it is
     // told not to scale, and the dots, the guide, the labels and the tooltip
     // are ordinary elements positioned over the top.
-    function useChart(days, slots, lastDay, marks) {
+    function useChart(days, marks) {
         var box = document.createElement('div');
         box.className = 'use-plot';
 
-        var w = Math.max(days.length, Number(slots) || 0, 1);
+        // as many columns as there are days behind us. the rest of a billing
+        // period is not history, and a line drawn flat across it would say
+        // there was no work on days nobody has lived through yet.
+        var w = Math.max(days.length, 1);
         var high = 0;
         days.forEach(function (d) { if (d.n > high) high = d.n; });
         var top = niceTop(high);
@@ -4233,7 +4236,7 @@
         var xAxis = document.createElement('div');
         xAxis.className = 'use-plot-x';
         xAxis.style.width = (fill * 100) + '%';
-        ticks(w, days, lastDay).forEach(function (tick) {
+        ticks(days).forEach(function (tick) {
             var l = document.createElement('span');
             l.style.left = (((tick.at + 0.5) / w) * 100) + '%';
             l.textContent = tick.label;
@@ -4324,8 +4327,11 @@
     var fadeSeq = 0;
 
     // Below this many days a plot is drawn narrower rather than blown up, so a
-    // three day window is three days wide and not three days shaped like a month.
-    var MIN_DAYS = 14;
+    // three day window is three days wide and not three days shaped like a
+    // month. Ten rather than fourteen: with five labels at most, ten columns
+    // leave each one about the width of a date, and at fourteen the dates on a
+    // four day window were touching each other.
+    var MIN_DAYS = 10;
 
     // A top of the scale somebody can read: 10, 25, 50, 100 rather than 87.
     // An empty period keeps a scale anyway, so the chart shows a flat nothing
@@ -4341,45 +4347,42 @@
         return 10 * size;
     }
 
-    // Up to six of them, evenly spaced, always including both ends. More than
-    // that on a narrow card is a row of dates overlapping each other.
-    function ticks(w, days, lastDay) {
-        var want = Math.min(6, Math.max(2, Math.round(w / 6)));
-        var step = w <= 1 ? 1 : (w - 1) / (want - 1);
+    // At most five dates, and while there are five or fewer days, every one of
+    // them. Past that the axis is cut into four equal steps from the first day
+    // to the last, so the labels stay evenly spaced whatever the window is.
+    var MOST_TICKS = 5;
+
+    function ticks(days) {
+        var n = days.length;
+        if (!n) return [];
+        if (n <= MOST_TICKS) {
+            return days.map(function (d, i) {
+                return { at: i, label: shortDay(d.day) };
+            });
+        }
         var out = [];
         var seen = {};
-        for (var i = 0; i < want; i++) {
-            var at = Math.round(i * step);
-            if (at > w - 1) at = w - 1;
+        for (var i = 0; i < MOST_TICKS; i++) {
+            var at = Math.round((i * (n - 1)) / (MOST_TICKS - 1));
             if (seen[at]) continue;
             seen[at] = true;
-            out.push({ at: at, label: tickWord(at, days, lastDay) });
+            out.push({ at: at, label: shortDay(days[at].day) });
         }
         return out;
     }
 
-    // The day at that spot on the axis. Past the last day we have, it is
-    // counted forward from the first: the rest of the period has not happened
-    // yet, and its dates are still dates.
-    function tickWord(at, days, lastDay) {
-        if (days[at]) return shortDay(days[at].day);
-        if (!days.length) return '';
-        var from = new Date(days[0].day + 'T00:00:00Z');
-        var when = new Date(from.getTime() + at * 86400000);
-        var end = lastDay ? new Date(lastDay) : null;
-        if (end && when.getTime() > end.getTime()) when = end;
-        return shortDay(when.toISOString());
-    }
-
+    // The day as the reader's own calendar has it. The counting already put
+    // each screening in that reader's day, so the label reads it back in the
+    // same zone rather than translating a date that has no time of day.
     function shortDay(iso) {
-        var d = new Date(String(iso).length === 10 ? iso + 'T00:00:00Z' : iso);
+        var d = new Date(String(iso).length === 10 ? iso + 'T12:00:00Z' : iso);
         if (isNaN(d.getTime())) return '';
         try {
             return new Intl.DateTimeFormat(navLang(), {
                 day: 'numeric', month: 'short', timeZone: 'UTC'
             }).format(d);
         } catch (err) {
-            return d.toISOString().slice(0, 10);
+            return String(iso).slice(0, 10);
         }
     }
 
@@ -4472,7 +4475,7 @@
     // identical cards leave the reader to decide which one matters, and the
     // answer is always the same one. So it is said once, large, with the chart
     // under it, and everything else is smaller than it.
-    function useHeadline(s, prev, period, slots, lastDay, marks, allowed) {
+    function useHeadline(s, prev, period, marks, allowed) {
         var box = document.createElement('section');
         box.className = 'use-head';
 
@@ -4514,7 +4517,7 @@
         // is a fact with a shape -- a flat line under a real scale -- and
         // swapping it for a sentence takes the axis away exactly when somebody
         // is asking whether anything ran at all.
-        box.appendChild(useChart(s.days || [], slots, lastDay, marks));
+        box.appendChild(useChart(s.days || [], marks));
         var legend = document.createElement('div');
         legend.className = 'use-legend';
         legend.appendChild(key('use-key-run', 'Screenings'));
@@ -4933,9 +4936,7 @@
             allow.rows.forEach(function (r) {
                 if (!r.unmetered && r.label === 'Screenings' && r.of > 0) capped = r.of;
             });
-            body.appendChild(useHeadline(s, out.previous, out.period, periodDays(out.period),
-                new Date(new Date(out.period.to).getTime() - 1).toISOString(),
-                out.marks, capped));
+            body.appendChild(useHeadline(s, out.previous, out.period, out.marks, capped));
 
             // shown only when something is actually limited. a block whose
             // every row reads "unmetered" is a heading, a plan name and no
@@ -5164,13 +5165,6 @@
             return { rows: trial, head: orghPlan(plan.state), agreed: false };
         }
 
-        // how many days the chosen period is, whether or not they have happened
-        function periodDays(p) {
-            if (!p) return 0;
-            var span = new Date(p.to).getTime() - new Date(p.from).getTime();
-            return Math.max(1, Math.round(span / 86400000));
-        }
-
         function busiest(days) {
             var best = null;
             (days || []).forEach(function (d) {
@@ -5190,7 +5184,8 @@
         function load() {
             if (!org.id) return;
             var url = '/v1/orgs/' + encodeURIComponent(org.id) + '/usage?period=' +
-                encodeURIComponent(want.period) + '&scope=' + encodeURIComponent(want.scope);
+                encodeURIComponent(want.period) + '&scope=' + encodeURIComponent(want.scope) +
+                '&tz=' + encodeURIComponent(zoneNow());
             fetch(url, { credentials: 'same-origin' })
                 .then(function (r) {
                     if (!r.ok) throw new Error('bad-status-' + r.status);
