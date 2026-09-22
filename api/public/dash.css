@@ -3330,13 +3330,93 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 /* the plot itself, which may be narrower than the grid behind it when the
    window is only a few days long */
 .use-plot-in { position: relative; height: 100%; }
-.use-chart-svg { display: block; width: 100%; height: 100%; }
-.use-bar-run { fill: var(--link); opacity: 0.8; }
-.use-bar-flag { fill: var(--risk-mid); }
-/* an invisible column per day, so a day with nothing on it can still be
-   pointed at and say so */
-.use-bar-lane { fill: transparent; }
-.use-bar-lane:hover { fill: var(--hover); }
+.use-chart-svg { display: block; width: 100%; height: 100%; color: var(--link); }
+/* the line keeps its weight however wide the card is: everything else inside a
+   stretched plot is distorted, a stroke told not to scale is not */
+.use-line {
+    fill: none;
+    stroke: var(--link);
+    stroke-width: 2;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+}
+.use-line-flag {
+    fill: none;
+    stroke: var(--risk-mid);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+}
+.use-area { stroke: none; }
+
+/* the points themselves, for a window short enough that the line between two
+   of them is not obvious. elements rather than circles: a circle in a stretched
+   plot is an ellipse. */
+.use-dot {
+    position: absolute;
+    width: 5px;
+    height: 5px;
+    margin: -2.5px 0 0 -2.5px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1.5px solid var(--link);
+}
+
+/* reading a single day off the line */
+.use-guide {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--line);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.12s ease;
+}
+.use-here {
+    position: absolute;
+    width: 9px;
+    height: 9px;
+    margin: -4.5px 0 0 -4.5px;
+    border-radius: 50%;
+    background: var(--link);
+    box-shadow: 0 0 0 3px var(--surface);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.12s ease;
+}
+.use-tip {
+    position: absolute;
+    top: 0.2rem;
+    transform: translateX(0.5rem);
+    min-width: 8.5rem;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    box-shadow: 0 10px 24px rgba(14, 35, 88, 0.12);
+    font-size: 0.74rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.12s ease;
+    z-index: 2;
+}
+.use-tip.is-left { transform: translateX(calc(-100% - 0.5rem)); }
+.use-tip-d { margin-bottom: 0.3rem; color: var(--ink-4); }
+.use-tip-r {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.1rem 0;
+    color: var(--ink-3);
+}
+.use-tip-r i { width: 8px; height: 8px; border-radius: 3px; flex: none; }
+.use-tip-r strong {
+    margin-left: auto;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+}
+.is-reading .use-guide, .is-reading .use-here, .is-reading .use-tip { opacity: 1; }
 .use-plot-x {
     grid-column: 2;
     grid-row: 2;
@@ -3526,7 +3606,7 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 }
 .use-key { display: inline-flex; align-items: center; gap: 0.35rem; }
 .use-key i { width: 9px; height: 9px; border-radius: 3px; }
-.use-key-run { background: var(--link); opacity: 0.75; }
+.use-key-run { background: var(--link); }
 .use-key-flag { background: var(--risk-mid); }
 
 /* The rest in one line each rather than one card each: facts about the period,

@@ -4091,14 +4091,17 @@
         return useSpan(p);
     }
 
-    // The work, day by day, with an axis on both sides of it.
+    // The work, day by day, as a line with the area under it filled.
     //
     // Drawn rather than pulled in: a chart library is a lot of somebody else's
     // code for thirty numbers, and it would still have to be taught this page's
     // colours in both themes, which is most of what it would be doing.
     //
-    // The labels are html rather than svg text. The plot is stretched to the
-    // width of its card, and text inside a stretched svg is stretched with it.
+    // Everything that must not be distorted lives outside the svg. The plot is
+    // stretched to the width of its card, so a circle inside it comes out an
+    // ellipse and text comes out unreadable; the stroke survives because it is
+    // told not to scale, and the dots, the guide, the labels and the tooltip
+    // are ordinary elements positioned over the top.
     function useChart(days, slots, lastDay, marks) {
         var box = document.createElement('div');
         box.className = 'use-plot';
@@ -4108,7 +4111,6 @@
         days.forEach(function (d) { if (d.n > high) high = d.n; });
         var top = niceTop(high);
 
-        // the scale, read from the top down
         var yAxis = document.createElement('div');
         yAxis.className = 'use-plot-y';
         [top, Math.round(top / 2), 0].forEach(function (v) {
@@ -4122,83 +4124,112 @@
         area.className = 'use-plot-a';
 
         // A window three days long stretched across the card turns three days
-        // into three walls. The plot takes the share of the width those days
-        // are worth and the grid keeps its full span, so a short window looks
-        // short instead of looking busy.
+        // into a shape that means nothing. The plot takes the share of the
+        // width those days are worth and the grid keeps its full span.
         var fill = Math.min(1, w / MIN_DAYS);
-
         var plot = document.createElement('div');
         plot.className = 'use-plot-in';
         plot.style.width = (fill * 100) + '%';
 
-        var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        var svg = document.createElementNS(SVG_NS, 'svg');
         svg.setAttribute('viewBox', '0 0 ' + (w * 10) + ' 100');
         svg.setAttribute('preserveAspectRatio', 'none');
         svg.setAttribute('class', 'use-chart-svg');
         svg.setAttribute('role', 'img');
         svg.setAttribute('aria-label', t('Screenings per day'));
 
-        days.forEach(function (d, i) {
-            var h = d.n > 0 ? Math.max(2, Math.round((d.n / top) * 100)) : 0;
-            var x = i * 10 + 1.5;
-            if (h > 0) {
-                var bar = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-                bar.setAttribute('x', String(x));
-                bar.setAttribute('y', String(100 - h));
-                bar.setAttribute('width', '7');
-                bar.setAttribute('height', String(h));
-                bar.setAttribute('class', 'use-bar-run');
-                svg.appendChild(bar);
-                if (d.flagged > 0) {
-                    // inside the same column rather than beside it: they are
-                    // the same checks, not extra ones
-                    var fh = Math.max(2, Math.round((d.flagged / d.n) * h));
-                    var hit = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-                    hit.setAttribute('x', String(x));
-                    hit.setAttribute('y', String(100 - fh));
-                    hit.setAttribute('width', '7');
-                    hit.setAttribute('height', String(fh));
-                    hit.setAttribute('class', 'use-bar-flag');
-                    svg.appendChild(hit);
-                }
-            }
-            // a day with nothing on it still answers when it is pointed at
-            var lane = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            lane.setAttribute('x', String(i * 10));
-            lane.setAttribute('y', '0');
-            lane.setAttribute('width', '10');
-            lane.setAttribute('height', '100');
-            lane.setAttribute('class', 'use-bar-lane');
-            var title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-            title.textContent = whenText(d.day) + '  ·  ' + t('Screenings') + ' ' + useNum(d.n) +
-                (d.flagged ? '  ·  ' + t('Flagged') + ' ' + useNum(d.flagged) : '');
-            lane.appendChild(title);
-            svg.appendChild(lane);
+        var grad = document.createElementNS(SVG_NS, 'linearGradient');
+        var gradId = 'use-fade-' + (fadeSeq++);
+        grad.setAttribute('id', gradId);
+        grad.setAttribute('x1', '0');
+        grad.setAttribute('y1', '0');
+        grad.setAttribute('x2', '0');
+        grad.setAttribute('y2', '1');
+        [['0', '0.3'], ['1', '0']].forEach(function (pair) {
+            var stop = document.createElementNS(SVG_NS, 'stop');
+            stop.setAttribute('offset', pair[0]);
+            stop.setAttribute('stop-color', 'currentColor');
+            stop.setAttribute('stop-opacity', pair[1]);
+            grad.appendChild(stop);
         });
+        var defs = document.createElementNS(SVG_NS, 'defs');
+        defs.appendChild(grad);
+        svg.appendChild(defs);
+
+        var at = function (i) { return i * 10 + 5; };
+        var up = function (n) { return 100 - (top > 0 ? (n / top) * 100 : 0); };
+
+        if (days.length) {
+            var line = [];
+            var under = ['M ' + at(0) + ' 100'];
+            days.forEach(function (d, i) {
+                line.push((i ? 'L ' : 'M ') + at(i) + ' ' + up(d.n));
+                under.push('L ' + at(i) + ' ' + up(d.n));
+            });
+            under.push('L ' + at(days.length - 1) + ' 100 Z');
+
+            var shade = document.createElementNS(SVG_NS, 'path');
+            shade.setAttribute('d', under.join(' '));
+            shade.setAttribute('class', 'use-area');
+            shade.setAttribute('fill', 'url(#' + gradId + ')');
+            svg.appendChild(shade);
+
+            var run = document.createElementNS(SVG_NS, 'path');
+            run.setAttribute('d', line.join(' '));
+            run.setAttribute('class', 'use-line');
+            // the one thing inside a stretched plot that keeps its shape
+            run.setAttribute('vector-effect', 'non-scaling-stroke');
+            svg.appendChild(run);
+
+            // what came back flagged, as a second line rather than a share of
+            // the first: they are the same checks, and stacking them would make
+            // a total that is not a total
+            if (days.some(function (d) { return d.flagged > 0; })) {
+                var bad = [];
+                days.forEach(function (d, i) {
+                    bad.push((i ? 'L ' : 'M ') + at(i) + ' ' + up(d.flagged));
+                });
+                var flag = document.createElementNS(SVG_NS, 'path');
+                flag.setAttribute('d', bad.join(' '));
+                flag.setAttribute('class', 'use-line-flag');
+                flag.setAttribute('vector-effect', 'non-scaling-stroke');
+                svg.appendChild(flag);
+            }
+        }
         plot.appendChild(svg);
+
+        // A short window has few points, and a line between two of them is
+        // easier to read with the points themselves on it.
+        if (days.length && days.length <= 12) {
+            days.forEach(function (d, i) {
+                var dot = document.createElement('span');
+                dot.className = 'use-dot';
+                dot.style.left = (((i + 0.5) / w) * 100) + '%';
+                dot.style.top = up(d.n) + '%';
+                plot.appendChild(dot);
+            });
+        }
 
         // Days the plan itself moved: it started, it renewed, it changed. A
         // line on the day rather than a cut in the chart, so the month before a
-        // renewal is still there to look at. Drawn as an element beside the
-        // plot rather than inside it: a hairline in a stretched svg comes out a
-        // band, which reads as a fault rather than a marker.
+        // renewal is still there to look at.
         (marks || []).forEach(function (m) {
-            var at = -1;
+            var where = -1;
             for (var i = 0; i < days.length; i++) {
-                if (days[i].day === m.day) { at = i; break; }
+                if (days[i].day === m.day) { where = i; break; }
             }
-            if (at === -1) return;
-            var line = document.createElement('span');
-            line.className = 'use-mark';
-            line.style.left = (((at + 0.5) / w) * 100) + '%';
-            line.title = whenText(m.day) + '  \u00b7  ' + t(markWord(m.kind));
-            plot.appendChild(line);
+            if (where === -1) return;
+            var stem = document.createElement('span');
+            stem.className = 'use-mark';
+            stem.style.left = (((where + 0.5) / w) * 100) + '%';
+            stem.title = whenText(m.day) + '  ·  ' + t(markWord(m.kind));
+            plot.appendChild(stem);
         });
 
+        if (days.length) plot.appendChild(useHover(plot, days, w, up));
         area.appendChild(plot);
         box.appendChild(area);
 
-        // the dates, spread along the axis rather than only at its ends
         var xAxis = document.createElement('div');
         xAxis.className = 'use-plot-x';
         xAxis.style.width = (fill * 100) + '%';
@@ -4212,12 +4243,85 @@
         return box;
     }
 
+    // Follow the pointer along the line: a guide on the day under it, the point
+    // itself marked, and the numbers for that day beside it. The alternative is
+    // a tooltip per bar, which cannot exist on a line, and a chart nobody can
+    // read a single day off.
+    function useHover(plot, days, w, up) {
+        var guide = document.createElement('span');
+        guide.className = 'use-guide';
+        plot.appendChild(guide);
+
+        var here = document.createElement('span');
+        here.className = 'use-here';
+        plot.appendChild(here);
+
+        var tip = document.createElement('div');
+        tip.className = 'use-tip';
+        plot.appendChild(tip);
+
+        var show = function (on) {
+            plot.classList.toggle('is-reading', Boolean(on));
+        };
+
+        var read = function (e) {
+            var box = plot.getBoundingClientRect();
+            if (!box.width) return;
+            var share = (e.clientX - box.left) / box.width;
+            var i = Math.round(share * w - 0.5);
+            if (i < 0) i = 0;
+            if (i > days.length - 1) i = days.length - 1;
+            var d = days[i];
+            var x = ((i + 0.5) / w) * 100;
+            guide.style.left = x + '%';
+            here.style.left = x + '%';
+            here.style.top = up(d.n) + '%';
+
+            tip.textContent = '';
+            var when = document.createElement('div');
+            when.className = 'use-tip-d';
+            when.textContent = whenText(d.day);
+            tip.appendChild(when);
+            tip.appendChild(tipLine('use-key-run', 'Screenings', d.n));
+            if (d.flagged > 0) tip.appendChild(tipLine('use-key-flag', 'Flagged', d.flagged));
+            tip.style.left = x + '%';
+            // near the right edge it would hang off the card, so it flips
+            tip.classList.toggle('is-left', x > 65);
+            show(true);
+        };
+
+        plot.addEventListener('pointermove', read);
+        plot.addEventListener('pointerdown', read);
+        plot.addEventListener('pointerleave', function () { show(false); });
+        return guide;
+    }
+
+    function tipLine(cls, label, value) {
+        var row = document.createElement('div');
+        row.className = 'use-tip-r';
+        var dot = document.createElement('i');
+        dot.className = cls;
+        row.appendChild(dot);
+        var k = document.createElement('span');
+        k.textContent = t(label);
+        row.appendChild(k);
+        var v = document.createElement('strong');
+        v.textContent = useNum(value);
+        row.appendChild(v);
+        return row;
+    }
+
     // whole words, one key each
     function markWord(kind) {
         if (kind === 'renewed') return 'Plan renewed';
         if (kind === 'changed') return 'Plan changed';
         return 'Plan started';
     }
+
+    var SVG_NS = 'http://www.w3.org/2000/svg';
+    // every gradient needs an id of its own, or the second chart on a page
+    // paints itself with the first one
+    var fadeSeq = 0;
 
     // Below this many days a plot is drawn narrower rather than blown up, so a
     // three day window is three days wide and not three days shaped like a month.
@@ -4413,7 +4517,7 @@
         box.appendChild(useChart(s.days || [], slots, lastDay, marks));
         var legend = document.createElement('div');
         legend.className = 'use-legend';
-        legend.appendChild(key('use-key-run', 'Clear'));
+        legend.appendChild(key('use-key-run', 'Screenings'));
         legend.appendChild(key('use-key-flag', 'Flagged'));
         box.appendChild(legend);
         return box;
