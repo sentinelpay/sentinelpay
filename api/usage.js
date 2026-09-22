@@ -189,6 +189,31 @@ async function shapeOf(orgId, from, to) {
     };
 }
 
+// The same window, one step back. A number on its own says how much; the same
+// number beside the one before it says whether that is a lot -- which is the
+// question somebody opening this page actually has.
+function previousOf(period) {
+    const from = new Date(period.from);
+    const to = new Date(period.to);
+    const now = Date.now();
+
+    // Like for like. A period two days old compared against a whole month
+    // before it reads as a collapse, and it is not one: it is two days against
+    // thirty. So when the period is still running, the window before it is cut
+    // to the same length that has elapsed.
+    const done = Math.min(now, to.getTime()) - from.getTime();
+    const running = now < to.getTime();
+
+    if (period.days) {
+        const span = to.getTime() - from.getTime();
+        const start = new Date(from.getTime() - span);
+        return { from: start.toISOString(), to: new Date(start.getTime() + (running ? done : span)).toISOString() };
+    }
+    const start = months.addMonths(from, -1);
+    const end = running ? new Date(start.getTime() + done) : from;
+    return { from: start.toISOString(), to: end.toISOString(), partial: running };
+}
+
 // The whole screen's worth, for one organisation and one period.
 async function forOrg(orgId, opts) {
     const o = opts || {};
@@ -201,16 +226,31 @@ async function forOrg(orgId, opts) {
     }
 
     try {
-        const [work, shape] = await Promise.all([
+        const before = previousOf(period);
+        const [work, shape, past] = await Promise.all([
             screeningsIn(orgId, period.from, period.to, sandbox),
             shapeOf(orgId, period.from, period.to),
+            db.query(
+                `SELECT count(*)::int AS n,
+                        count(*) FILTER (WHERE verdict <> 'clear')::int AS flagged
+                   FROM screenings
+                  WHERE org_id = $1 AND at >= $2 AND at < $3 AND sandbox = $4`,
+                [Number(orgId), before.from, before.to, sandbox]
+            ),
         ]);
+        const head = past.rows[0] || { n: 0, flagged: 0 };
         return {
             ok: true,
             period,
             periods: list,
             scope: sandbox ? 'sandbox' : 'live',
             screenings: work,
+            previous: {
+                from: before.from, to: before.to,
+                total: head.n, flagged: head.flagged,
+                // the same stretch of it, not all of it, while this one runs
+                partial: Boolean(before.partial),
+            },
             org: shape,
         };
     } catch (err) {

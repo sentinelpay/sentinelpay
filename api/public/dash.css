@@ -3231,7 +3231,7 @@ html.is-theming .btn {
     padding: 0.85rem 0.95rem;
     border: 1px solid var(--line);
     border-radius: 12px;
-    background: var(--card);
+    background: var(--surface);
     text-decoration: none;
     color: inherit;
     transition: border-color 0.18s ease, background 0.18s ease;
@@ -3292,7 +3292,7 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 .use-chart {
     border: 1px solid var(--line);
     border-radius: 12px;
-    background: var(--card);
+    background: var(--surface);
     padding: 0.8rem 0.8rem 0.5rem;
 }
 .use-chart-svg { display: block; width: 100%; height: 132px; }
@@ -3379,7 +3379,7 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     padding: 0.9rem 1.1rem 1rem;
     border: 1px solid var(--line);
     border-radius: 12px;
-    background: var(--card);
+    background: var(--surface);
 }
 .use-allow-h {
     display: flex;
@@ -3418,4 +3418,104 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
        millimetres wide and say nothing */
     .use-allow-r { grid-template-columns: minmax(0, 1fr) auto; gap: 0.3rem 0.8rem; }
     .use-allow-t { grid-column: 1 / -1; }
+}
+
+/* The headline. One number this page is about, the shape it made, and whether
+   that is more or less than last time. Everything else on the screen is
+   smaller than this on purpose: a page of equal boxes has no first sentence. */
+.use-head {
+    margin-bottom: 0.9rem;
+    padding: 1.1rem 1.25rem 1.15rem;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--surface);
+}
+.use-head-t {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    font-size: 0.8rem;
+    color: var(--ink-4);
+}
+.use-head-k { font-weight: 600; letter-spacing: 0.01em; }
+.use-head-r {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.9rem;
+    margin: 0.35rem 0 1rem;
+}
+.use-big {
+    font-family: var(--sp-display);
+    font-size: 2.4rem;
+    line-height: 1.05;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+}
+.use-delta {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    font-size: 0.82rem;
+    color: var(--ink-4);
+}
+.use-delta strong { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.use-delta.is-up .use-arrow, .use-delta.is-up strong { color: var(--link); }
+.use-delta.is-down .use-arrow, .use-delta.is-down strong { color: var(--risk-low); }
+.use-arrow { font-size: 0.9rem; }
+.use-delta-w { color: var(--ink-4); }
+
+.use-legend {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.55rem;
+    font-size: 0.74rem;
+    color: var(--ink-4);
+}
+.use-key { display: inline-flex; align-items: center; gap: 0.35rem; }
+.use-key i { width: 9px; height: 9px; border-radius: 3px; }
+.use-key-run { background: var(--link); opacity: 0.75; }
+.use-key-flag { background: var(--risk-mid); }
+
+/* The rest in one line each rather than one card each: facts about the period,
+   readable in a single pass instead of six boxes deep. */
+.use-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1px;
+    margin-bottom: 2.2rem;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--line);
+    overflow: hidden;
+}
+.use-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.75rem 0.95rem 0.8rem;
+    background: var(--surface);
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.18s ease;
+}
+a.use-cell:hover { background: var(--hover); }
+.use-cell-k { font-size: 0.76rem; color: var(--ink-4); }
+.use-cell-v {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+}
+.use-cell-s { font-size: 0.72rem; color: var(--ink-4); }
+
+/* a row with no limit has no bar. an empty track reads as one that failed to
+   load rather than one with no end. */
+.use-allow-t.is-none { background: transparent; }
+
+@media (max-width: 720px) {
+    .use-big { font-size: 2rem; }
+    .use-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .use-head { padding: 0.95rem 1rem 1rem; }
 }

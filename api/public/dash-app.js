@@ -4095,13 +4095,16 @@
     // The work, day by day. Drawn rather than pulled in: a chart library is a
     // lot of somebody else's code for thirty numbers, and this one has to match
     // the page in both themes, which is most of what a library would be doing.
-    function useChart(days) {
+    function useChart(days, slots, lastDay) {
         var box = document.createElement('div');
         box.className = 'use-chart';
         var top = 1;
         days.forEach(function (d) { if (d.n > top) top = d.n; });
 
-        var w = Math.max(days.length, 1);
+        // the width is the whole period, not the part of it that has happened.
+        // two days into a month drawn across the full card is two bars the size
+        // of a wall; drawn in their own two columns it is two days of a month.
+        var w = Math.max(days.length, Number(slots) || 0, 1);
         var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('viewBox', '0 0 ' + (w * 10) + ' 100');
         svg.setAttribute('preserveAspectRatio', 'none');
@@ -4155,7 +4158,11 @@
         var a = document.createElement('span');
         a.textContent = days.length ? whenText(days[0].day) : '';
         var b = document.createElement('span');
-        b.textContent = days.length ? whenText(days[days.length - 1].day) : '';
+        // the far end of the axis is where the period ends, not where the last
+        // bar stands: the empty space to the right is the rest of the month,
+        // and labelling it today would say the month ended this morning
+        b.textContent = lastDay ? whenText(lastDay)
+            : (days.length ? whenText(days[days.length - 1].day) : '');
         foot.appendChild(a);
         foot.appendChild(b);
         box.appendChild(foot);
@@ -4244,6 +4251,131 @@
         return tile;
     }
 
+    // The number this page is about, the shape it made, and whether that is
+    // more or less than last time.
+    //
+    // A page of equal boxes has no first sentence: eight numbers in eight
+    // identical cards leave the reader to decide which one matters, and the
+    // answer is always the same one. So it is said once, large, with the chart
+    // under it, and everything else is smaller than it.
+    function useHeadline(s, prev, period, slots, lastDay) {
+        var box = document.createElement('section');
+        box.className = 'use-head';
+
+        var top = document.createElement('div');
+        top.className = 'use-head-t';
+        var lab = document.createElement('span');
+        lab.className = 'use-head-k';
+        lab.textContent = t('Screenings');
+        top.appendChild(lab);
+        var when = document.createElement('span');
+        when.className = 'use-head-w';
+        when.textContent = useSpan(period);
+        top.appendChild(when);
+        box.appendChild(top);
+
+        var row = document.createElement('div');
+        row.className = 'use-head-r';
+        var big = document.createElement('div');
+        big.className = 'use-big';
+        big.textContent = useNum(s.total);
+        row.appendChild(big);
+        var d = delta(s.total, prev && prev.total);
+        if (d) row.appendChild(d);
+        box.appendChild(row);
+
+        if (s.total > 0) {
+            box.appendChild(useChart(s.days || [], slots, lastDay));
+            var legend = document.createElement('div');
+            legend.className = 'use-legend';
+            legend.appendChild(key('use-key-run', 'Clear'));
+            legend.appendChild(key('use-key-flag', 'Flagged'));
+            box.appendChild(legend);
+        } else {
+            box.appendChild(emptyState('Nothing screened in this period',
+                'Anything checked from here or from a token shows up straight away.'));
+        }
+        return box;
+    }
+
+    function key(cls, label) {
+        var el = document.createElement('span');
+        el.className = 'use-key';
+        var dot = document.createElement('i');
+        dot.className = cls;
+        el.appendChild(dot);
+        el.appendChild(document.createTextNode(t(label)));
+        return el;
+    }
+
+    // Up or down against the window before this one. Nothing at all when there
+    // is nothing to compare with: a first period has no trend, and a made-up
+    // "+100%" against zero is a number that means only that it started.
+    function delta(now, before) {
+        if (before === null || before === undefined) return null;
+        if (!before && !now) return null;
+        var el = document.createElement('div');
+        el.className = 'use-delta';
+        if (!before) {
+            el.classList.add('is-new');
+            el.textContent = t('First period with anything in it');
+            return el;
+        }
+        var pct = Math.round(((now - before) / before) * 100);
+        var up = pct > 0;
+        if (pct !== 0) el.classList.add(up ? 'is-up' : 'is-down');
+        var arrow = document.createElement('span');
+        arrow.className = 'use-arrow';
+        arrow.setAttribute('aria-hidden', 'true');
+        arrow.textContent = pct === 0 ? '→' : (up ? '↑' : '↓');
+        el.appendChild(arrow);
+        var fig = document.createElement('strong');
+        fig.textContent = (up ? '+' : '') + pct + '%';
+        el.appendChild(fig);
+        var says = document.createElement('span');
+        says.className = 'use-delta-w';
+        says.textContent = t('vs the period before') + '  ·  ' + useNum(before);
+        el.appendChild(says);
+        return el;
+    }
+
+    // The rest, in one line each rather than one card each. They are facts
+    // about the period, not things that can run out, and a reader should be
+    // able to take them all in without scrolling past six boxes to do it.
+    function useStrip(rows) {
+        var strip = document.createElement('section');
+        strip.className = 'use-strip';
+        rows.forEach(function (r) {
+            var cell = r.to ? document.createElement('a') : document.createElement('div');
+            cell.className = 'use-cell';
+            if (r.to) {
+                cell.href = '#' + r.to;
+                cell.addEventListener('click', function (e) {
+                    var target = document.getElementById(r.to);
+                    if (!target) return;
+                    e.preventDefault();
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            }
+            var k = document.createElement('span');
+            k.className = 'use-cell-k';
+            k.textContent = t(r.label);
+            cell.appendChild(k);
+            var v = document.createElement('span');
+            v.className = 'use-cell-v';
+            v.textContent = r.value;
+            cell.appendChild(v);
+            if (r.sub) {
+                var sub = document.createElement('span');
+                sub.className = 'use-cell-s';
+                sub.textContent = r.sub;
+                cell.appendChild(sub);
+            }
+            strip.appendChild(cell);
+        });
+        return strip;
+    }
+
     // What the plan allows, and how much of it is gone.
     //
     // Only things a plan actually limits belong here. The tiles below carry
@@ -4285,7 +4417,11 @@
 
             var track = document.createElement('span');
             track.className = 'use-allow-t';
-            if (!r.unmetered) {
+            if (r.unmetered) {
+                // no bar at all. an empty track beside "unmetered" reads as a
+                // meter that failed to load, not as one with no end
+                track.classList.add('is-none');
+            } else {
                 var fill = document.createElement('span');
                 fill.className = 'use-allow-f';
                 var pct = r.of > 0 ? Math.min(100, Math.round((r.used / r.of) * 100)) : 0;
@@ -4565,32 +4701,25 @@
             if (full.length) verdict.classList.add('is-over');
             body.appendChild(verdict);
 
-            // the contract first, then what happened under it
+            body.appendChild(useHeadline(s, out.previous, out.period, periodDays(out.period),
+                new Date(new Date(out.period.to).getTime() - 1).toISOString()));
+
             if (allow.rows.length) {
                 body.appendChild(useAllowance(allow.rows, allow.head, allow.agreed));
             }
 
-            var grid = document.createElement('div');
-            grid.className = 'use-grid';
-            grid.appendChild(useTile('Screenings', useNum(s.total), {
-                to: 'use-screening',
-                sub: t('Addresses') + '  ' + useNum(s.addresses)
-            }));
-            grid.appendChild(useTile('Flagged', useNum(s.flagged), {
-                to: 'use-flagged',
-                sub: s.total ? t('Share') + '  ' + Math.round((s.flagged / s.total) * 100) + '%' : t('Nothing yet')
-            }));
-            grid.appendChild(useTile('Chains seen', useNum(s.assetCount), {
-                to: 'use-assets',
-                sub: (s.assets && s.assets.length) ? t('Most seen') + '  ' + s.assets[0].asset : t('Nothing yet')
-            }));
-            grid.appendChild(useTile('Tokens used', useNum(shape.tokensUsed), {
-                to: 'use-team',
-                sub: t('Able to screen') + '  ' + useNum(shape.tokens)
-            }));
-            grid.appendChild(useTile('Members', useNum(shape.members), { to: 'use-team' }));
-            grid.appendChild(useTile('Projects', useNum(shape.projects), { to: 'use-team' }));
-            body.appendChild(grid);
+            var strip = [
+                {
+                    label: 'Flagged', value: useNum(s.flagged), to: 'use-flagged',
+                    sub: s.total ? Math.round((s.flagged / s.total) * 100) + '%' : ''
+                },
+                { label: 'Addresses', value: useNum(s.addresses), to: 'use-screening' },
+                { label: 'Chains', value: useNum(s.assetCount), to: 'use-assets' },
+                { label: 'Tokens used', value: useNum(shape.tokensUsed), to: 'use-team' },
+                { label: 'Members', value: useNum(shape.members), to: 'use-team' },
+                { label: 'Projects', value: useNum(shape.projects), to: 'use-team' }
+            ];
+            body.appendChild(useStrip(strip));
 
             // ---- screening
             var sec = useSection('use-screening', 'Screening', 'screening',
@@ -4607,12 +4736,6 @@
                 ['Addresses', useNum(s.addresses)],
                 ['Busiest day', busiest(s.days)]
             ]));
-            if (s.total > 0) {
-                main.appendChild(useChart(s.days || []));
-            } else {
-                main.appendChild(emptyState('Nothing screened in this period',
-                    'Anything checked from here or from a token shows up straight away.'));
-            }
             sec.body.appendChild(main);
             body.appendChild(sec);
 
@@ -4802,6 +4925,13 @@
                 trial.push({ label: 'History scans', used: plan.historyUsed, of: plan.historyIncluded });
             }
             return { rows: trial, head: orghPlan(plan.state), agreed: false };
+        }
+
+        // how many days the chosen period is, whether or not they have happened
+        function periodDays(p) {
+            if (!p) return 0;
+            var span = new Date(p.to).getTime() - new Date(p.from).getTime();
+            return Math.max(1, Math.round(span / 86400000));
         }
 
         function busiest(days) {
