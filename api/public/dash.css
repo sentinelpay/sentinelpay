@@ -3287,28 +3287,70 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 .use-fact:last-child { border-bottom: 0; }
 .use-fact-v { color: var(--ink-2); font-weight: 600; text-align: right; }
 
-/* The chart is drawn rather than pulled in. It has no axis: the numbers above
-   it are the numbers, and an axis on thirty bars is furniture. */
-.use-chart {
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    background: var(--surface);
-    padding: 0.8rem 0.8rem 0.5rem;
+/* The chart, with an axis on both sides. Gridlines are drawn by the container
+   rather than inside the svg: the plot is stretched to the width of its card,
+   and anything inside a stretched svg is stretched with it -- a hairline
+   becomes a band, and text becomes unreadable. */
+.use-plot {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    column-gap: 0.6rem;
+    row-gap: 0.35rem;
 }
-.use-chart-svg { display: block; width: 100%; height: 132px; }
-.use-bar-run { fill: var(--link); opacity: 0.75; }
+.use-plot-y {
+    grid-column: 1;
+    grid-row: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-end;
+    height: 148px;
+    font-size: 0.68rem;
+    color: var(--ink-4);
+    font-variant-numeric: tabular-nums;
+}
+/* Each number sits centred on its own line. Laid out with space-between, the
+   top one's box starts at the line and the bottom one's ends at it, so those
+   two are nudged by half their own height and the middle one is already right. */
+.use-plot-y span:first-child { transform: translateY(-50%); }
+.use-plot-y span:last-child { transform: translateY(50%); }
+.use-plot-a {
+    grid-column: 2;
+    grid-row: 1;
+    height: 148px;
+    border-bottom: 1px solid var(--line);
+    background-image:
+        linear-gradient(to bottom, var(--line-2) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--line-2) 1px, transparent 1px);
+    background-position: 0 0, 0 50%;
+    background-size: 100% 1px;
+    background-repeat: no-repeat;
+}
+.use-chart-svg { display: block; width: 100%; height: 100%; }
+.use-bar-run { fill: var(--link); opacity: 0.8; }
 .use-bar-flag { fill: var(--risk-mid); }
 /* an invisible column per day, so a day with nothing on it can still be
    pointed at and say so */
 .use-bar-lane { fill: transparent; }
 .use-bar-lane:hover { fill: var(--hover); }
-.use-chart-f {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 0.4rem;
-    font-size: 0.72rem;
+.use-plot-x {
+    grid-column: 2;
+    grid-row: 2;
+    position: relative;
+    height: 0.95rem;
+    font-size: 0.68rem;
     color: var(--ink-4);
 }
+.use-plot-x span {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    white-space: nowrap;
+}
+/* the ends stay inside the plot instead of hanging off it */
+.use-plot-x span:first-child { transform: none; }
+.use-plot-x span:last-child { transform: translateX(-100%); }
 
 .use-share-l {
     display: grid;

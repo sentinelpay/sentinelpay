@@ -4092,19 +4092,36 @@
         return useSpan(p);
     }
 
-    // The work, day by day. Drawn rather than pulled in: a chart library is a
-    // lot of somebody else's code for thirty numbers, and this one has to match
-    // the page in both themes, which is most of what a library would be doing.
+    // The work, day by day, with an axis on both sides of it.
+    //
+    // Drawn rather than pulled in: a chart library is a lot of somebody else's
+    // code for thirty numbers, and it would still have to be taught this page's
+    // colours in both themes, which is most of what it would be doing.
+    //
+    // The labels are html rather than svg text. The plot is stretched to the
+    // width of its card, and text inside a stretched svg is stretched with it.
     function useChart(days, slots, lastDay) {
         var box = document.createElement('div');
-        box.className = 'use-chart';
-        var top = 1;
-        days.forEach(function (d) { if (d.n > top) top = d.n; });
+        box.className = 'use-plot';
 
-        // the width is the whole period, not the part of it that has happened.
-        // two days into a month drawn across the full card is two bars the size
-        // of a wall; drawn in their own two columns it is two days of a month.
         var w = Math.max(days.length, Number(slots) || 0, 1);
+        var high = 0;
+        days.forEach(function (d) { if (d.n > high) high = d.n; });
+        var top = niceTop(high);
+
+        // the scale, read from the top down
+        var yAxis = document.createElement('div');
+        yAxis.className = 'use-plot-y';
+        [top, Math.round(top / 2), 0].forEach(function (v) {
+            var l = document.createElement('span');
+            l.textContent = useNum(v);
+            yAxis.appendChild(l);
+        });
+        box.appendChild(yAxis);
+
+        var area = document.createElement('div');
+        area.className = 'use-plot-a';
+
         var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('viewBox', '0 0 ' + (w * 10) + ' 100');
         svg.setAttribute('preserveAspectRatio', 'none');
@@ -4113,7 +4130,7 @@
         svg.setAttribute('aria-label', t('Screenings per day'));
 
         days.forEach(function (d, i) {
-            var h = d.n > 0 ? Math.max(2, Math.round((d.n / top) * 92)) : 0;
+            var h = d.n > 0 ? Math.max(2, Math.round((d.n / top) * 100)) : 0;
             var x = i * 10 + 1.5;
             if (h > 0) {
                 var bar = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -4125,8 +4142,8 @@
                 bar.setAttribute('class', 'use-bar-run');
                 svg.appendChild(bar);
                 if (d.flagged > 0) {
-                    // the flagged part sits inside the same column rather than
-                    // beside it: they are the same checks, not extra ones
+                    // inside the same column rather than beside it: they are
+                    // the same checks, not extra ones
                     var fh = Math.max(2, Math.round((d.flagged / d.n) * h));
                     var hit = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
                     hit.setAttribute('x', String(x));
@@ -4151,22 +4168,76 @@
             lane.appendChild(title);
             svg.appendChild(lane);
         });
+        area.appendChild(svg);
+        box.appendChild(area);
 
-        box.appendChild(svg);
-        var foot = document.createElement('div');
-        foot.className = 'use-chart-f';
-        var a = document.createElement('span');
-        a.textContent = days.length ? whenText(days[0].day) : '';
-        var b = document.createElement('span');
-        // the far end of the axis is where the period ends, not where the last
-        // bar stands: the empty space to the right is the rest of the month,
-        // and labelling it today would say the month ended this morning
-        b.textContent = lastDay ? whenText(lastDay)
-            : (days.length ? whenText(days[days.length - 1].day) : '');
-        foot.appendChild(a);
-        foot.appendChild(b);
-        box.appendChild(foot);
+        // the dates, spread along the axis rather than only at its ends
+        var xAxis = document.createElement('div');
+        xAxis.className = 'use-plot-x';
+        ticks(w, days, lastDay).forEach(function (tick) {
+            var l = document.createElement('span');
+            l.style.left = (((tick.at + 0.5) / w) * 100) + '%';
+            l.textContent = tick.label;
+            xAxis.appendChild(l);
+        });
+        box.appendChild(xAxis);
         return box;
+    }
+
+    // A top of the scale somebody can read: 10, 25, 50, 100 rather than 87.
+    // An empty period keeps a scale anyway, so the chart shows a flat nothing
+    // instead of disappearing and leaving a hole where the answer should be.
+    function niceTop(high) {
+        if (high <= 0) return 4;
+        var steps = [1, 2, 5];
+        var size = Math.pow(10, Math.floor(Math.log(high) / Math.LN10));
+        for (var i = 0; i < steps.length; i++) {
+            var candidate = steps[i] * size;
+            if (high <= candidate) return candidate;
+        }
+        return 10 * size;
+    }
+
+    // Up to six of them, evenly spaced, always including both ends. More than
+    // that on a narrow card is a row of dates overlapping each other.
+    function ticks(w, days, lastDay) {
+        var want = Math.min(6, Math.max(2, Math.round(w / 6)));
+        var step = w <= 1 ? 1 : (w - 1) / (want - 1);
+        var out = [];
+        var seen = {};
+        for (var i = 0; i < want; i++) {
+            var at = Math.round(i * step);
+            if (at > w - 1) at = w - 1;
+            if (seen[at]) continue;
+            seen[at] = true;
+            out.push({ at: at, label: tickWord(at, days, lastDay) });
+        }
+        return out;
+    }
+
+    // The day at that spot on the axis. Past the last day we have, it is
+    // counted forward from the first: the rest of the period has not happened
+    // yet, and its dates are still dates.
+    function tickWord(at, days, lastDay) {
+        if (days[at]) return shortDay(days[at].day);
+        if (!days.length) return '';
+        var from = new Date(days[0].day + 'T00:00:00Z');
+        var when = new Date(from.getTime() + at * 86400000);
+        var end = lastDay ? new Date(lastDay) : null;
+        if (end && when.getTime() > end.getTime()) when = end;
+        return shortDay(when.toISOString());
+    }
+
+    function shortDay(iso) {
+        var d = new Date(String(iso).length === 10 ? iso + 'T00:00:00Z' : iso);
+        if (isNaN(d.getTime())) return '';
+        try {
+            return new Intl.DateTimeFormat(navLang(), {
+                day: 'numeric', month: 'short', timeZone: 'UTC'
+            }).format(d);
+        } catch (err) {
+            return d.toISOString().slice(0, 10);
+        }
     }
 
     // A list where the length of each line is its share. Used for what came
@@ -4284,17 +4355,16 @@
         if (d) row.appendChild(d);
         box.appendChild(row);
 
-        if (s.total > 0) {
-            box.appendChild(useChart(s.days || [], slots, lastDay));
-            var legend = document.createElement('div');
-            legend.className = 'use-legend';
-            legend.appendChild(key('use-key-run', 'Clear'));
-            legend.appendChild(key('use-key-flag', 'Flagged'));
-            box.appendChild(legend);
-        } else {
-            box.appendChild(emptyState('Nothing screened in this period',
-                'Anything checked from here or from a token shows up straight away.'));
-        }
+        // Always the chart, even when every day of it is zero. An empty period
+        // is a fact with a shape -- a flat line under a real scale -- and
+        // swapping it for a sentence takes the axis away exactly when somebody
+        // is asking whether anything ran at all.
+        box.appendChild(useChart(s.days || [], slots, lastDay));
+        var legend = document.createElement('div');
+        legend.className = 'use-legend';
+        legend.appendChild(key('use-key-run', 'Clear'));
+        legend.appendChild(key('use-key-flag', 'Flagged'));
+        box.appendChild(legend);
         return box;
     }
 
