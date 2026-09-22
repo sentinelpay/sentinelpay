@@ -4072,7 +4072,6 @@
 
     function useSpan(p) {
         if (!p) return '';
-        if (p.days) return useWindowWord(p.days);
         // the end of a period is the moment the next one begins, so the day
         // shown as its last is the day before
         return useRange(p.from, new Date(new Date(p.to).getTime() - 1).toISOString());
@@ -4100,7 +4099,7 @@
     //
     // The labels are html rather than svg text. The plot is stretched to the
     // width of its card, and text inside a stretched svg is stretched with it.
-    function useChart(days, slots, lastDay) {
+    function useChart(days, slots, lastDay, marks) {
         var box = document.createElement('div');
         box.className = 'use-plot';
 
@@ -4122,6 +4121,16 @@
         var area = document.createElement('div');
         area.className = 'use-plot-a';
 
+        // A window three days long stretched across the card turns three days
+        // into three walls. The plot takes the share of the width those days
+        // are worth and the grid keeps its full span, so a short window looks
+        // short instead of looking busy.
+        var fill = Math.min(1, w / MIN_DAYS);
+
+        var plot = document.createElement('div');
+        plot.className = 'use-plot-in';
+        plot.style.width = (fill * 100) + '%';
+
         var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('viewBox', '0 0 ' + (w * 10) + ' 100');
         svg.setAttribute('preserveAspectRatio', 'none');
@@ -4138,7 +4147,6 @@
                 bar.setAttribute('y', String(100 - h));
                 bar.setAttribute('width', '7');
                 bar.setAttribute('height', String(h));
-                bar.setAttribute('rx', '1.5');
                 bar.setAttribute('class', 'use-bar-run');
                 svg.appendChild(bar);
                 if (d.flagged > 0) {
@@ -4150,7 +4158,6 @@
                     hit.setAttribute('y', String(100 - fh));
                     hit.setAttribute('width', '7');
                     hit.setAttribute('height', String(fh));
-                    hit.setAttribute('rx', '1.5');
                     hit.setAttribute('class', 'use-bar-flag');
                     svg.appendChild(hit);
                 }
@@ -4168,12 +4175,33 @@
             lane.appendChild(title);
             svg.appendChild(lane);
         });
-        area.appendChild(svg);
+        plot.appendChild(svg);
+
+        // Days the plan itself moved: it started, it renewed, it changed. A
+        // line on the day rather than a cut in the chart, so the month before a
+        // renewal is still there to look at. Drawn as an element beside the
+        // plot rather than inside it: a hairline in a stretched svg comes out a
+        // band, which reads as a fault rather than a marker.
+        (marks || []).forEach(function (m) {
+            var at = -1;
+            for (var i = 0; i < days.length; i++) {
+                if (days[i].day === m.day) { at = i; break; }
+            }
+            if (at === -1) return;
+            var line = document.createElement('span');
+            line.className = 'use-mark';
+            line.style.left = (((at + 0.5) / w) * 100) + '%';
+            line.title = whenText(m.day) + '  \u00b7  ' + t(markWord(m.kind));
+            plot.appendChild(line);
+        });
+
+        area.appendChild(plot);
         box.appendChild(area);
 
         // the dates, spread along the axis rather than only at its ends
         var xAxis = document.createElement('div');
         xAxis.className = 'use-plot-x';
+        xAxis.style.width = (fill * 100) + '%';
         ticks(w, days, lastDay).forEach(function (tick) {
             var l = document.createElement('span');
             l.style.left = (((tick.at + 0.5) / w) * 100) + '%';
@@ -4183,6 +4211,17 @@
         box.appendChild(xAxis);
         return box;
     }
+
+    // whole words, one key each
+    function markWord(kind) {
+        if (kind === 'renewed') return 'Plan renewed';
+        if (kind === 'changed') return 'Plan changed';
+        return 'Plan started';
+    }
+
+    // Below this many days a plot is drawn narrower rather than blown up, so a
+    // three day window is three days wide and not three days shaped like a month.
+    var MIN_DAYS = 14;
 
     // A top of the scale somebody can read: 10, 25, 50, 100 rather than 87.
     // An empty period keeps a scale anyway, so the chart shows a flat nothing
@@ -4329,7 +4368,7 @@
     // identical cards leave the reader to decide which one matters, and the
     // answer is always the same one. So it is said once, large, with the chart
     // under it, and everything else is smaller than it.
-    function useHeadline(s, prev, period, slots, lastDay) {
+    function useHeadline(s, prev, period, slots, lastDay, marks, allowed) {
         var box = document.createElement('section');
         box.className = 'use-head';
 
@@ -4350,6 +4389,15 @@
         var big = document.createElement('div');
         big.className = 'use-big';
         big.textContent = useNum(s.total);
+        // what it is out of, where there is something to be out of. said in
+        // the same breath as the number rather than in a second block, because
+        // "how much" and "how much of what we may" is one question
+        if (allowed !== null && allowed !== undefined) {
+            var of = document.createElement('span');
+            of.className = 'use-big-of';
+            of.textContent = '\u2009/\u2009' + useNum(allowed);
+            big.appendChild(of);
+        }
         row.appendChild(big);
         var d = delta(s.total, prev && prev.total);
         if (d) row.appendChild(d);
@@ -4359,7 +4407,7 @@
         // is a fact with a shape -- a flat line under a real scale -- and
         // swapping it for a sentence takes the axis away exactly when somebody
         // is asking whether anything ran at all.
-        box.appendChild(useChart(s.days || [], slots, lastDay));
+        box.appendChild(useChart(s.days || [], slots, lastDay, marks));
         var legend = document.createElement('div');
         legend.className = 'use-legend';
         legend.appendChild(key('use-key-run', 'Clear'));
@@ -4681,7 +4729,9 @@
             // the plan's own dates: when this plan started and when it ends.
             // not the period being counted -- that one is what the control to
             // the left of it chooses, and it changes when you change it.
-            var span = planSpan(out.subscription, out.plan);
+            // the window being read, which is what the control beside it just
+            // chose. the plan's own term is spelled out in the plan section.
+            var span = useSpan(out.period);
             whenSlot.textContent = span;
             sep.hidden = !span;
         }
@@ -4771,8 +4821,14 @@
             if (full.length) verdict.classList.add('is-over');
             body.appendChild(verdict);
 
+            // the screenings row of the allowance, if this plan caps them
+            var capped = null;
+            allow.rows.forEach(function (r) {
+                if (!r.unmetered && r.label === 'Screenings' && r.of > 0) capped = r.of;
+            });
             body.appendChild(useHeadline(s, out.previous, out.period, periodDays(out.period),
-                new Date(new Date(out.period.to).getTime() - 1).toISOString()));
+                new Date(new Date(out.period.to).getTime() - 1).toISOString(),
+                out.marks, capped));
 
             // shown only when something is actually limited. a block whose
             // every row reads "unmetered" is a heading, a plan name and no

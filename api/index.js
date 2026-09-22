@@ -2188,6 +2188,8 @@ async function usageFor(req, mine) {
     const [sub, plan] = await Promise.all([billing.get(mine.id), trial.get(mine.id)]);
     return usage.forOrg(mine.id, {
         anchor: (sub && sub.startedAt) || plan.startedAt || mine.createdAt,
+        // a rolling window cannot begin before the organisation did
+        birth: mine.createdAt,
         period: String(req.query.period || ''),
         scope: String(req.query.scope || ''),
     });

@@ -66,15 +66,22 @@ function cycles(anchorAt, now, back) {
 // working for months. So the periods on offer are not only the invoice's: a
 // plain rolling window answers "how much do we screen" without anybody having
 // to think about billing at all.
-function rolling(days, now) {
+function rolling(days, now, birth) {
     const end = new Date(now || Date.now());
-    const from = new Date(end.getTime() - days * 86400000);
+    let from = new Date(end.getTime() - days * 86400000);
+    // Never before the organisation existed. Thirty days of history for a
+    // company that is three days old is twenty-seven days of flat nothing, and
+    // a chart of mostly nothing says the wrong thing about a new customer.
+    if (birth && new Date(birth).getTime() > from.getTime()) {
+        from = months.startOfDay(birth);
+    }
     return { key: 'd' + days, from: from.toISOString(), to: end.toISOString(), days };
 }
 
-function periods(anchorAt, now) {
+function periods(anchorAt, now, birth) {
     const when = now || Date.now();
-    return cycles(anchorAt, when, CYCLES_BACK).concat([rolling(30, when), rolling(90, when)]);
+    return cycles(anchorAt, when, CYCLES_BACK)
+        .concat([rolling(30, when, birth), rolling(90, when, birth)]);
 }
 
 function pickCycle(list, key) {
@@ -214,10 +221,33 @@ function previousOf(period) {
     return { from: start.toISOString(), to: end.toISOString(), partial: running };
 }
 
+// Things that happened to the plan itself inside this window: it started, it
+// renewed, it changed. They are marked on the chart rather than cutting it
+// short -- a rolling window that stopped at the last renewal would hide the
+// month before it, and the question "did anything change here" is answered by
+// a mark on the day, not by a missing half of the chart.
+async function marksIn(orgId, from, to) {
+    try {
+        const res = await db.query(
+            `SELECT to_char(date_trunc('day', at AT TIME ZONE 'UTC'), 'YYYY-MM-DD') AS d,
+                    kind, plan
+               FROM subscription_events
+              WHERE org_id = $1 AND at >= $2 AND at < $3
+                AND kind IN ('started', 'renewed', 'changed')
+           ORDER BY at`,
+            [Number(orgId), from, to]
+        );
+        return res.rows.map((r) => ({ day: r.d, kind: r.kind, plan: r.plan }));
+    } catch (err) {
+        console.error('[usage] could not read plan marks: ' + err.message);
+        return [];
+    }
+}
+
 // The whole screen's worth, for one organisation and one period.
 async function forOrg(orgId, opts) {
     const o = opts || {};
-    const list = periods(o.anchor, Date.now());
+    const list = periods(o.anchor, Date.now(), o.birth);
     const period = pickCycle(list, o.period);
     const sandbox = o.scope === 'sandbox';
 
@@ -227,7 +257,7 @@ async function forOrg(orgId, opts) {
 
     try {
         const before = previousOf(period);
-        const [work, shape, past] = await Promise.all([
+        const [work, shape, past, marks] = await Promise.all([
             screeningsIn(orgId, period.from, period.to, sandbox),
             shapeOf(orgId, period.from, period.to),
             db.query(
@@ -237,6 +267,7 @@ async function forOrg(orgId, opts) {
                   WHERE org_id = $1 AND at >= $2 AND at < $3 AND sandbox = $4`,
                 [Number(orgId), before.from, before.to, sandbox]
             ),
+            marksIn(orgId, period.from, period.to),
         ]);
         const head = past.rows[0] || { n: 0, flagged: 0 };
         return {
@@ -245,6 +276,7 @@ async function forOrg(orgId, opts) {
             periods: list,
             scope: sandbox ? 'sandbox' : 'live',
             screenings: work,
+            marks,
             previous: {
                 from: before.from, to: before.to,
                 total: head.n, flagged: head.flagged,
