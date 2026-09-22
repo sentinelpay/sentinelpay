@@ -4262,16 +4262,16 @@
         var box = document.createElement('section');
         box.className = 'use-head';
 
+        // No date here. Which period this is has a name in the control above,
+        // and the range is written along the axis below: a third copy of it,
+        // bare and beside a heading, is the one somebody reads as something
+        // else entirely.
         var top = document.createElement('div');
         top.className = 'use-head-t';
         var lab = document.createElement('span');
         lab.className = 'use-head-k';
         lab.textContent = t('Screenings');
         top.appendChild(lab);
-        var when = document.createElement('span');
-        when.className = 'use-head-w';
-        when.textContent = useSpan(period);
-        top.appendChild(when);
         box.appendChild(top);
 
         var row = document.createElement('div');
@@ -4704,7 +4704,11 @@
             body.appendChild(useHeadline(s, out.previous, out.period, periodDays(out.period),
                 new Date(new Date(out.period.to).getTime() - 1).toISOString()));
 
-            if (allow.rows.length) {
+            // shown only when something is actually limited. a block whose
+            // every row reads "unmetered" is a heading, a plan name and no
+            // information, which is worse than the space it takes.
+            var limited = allow.rows.filter(function (r) { return !r.unmetered; });
+            if (limited.length) {
                 body.appendChild(useAllowance(allow.rows, allow.head, allow.agreed));
             }
 
