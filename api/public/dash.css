@@ -3174,8 +3174,11 @@ html.is-theming .btn {
        full width the way a header's does rather than stopping at the column */
     margin: -1.6rem -1.4rem 1.6rem;
     padding: 1.6rem 1.4rem 0.85rem;
+    /* Opaque, and that is the whole separation. A rule under a bar that never
+       moves is a line drawn across a page that does not need dividing; what the
+       band has to do while the sections pass under it is hide them, which a
+       background does on its own. */
     background: var(--canvas);
-    border-bottom: 1px solid var(--line);
 }
 /* the band's contents keep the column the rest of the page uses, so the title
    sits above the first tile and not off to one side of it */
