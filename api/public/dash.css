@@ -3659,20 +3659,3 @@ a.use-cell:hover { background: var(--hover); }
     font-weight: 400;
     letter-spacing: 0.01em;
 }
-/* the day the plan itself moved: started, renewed, changed. an element beside
-   the plot rather than a shape inside it, so it stays a hairline at any width */
-.use-mark {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 1px;
-    background: var(--ink-4);
-    opacity: 0.45;
-    pointer-events: auto;
-}
-.use-mark::before {
-    content: '';
-    position: absolute;
-    inset: 0 -4px;
-}
-.use-mark:hover { opacity: 0.85; }
