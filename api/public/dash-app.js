@@ -4372,16 +4372,19 @@
         var box = document.createElement('section');
         box.className = 'use-head';
 
-        // No date here. Which period this is has a name in the control above,
-        // and the range is written along the axis below: a third copy of it,
-        // bare and beside a heading, is the one somebody reads as something
-        // else entirely.
+        // The window being charted, at the top of the thing it is charting.
+        // Beside the plan's name it was read as the plan's own dates; on the
+        // card whose chart it labels there is nothing else it could mean.
         var top = document.createElement('div');
         top.className = 'use-head-t';
         var lab = document.createElement('span');
         lab.className = 'use-head-k';
         lab.textContent = t('Screenings');
         top.appendChild(lab);
+        var when = document.createElement('span');
+        when.className = 'use-head-w';
+        when.textContent = useSpan(period);
+        top.appendChild(when);
         box.appendChild(top);
 
         var row = document.createElement('div');
@@ -4395,7 +4398,7 @@
         if (allowed !== null && allowed !== undefined) {
             var of = document.createElement('span');
             of.className = 'use-big-of';
-            of.textContent = '\u2009/\u2009' + useNum(allowed);
+            of.textContent = '/ ' + useNum(allowed);
             big.appendChild(of);
         }
         row.appendChild(big);
@@ -4729,9 +4732,9 @@
             // the plan's own dates: when this plan started and when it ends.
             // not the period being counted -- that one is what the control to
             // the left of it chooses, and it changes when you change it.
-            // the window being read, which is what the control beside it just
-            // chose. the plan's own term is spelled out in the plan section.
-            var span = useSpan(out.period);
+            // how long this plan runs. the window being read is on the card
+            // below, above the chart it belongs to.
+            var span = planSpan(out.subscription, out.plan);
             whenSlot.textContent = span;
             sep.hidden = !span;
         }

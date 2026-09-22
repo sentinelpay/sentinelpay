@@ -3484,17 +3484,23 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     color: var(--ink-4);
 }
 .use-head-k { font-weight: 600; letter-spacing: 0.01em; }
+.use-head-w { font-variant-numeric: tabular-nums; }
+/* the number sits close under its own name: the gap was wide enough to read
+   as a separation between two things rather than a label on one */
 .use-head-r {
     display: flex;
     align-items: baseline;
     flex-wrap: wrap;
-    gap: 0.35rem 0.9rem;
-    margin: 0.35rem 0 1rem;
+    gap: 0.2rem 0.75rem;
+    margin: 0.1rem 0 0.9rem;
 }
 .use-big {
+    display: flex;
+    align-items: baseline;
+    gap: 0.28rem;
     font-family: var(--sp-display);
-    font-size: 2.4rem;
-    line-height: 1.05;
+    font-size: 2.15rem;
+    line-height: 1.1;
     color: var(--ink);
     font-variant-numeric: tabular-nums;
 }
@@ -3560,16 +3566,18 @@ a.use-cell:hover { background: var(--hover); }
 .use-allow-t.is-none { background: transparent; }
 
 @media (max-width: 720px) {
-    .use-big { font-size: 2rem; }
+    .use-big { font-size: 1.85rem; }
     .use-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .use-head { padding: 0.95rem 1rem 1rem; }
 }
 
-/* what the number is out of, in the same breath as the number */
+/* what the number is out of, in the same breath as the number and visibly the
+   smaller half of it */
 .use-big-of {
-    font-size: 1.15rem;
+    font-size: 0.95rem;
     color: var(--ink-4);
     font-weight: 400;
+    letter-spacing: 0.01em;
 }
 /* the day the plan itself moved: started, renewed, changed. an element beside
    the plot rather than a shape inside it, so it stays a hairline at any width */
