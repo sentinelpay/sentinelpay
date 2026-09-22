@@ -850,6 +850,36 @@ app.use((req, res, next) => {
     next();
 });
 
+// What is actually running here.
+//
+// "Is staging on the latest code" was being answered by looking at a deploy
+// dashboard in another tab, which says which commit was last *seen*, not which
+// one is being *served*: a build that failed leaves the previous one running
+// and the newest commit on screen. This says what this process was built from,
+// when it started, and which version of the dashboard script the html it serves
+// points at -- which is the number a browser would have to be asking for.
+const BOOTED_AT = new Date().toISOString();
+const DASH_STAMP = (() => {
+    try {
+        const html = fsSync.readFileSync(path.join(__dirname, 'public', 'dashboard-next.html'), 'utf8');
+        const m = html.match(/dash-app\.(\d+)\.js/);
+        return m ? m[1] : '';
+    } catch (err) {
+        return '';
+    }
+})();
+
+app.get('/v1/version', (req, res) => {
+    res.set('Cache-Control', 'no-store, private');
+    res.json({
+        sha: String(process.env.RAILWAY_GIT_COMMIT_SHA || '').slice(0, 7),
+        branch: String(process.env.RAILWAY_GIT_BRANCH || ''),
+        env: String(process.env.APP_ENV || ''),
+        bootedAt: BOOTED_AT,
+        dashApp: DASH_STAMP,
+    });
+});
+
 app.use(express.static(path.join(__dirname, 'public'), {
     extensions: ['html'],
     setHeaders: (res, filePath) => {
