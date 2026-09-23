@@ -3602,6 +3602,13 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     gap: 0.35rem;
     font-size: 0.82rem;
     color: var(--ink-4);
+    /* The row sits on a shared baseline, which is right for "/ 10,000" -- it
+       is part of the same number and has to sit on the same line. This is not:
+       it is a separate remark, and on that baseline it hangs off the bottom of
+       a figure four times its size. Centred on the figure instead. Digits have
+       no descender, so the middle of the line box and the middle of the digits
+       are the same place, and there is nothing to correct for. */
+    align-self: center;
 }
 .use-delta strong { color: var(--ink-2); font-variant-numeric: tabular-nums; }
 /* the two halves of our own mark: blue for a rise, violet for a fall. not
