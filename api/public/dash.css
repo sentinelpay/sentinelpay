@@ -3657,9 +3657,33 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     cursor: pointer;
     text-align: left;
 }
+/* The padding is always there and always pulled back out again, so turning the
+   pill on paints a background and moves nothing. A control that shifts the
+   words when you commit to it reads as having been nudged. */
+.use-delta.is-live {
+    padding: 0.24rem 0.55rem;
+    margin: -0.24rem -0.55rem;
+    border-radius: 999px;
+    transition: background-color 160ms, box-shadow 160ms;
+}
 .use-delta.is-live .use-delta-w { transition: color 140ms; }
-.use-delta.is-live:focus-visible { outline: 2px solid var(--link); outline-offset: 3px; border-radius: 4px; }
+.use-delta.is-live:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
 .use-delta.is-showing .use-delta-w { color: var(--fall); }
+
+/* Held: the reader asked for the line to stay. A soft field in the line's own
+   colour, with an edge faint enough to be a boundary rather than a border, and
+   the arrow and figure brought over to the same colour so the whole phrase
+   reads as one lit thing instead of three words that changed. */
+.use-delta.is-held {
+    background: color-mix(in srgb, var(--fall) 11%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fall) 22%, transparent);
+}
+.use-delta.is-held .use-arrow, .use-delta.is-held strong { color: var(--fall); }
+/* and it says it can be given back */
+.use-delta.is-held:hover {
+    background: color-mix(in srgb, var(--fall) 18%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fall) 34%, transparent);
+}
 
 /* Both charts are built; one of them is shown. Nothing is laid out twice --
    the hidden one is out of flow -- so the card keeps the height it had and the

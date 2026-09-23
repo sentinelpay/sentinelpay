@@ -4665,17 +4665,25 @@
             // own design, half a second after the pointer has already shown
             // the line the box would have described. the button reads as its
             // own words, and aria-pressed says whether the line is up.
-            var mark = function (on) {
+            // Two states, not one. Showing is the line being on the chart,
+            // which a pointer resting here is enough to do and which ends when
+            // the pointer leaves. Held is the reader having asked for it to
+            // stay, and that is a decision they made rather than a side effect
+            // of where the mouse happens to be -- so it looks different, and
+            // looks like something that can be undone.
+            var mark = function (on, keep) {
                 el.classList.toggle('is-showing', Boolean(on));
-                el.setAttribute('aria-pressed', on ? 'true' : 'false');
+                el.classList.toggle('is-held', Boolean(keep));
+                el.setAttribute('aria-pressed', keep ? 'true' : 'false');
             };
             var held = cmp.on;
+            if (held) mark(true, true);
             el.addEventListener('pointerenter', function () { if (!held) { cmp.peek(true); mark(true); } });
             el.addEventListener('pointerleave', function () { if (!held) { cmp.peek(false); mark(false); } });
             // the keyboard has no pointer, so focus is what hovering is
             el.addEventListener('focus', function () { if (!held) { cmp.peek(true); mark(true); } });
             el.addEventListener('blur', function () { if (!held) { cmp.peek(false); mark(false); } });
-            el.addEventListener('click', function () { held = cmp.hold(); mark(held); });
+            el.addEventListener('click', function () { held = cmp.hold(); mark(held, held); });
         }
         var pct = Math.round(((now - before) / before) * 100);
         var up = pct > 0;
