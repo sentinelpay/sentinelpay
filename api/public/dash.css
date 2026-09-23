@@ -3578,7 +3578,10 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     display: flex;
     align-items: baseline;
     flex-wrap: wrap;
-    gap: 0.2rem 0.75rem;
+    /* wide enough on the cross axis that the delta's field, which reaches
+       half a rem to the left of its first word, still clears the number it
+       sits beside rather than crowding it */
+    gap: 0.2rem 1.3rem;
     margin: 0.1rem 0 0.9rem;
 }
 .use-big {
