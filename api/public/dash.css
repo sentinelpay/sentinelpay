@@ -3623,6 +3623,53 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 .use-key i { width: 9px; height: 9px; border-radius: 3px; }
 .use-key-run { background: var(--link); }
 .use-key-flag { background: var(--risk-mid); }
+/* the month before: the same ink as a fall, hollow rather than filled, so the
+   legend says at a glance which of the two lines is the one being lived */
+.use-key-was {
+    background: transparent;
+    border: 2px solid var(--fall);
+}
+
+/* the line for the period before. dashed and thinner: it is context for the
+   line in front of it, not a second measurement of now */
+.use-ghost {
+    fill: none;
+    stroke: var(--fall);
+    stroke-width: 1.6;
+    stroke-dasharray: 4 4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.75;
+}
+
+/* Turning the comparison on. It sits at the end of the headline row, after
+   the sentence it draws, and reads as a control rather than a number. */
+.use-cmp {
+    margin-left: auto;
+    /* the row sits on a baseline it shares with a 2.15rem number; a pill
+       hanging off that baseline reads as having slipped */
+    align-self: center;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.32rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--ink-3);
+    font-family: var(--sp-text);
+    font-size: 0.78rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 120ms, border-color 120ms, background 120ms;
+}
+.use-cmp svg { width: 14px; height: 14px; }
+.use-cmp:hover { color: var(--ink-2); border-color: var(--ink-4); }
+.use-cmp.is-on {
+    color: var(--fall);
+    border-color: var(--fall);
+    background: color-mix(in srgb, var(--fall) 8%, transparent);
+}
 
 /* The rest in one line each rather than one card each: facts about the period,
    readable in a single pass instead of six boxes deep. */

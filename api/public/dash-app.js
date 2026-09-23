@@ -92,6 +92,10 @@
         // an invitation that has gone out and not been answered. deliberately
         // not the person mark: nobody is there yet, an envelope is.
         mail: '<rect x="3" y="5.5" width="18" height="13" rx="2.2"/><path d="m3.8 7 7.1 5.3a1.8 1.8 0 0 0 2.2 0L20.2 7"/>',
+        // one line over another: this period laid on the one before it. the
+        // lower of the two is dashed, the way it is drawn on the chart
+        compare: '<path d="M3 15.5 8.4 9.6l4 3.4L21 5"/>' +
+            '<path d="M3 20.4h2.6M9 20.4h2.6M15 20.4h2.6M21 20.4h.01"/>',
 
         // chrome: the shell itself, not a destination
         panel: '<rect x="3.4" y="4.6" width="17.2" height="14.8" rx="2.2"/><path d="M9.4 4.6v14.8"/>',
@@ -4102,9 +4106,31 @@
     // ellipse and text comes out unreadable; the stroke survives because it is
     // told not to scale, and the dots, the guide, the labels and the tooltip
     // are ordinary elements positioned over the top.
-    function useChart(days) {
+    // Day by day, each day carrying everything before it. Laying one period's
+    // daily counts over another's compares the wrong thing: a quiet Tuesday
+    // against a busy one says nothing about the month. Running totals grow
+    // apart instead, and the gap between the two lines at the right-hand end is
+    // the percentage written above the chart -- the number and the picture
+    // saying the same thing rather than two different ones.
+    function running(days) {
+        var sum = 0;
+        var bad = 0;
+        return days.map(function (d) {
+            sum += d.n;
+            bad += d.flagged;
+            return { day: d.day, n: sum, flagged: bad, today: d.n };
+        });
+    }
+
+    function useChart(source, ghost) {
         var box = document.createElement('div');
         box.className = 'use-plot';
+
+        var days = ghost ? running(source) : source;
+        // the same stretch of the month before, and no more of it: a finished
+        // period is longer than the one being lived through, and the tail would
+        // draw days this period has not reached
+        var past = ghost ? running(ghost).slice(0, Math.max(days.length, 1)) : null;
 
         // as many columns as there are days behind us. the rest of a billing
         // period is not history, and a line drawn flat across it would say
@@ -4112,6 +4138,7 @@
         var w = Math.max(days.length, 1);
         var high = 0;
         days.forEach(function (d) { if (d.n > high) high = d.n; });
+        if (past) past.forEach(function (d) { if (d.n > high) high = d.n; });
         var top = niceTop(high);
 
         // Points sit edge to edge rather than in the middle of a column: the
@@ -4163,6 +4190,30 @@
         defs.appendChild(grad);
         svg.appendChild(defs);
 
+        // The month before, behind the month being lived through. It is drawn
+        // first so the line that matters is the one on top, and dashed because
+        // it is not this period: a second solid line of the same weight reads
+        // as a second thing being measured now.
+        if (past && past.length) {
+            var was = [];
+            past.forEach(function (d, i) {
+                var x = at(i);
+                var y = up(d.n);
+                if (!i) { was.push('M ' + x + ' ' + y); return; }
+                var px = at(i - 1);
+                var py = up(past[i - 1].n);
+                var reach = (x - px) / 2.6;
+                was.push('C ' + (px + reach) + ' ' + py + ' ' + (x - reach) + ' ' + y +
+                    ' ' + x + ' ' + y);
+            });
+            if (past.length === 1) was.push('L ' + span + ' ' + up(past[0].n));
+            var older = document.createElementNS(SVG_NS, 'path');
+            older.setAttribute('d', was.join(' '));
+            older.setAttribute('class', 'use-ghost');
+            older.setAttribute('vector-effect', 'non-scaling-stroke');
+            svg.appendChild(older);
+        }
+
         if (days.length) {
             var line = [];
             var under = ['M ' + at(0) + ' 100'];
@@ -4210,7 +4261,10 @@
             // what came back flagged, as a second line rather than a share of
             // the first: they are the same checks, and stacking them would make
             // a total that is not a total
-            if (days.some(function (d) { return d.flagged > 0; })) {
+            // not while comparing: three lines on one plot, two of them about
+            // this period and one about another, is a chart that has to be
+            // decoded before it can be read
+            if (!past && days.some(function (d) { return d.flagged > 0; })) {
                 var bad = [];
                 days.forEach(function (d, i) {
                     var x = at(i);
@@ -4244,7 +4298,7 @@
             });
         }
 
-        if (days.length) plot.appendChild(useHover(plot, days, share, up));
+        if (days.length) plot.appendChild(useHover(plot, days, share, up, past));
         area.appendChild(plot);
         box.appendChild(area);
 
@@ -4264,7 +4318,7 @@
     // itself marked, and the numbers for that day beside it. The alternative is
     // a tooltip per bar, which cannot exist on a line, and a chart nobody can
     // read a single day off.
-    function useHover(plot, days, share, up) {
+    function useHover(plot, days, share, up, past) {
         var guide = document.createElement('span');
         guide.className = 'use-guide';
         plot.appendChild(guide);
@@ -4299,8 +4353,18 @@
             when.className = 'use-tip-d';
             when.textContent = whenText(d.day);
             tip.appendChild(when);
-            tip.appendChild(tipLine('use-key-run', 'Screenings', d.n));
-            if (d.flagged > 0) tip.appendChild(tipLine('use-key-flag', 'Flagged', d.flagged));
+            if (past) {
+                // running totals, so the label has to say so: "34" on the
+                // eleventh means the month so far, not that Tuesday
+                tip.appendChild(tipLine('use-key-run', 'This period so far', d.n));
+                var then = past[i];
+                if (then) {
+                    tip.appendChild(tipLine('use-key-was', 'The period before', then.n));
+                }
+            } else {
+                tip.appendChild(tipLine('use-key-run', 'Screenings', d.n));
+                if (d.flagged > 0) tip.appendChild(tipLine('use-key-flag', 'Flagged', d.flagged));
+            }
             tip.style.left = x + '%';
             // near the right edge it would hang off the card, so it flips
             tip.classList.toggle('is-left', x > 65);
@@ -4475,7 +4539,7 @@
     // identical cards leave the reader to decide which one matters, and the
     // answer is always the same one. So it is said once, large, with the chart
     // under it, and everything else is smaller than it.
-    function useHeadline(s, prev, period, allowed) {
+    function useHeadline(s, prev, period, allowed, cmp) {
         var box = document.createElement('section');
         box.className = 'use-head';
 
@@ -4511,19 +4575,40 @@
         row.appendChild(big);
         var d = delta(s.total, prev);
         if (d) row.appendChild(d);
+        // beside the sentence it draws: "+26% vs the period before" and the
+        // control that shows you where those 26% came from
+        if (cmp) row.appendChild(useCompare(cmp));
         box.appendChild(row);
 
         // Always the chart, even when every day of it is zero. An empty period
         // is a fact with a shape -- a flat line under a real scale -- and
         // swapping it for a sentence takes the axis away exactly when somebody
         // is asking whether anything ran at all.
-        box.appendChild(useChart(s.days || []));
+        var ghost = cmp && cmp.on ? cmp.days : null;
+        box.appendChild(useChart(s.days || [], ghost));
         var legend = document.createElement('div');
         legend.className = 'use-legend';
-        legend.appendChild(key('use-key-run', 'Screenings'));
-        legend.appendChild(key('use-key-flag', 'Flagged'));
+        legend.appendChild(key('use-key-run', ghost ? 'This period' : 'Screenings'));
+        legend.appendChild(ghost
+            ? key('use-key-was', 'The period before')
+            : key('use-key-flag', 'Flagged'));
         box.appendChild(legend);
         return box;
+    }
+
+    // Overlaying the month before is off until it is asked for. It answers a
+    // question somebody has some of the time -- are we ahead of last month --
+    // and a chart that answers it always is a chart carrying a line most
+    // visits do not need.
+    function useCompare(cmp) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'use-cmp' + (cmp.on ? ' is-on' : '');
+        btn.setAttribute('aria-pressed', cmp.on ? 'true' : 'false');
+        btn.innerHTML = icon('compare');
+        btn.appendChild(document.createTextNode(t('Compare')));
+        btn.addEventListener('click', cmp.toggle);
+        return btn;
     }
 
     function key(cls, label) {
@@ -4750,6 +4835,10 @@
 
         var org = me.org || {};
         var want = { period: '', scope: 'live' };
+        // whether the month before is drawn behind this one, and the last thing
+        // the server said, so the switch can redraw without asking again
+        var alongside = false;
+        var latest = null;
 
         // The title and the two controls are one band, and it stays at the top
         // while the sections go past underneath. Which period you are looking at
@@ -4958,7 +5047,22 @@
                 });
             }
 
-            body.appendChild(useHeadline(s, out.previous, out.period, capped));
+            // Only where there is a month behind this one to lay underneath it.
+            // The server sends those days for a billing period and not for a
+            // rolling window, so the control appears exactly where it means
+            // something rather than appearing everywhere and doing nothing.
+            var older = out.previous && out.previous.days;
+            var cmp = older && older.length ? {
+                on: alongside,
+                days: older,
+                toggle: function () {
+                    alongside = !alongside;
+                    if (latest) draw(latest);
+                }
+            } : null;
+            if (!cmp) alongside = false;
+
+            body.appendChild(useHeadline(s, out.previous, out.period, capped, cmp));
 
             // Only when there is something to say.
             //
@@ -5245,10 +5349,18 @@
                 .then(function (out) {
                     if (!out || !out.ok) throw new Error('not-ok');
                     want.period = out.period.key;
+                    latest = out;
                     pickers(out);
                     draw(out);
                 })
-                .catch(function () {
+                .catch(function (err) {
+                    // the same catch covers the request and the drawing of
+                    // what came back, so a mistake in this file arrives
+                    // looking exactly like a network that dropped. it still
+                    // says the same thing to the reader, who can do the same
+                    // one thing about it either way, but it no longer goes
+                    // unrecorded for whoever has to find it
+                    console.error('[usage] ' + ((err && err.message) || 'failed'));
                     body.textContent = '';
                     body.appendChild(emptyState('That did not load.', 'Reload the page to try again.'));
                 });

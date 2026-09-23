@@ -144,6 +144,39 @@ function safeZone(value) {
         ? zone : 'UTC';
 }
 
+// The day-by-day of a window that is over, and nothing else about it. It is
+// the same bucketing as the current period's, so the two can be laid over each
+// other; it walks to the end of the window rather than to today, because for a
+// window in the past there is no day still being lived through.
+async function daysIn(orgId, from, to, sandbox, zone) {
+    const rows = await db.query(
+        `SELECT to_char(date_trunc('day', at AT TIME ZONE $5), 'YYYY-MM-DD') AS d,
+                count(*)::int AS n,
+                count(*) FILTER (WHERE verdict <> 'clear')::int AS flagged
+           FROM screenings
+          WHERE org_id = $1 AND at >= $2 AND at < $3 AND sandbox = $4
+       GROUP BY 1 ORDER BY 1`,
+        [Number(orgId), from, to, Boolean(sandbox), zone]
+    );
+    const seen = new Map(rows.rows.map((r) => [r.d, r]));
+    const out = [];
+    const noon = 12 * 3600 * 1000;
+    const stop = new Date(to).getTime();
+    let cursor = new Date(from).getTime() + noon;
+    let guard = 0;
+    let last = '';
+    while (cursor - noon < stop && guard++ < 400) {
+        const key = dayIn(cursor, zone);
+        if (key !== last) {
+            const row = seen.get(key);
+            out.push({ day: key, n: row ? row.n : 0, flagged: row ? row.flagged : 0 });
+            last = key;
+        }
+        cursor += 86400000;
+    }
+    return out;
+}
+
 async function screeningsIn(orgId, from, to, sandbox, zone) {
     const args = [Number(orgId), from, to, Boolean(sandbox), zone];
     const [sum, days, verdicts, assets] = await Promise.all([
@@ -303,7 +336,13 @@ async function forOrg(orgId, opts) {
         const born = o.birth ? months.startOfDay(o.birth).getTime() : null;
         const comparable = !born || new Date(before.from).getTime() >= born;
 
-        const [work, shape, past, marks] = await Promise.all([
+        // The shape of the window before, but only for a billing period. On a
+        // rolling window the two are the same length and would line up, yet
+        // "the thirty days before these thirty" is a window nobody agreed to
+        // and nobody is billed for, so the comparison there stays a number.
+        const alongside = comparable && !period.days;
+
+        const [work, shape, past, marks, ghost] = await Promise.all([
             screeningsIn(orgId, period.from, period.to, sandbox, zone),
             shapeOf(orgId, period.from, period.to),
             comparable
@@ -316,6 +355,9 @@ async function forOrg(orgId, opts) {
                 )
                 : Promise.resolve({ rows: [] }),
             marksIn(orgId, period.from, period.to),
+            alongside
+                ? daysIn(orgId, before.from, before.to, sandbox, zone)
+                : Promise.resolve(null),
         ]);
         const head = past.rows[0] || null;
         return {
@@ -331,6 +373,7 @@ async function forOrg(orgId, opts) {
                 total: head.n, flagged: head.flagged,
                 // the same stretch of it, not all of it, while this one runs
                 partial: Boolean(before.partial),
+                days: ghost,
             } : null,
             org: shape,
         };
