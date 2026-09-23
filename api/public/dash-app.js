@@ -4092,6 +4092,19 @@
         return a + ' \u2013 ' + b;
     }
 
+    // The days a line actually covers, taken from the line rather than from the
+    // window it was asked for. A rolling window runs from this moment to the
+    // same moment thirty days ago, so its bounds land mid-afternoon and the
+    // last day of one window and the first day of the next are the same date
+    // -- which reads as an overlap and is not one. The buckets on the chart are
+    // whole days, so the label names those.
+    function daysSpan(days, most) {
+        var n = typeof most === 'number' ? Math.min(days.length, most) : days.length;
+        if (!n) return '';
+        var noon = 'T12:00:00Z';
+        return useRange(days[0].day + noon, days[n - 1].day + noon);
+    }
+
     function useSpan(p) {
         if (!p) return '';
         // the end of a period is the moment the next one begins, so the day
@@ -4377,7 +4390,15 @@
                 tip.appendChild(tipLine('use-key-run', 'This period so far', d.n));
                 var then = past[i];
                 if (then) {
-                    tip.appendChild(tipLine('use-key-was', 'The period before', then.n));
+                    // the day of the other window that this point is being
+                    // held against. the axis can only name one of the two, so
+                    // the other one says its own date here
+                    var row = tipLine('use-key-was', 'The period before', then.n);
+                    var was = document.createElement('span');
+                    was.className = 'use-tip-w';
+                    was.textContent = whenText(then.day);
+                    row.insertBefore(was, row.lastChild);
+                    tip.appendChild(row);
                 }
             } else {
                 tip.appendChild(tipLine('use-key-run', 'Screenings', d.n));
@@ -4623,7 +4644,7 @@
             box.appendChild(useLayer('use-alone', useChart(s.days || [], null),
                 useLegend(false)));
             box.appendChild(useLayer('use-against', useChart(s.days || [], cmp.days),
-                useLegend(true)));
+                useLegend(true, s.days || [], cmp.days)));
         } else {
             box.appendChild(useChart(s.days || [], null));
             box.appendChild(useLegend(false));
@@ -4639,24 +4660,40 @@
         return box;
     }
 
-    function useLegend(against) {
+    // The two lines are laid over each other by their day number -- the first
+    // day of this window over the first day of the one before -- so the axis
+    // along the bottom can only name one of them. Two axes for two lines would
+    // double the furniture to explain a line that is there for context. The
+    // legend names them instead, which is what a legend is for.
+    function useLegend(against, mine, was) {
         var legend = document.createElement('div');
         legend.className = 'use-legend';
-        legend.appendChild(key('use-key-run', against ? 'This period' : 'Screenings'));
         legend.appendChild(against
-            ? key('use-key-was', 'The period before')
+            ? key('use-key-run', 'This period', daysSpan(mine))
+            : key('use-key-run', 'Screenings'));
+        legend.appendChild(against
+            ? key('use-key-was', 'The period before', daysSpan(was, mine.length))
             : key('use-key-flag', 'Flagged'));
         return legend;
     }
 
 
-    function key(cls, label) {
+    function key(cls, label, note) {
         var el = document.createElement('span');
         el.className = 'use-key';
         var dot = document.createElement('i');
         dot.className = cls;
         el.appendChild(dot);
         el.appendChild(document.createTextNode(t(label)));
+        // the dates a line covers, where they are not the ones along the
+        // bottom. a separator and not a sentence, so nothing here needs
+        // translating beyond the words in front of it
+        if (note) {
+            var when = document.createElement('span');
+            when.className = 'use-key-w';
+            when.textContent = note;
+            el.appendChild(when);
+        }
         return el;
     }
 

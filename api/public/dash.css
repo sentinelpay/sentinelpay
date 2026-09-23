@@ -3435,6 +3435,11 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     color: var(--ink-3);
 }
 .use-tip-r i { width: 8px; height: 8px; border-radius: 3px; flex: none; }
+/* the other window's own date, beside the words rather than instead of them */
+.use-tip-w { color: var(--ink-4); }
+/* and, in the legend, the dates each line covers */
+.use-key-w { color: var(--ink-4); }
+.use-key-w::before { content: '\00b7'; margin: 0 0.3rem; }
 .use-tip-r strong {
     margin-left: auto;
     color: var(--ink);
