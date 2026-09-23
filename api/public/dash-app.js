@@ -92,6 +92,11 @@
         // an invitation that has gone out and not been answered. deliberately
         // not the person mark: nobody is there yet, an envelope is.
         mail: '<rect x="3" y="5.5" width="18" height="13" rx="2.2"/><path d="m3.8 7 7.1 5.3a1.8 1.8 0 0 0 2.2 0L20.2 7"/>',
+        // a book held open: what is written down and can be looked up, rather
+        // than a sheet of paper, which is what we call a report
+        docs: '<path d="M12 6.7v13"/>' +
+            '<path d="M12 6.7C10.4 5.4 8.4 4.8 6 4.8H3.4v13H6c2.4 0 4.4.6 6 1.9"/>' +
+            '<path d="M12 6.7c1.6-1.3 3.6-1.9 6-1.9h2.6v13H18c-2.4 0-4.4.6-6 1.9"/>',
 
         // chrome: the shell itself, not a destination
         panel: '<rect x="3.4" y="4.6" width="17.2" height="14.8" rx="2.2"/><path d="M9.4 4.6v14.8"/>',
@@ -3437,10 +3442,15 @@
 
         // sits at the end of the row the way the other lists put their primary
         // action, with the quiet one beside it
+        // It leaves the screen rather than doing something on it, so it is
+        // built like the controls that sit in a toolbar and not like the
+        // action beside it: the same outline, height and type as a picker,
+        // which is what the rest of our bars are made of.
         var docs = document.createElement('a');
-        docs.className = 'btn btn-quiet bar-end';
+        docs.className = 'chip bar-end';
         docs.href = '/faq';
-        docs.textContent = t('Docs');
+        docs.innerHTML = icon('docs');
+        docs.appendChild(document.createTextNode(t('Docs')));
         bar.appendChild(docs);
 
         var ask = document.createElement('button');
@@ -3475,6 +3485,16 @@
                 return;
             }
 
+            // The table stays a table on a phone and slides sideways instead
+            // of folding into a stack. Folding put each person's facts under
+            // their name, which reads well for one member and stops reading at
+            // all for twelve: the column somebody is scanning -- who has no
+            // second step, who is an owner -- is no longer a column.
+            var slide = document.createElement('div');
+            slide.className = 'tbl-slide';
+            slide.tabIndex = 0;
+            card.appendChild(slide);
+
             var th = document.createElement('div');
             th.className = 'tr is-team th';
             ['Member', 'Two-factor', 'Role'].forEach(function (h) {
@@ -3483,13 +3503,13 @@
                 th.appendChild(cl);
             });
             th.appendChild(document.createElement('div'));
-            card.appendChild(th);
+            slide.appendChild(th);
 
-            shown.forEach(function (m) { card.appendChild(memberRow(m, org, may, load)); });
+            shown.forEach(function (m) { slide.appendChild(memberRow(m, org, may, load)); });
             // the people who have been asked but have not arrived, under the
             // ones who have: they are not members yet and the list should not
             // read as though they are
-            waiting_.forEach(function (i) { card.appendChild(inviteRow(i, org, may, load)); });
+            waiting_.forEach(function (i) { slide.appendChild(inviteRow(i, org, may, load)); });
 
             // how many of you there are, under the list rather than in the
             // heading, where it is a fact about what you just read
