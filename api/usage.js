@@ -100,6 +100,18 @@ function pickCycle(list, key) {
 // Days are stepped from the middle of each one rather than its start: midday is
 // the same date in every timezone and on both sides of a clock change, so the
 // walk cannot skip a day or count one twice.
+// Midday of the day a moment falls in. The walk below steps a day at a time
+// from the middle of a day, so that it cannot skip one or count one twice
+// across a clock change -- but "from plus twelve hours" is only the middle of a
+// day when the window began at midnight. A billing period does; a rolling
+// window begins at whatever time of day it is now, and starting the walk at
+// half past six in the evening put every step half past six in the morning,
+// which quietly dropped the last day of the window.
+function noonOf(ms) {
+    const d = new Date(ms);
+    return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) + 12 * 3600 * 1000;
+}
+
 function dayIn(ms, zone) {
     try {
         return new Intl.DateTimeFormat('en-CA', {
@@ -114,8 +126,12 @@ function fillDays(rows, from, to, zone) {
     const seen = new Map(rows.map((r) => [r.d, r]));
     const out = [];
     const noon = 12 * 3600 * 1000;
-    const stop = Math.min(new Date(to).getTime(), Date.now());
-    let cursor = new Date(from).getTime() + noon;
+    // the last day is the one holding the last instant the window contains,
+    // not the one its exclusive end lands on. a period that ends at midnight
+    // on the twentieth is over on the nineteenth, and drawing a twentieth on
+    // it adds a day of no work that never belonged to it
+    const stop = Math.min(new Date(to).getTime() - 1, Date.now());
+    let cursor = noonOf(new Date(from).getTime());
     let guard = 0;
     let last = '';
     while (cursor - noon <= stop && guard++ < 400) {
@@ -161,11 +177,15 @@ async function daysIn(orgId, from, to, sandbox, zone) {
     const seen = new Map(rows.rows.map((r) => [r.d, r]));
     const out = [];
     const noon = 12 * 3600 * 1000;
-    const stop = new Date(to).getTime();
-    let cursor = new Date(from).getTime() + noon;
+    // the same last day as the window this one is being compared against, by
+    // the same rule. the two have to come out the same length: they are drawn
+    // over each other by day number, and a window one bucket shorter is a line
+    // that stops before the end of the card
+    const stop = Math.min(new Date(to).getTime() - 1, Date.now());
+    let cursor = noonOf(new Date(from).getTime());
     let guard = 0;
     let last = '';
-    while (cursor - noon < stop && guard++ < 400) {
+    while (cursor - noon <= stop && guard++ < 400) {
         const key = dayIn(cursor, zone);
         if (key !== last) {
             const row = seen.get(key);

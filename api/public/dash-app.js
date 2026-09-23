@@ -4162,6 +4162,17 @@
         // period is longer than the one being lived through, and the tail would
         // draw days this period has not reached
         var past = ghost ? running(ghost).slice(0, Math.max(days.length, 1)) : null;
+        // and where it is shorter -- thirty days of June against thirty-one of
+        // July -- its last total is carried to the end. These are running
+        // totals, so a period that is over does not grow: the flat tail is
+        // what actually happened, and it beats a line that stops in the middle
+        // of the card for a reason only a calendar can explain.
+        if (past && past.length) {
+            while (past.length < days.length) {
+                var end = past[past.length - 1];
+                past.push({ day: end.day, n: end.n, flagged: end.flagged, over: true });
+            }
+        }
 
         // as many columns as there are days behind us. the rest of a billing
         // period is not history, and a line drawn flat across it would say
@@ -4396,7 +4407,11 @@
                     var row = tipLine('use-key-was', 'The period before', then.n);
                     var was = document.createElement('span');
                     was.className = 'use-tip-w';
-                    was.textContent = whenText(then.day);
+                    // past the end of the shorter window, the date it ended on
+                    // rather than a day it never had
+                    was.textContent = then.over
+                        ? t('ended') + ' ' + whenText(then.day)
+                        : whenText(then.day);
                     row.insertBefore(was, row.lastChild);
                     tip.appendChild(row);
                 }
