@@ -2917,6 +2917,12 @@ app.post('/v1/screen', screenLimiter, async (req, res) => {
         if (me.sandbox) {
             const out = await screening.screen(me.userId, me.org.id, address, kind, true);
             if (!out.ok) return res.status(400).json({ error: 'That does not look like an address' });
+            // A sandbox check spends nothing and is billed for nothing, but it
+            // is still a row the usage screen counts when the scope is set to
+            // Sandbox. This path returned without telling anybody, so that
+            // screen was the one place in the product that did not move while
+            // somebody was working in front of it.
+            await tellOrg(me.org.id, { topic: 'org', id: String(me.org.id) });
             return res.json({ ...out, sandbox: true, trial: null });
         }
 

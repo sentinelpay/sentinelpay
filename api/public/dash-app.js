@@ -622,6 +622,26 @@
 
     function setZone(v) {
         try { localStorage.setItem(TZ_KEY, v); } catch (err) {  }
+        // Choosing a zone used to be a write and nothing else, so every time
+        // already on the screen kept the old one until something happened to
+        // draw it again. On the usage screen it was worse than a stale
+        // caption: the days on that chart are cut in this zone by the server,
+        // so the picture stayed cut the old way while the label said
+        // otherwise. The screens that care are told.
+        zoneOn.slice().forEach(function (fn) {
+            try { fn(v); } catch (err) {  }
+        });
+    }
+
+    // Screens subscribe on the way in, the way they do for live events, and
+    // paintCanvas drops the list when the screen goes.
+    var zoneOn = [];
+    function onZone(fn) {
+        zoneOn.push(fn);
+        return function () {
+            var at = zoneOn.indexOf(fn);
+            if (at !== -1) zoneOn.splice(at, 1);
+        };
     }
 
     var PLAN_LABEL = {
@@ -968,11 +988,33 @@
             String(ca.addresses || '') === String(cb.addresses || '');
     }
 
-    function paintMe(me) {
+    // The same comparison without the three numbers a single screening moves.
+    // Those change constantly on a working account; everything else here is
+    // who you are, which organisation you are in and what you may do in it.
+    function sameShell(a, b) {
+        if (!a || !b) return false;
+        if (a.name !== b.name || a.email !== b.email) return false;
+        var ta = a.trial || {}, tb = b.trial || {};
+        var keys = ['state', 'daysLeft', 'liveIncluded', 'historyIncluded', 'historyOpen'];
+        for (var i = 0; i < keys.length; i++) {
+            if (String(ta[keys[i]] || '') !== String(tb[keys[i]] || '')) return false;
+        }
+        var oa = a.org || {}, ob = b.org || {};
+        var ok = ['id', 'name', 'slug', 'role', 'members'];
+        for (var k = 0; k < ok.length; k++) {
+            if (String(oa[ok[k]] || '') !== String(ob[ok[k]] || '')) return false;
+        }
+        var ca = a.coverage || {}, cb = b.coverage || {};
+        return String(ca.source || '') === String(cb.source || '') &&
+            String(ca.listDate || '') === String(cb.listDate || '') &&
+            String(ca.addresses || '') === String(cb.addresses || '');
+    }
+
+    function paintMe(me, keepCanvas) {
         lastMe = me;
         paintAvatar(me);
         paintAccountMenu(me);
-        paintCanvas();
+        if (!keepCanvas) paintCanvas();
     }
 
     function sep() {
@@ -5015,7 +5057,7 @@
                     })
                 }], (out.period && out.period.key) || 'c0', function (v) {
                     want.period = v;
-                    load();
+                    load(true);
                 });
                 left.appendChild(periodPick);
 
@@ -5029,7 +5071,7 @@
                     ]
                 }], want.scope, function (v) {
                     want.scope = v;
-                    load();
+                    load(true);
                 }));
 
                 // Plan first, then the period it is being read in, divided by a
@@ -5463,8 +5505,18 @@
             return key;
         }
 
-        function load() {
+        // Which request is the current one. Switching period twice quickly
+        // sends two, and the first can answer last: without this the screen
+        // settles on the window nobody asked for any more, and the only clue
+        // is that the dropdown disagrees with the chart.
+        var asked = 0;
+
+        function load(swapped) {
             if (!org.id) return;
+            var mine = ++asked;
+            // a control was moved, so say the screen is working on it. a live
+            // update is not the reader waiting for anything and gets no mark.
+            if (swapped) body.classList.add('is-waiting');
             var url = '/v1/orgs/' + encodeURIComponent(org.id) + '/usage?period=' +
                 encodeURIComponent(want.period) + '&scope=' + encodeURIComponent(want.scope) +
                 '&tz=' + encodeURIComponent(zoneNow());
@@ -5474,13 +5526,19 @@
                     return r.json();
                 })
                 .then(function (out) {
+                    if (mine !== asked) return;
                     if (!out || !out.ok) throw new Error('not-ok');
+                    body.classList.remove('is-waiting');
                     want.period = out.period.key;
                     latest = out;
                     pickers(out);
                     draw(out);
                 })
                 .catch(function (err) {
+                    // an answer nobody is waiting for any more takes nothing
+                    // down with it, including a failure
+                    if (mine !== asked) return;
+                    body.classList.remove('is-waiting');
                     // the same catch covers the request and the drawing of
                     // what came back, so a mistake in this file arrives
                     // looking exactly like a network that dropped. it still
@@ -5493,8 +5551,19 @@
                 });
         }
 
-        // a screening anywhere in this organisation is a number on this page
-        onLive(load);
+        // a screening in this organisation is a number on this page. an event
+        // about the account, or about some other organisation, is not: this
+        // used to reload on every one of them, which on a busy account meant
+        // the screen refetching itself while nothing on it had changed.
+        // this screen refetches itself when something happens here, so the
+        // shell does not need to rebuild it to keep it honest
+        ownsLive = true;
+        onLive(function (e) {
+            if (e && e.topic === 'org' && String(e.id) === String(org.id)) load();
+        });
+        // the days on the chart are cut in the reader's zone on the server, so
+        // a zone that changes is a different chart, not a different caption
+        onZone(function () { load(true); });
         load();
         return out_;
     }
@@ -7372,6 +7441,7 @@
     // never show somebody data they could not already fetch.
     var liveOn = [];
     var liveWired = false;
+    var ownsLive = false;
 
     function onLive(fn) {
         liveOn.push(fn);
@@ -7419,8 +7489,15 @@
                 // an organisation you were taken out of, or one that was closed
                 // while you were standing in it
                 if (atOrg && !me.org) { location.replace(ORGS_PATH); return; }
-                if (!sameMe(lastMe, me)) paintMe(me);
-                else lastMe = me;
+                if (!sameMe(lastMe, me)) {
+                    // A screening changes three counters and nothing else. The
+                    // screen in front of somebody may already be following
+                    // those itself, and rebuilding it would throw away what
+                    // they were doing -- a comparison they had pinned, where
+                    // they had scrolled, a dropdown they had open -- to arrive
+                    // at the same page with the same numbers on it.
+                    paintMe(me, ownsLive && sameShell(lastMe, me));
+                } else lastMe = me;
             })
             .catch(function () {  })
             .then(function () { refreshing = false; });
@@ -7432,6 +7509,10 @@
         // whatever the last screen was listening for, it is gone now. only
         // screens subscribe, so clearing here is the whole lifecycle.
         liveOn.length = 0;
+        zoneOn.length = 0;
+        // until a screen says otherwise, it does not follow live changes on
+        // its own and has to be drawn again to show them
+        ownsLive = false;
         canvas.textContent = '';
         if (!lastMe) return;
         if (onOrgs()) {

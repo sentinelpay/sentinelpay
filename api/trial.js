@@ -257,6 +257,12 @@ async function spend(orgId, kind) {
     if (t.state === 'none') return { ok: false, reason: 'no-trial' };
     if (t.state === 'pending') return { ok: false, reason: 'awaiting-approval' };
     if (t.state === 'expired') return { ok: false, reason: 'trial-expired' };
+    // A state this file does not have a quota for is a row that should not
+    // exist, and the two statements below would read a limit off undefined and
+    // take the whole check down with a 500. It is refused instead: the caller
+    // already knows how to say "not available on this trial", and a screening
+    // endpoint is the last place that should fall over on a bad row.
+    if (!QUOTA[t.state]) return { ok: false, reason: 'no-trial', ...t };
 
     if (kind === 'history') {
         if (t.historyOpen) {

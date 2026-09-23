@@ -3733,6 +3733,14 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 /* Both charts are built; one of them is shown. Nothing is laid out twice --
    the hidden one is out of flow -- so the card keeps the height it had and the
    line appears in place rather than pushing the page around. */
+/* A control has been moved and the answer has not arrived. It is a fade and
+   not a spinner: what is on the screen is still the last true thing, and
+   taking it away to say so would leave less on the page than waiting does. */
+.use-body.is-waiting { opacity: 0.55; transition: opacity 120ms ease; }
+@media (prefers-reduced-motion: reduce) {
+    .use-body.is-waiting { transition: none; }
+}
+
 .use-against { display: none; }
 .use-head.is-against .use-alone { display: none; }
 .use-head.is-against .use-against { display: block; }
