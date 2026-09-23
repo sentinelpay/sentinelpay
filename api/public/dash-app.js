@@ -4203,12 +4203,6 @@
             var run = document.createElementNS(SVG_NS, 'path');
             run.setAttribute('d', line.join(' '));
             run.setAttribute('class', 'use-line');
-            // the dash that draws the line has to be as long as the line, and
-            // only the element can say how long that is
-            try {
-                var len = Math.ceil(run.getTotalLength ? run.getTotalLength() : 0);
-                if (len) run.style.setProperty('--len', len);
-            } catch (err) {  }
             // the one thing inside a stretched plot that keeps its shape
             run.setAttribute('vector-effect', 'non-scaling-stroke');
             svg.appendChild(run);
