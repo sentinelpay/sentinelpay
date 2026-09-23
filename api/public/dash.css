@@ -3665,6 +3665,12 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
    second announcement of a state the sentence has already made plain, and the
    loudest thing in a row whose subject is a number. */
 .use-delta.is-showing .use-delta-w { color: var(--fall); }
+/* On a fall the figure is already violet, and violet words beside it turn the
+   whole phrase into one block of colour where the number should be the thing
+   that carries it. So the words take the other half of the pair instead: the
+   figure keeps the direction it is in, the words still change to say the line
+   is on the chart, and the two stay told apart. */
+.use-delta.is-down.is-showing .use-delta-w { color: var(--link); }
 
 /* Both charts are built; one of them is shown. Nothing is laid out twice --
    the hidden one is out of flow -- so the card keeps the height it had and the
