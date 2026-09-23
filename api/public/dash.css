@@ -1029,7 +1029,13 @@ button { font: inherit; color: inherit; }
     border-radius: 9px;
     background: var(--canvas);
     font-family: var(--sp-text);
-    font-size: 0.85rem;
+    /* the size the pickers and chips beside it are set in: one toolbar, one
+       reading size, whatever kind of control is holding the words */
+    font-size: 0.8rem;
+    /* and a stated line height rather than the browser's idea of one for a
+       text field, which is a pixel short of what the controls beside it come
+       to and leaves the field sitting a hair low in the row */
+    line-height: 1.25;
     color: var(--ink-2);
     outline: none;
     transition: border-color 0.18s ease, box-shadow 0.18s ease;
@@ -3115,7 +3121,19 @@ html.is-theming .btn {
     cursor: pointer;
     transition: border-color 0.14s ease, background 0.14s ease;
 }
-.chip .nav-i { width: 14px; height: 14px; flex: 0 0 auto; color: var(--ink-4); }
+/* .nav-i is the rail's glyph, and it carries the rail's spacing and the rail's
+   dimming with it: a 0.6rem margin meant for a label that sits nine and a half
+   pixels away, and 0.85 opacity for an item that is not the current one. In a
+   chip both are wrong -- the gap is the flex gap and nothing else, and the
+   glyph belongs to the word beside it, so it takes the word's colour. */
+.chip .nav-i {
+    width: 14px;
+    height: 14px;
+    flex: 0 0 auto;
+    margin-right: 0;
+    opacity: 1;
+    color: currentColor;
+}
 .chip:hover { border-color: var(--ink-4); background: var(--hover); }
 .chip:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
 
