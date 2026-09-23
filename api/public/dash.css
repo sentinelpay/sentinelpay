@@ -3669,3 +3669,44 @@ a.use-cell:hover { background: var(--hover); }
     font-weight: 400;
     letter-spacing: 0.01em;
 }
+
+/* Swapping the period redraws everything under the band. It is the same
+   screen about a different window, so the new content settles in rather than
+   appearing: the movement is small and downward, the way a page that has just
+   been dealt a new set of numbers behaves. */
+@keyframes useSwap {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+}
+.use-body.is-swap > * {
+    animation: useSwap 260ms var(--ease, cubic-bezier(0.4, 0.05, 0.3, 1)) both;
+}
+/* each block a beat after the one above it, so the eye lands at the top */
+.use-body.is-swap > *:nth-child(2) { animation-delay: 40ms; }
+.use-body.is-swap > *:nth-child(3) { animation-delay: 80ms; }
+.use-body.is-swap > *:nth-child(n + 4) { animation-delay: 120ms; }
+
+/* the line itself draws in, once, rather than being there before the card is */
+@keyframes useDraw {
+    from { stroke-dashoffset: var(--len, 1200); }
+    to { stroke-dashoffset: 0; }
+}
+.use-body.is-swap .use-line {
+    stroke-dasharray: var(--len, 1200);
+    animation: useDraw 620ms cubic-bezier(0.22, 0.61, 0.36, 1) 80ms both;
+}
+.use-body.is-swap .use-area,
+.use-body.is-swap .use-line-flag,
+.use-body.is-swap .use-dot {
+    animation: useSwap 420ms ease 220ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .use-body.is-swap > *,
+    .use-body.is-swap .use-line,
+    .use-body.is-swap .use-area,
+    .use-body.is-swap .use-line-flag,
+    .use-body.is-swap .use-dot {
+        animation: none;
+    }
+}

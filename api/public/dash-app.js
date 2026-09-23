@@ -4167,8 +4167,24 @@
             var line = [];
             var under = ['M ' + at(0) + ' 100'];
             days.forEach(function (d, i) {
-                line.push((i ? 'L ' : 'M ') + at(i) + ' ' + up(d.n));
-                under.push('L ' + at(i) + ' ' + up(d.n));
+                var x = at(i);
+                var y = up(d.n);
+                if (!i) {
+                    line.push('M ' + x + ' ' + y);
+                    under.push('L ' + x + ' ' + y);
+                    return;
+                }
+                // A curve between the two points with its ends held level.
+                // Straight segments turn every busy day into a needle; a curve
+                // fitted through the points would overshoot and dip below zero
+                // on the way back down, which is a day that did not happen.
+                var px = at(i - 1);
+                var py = up(days[i - 1].n);
+                var reach = (x - px) / 2.6;
+                var seg = 'C ' + (px + reach) + ' ' + py + ' ' + (x - reach) + ' ' + y +
+                    ' ' + x + ' ' + y;
+                line.push(seg);
+                under.push(seg);
             });
             if (days.length === 1) {
                 // one day is a point, and a point is not a line. it is drawn
@@ -4187,6 +4203,12 @@
             var run = document.createElementNS(SVG_NS, 'path');
             run.setAttribute('d', line.join(' '));
             run.setAttribute('class', 'use-line');
+            // the dash that draws the line has to be as long as the line, and
+            // only the element can say how long that is
+            try {
+                var len = Math.ceil(run.getTotalLength ? run.getTotalLength() : 0);
+                if (len) run.style.setProperty('--len', len);
+            } catch (err) {  }
             // the one thing inside a stretched plot that keeps its shape
             run.setAttribute('vector-effect', 'non-scaling-stroke');
             svg.appendChild(run);
@@ -4197,7 +4219,14 @@
             if (days.some(function (d) { return d.flagged > 0; })) {
                 var bad = [];
                 days.forEach(function (d, i) {
-                    bad.push((i ? 'L ' : 'M ') + at(i) + ' ' + up(d.flagged));
+                    var x = at(i);
+                    var y = up(d.flagged);
+                    if (!i) { bad.push('M ' + x + ' ' + y); return; }
+                    var px = at(i - 1);
+                    var py = up(days[i - 1].flagged);
+                    var reach = (x - px) / 2.6;
+                    bad.push('C ' + (px + reach) + ' ' + py + ' ' + (x - reach) + ' ' + y +
+                        ' ' + x + ' ' + y);
                 });
                 if (days.length === 1) bad.push('L ' + span + ' ' + up(days[0].flagged));
                 var flag = document.createElementNS(SVG_NS, 'path');
@@ -4588,7 +4617,7 @@
     // what happened -- how many were flagged, which chains, who is in the
     // organisation -- and mixing the two means a reader cannot tell which of
     // these numbers can run out.
-    function useAllowance(rows, head, agreed) {
+    function useAllowance(rows, head, agreed, warn) {
         var box = document.createElement('section');
         box.className = 'use-allow';
         var top = document.createElement('div');
@@ -4605,6 +4634,13 @@
         }
         top.appendChild(right);
         box.appendChild(top);
+
+        if (warn) {
+            var says = document.createElement('p');
+            says.className = 'use-verdict' + (warn.over ? ' is-over' : ' is-near');
+            says.textContent = t(warn.says);
+            box.appendChild(says);
+        }
 
         rows.forEach(function (r) {
             var line = document.createElement('div');
@@ -4889,7 +4925,16 @@
         }
 
         function draw(out) {
+            // A period is swapped, not navigated to: the same numbers about a
+            // different window. So the page does not flash white and rebuild --
+            // what is redrawn settles in, which also covers the moment where
+            // the old content is gone and the new is not yet laid out.
             body.textContent = '';
+            body.classList.remove('is-swap');
+            // read a layout property, or the browser folds the class off and
+            // back on into no change at all and the animation never runs
+            void body.offsetWidth;
+            body.classList.add('is-swap');
             var s = out.screenings || {};
             var plan = out.plan || {};
             var sub = out.subscription || null;
@@ -4912,6 +4957,15 @@
             // over those windows is two numbers that never stood side by side.
             var onPlan = Boolean(out.period && out.period.current && !out.period.days);
 
+            var capped = null;
+            if (onPlan) {
+                allow.rows.forEach(function (r) {
+                    if (!r.unmetered && r.label === 'Screenings' && r.of > 0) capped = r.of;
+                });
+            }
+
+            body.appendChild(useHeadline(s, out.previous, out.period, capped));
+
             // Only when there is something to say.
             //
             // A line reading "nothing has gone past its limit" is true almost
@@ -4926,37 +4980,27 @@
             var near = onPlan ? allow.rows.filter(function (r) {
                 return !r.unmetered && r.of > 0 && r.used < r.of && r.used / r.of >= 0.8;
             }) : [];
-            if (onPlan && (full.length || near.length)) {
-                var verdict = document.createElement('p');
-                verdict.className = 'use-verdict';
-                if (full.length) {
-                    verdict.classList.add('is-over');
-                    verdict.textContent = t(full.length === 1
-                        ? 'One thing has reached its limit.'
-                        : 'Some things have reached their limit.');
-                } else {
-                    verdict.classList.add('is-near');
-                    verdict.textContent = t(near.length === 1
-                        ? 'One thing is close to its limit.'
-                        : 'Some things are close to their limit.');
-                }
-                body.appendChild(verdict);
+            // The warning belongs inside the block it is about, not above the
+            // chart: a line that appears for one period and not another moves
+            // everything under it, and what moved was the chart somebody was
+            // in the middle of reading.
+            var warn = null;
+            if (onPlan && full.length) {
+                warn = { over: true, says: full.length === 1
+                    ? 'One thing has reached its limit.'
+                    : 'Some things have reached their limit.' };
+            } else if (onPlan && near.length) {
+                warn = { over: false, says: near.length === 1
+                    ? 'One thing is close to its limit.'
+                    : 'Some things are close to their limit.' };
             }
-
-            var capped = null;
-            if (onPlan) {
-                allow.rows.forEach(function (r) {
-                    if (!r.unmetered && r.label === 'Screenings' && r.of > 0) capped = r.of;
-                });
-            }
-            body.appendChild(useHeadline(s, out.previous, out.period, capped));
 
             // shown only when something is actually limited. a block whose
             // every row reads "unmetered" is a heading, a plan name and no
             // information, which is worse than the space it takes.
             var limited = onPlan ? allow.rows.filter(function (r) { return !r.unmetered; }) : [];
             if (limited.length) {
-                body.appendChild(useAllowance(allow.rows, allow.head, allow.agreed));
+                body.appendChild(useAllowance(allow.rows, allow.head, allow.agreed, warn));
             }
 
             var strip = [
