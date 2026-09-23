@@ -4656,6 +4656,20 @@
         // of them in words and one of them as a pill.
         var el = document.createElement(cmp ? 'button' : 'div');
         el.className = 'use-delta';
+        // While the line is held on the chart the words name the window it
+        // draws instead of describing it. That is the whole indicator: a
+        // sentence that has stopped saying "the period before" and started
+        // saying which one is plainly about something on screen, and it
+        // answers the question the line raises -- against what, exactly --
+        // which no amount of highlighting would have answered.
+        var words = null;
+        var wording = function (held) {
+            if (!words) return;
+            words.textContent = held
+                ? t('vs') + ' ' + useSpan({ from: prev.from, to: prev.to })
+                : t('vs the period before');
+        };
+
         if (cmp) {
             el.type = 'button';
             el.classList.add('is-live');
@@ -4675,6 +4689,7 @@
                 el.classList.toggle('is-showing', Boolean(on));
                 el.classList.toggle('is-held', Boolean(keep));
                 el.setAttribute('aria-pressed', keep ? 'true' : 'false');
+                wording(Boolean(keep));
             };
             var held = cmp.on;
             if (held) mark(true, true);
@@ -4700,6 +4715,8 @@
         says.className = 'use-delta-w';
         says.textContent = t('vs the period before');
         el.appendChild(says);
+        words = says;
+        if (cmp && cmp.on) wording(true);
         return el;
     }
 
