@@ -3585,7 +3585,12 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     display: flex;
     align-items: baseline;
     gap: 0.28rem;
-    font-family: var(--sp-display);
+    /* the text face, not the display one. every other number on this screen is
+       set in it -- the tiles, the allowance rows, the delta right beside this
+       one -- and a headline in a second face reads as a number borrowed from
+       somewhere else rather than the largest of the same set */
+    font-family: var(--sp-text);
+    font-weight: 600;
     font-size: 2.15rem;
     line-height: 1.1;
     color: var(--ink);
