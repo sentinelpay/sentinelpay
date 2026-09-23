@@ -92,10 +92,6 @@
         // an invitation that has gone out and not been answered. deliberately
         // not the person mark: nobody is there yet, an envelope is.
         mail: '<rect x="3" y="5.5" width="18" height="13" rx="2.2"/><path d="m3.8 7 7.1 5.3a1.8 1.8 0 0 0 2.2 0L20.2 7"/>',
-        // one line over another: this period laid on the one before it. the
-        // lower of the two is dashed, the way it is drawn on the chart
-        compare: '<path d="M3 15.5 8.4 9.6l4 3.4L21 5"/>' +
-            '<path d="M3 20.4h2.6M9 20.4h2.6M15 20.4h2.6M21 20.4h.01"/>',
 
         // chrome: the shell itself, not a destination
         panel: '<rect x="3.4" y="4.6" width="17.2" height="14.8" rx="2.2"/><path d="M9.4 4.6v14.8"/>',
@@ -4573,11 +4569,8 @@
             big.appendChild(of);
         }
         row.appendChild(big);
-        var d = delta(s.total, prev);
+        var d = delta(s.total, prev, cmp);
         if (d) row.appendChild(d);
-        // beside the sentence it draws: "+26% vs the period before" and the
-        // control that shows you where those 26% came from
-        if (cmp) row.appendChild(useCompare(cmp));
         box.appendChild(row);
 
         // Always the chart, even when every day of it is zero. An empty period
@@ -4596,20 +4589,6 @@
         return box;
     }
 
-    // Overlaying the month before is off until it is asked for. It answers a
-    // question somebody has some of the time -- are we ahead of last month --
-    // and a chart that answers it always is a chart carrying a line most
-    // visits do not need.
-    function useCompare(cmp) {
-        var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'use-cmp' + (cmp.on ? ' is-on' : '');
-        btn.setAttribute('aria-pressed', cmp.on ? 'true' : 'false');
-        btn.innerHTML = icon('compare');
-        btn.appendChild(document.createTextNode(t('Compare')));
-        btn.addEventListener('click', cmp.toggle);
-        return btn;
-    }
 
     function key(cls, label) {
         var el = document.createElement('span');
@@ -4630,11 +4609,23 @@
     // Nothing at all where there is nothing to compare with. A plan taken on
     // the day the organisation was created has no period behind it, and a
     // percentage against zero says only that something started.
-    function delta(now, prev) {
+    function delta(now, prev, cmp) {
         if (!prev || !prev.total) return null;
         var before = prev.total;
-        var el = document.createElement('div');
+        // Where the month before can be drawn, this sentence is the control
+        // that draws it. It is already a sentence about the comparison, so a
+        // separate button beside it would be the same thing said twice -- one
+        // of them in words and one of them as a pill.
+        var el = document.createElement(cmp ? 'button' : 'div');
         el.className = 'use-delta';
+        if (cmp) {
+            el.type = 'button';
+            el.classList.add('is-live');
+            if (cmp.on) el.classList.add('is-showing');
+            el.setAttribute('aria-pressed', cmp.on ? 'true' : 'false');
+            el.title = t('Show the period before on the chart');
+            el.addEventListener('click', cmp.toggle);
+        }
         var pct = Math.round(((now - before) / before) * 100);
         var up = pct > 0;
         if (pct !== 0) el.classList.add(up ? 'is-up' : 'is-down');

@@ -3642,34 +3642,36 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     opacity: 0.75;
 }
 
-/* Turning the comparison on. It sits at the end of the headline row, after
-   the sentence it draws, and reads as a control rather than a number. */
-.use-cmp {
-    margin-left: auto;
-    /* the row sits on a baseline it shares with a 2.15rem number; a pill
-       hanging off that baseline reads as having slipped */
-    align-self: center;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    padding: 0.32rem 0.6rem;
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    background: transparent;
-    color: var(--ink-3);
-    font-family: var(--sp-text);
-    font-size: 0.78rem;
-    line-height: 1;
+/* The delta doubles as the control that draws what it is talking about. As a
+   button it has to stop looking like one: no chrome of its own, the same
+   metrics it had as a line of text, and the only standing hint that it does
+   something is a dotted rule under the words -- the one it would have if it
+   were a term with a definition, which is close to what it is. */
+.use-delta.is-live {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: 0.82rem;
+    color: var(--ink-4);
     cursor: pointer;
-    transition: color 120ms, border-color 120ms, background 120ms;
+    text-align: left;
 }
-.use-cmp svg { width: 14px; height: 14px; }
-.use-cmp:hover { color: var(--ink-2); border-color: var(--ink-4); }
-.use-cmp.is-on {
+.use-delta.is-live .use-delta-w {
+    border-bottom: 1px dotted var(--ink-4);
+    padding-bottom: 1px;
+    transition: color 120ms, border-color 120ms;
+}
+.use-delta.is-live:hover .use-delta-w { color: var(--ink-2); border-bottom-color: var(--ink-2); }
+.use-delta.is-live:focus-visible { outline: 2px solid var(--link); outline-offset: 3px; border-radius: 4px; }
+/* while the line is on the chart, the words that put it there are the colour
+   of the line, and the rule under them is solid: it is not an offer any more,
+   it is the thing that is currently true */
+.use-delta.is-showing .use-delta-w {
     color: var(--fall);
-    border-color: var(--fall);
-    background: color-mix(in srgb, var(--fall) 8%, transparent);
+    border-bottom: 1px solid var(--fall);
 }
+.use-delta.is-showing:hover .use-delta-w { color: var(--fall); border-bottom-color: var(--fall); }
 
 /* The rest in one line each rather than one card each: facts about the period,
    readable in a single pass instead of six boxes deep. */
