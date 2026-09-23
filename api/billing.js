@@ -276,6 +276,23 @@ async function freshen(row) {
     }
 }
 
+// A date, or now. Never the future: a plan that starts next week is a plan
+// nobody is on yet, and the periods counted from it would be counting nothing.
+function startedOn(value) {
+    if (!value) return new Date();
+    const when = new Date(String(value).length === 10 ? value + 'T00:00:00Z' : value);
+    if (isNaN(when.getTime()) || when.getTime() > Date.now()) return new Date();
+    return when;
+}
+
+// An allowance is a count of things, so half of one is not an answer, and a
+// negative one is somebody's typo rather than a generous contract.
+function whole(value) {
+    if (value === null || value === undefined || value === '') return null;
+    const n = Math.floor(Number(value));
+    return Number.isSafeInteger(n) && n >= 0 ? n : null;
+}
+
 // Take a plan. Returns the new subscription, and ends whatever was there.
 async function start(orgId, userId, input) {
     if (!(await init())) return { ok: false, reason: 'unavailable' };

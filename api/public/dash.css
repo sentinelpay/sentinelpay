@@ -3221,7 +3221,8 @@ html.is-theming .btn {
 .use-plan .tag { margin-left: 0.45rem; }
 
 .use-verdict { margin: 0 0 1.1rem; font-size: 0.86rem; color: var(--ink-3); }
-.use-verdict.is-over { color: var(--risk-mid); font-weight: 600; }
+.use-verdict.is-over { color: var(--risk-high); font-weight: 600; }
+.use-verdict.is-near { color: var(--risk-mid); font-weight: 600; }
 
 /* Tiles are a summary, so they are small and there are several. Two across:
    three would make each one narrower than the numbers it has to hold once a

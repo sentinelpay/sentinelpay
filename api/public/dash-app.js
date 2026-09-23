@@ -4912,13 +4912,34 @@
             // over those windows is two numbers that never stood side by side.
             var onPlan = Boolean(out.period && out.period.current && !out.period.days);
 
-            if (onPlan) {
+            // Only when there is something to say.
+            //
+            // A line reading "nothing has gone past its limit" is true almost
+            // every day, and a sentence that is almost always the same is one
+            // nobody reads by the third visit -- while it sits in the first
+            // place on the screen anybody looks. What is under it already shows
+            // how full each allowance is.
+            //
+            // The other direction is the most important sentence on the page,
+            // because reaching a limit stops screening rather than growing a
+            // bill, so it says so before it happens as well as after.
+            var near = onPlan ? allow.rows.filter(function (r) {
+                return !r.unmetered && r.of > 0 && r.used < r.of && r.used / r.of >= 0.8;
+            }) : [];
+            if (onPlan && (full.length || near.length)) {
                 var verdict = document.createElement('p');
                 verdict.className = 'use-verdict';
-                verdict.textContent = full.length
-                    ? t(full.length === 1 ? 'One thing has reached its limit.' : 'Some things have reached their limit.')
-                    : t('Nothing has gone past its limit in this period.');
-                if (full.length) verdict.classList.add('is-over');
+                if (full.length) {
+                    verdict.classList.add('is-over');
+                    verdict.textContent = t(full.length === 1
+                        ? 'One thing has reached its limit.'
+                        : 'Some things have reached their limit.');
+                } else {
+                    verdict.classList.add('is-near');
+                    verdict.textContent = t(near.length === 1
+                        ? 'One thing is close to its limit.'
+                        : 'Some things are close to their limit.');
+                }
                 body.appendChild(verdict);
             }
 
