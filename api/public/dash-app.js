@@ -3639,8 +3639,10 @@
         txt.className = 'tr-t';
         var nm = document.createElement('div');
         nm.className = 'tr-name';
+        // no mark on your own row: it carries your name and your address, and
+        // the action on it already says Leave where everybody else's says
+        // Manage access
         nm.textContent = m.name || m.email || '—';
-        if (m.you) nm.appendChild(tag(t('you')));
         txt.appendChild(nm);
         // somebody who signed up without a name is shown by their address, so
         // the line under it would otherwise repeat the line above it
