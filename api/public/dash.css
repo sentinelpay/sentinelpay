@@ -3643,10 +3643,10 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 }
 
 /* The delta doubles as the control that draws what it is talking about. As a
-   button it has to stop looking like one: no chrome of its own, the same
-   metrics it had as a line of text, and the only standing hint that it does
-   something is a dotted rule under the words -- the one it would have if it
-   were a term with a definition, which is close to what it is. */
+   button it has to stop looking like one: no chrome of its own and the same
+   metrics it had as a line of text. Pointing at it is what shows the line, so
+   it needs no standing mark to say it can be pointed at -- the words go the
+   colour of the line while the line is there, which is the whole signal. */
 .use-delta.is-live {
     padding: 0;
     border: 0;
@@ -3657,21 +3657,16 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     cursor: pointer;
     text-align: left;
 }
-.use-delta.is-live .use-delta-w {
-    border-bottom: 1px dotted var(--ink-4);
-    padding-bottom: 1px;
-    transition: color 120ms, border-color 120ms;
-}
-.use-delta.is-live:hover .use-delta-w { color: var(--ink-2); border-bottom-color: var(--ink-2); }
+.use-delta.is-live .use-delta-w { transition: color 140ms; }
 .use-delta.is-live:focus-visible { outline: 2px solid var(--link); outline-offset: 3px; border-radius: 4px; }
-/* while the line is on the chart, the words that put it there are the colour
-   of the line, and the rule under them is solid: it is not an offer any more,
-   it is the thing that is currently true */
-.use-delta.is-showing .use-delta-w {
-    color: var(--fall);
-    border-bottom: 1px solid var(--fall);
-}
-.use-delta.is-showing:hover .use-delta-w { color: var(--fall); border-bottom-color: var(--fall); }
+.use-delta.is-showing .use-delta-w { color: var(--fall); }
+
+/* Both charts are built; one of them is shown. Nothing is laid out twice --
+   the hidden one is out of flow -- so the card keeps the height it had and the
+   line appears in place rather than pushing the page around. */
+.use-against { display: none; }
+.use-head.is-against .use-alone { display: none; }
+.use-head.is-against .use-against { display: block; }
 
 /* The rest in one line each rather than one card each: facts about the period,
    readable in a single pass instead of six boxes deep. */

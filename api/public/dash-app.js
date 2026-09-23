@@ -4569,7 +4569,22 @@
             big.appendChild(of);
         }
         row.appendChild(big);
-        var d = delta(s.total, prev, cmp);
+        // Pointing at the sentence shows the line it is talking about, and
+        // taking the pointer away puts it back. Clicking holds it there, for a
+        // screen with no pointer at all and for a reader who wants to look at
+        // it with both hands free.
+        var held = Boolean(cmp && cmp.on);
+        var show = function (on) { box.classList.toggle('is-against', Boolean(on)); };
+        show(held);
+        var d = delta(s.total, prev, cmp ? {
+            on: held,
+            peek: function (on) { if (!held) show(on); },
+            hold: function () {
+                held = cmp.toggle();
+                show(held);
+                return held;
+            }
+        } : null);
         if (d) row.appendChild(d);
         box.appendChild(row);
 
@@ -4577,16 +4592,39 @@
         // is a fact with a shape -- a flat line under a real scale -- and
         // swapping it for a sentence takes the axis away exactly when somebody
         // is asking whether anything ran at all.
-        var ghost = cmp && cmp.on ? cmp.days : null;
-        box.appendChild(useChart(s.days || [], ghost));
-        var legend = document.createElement('div');
-        legend.className = 'use-legend';
-        legend.appendChild(key('use-key-run', ghost ? 'This period' : 'Screenings'));
-        legend.appendChild(ghost
-            ? key('use-key-was', 'The period before')
-            : key('use-key-flag', 'Flagged'));
+        // Where there is a month behind this one, both charts are built and one
+        // of them is shown. Drawing on hover would mean building a chart while
+        // the pointer is moving, and the swap somebody asked to be quick would
+        // be the slowest thing on the screen. Two plots and a class costs a
+        // few hundred nodes once and nothing afterwards.
+        if (cmp) {
+            box.appendChild(useLayer('use-alone', useChart(s.days || [], null),
+                useLegend(false)));
+            box.appendChild(useLayer('use-against', useChart(s.days || [], cmp.days),
+                useLegend(true)));
+        } else {
+            box.appendChild(useChart(s.days || [], null));
+            box.appendChild(useLegend(false));
+        }
+        return box;
+    }
+
+    function useLayer(cls, chart, legend) {
+        var box = document.createElement('div');
+        box.className = cls;
+        box.appendChild(chart);
         box.appendChild(legend);
         return box;
+    }
+
+    function useLegend(against) {
+        var legend = document.createElement('div');
+        legend.className = 'use-legend';
+        legend.appendChild(key('use-key-run', against ? 'This period' : 'Screenings'));
+        legend.appendChild(against
+            ? key('use-key-was', 'The period before')
+            : key('use-key-flag', 'Flagged'));
+        return legend;
     }
 
 
@@ -4624,7 +4662,17 @@
             if (cmp.on) el.classList.add('is-showing');
             el.setAttribute('aria-pressed', cmp.on ? 'true' : 'false');
             el.title = t('Show the period before on the chart');
-            el.addEventListener('click', cmp.toggle);
+            var mark = function (on) {
+                el.classList.toggle('is-showing', Boolean(on));
+                el.setAttribute('aria-pressed', on ? 'true' : 'false');
+            };
+            var held = cmp.on;
+            el.addEventListener('pointerenter', function () { if (!held) { cmp.peek(true); mark(true); } });
+            el.addEventListener('pointerleave', function () { if (!held) { cmp.peek(false); mark(false); } });
+            // the keyboard has no pointer, so focus is what hovering is
+            el.addEventListener('focus', function () { if (!held) { cmp.peek(true); mark(true); } });
+            el.addEventListener('blur', function () { if (!held) { cmp.peek(false); mark(false); } });
+            el.addEventListener('click', function () { held = cmp.hold(); mark(held); });
         }
         var pct = Math.round(((now - before) / before) * 100);
         var up = pct > 0;
@@ -5046,9 +5094,12 @@
             var cmp = older && older.length ? {
                 on: alongside,
                 days: older,
+                // no redraw: both charts are already on the page, and this only
+                // records which of them should still be showing after the next
+                // period switch or live update
                 toggle: function () {
                     alongside = !alongside;
-                    if (latest) draw(latest);
+                    return alongside;
                 }
             } : null;
             if (!cmp) alongside = false;
