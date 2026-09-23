@@ -336,11 +336,15 @@ async function forOrg(orgId, opts) {
         const born = o.birth ? months.startOfDay(o.birth).getTime() : null;
         const comparable = !born || new Date(before.from).getTime() >= born;
 
-        // The shape of the window before, but only for a billing period. On a
-        // rolling window the two are the same length and would line up, yet
-        // "the thirty days before these thirty" is a window nobody agreed to
-        // and nobody is billed for, so the comparison there stays a number.
-        const alongside = comparable && !period.days;
+        // The shape of the window before, wherever there is one. This was
+        // held back from the rolling windows on the grounds that "the thirty
+        // days before these thirty" is a window nobody is billed for -- which
+        // is true, and beside the point: the percentage is already printed
+        // there, so the comparison is already being made. Offering the number
+        // and refusing the picture of it is a distinction only the person who
+        // wrote it can see. The two windows are also exactly the same length
+        // here, which they are not for two calendar months.
+        const alongside = comparable;
 
         const [work, shape, past, marks, ghost] = await Promise.all([
             screeningsIn(orgId, period.from, period.to, sandbox, zone),

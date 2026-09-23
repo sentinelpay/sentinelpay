@@ -5119,10 +5119,10 @@
                 });
             }
 
-            // Only where there is a month behind this one to lay underneath it.
-            // The server sends those days for a billing period and not for a
-            // rolling window, so the control appears exactly where it means
-            // something rather than appearing everywhere and doing nothing.
+            // Only where there is a window behind this one to lay underneath.
+            // The server sends those days wherever it sends a comparison at
+            // all, so wherever the percentage is printed the line that draws
+            // it can be reached.
             var older = out.previous && out.previous.days;
             var cmp = older && older.length ? {
                 on: alongside,
