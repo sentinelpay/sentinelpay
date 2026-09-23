@@ -155,7 +155,14 @@ async function main() {
                 `INSERT INTO screenings
                     (user_id, org_id, at, kind, asset, address, verdict, score, sources, list_date, sandbox)
                  SELECT m.user_id, $1,
-                        now() - ($2 || ' days')::interval + ($3 || ' minutes')::interval,
+                        -- never later than this moment. the offset within the
+                        -- day is added to a day that has already happened, and
+                        -- on today that lands in the evening, so a fixture was
+                        -- quietly writing screenings that had not happened yet
+                        -- -- which every count over a running period then
+                        -- disagreed about, depending on where it stopped.
+                        least(now() - ($2 || ' days')::interval + ($3 || ' minutes')::interval,
+                              now() - interval '1 minute'),
                         'live', $4, $5, $6, $7, $8, '2026-09-01', false
                    FROM memberships m WHERE m.org_id = $1 ORDER BY m.user_id LIMIT 1`,
                 [org.id, String(d), String(Math.floor(Math.random() * 600) + 480),

@@ -122,34 +122,59 @@ function dayIn(ms, zone) {
     }
 }
 
-function fillDays(rows, from, to, zone) {
-    const seen = new Map(rows.map((r) => [r.d, r]));
+// Every one of the reader's days the window touches, in order and once each.
+//
+// The walk has to step in one calendar and stop in another, and getting that
+// wrong is what put a twenty-third between two twenty-seconds on somebody's
+// chart. It stepped at midday UTC and tested that midnight UTC had not passed
+// "now" -- true for a few hours yet -- while naming the day it landed on in the
+// reader's zone, which nine hours behind was still the day before. So it drew a
+// day the reader has not started, and then the line that adds today put today
+// after it.
+//
+// The fix is to have one calendar decide: the first and last day are named in
+// the reader's zone, and a day is kept only if it falls between them. The walk
+// itself is still UTC and still steps from the middle of a day, because that is
+// what makes it safe across a clock change -- it just no longer has an opinion
+// about where the window ends. It starts a day early and ends a day late, since
+// a zone can be fourteen hours from UTC and the reader's own first and last day
+// can sit outside the UTC dates of the bounds.
+function walkDays(fromMs, stopMs, zone) {
+    const first = dayIn(fromMs, zone);
+    const last = dayIn(stopMs, zone);
     const out = [];
-    const noon = 12 * 3600 * 1000;
+    let cursor = noonOf(fromMs) - 86400000;
+    const end = noonOf(stopMs) + 86400000;
+    let guard = 0;
+    let seen = '';
+    while (cursor <= end && guard++ < 500) {
+        const key = dayIn(cursor, zone);
+        if (key !== seen && key >= first && key <= last) {
+            out.push(key);
+            seen = key;
+        }
+        cursor += 86400000;
+    }
+    // a window too short to contain a whole day is still a day on the chart
+    if (!out.length) out.push(last);
+    return out;
+}
+
+function pickDays(seen, days) {
+    return days.map((day) => {
+        const row = seen.get(day);
+        return { day, n: row ? row.n : 0, flagged: row ? row.flagged : 0 };
+    });
+}
+
+function fillDays(rows, from, to, zone) {
     // the last day is the one holding the last instant the window contains,
     // not the one its exclusive end lands on. a period that ends at midnight
     // on the twentieth is over on the nineteenth, and drawing a twentieth on
     // it adds a day of no work that never belonged to it
     const stop = Math.min(new Date(to).getTime() - 1, Date.now());
-    let cursor = noonOf(new Date(from).getTime());
-    let guard = 0;
-    let last = '';
-    while (cursor - noon <= stop && guard++ < 400) {
-        const key = dayIn(cursor, zone);
-        if (key !== last) {
-            const row = seen.get(key);
-            out.push({ day: key, n: row ? row.n : 0, flagged: row ? row.flagged : 0 });
-            last = key;
-        }
-        cursor += 86400000;
-    }
-    // the day being lived through, whether or not the walk landed on it
-    const today = dayIn(stop, zone);
-    if (!out.length || out[out.length - 1].day !== today) {
-        const row = seen.get(today);
-        out.push({ day: today, n: row ? row.n : 0, flagged: row ? row.flagged : 0 });
-    }
-    return out;
+    return pickDays(new Map(rows.map((r) => [r.d, r])),
+        walkDays(new Date(from).getTime(), stop, zone));
 }
 
 // Only a real zone name, and postgres is asked to hold it in a parameter
@@ -164,7 +189,18 @@ function safeZone(value) {
 // the same bucketing as the current period's, so the two can be laid over each
 // other; it walks to the end of the window rather than to today, because for a
 // window in the past there is no day still being lived through.
+// Nothing later than this instant. A window that is still running ends in the
+// future, and counting to its end while the chart stops at today would put a
+// number in the headline that the days underneath it cannot add up to. No real
+// screening happens after now, but a database whose clock is a minute ahead of
+// the application's writes one, and this is the page somebody is asked to stand
+// behind.
+function until(to) {
+    return new Date(Math.min(new Date(to).getTime(), Date.now())).toISOString();
+}
+
 async function daysIn(orgId, from, to, sandbox, zone) {
+    to = until(to);
     const rows = await db.query(
         `SELECT to_char(date_trunc('day', at AT TIME ZONE $5), 'YYYY-MM-DD') AS d,
                 count(*)::int AS n,
@@ -174,30 +210,17 @@ async function daysIn(orgId, from, to, sandbox, zone) {
        GROUP BY 1 ORDER BY 1`,
         [Number(orgId), from, to, Boolean(sandbox), zone]
     );
-    const seen = new Map(rows.rows.map((r) => [r.d, r]));
-    const out = [];
-    const noon = 12 * 3600 * 1000;
-    // the same last day as the window this one is being compared against, by
-    // the same rule. the two have to come out the same length: they are drawn
-    // over each other by day number, and a window one bucket shorter is a line
-    // that stops before the end of the card
+    // the same walk as the window this one is compared against, so the two
+    // come out the same length: they are drawn over each other by day number,
+    // and a window one bucket shorter is a line that stops before the end of
+    // the card. one function, so there is one answer to what a day is
     const stop = Math.min(new Date(to).getTime() - 1, Date.now());
-    let cursor = noonOf(new Date(from).getTime());
-    let guard = 0;
-    let last = '';
-    while (cursor - noon <= stop && guard++ < 400) {
-        const key = dayIn(cursor, zone);
-        if (key !== last) {
-            const row = seen.get(key);
-            out.push({ day: key, n: row ? row.n : 0, flagged: row ? row.flagged : 0 });
-            last = key;
-        }
-        cursor += 86400000;
-    }
-    return out;
+    return pickDays(new Map(rows.rows.map((r) => [r.d, r])),
+        walkDays(new Date(from).getTime(), stop, zone));
 }
 
 async function screeningsIn(orgId, from, to, sandbox, zone) {
+    to = until(to);
     const args = [Number(orgId), from, to, Boolean(sandbox), zone];
     const [sum, days, verdicts, assets] = await Promise.all([
         db.query(
