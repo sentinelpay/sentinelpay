@@ -3657,20 +3657,46 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     cursor: pointer;
     text-align: left;
 }
+/* The padding is there at rest and pulled straight back out again, so the
+   field paints without moving a word when it appears. */
+.use-delta.is-live {
+    padding: 0.24rem 0.55rem;
+    margin: -0.24rem -0.55rem;
+    border-radius: 999px;
+    transition: background-color 160ms, box-shadow 160ms;
+}
 .use-delta.is-live .use-delta-w { transition: color 140ms; }
-.use-delta.is-live:focus-visible { outline: 2px solid var(--link); outline-offset: 3px; border-radius: 4px; }
-/* Showing, whether pointed at or held, is the words in the line's colour and
-   nothing else. What tells the two apart is what the words say: held, they
-   name the window on the chart. A field or a border behind them would be a
-   second announcement of a state the sentence has already made plain, and the
-   loudest thing in a row whose subject is a number. */
-.use-delta.is-showing .use-delta-w { color: var(--fall); }
-/* On a fall the figure is already violet, and violet words beside it turn the
-   whole phrase into one block of colour where the number should be the thing
-   that carries it. So the words take the other half of the pair instead: the
-   figure keeps the direction it is in, the words still change to say the line
-   is on the chart, and the two stay told apart. */
-.use-delta.is-down.is-showing .use-delta-w { color: var(--link); }
+.use-delta.is-live:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+
+/* Pointing is not deciding. A pointer resting here puts the line on the chart
+   for as long as it stays, so it gets the smallest mark that can be seen at
+   all: the words darken. No field, because nothing has been chosen yet. */
+.use-delta.is-showing:not(.is-held) .use-delta-w { color: var(--ink-2); }
+
+/* Held is a decision, and it wears the colour of the direction it is in --
+   the same blue for a rise and violet for a fall the figure already uses, so
+   the field is not a fourth colour to learn. A period level with the one
+   before it has no direction, so it gets no hue: grey, which is what the
+   arrow is saying too. */
+.use-delta.is-held {
+    background: color-mix(in srgb, var(--ink-3) 10%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink-3) 20%, transparent);
+}
+.use-delta.is-held .use-delta-w { color: var(--ink-2); }
+.use-delta.is-up.is-held {
+    background: color-mix(in srgb, var(--link) 10%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--link) 24%, transparent);
+}
+.use-delta.is-up.is-held .use-delta-w { color: var(--link); }
+.use-delta.is-down.is-held {
+    background: color-mix(in srgb, var(--fall) 11%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fall) 24%, transparent);
+}
+.use-delta.is-down.is-held .use-delta-w { color: var(--fall); }
+/* and, held, it says it can be given back */
+.use-delta.is-held:hover { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink-3) 38%, transparent); }
+.use-delta.is-up.is-held:hover { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--link) 44%, transparent); }
+.use-delta.is-down.is-held:hover { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fall) 44%, transparent); }
 
 /* Both charts are built; one of them is shown. Nothing is laid out twice --
    the hidden one is out of flow -- so the card keeps the height it had and the
