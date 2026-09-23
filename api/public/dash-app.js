@@ -4661,7 +4661,10 @@
             el.classList.add('is-live');
             if (cmp.on) el.classList.add('is-showing');
             el.setAttribute('aria-pressed', cmp.on ? 'true' : 'false');
-            el.title = t('Show the period before on the chart');
+            // no title: the browser answers one with a small grey box of its
+            // own design, half a second after the pointer has already shown
+            // the line the box would have described. the button reads as its
+            // own words, and aria-pressed says whether the line is up.
             var mark = function (on) {
                 el.classList.toggle('is-showing', Boolean(on));
                 el.setAttribute('aria-pressed', on ? 'true' : 'false');
