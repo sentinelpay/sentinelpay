@@ -149,6 +149,83 @@ async function recent(orgId, limit, sandbox) {
     }));
 }
 
+// The log, as somebody actually asks for it: a window of time, one verdict or
+// all of them, one project or all of them, and a particular address.
+//
+// Paged by a cursor rather than an offset. Checks arrive while somebody is
+// reading, and an offset walks the same row twice or steps over one every time
+// the top of the list moves.
+//
+// The cursor is the pair the list is sorted by -- the moment and the id -- and
+// not the id alone. Those two do not agree: a batch written in one go ascends
+// by id while descending by time, so an id cursor against a time sort hands
+// back rows that have already been read. It did, for twenty-one of a hundred
+// and twenty.
+async function log(orgId, q) {
+    if (!(await init())) return { rows: [], more: false };
+    const want = q || {};
+    const cap = Math.min(Math.max(Number(want.limit) || 50, 1), 200);
+
+    // written against the alias from the start. an earlier version built them
+    // bare and put the alias on afterwards with a regular expression, which is
+    // a parser nobody asked for sitting between a query and the database.
+    const where = ['s.org_id = $1', 's.sandbox = $2'];
+    const args = [Number(orgId), Boolean(want.sandbox)];
+    const add = (sql, value) => { args.push(value); where.push(sql.replace('$n', '$' + args.length)); };
+
+    if (want.from) add('s.at >= $n::timestamptz', want.from);
+    if (want.to) add('s.at < $n::timestamptz', want.to);
+    if (want.verdict === 'flagged') where.push("s.verdict <> 'clear'");
+    else if (want.verdict) add('s.verdict = $n', String(want.verdict));
+    if (want.project === 'none') where.push('s.project_id IS NULL');
+    else if (want.project) add('s.project_id = $n', Number(want.project));
+    // an address is matched from the front: these are long strings nobody
+    // types in full, and a match anywhere inside one would scan the table
+    if (want.address) add('s.address LIKE $n', String(want.address).trim() + '%');
+    // where to carry on from: the exact place of the last row already read, in
+    // the order this list is in
+    const at = spot(want.cursor);
+    if (at) {
+        args.push(at.at, at.id);
+        where.push('(s.at, s.id) < ($' + (args.length - 1) + '::timestamptz, $' + args.length + ')');
+    }
+
+    args.push(cap + 1);
+    const res = await db.query(
+        `SELECT s.id, s.at, s.kind, s.asset, s.address, s.verdict, s.score, s.list_date, s.digest,
+                s.project_id, p.name AS project_name
+           FROM screenings s
+           LEFT JOIN projects p ON p.id = s.project_id
+          WHERE ` + where.join(' AND ') + `
+       ORDER BY s.at DESC, s.id DESC
+          LIMIT $` + args.length,
+        args
+    );
+    const rows = res.rows.slice(0, cap).map((r) => ({
+        id: String(r.id), at: r.at, kind: r.kind, asset: r.asset, address: r.address,
+        verdict: r.verdict, score: r.score, listDate: r.list_date, digest: r.digest,
+        projectId: r.project_id ? String(r.project_id) : '',
+        projectName: r.project_name || '',
+    }));
+    const last = rows[rows.length - 1];
+    return {
+        rows,
+        more: res.rows.length > cap,
+        next: last ? new Date(last.at).toISOString() + '~' + last.id : '',
+    };
+}
+
+// The cursor, which is one place in this list written down. It is handed out
+// by the query and handed back unread, so the shape stays in this file.
+function spot(raw) {
+    const cut = String(raw || '').split('~');
+    if (cut.length !== 2) return null;
+    const when = new Date(cut[0]);
+    const id = Number(cut[1]);
+    if (isNaN(when.getTime()) || !Number.isSafeInteger(id) || id < 1) return null;
+    return { at: when.toISOString(), id };
+}
+
 async function byId(orgId, id, sandbox) {
     if (!(await init())) return null;
     const res = await db.query(
@@ -250,4 +327,4 @@ async function adopt() {
     }
 }
 
-module.exports = { screen, recent, byId, countFor, stats, identify, adopt };
+module.exports = { screen, recent, log, byId, countFor, stats, identify, adopt };

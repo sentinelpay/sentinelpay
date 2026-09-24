@@ -195,7 +195,8 @@
 
     var NAV = [
         { group: 'Work', items: [
-            { key: 'projects', label: 'Projects', icon: 'projects', org: '' }
+            { key: 'projects', label: 'Projects', icon: 'projects', org: '' },
+            { key: 'checks', label: 'Checks', icon: 'screening', org: 'checks' }
         ] },
         { group: 'Organisation', items: [
             { key: 'team', label: 'Team', icon: 'team', org: 'team' },
@@ -2420,7 +2421,15 @@
 
     function forgetPrjCache() { prjCache.forget(); }
 
-    function whenText(iso, withTime) {
+// OFAC writes 09/18/2026. Turned into a date only when it is plainly that
+    // shape, so anything else is passed through as written rather than guessed
+    // at. It sat inside the usage screen until the checks log needed it too.
+    function listDay(raw) {
+        var m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(raw || '').trim());
+        return m ? m[3] + '-' + m[1] + '-' + m[2] + 'T00:00:00Z' : '';
+    }
+
+        function whenText(iso, withTime) {
         if (!iso) return '';
         var d = new Date(iso);
         if (isNaN(d.getTime())) return '';
@@ -5465,6 +5474,17 @@
                 ['Addresses', useNum(s.addresses)],
                 ['Busiest day', busiest(s.days)]
             ]));
+            // and the way from the number to the rows behind it. a count on a
+            // compliance screen that cannot be opened is a number somebody is
+            // asked to stand behind without being shown what it is made of.
+            var open = document.createElement('a');
+            open.className = 'chip use-open';
+            open.href = orgHome(org.slug) + '/checks?scope=' + encodeURIComponent(out.scope) +
+                '&from=' + encodeURIComponent(out.period.from) +
+                '&to=' + encodeURIComponent(out.period.to);
+            open.innerHTML = icon('screening');
+            open.appendChild(document.createTextNode(t('See these checks')));
+            main.appendChild(open);
             sec.body.appendChild(main);
             if (!fresh) body.appendChild(sec);
 
@@ -5629,14 +5649,6 @@
             body.appendChild(foot);
         }
 
-        // OFAC writes 09/18/2026. Turned into a date only when it is plainly
-        // that shape, so anything else is passed through as written rather than
-        // guessed at.
-        function listDay(raw) {
-            var m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(raw || '').trim());
-            return m ? m[3] + '-' + m[1] + '-' + m[2] + 'T00:00:00Z' : '';
-        }
-
         // Which rows belong in the allowance block, and what the heading beside
         // it says. Two kinds of plan, counted differently on purpose:
         //
@@ -5755,6 +5767,310 @@
         onZone(function () { load(true); });
         load();
         return out_;
+    }
+
+    // Every check this organisation has made, and the evidence behind each one.
+    //
+    // The product has written one of these rows for every address it has ever
+    // been asked about -- the verdict, the list it was matched against, the
+    // version of that list on the day, and a digest over the sealed record --
+    // and until now there was no screen to look at a single one of them. The
+    // number on the usage page was something a customer was asked to stand
+    // behind without being able to open it.
+    function viewChecks(me) {
+        var page = document.createElement('div');
+        page.className = 'pg';
+        var org = me.org || {};
+        page.appendChild(pageHead('Checks', 'Every address this organisation has checked, and what came back.'));
+
+        // The usage screen links here with a window and a scope on the address,
+        // so arriving from a number lands on the rows that number was made of.
+        var asked = new URLSearchParams(location.search);
+        var want = {
+            scope: asked.get('scope') === 'sandbox' ? 'sandbox' : 'live',
+            verdict: '',
+            project: '',
+            address: '',
+            from: asked.get('from') || '',
+            to: asked.get('to') || '',
+            cursor: ''
+        };
+        var projects = [];
+        var rows = [];
+        var more = false;
+        var nextAt = '';
+
+        var bar = document.createElement('div');
+        bar.className = 'bar chk-bar';
+        var find = document.createElement('div');
+        find.className = 'bar-find';
+        find.innerHTML = '<svg class="bar-find-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            'stroke-width="1.8" stroke-linecap="round" aria-hidden="true">' +
+            '<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>';
+        var findIn = document.createElement('input');
+        findIn.type = 'search';
+        findIn.placeholder = t('Address starts with');
+        findIn.autocomplete = 'off';
+        find.appendChild(findIn);
+        bar.appendChild(find);
+        page.appendChild(bar);
+
+        var picks = document.createElement('div');
+        picks.className = 'chk-picks';
+        bar.appendChild(picks);
+
+        // Arriving from a number means arriving filtered, and a list that is
+        // filtered without saying so is a list somebody will read as all of it.
+        if (want.from || want.to) {
+            var only = document.createElement('div');
+            only.className = 'chk-only';
+            var says = document.createElement('span');
+            says.textContent = t('Showing') + ' ' + useRange(want.from,
+                new Date(new Date(want.to || Date.now()).getTime() - 1).toISOString());
+            only.appendChild(says);
+            var all = document.createElement('button');
+            all.type = 'button';
+            all.className = 'chk-all';
+            all.textContent = t('Show every check');
+            all.addEventListener('click', function () {
+                want.from = '';
+                want.to = '';
+                want.cursor = '';
+                rows = [];
+                only.remove();
+                load();
+            });
+            only.appendChild(all);
+            page.appendChild(only);
+        }
+
+        var card = document.createElement('div');
+        card.className = 'card';
+        page.appendChild(card);
+        card.appendChild(waiting());
+
+        var foot = document.createElement('div');
+        foot.className = 'chk-foot';
+        page.appendChild(foot);
+
+        // typing narrows the list, but not on every keystroke: an address is
+        // thirty characters and nobody wants thirty queries on the way to one
+        var typing = null;
+        findIn.addEventListener('input', function () {
+            clearTimeout(typing);
+            typing = setTimeout(function () {
+                want.address = findIn.value.trim();
+                want.cursor = '';
+                rows = [];
+                load();
+            }, 250);
+        });
+
+        function pickers() {
+            picks.textContent = '';
+            picks.appendChild(selectBox('chk-verdict', [{ options: [
+                { value: '', label: t('Every verdict') },
+                { value: 'flagged', label: t('Anything flagged') },
+                { value: 'severe', label: t('Sanctioned') },
+                { value: 'review', label: t('Worth a look') },
+                { value: 'clear', label: t('Clear') }
+            ] }], want.verdict, function (v) {
+                want.verdict = v; want.cursor = ''; rows = []; load();
+            }));
+            if (projects.length) {
+                picks.appendChild(selectBox('chk-project', [{ options: [
+                    { value: '', label: t('Every project') },
+                    { value: 'none', label: t('No project') }
+                ].concat(projects.map(function (pr) {
+                    return { value: String(pr.id), label: pr.name || t('Unnamed project') };
+                })) }], want.project, function (v) {
+                    want.project = v; want.cursor = ''; rows = []; load();
+                }));
+            }
+            picks.appendChild(selectBox('chk-scope', [{ options: [
+                { value: 'live', label: t('Production') },
+                { value: 'sandbox', label: t('Sandbox') }
+            ] }], want.scope, function (v) {
+                want.scope = v; want.cursor = ''; rows = []; load();
+            }));
+        }
+
+        function draw() {
+            card.textContent = '';
+            if (!rows.length) {
+                card.appendChild(emptyState('Nothing matches that',
+                    'Try a wider window, or a different verdict.'));
+                foot.textContent = '';
+                return;
+            }
+
+            var th = document.createElement('div');
+            th.className = 'tr is-chk th';
+            ['Address', 'Verdict', 'Chain', 'When'].forEach(function (h) {
+                var cl = document.createElement('div');
+                cl.textContent = t(h);
+                th.appendChild(cl);
+            });
+            card.appendChild(th);
+
+            rows.forEach(function (r) { card.appendChild(checkRow(r)); });
+
+            foot.textContent = '';
+            if (more) {
+                var next = document.createElement('button');
+                next.type = 'button';
+                next.className = 'btn btn-quiet';
+                next.textContent = t('Show more');
+                next.addEventListener('click', function () {
+                    want.cursor = nextAt;
+                    next.disabled = true;
+                    load(true);
+                });
+                foot.appendChild(next);
+            }
+        }
+
+        function checkRow(r) {
+            var row = document.createElement('button');
+            row.type = 'button';
+            row.className = 'tr is-chk chk-row';
+
+            var who = document.createElement('div');
+            who.className = 'chk-addr';
+            who.textContent = r.address;
+            if (r.projectName) {
+                var pr = document.createElement('span');
+                pr.className = 'chk-proj';
+                pr.textContent = r.projectName;
+                who.appendChild(pr);
+            }
+            row.appendChild(who);
+
+            var v = document.createElement('div');
+            v.appendChild(tag(verdictOf(r.verdict),
+                r.verdict === 'severe' ? 'bad' : (r.verdict === 'clear' ? 'ok' : 'mid')));
+            row.appendChild(v);
+
+            var chain = document.createElement('div');
+            chain.className = 'tr-dim';
+            chain.textContent = r.asset || t('Not recognised');
+            row.appendChild(chain);
+
+            var when = document.createElement('div');
+            when.className = 'tr-dim';
+            when.textContent = whenText(r.at, true);
+            row.appendChild(when);
+
+            row.addEventListener('click', function () { openCheck(r); });
+            return row;
+        }
+
+        function verdictOf(key) {
+            if (key === 'clear') return t('Clear');
+            if (key === 'severe') return t('Sanctioned');
+            if (key === 'review') return t('Worth a look');
+            return key;
+        }
+
+        function load(append) {
+            if (!org.id) return;
+            var url = '/v1/orgs/' + encodeURIComponent(org.id) + '/checks?scope=' +
+                encodeURIComponent(want.scope) +
+                '&verdict=' + encodeURIComponent(want.verdict) +
+                '&project=' + encodeURIComponent(want.project) +
+                '&address=' + encodeURIComponent(want.address) +
+                (want.from ? '&from=' + encodeURIComponent(want.from) : '') +
+                (want.to ? '&to=' + encodeURIComponent(want.to) : '') +
+                (want.cursor ? '&cursor=' + encodeURIComponent(want.cursor) : '');
+            if (!append) { card.textContent = ''; card.appendChild(waiting()); }
+            fetch(url, { credentials: 'same-origin' })
+                .then(function (r) { if (!r.ok) throw new Error('bad'); return r.json(); })
+                .then(function (out) {
+                    if (!out || !out.ok) throw new Error('not-ok');
+                    rows = append ? rows.concat(out.rows) : out.rows;
+                    more = out.more;
+                    nextAt = out.next || '';
+                    draw();
+                })
+                .catch(function (err) {
+                    console.error('[checks] ' + ((err && err.message) || 'failed'));
+                    card.textContent = '';
+                    card.appendChild(emptyState('That did not load.', 'Reload the page to try again.'));
+                });
+        }
+
+        fetch('/v1/orgs/' + encodeURIComponent(org.id) + '/projects', { credentials: 'same-origin' })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (out) {
+                projects = ((out && out.rows) || []).filter(function (pr) { return !pr.archivedAt; });
+                pickers();
+            })
+            .catch(function () {  });
+
+        pickers();
+        // a check made anywhere in this organisation belongs at the top of this
+        // list, so the list follows them
+        ownsLive = true;
+        onLive(function (e) {
+            if (e && e.topic === 'org' && String(e.id) === String(org.id) && !want.cursor) load();
+        });
+        load();
+        return page;
+    }
+
+    // One check, opened. The digest is over the record as it was sealed, so a
+    // copy of this handed to somebody else can be checked against ours.
+    function openCheck(row) {
+        var d = drawer('Check');
+        d.show(function () {
+            var said = {
+                clear: 'No match on the OFAC Specially Designated Nationals list',
+                severe: 'On the OFAC Specially Designated Nationals list',
+                review: 'Worth a look',
+            };
+            var head = document.createElement('p');
+            head.className = 'chk-said';
+            head.textContent = t(said[row.verdict] || row.verdict);
+            d.body.appendChild(head);
+
+            d.body.appendChild(useFacts([
+                ['Address', row.address],
+                ['Chain', row.asset || t('Not recognised')],
+                ['When', whenText(row.at, true)],
+                ['Project', row.projectName || t('No project')],
+                ['List', 'OFAC SDN'],
+                ['List dated', row.listDate
+                    ? (whenText(listDay(row.listDate)) || row.listDate)
+                    : '\u2014']
+            ]));
+
+            // The digest is over the record as it was sealed, so a copy of
+            // this handed to an auditor can be checked against ours. It is the
+            // reason the row is worth keeping at all, so it is shown in full
+            // rather than shortened to look tidy.
+            if (row.digest) {
+                var seal = document.createElement('div');
+                seal.className = 'chk-seal';
+                var lab = document.createElement('div');
+                lab.className = 'chk-seal-k';
+                lab.textContent = t('Digest');
+                seal.appendChild(lab);
+                var code = document.createElement('code');
+                code.textContent = row.digest;
+                seal.appendChild(code);
+                var why = document.createElement('p');
+                why.textContent = t('Taken over this record when it was sealed. It does not change, so a copy can be checked against ours.');
+                seal.appendChild(why);
+                d.body.appendChild(seal);
+            }
+
+            var close = document.createElement('button');
+            close.type = 'button';
+            close.className = 'btn btn-quiet';
+            close.textContent = t('Close');
+            close.addEventListener('click', function () { d.shut(); });
+            d.acts.appendChild(close);
+        });
     }
 
     // What the plan is and how it changes. There is no card on file to show,
@@ -7758,6 +8074,7 @@
             if (tail === 'tokens') canvas.appendChild(viewTokens(lastMe));
             else if (tail === 'team') canvas.appendChild(viewTeam(lastMe));
             else if (tail === 'usage') canvas.appendChild(viewUsage(lastMe));
+            else if (tail === 'checks') canvas.appendChild(viewChecks(lastMe));
             else if (tail === 'billing') canvas.appendChild(viewBilling(lastMe));
             else if (tail === 'settings') canvas.appendChild(viewOrgSettings(lastMe));
             else if (!tail) canvas.appendChild(viewProjects(lastMe));

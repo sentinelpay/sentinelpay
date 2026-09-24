@@ -2232,6 +2232,57 @@ app.get('/v1/orgs/:id/usage', async (req, res) => {
 });
 
 // The same period as a file, because this page is also evidence: somebody is
+// The log itself: every check this organisation has made, filtered the way
+// somebody actually asks. Until now the product wrote a row with a digest and
+// an encrypted record of what the lists said, and gave nobody a screen to look
+// at one. Every member may read it: it is their own company's work, and being
+// asked to stand behind a number you cannot open is not a position to put
+// somebody in.
+app.get('/v1/orgs/:id/checks', async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const mine = await orgs.membership(me.userId, req.params.id);
+    if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
+    res.set('Cache-Control', 'no-store, private');
+    try {
+        const q = req.query || {};
+        const out = await screening.log(mine.id, {
+            sandbox: String(q.scope || '') === 'sandbox',
+            from: q.from || '',
+            to: q.to || '',
+            verdict: String(q.verdict || ''),
+            project: String(q.project || ''),
+            address: String(q.address || '').slice(0, 128),
+            cursor: q.cursor || '',
+            limit: q.limit,
+        });
+        res.json({ ok: true, ...out });
+    } catch (err) {
+        console.error('[checks]', err.message);
+        res.status(500).json({ error: 'Could not read the log' });
+    }
+});
+
+// One check, with what the lists said at the moment it ran. This is the
+// evidence: the digest is over the record as it was sealed, so a copy handed
+// to somebody else can be checked against it.
+app.get('/v1/orgs/:id/checks/:check', async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const mine = await orgs.membership(me.userId, req.params.id);
+    if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
+    res.set('Cache-Control', 'no-store, private');
+    try {
+        const sandbox = String(req.query.scope || '') === 'sandbox';
+        const doc = await screening.byId(mine.id, req.params.check, sandbox);
+        if (!doc) return res.status(404).json({ error: 'No such check.' });
+        res.json({ ok: true, check: doc });
+    } catch (err) {
+        console.error('[check]', err.message);
+        res.status(500).json({ error: 'Could not read that check' });
+    }
+});
+
 // asked what was screened in March and has to hand over something that can be
 // kept and read without an account.
 app.get('/v1/orgs/:id/usage.csv', async (req, res) => {

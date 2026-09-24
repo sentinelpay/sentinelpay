@@ -3044,6 +3044,101 @@ html.is-theming .btn {
 }
 .modal-p.is-left { text-align: left; }
 
+/* The log of checks. Four columns and a row you can open, built on the same
+   table the tokens and the team are: one list drawn three times rather than
+   three lists that happen to look alike. */
+.tr.is-chk { grid-template-columns: minmax(0, 2fr) max-content minmax(0, 0.6fr) max-content; }
+.chk-row {
+    width: 100%;
+    border: 0;
+    border-bottom: 1px solid var(--line-2);
+    background: none;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.14s ease;
+}
+.chk-row:hover { background: var(--hover); }
+.chk-row:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
+/* an address is the one thing on this row nobody reads as a word */
+.chk-addr {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.8rem;
+    color: var(--ink);
+}
+.chk-proj {
+    margin-left: 0.55rem;
+    font-family: var(--sp-text);
+    font-size: 0.76rem;
+    color: var(--ink-4);
+}
+.chk-picks { display: flex; align-items: center; gap: 0.55rem; }
+.chk-picks .pick { flex: none; }
+.chk-picks .pick-btn { padding: 0.4rem 0.35rem 0.4rem 0.55rem; gap: 0.15rem; font-size: 0.8rem; }
+.chk-foot { display: flex; justify-content: center; margin-top: 1rem; }
+/* said when the list is not all of the list, with the way back to all of it */
+.chk-only {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: -0.2rem 0 0.9rem;
+    font-size: 0.8rem;
+    color: var(--ink-3);
+}
+.chk-all {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    color: var(--link);
+    cursor: pointer;
+}
+.chk-all:hover { text-decoration: underline; }
+/* the way from a count into the rows it counted */
+.use-open { align-self: start; margin-top: 0.9rem; }
+
+/* what the lists said, at the top of the panel that opens */
+.chk-said {
+    margin: 0 0 1rem;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--ink);
+}
+.chk-seal { margin-top: 1.1rem; }
+.chk-seal-k {
+    margin-bottom: 0.35rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--ink-4);
+}
+.chk-seal code {
+    display: block;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: var(--canvas);
+    font-size: 0.74rem;
+    line-height: 1.5;
+    color: var(--ink-2);
+    word-break: break-all;
+}
+.chk-seal p { margin: 0.5rem 0 0; font-size: 0.78rem; color: var(--ink-4); }
+
+@media (max-width: 720px) {
+    .chk-bar { flex-wrap: wrap; gap: 0.55rem; }
+    .chk-bar .bar-find { flex: 1 1 100%; max-width: none; }
+    .chk-picks { flex-wrap: wrap; }
+    .tr.is-chk { grid-template-columns: minmax(0, 1fr) max-content; gap: 0.35rem 0.7rem; }
+    .tr.is-chk.th { display: none; }
+    .tr.is-chk > :nth-child(3),
+    .tr.is-chk > :nth-child(4) { grid-column: 1 / -1; }
+}
+
 /* the column heading repeated beside the value, for the width at which the
    heading row is gone and the columns are stacked under the name */
 .tr-k { display: none; }

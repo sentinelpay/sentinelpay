@@ -69,6 +69,7 @@ test('every icon a screen asks for is drawn', () => {
 const SAME = new Map([
     ['projects', 'the rail item and the mark on a project row name the same thing'],
     ['back', 'one back arrow, wherever there is something to go back from'],
+    ['screening', 'the log of checks and the usage section about them are the same act, counted in one place and listed in the other'],
 ]);
 
 test('no icon carries two meanings', () => {
