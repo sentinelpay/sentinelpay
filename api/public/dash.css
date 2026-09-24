@@ -3671,6 +3671,13 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     border: 2px solid var(--fall);
 }
 
+/* The day still being lived through, drawn as unfinished: the same line, cut
+   into dashes. Not a different colour, because it is not different work -- it
+   is the same work, still happening. */
+.use-line-now { stroke-dasharray: 3 3.5; }
+/* and its point is open, the way the end of something unfinished is */
+.use-dot.is-now { opacity: 0.55; }
+
 /* the line for the period before. dashed and thinner: it is context for the
    line in front of it, not a second measurement of now */
 .use-ghost {
@@ -3785,6 +3792,10 @@ a.use-cell:hover { background: var(--hover); }
     font-variant-numeric: tabular-nums;
 }
 .use-cell-s { font-size: 0.72rem; color: var(--ink-4); }
+/* the same blue for up and violet for down the headline uses, so one colour
+   means one thing wherever a number is compared with an earlier one */
+.use-cell-d.is-up { color: var(--link); }
+.use-cell-d.is-down { color: var(--fall); }
 
 /* a row with no limit has no bar. an empty track reads as one that failed to
    load rather than one with no end. */

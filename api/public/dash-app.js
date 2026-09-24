@@ -4203,7 +4203,7 @@
         return days.map(function (d) {
             sum += d.n;
             bad += d.flagged;
-            return { day: d.day, n: sum, flagged: bad, today: d.n };
+            return { day: d.day, n: sum, flagged: bad, today: d.n, running: d.running };
         });
     }
 
@@ -4339,7 +4339,24 @@
                 line.push('L ' + span + ' ' + up(days[0].n));
                 under.push('L ' + span + ' ' + up(days[0].n));
             }
-            under.push('L ' + span + ' 100 Z');
+
+            // The day being lived through is not a day like the others. At
+            // nine in the morning it holds an hour of work, and drawn solid
+            // beside four finished days the line dives at the right-hand edge
+            // and reads as traffic that stopped. The last step is dashed
+            // instead, and the fill stops before it, so the finished part of
+            // the period is the part that looks finished.
+            var live = days.length > 1 && days[days.length - 1].running;
+            var tail = null;
+            if (live) {
+                tail = 'M ' + at(days.length - 2) + ' ' + up(days[days.length - 2].n) +
+                    ' ' + line[line.length - 1];
+                line.pop();
+                under.pop();
+                under.push('L ' + at(days.length - 2) + ' 100 Z');
+            } else {
+                under.push('L ' + span + ' 100 Z');
+            }
 
             var shade = document.createElementNS(SVG_NS, 'path');
             shade.setAttribute('d', under.join(' '));
@@ -4353,6 +4370,14 @@
             // the one thing inside a stretched plot that keeps its shape
             run.setAttribute('vector-effect', 'non-scaling-stroke');
             svg.appendChild(run);
+
+            if (tail) {
+                var soFar = document.createElementNS(SVG_NS, 'path');
+                soFar.setAttribute('d', tail);
+                soFar.setAttribute('class', 'use-line use-line-now');
+                soFar.setAttribute('vector-effect', 'non-scaling-stroke');
+                svg.appendChild(soFar);
+            }
 
             // what came back flagged, as a second line rather than a share of
             // the first: they are the same checks, and stacking them would make
@@ -4373,11 +4398,25 @@
                         ' ' + x + ' ' + y);
                 });
                 if (days.length === 1) bad.push('L ' + span + ' ' + up(days[0].flagged));
+                // the same unfinished day, on the same terms
+                var badTail = null;
+                if (live) {
+                    badTail = 'M ' + at(days.length - 2) + ' ' + up(days[days.length - 2].flagged) +
+                        ' ' + bad[bad.length - 1];
+                    bad.pop();
+                }
                 var flag = document.createElementNS(SVG_NS, 'path');
                 flag.setAttribute('d', bad.join(' '));
                 flag.setAttribute('class', 'use-line-flag');
                 flag.setAttribute('vector-effect', 'non-scaling-stroke');
                 svg.appendChild(flag);
+                if (badTail) {
+                    var flagNow = document.createElementNS(SVG_NS, 'path');
+                    flagNow.setAttribute('d', badTail);
+                    flagNow.setAttribute('class', 'use-line-flag use-line-now');
+                    flagNow.setAttribute('vector-effect', 'non-scaling-stroke');
+                    svg.appendChild(flagNow);
+                }
             }
         }
         plot.appendChild(svg);
@@ -4387,7 +4426,7 @@
         if (days.length && days.length <= 12) {
             days.forEach(function (d, i) {
                 var dot = document.createElement('span');
-                dot.className = 'use-dot';
+                dot.className = 'use-dot' + (d.running ? ' is-now' : '');
                 dot.style.left = share(i) + '%';
                 dot.style.top = up(d.n) + '%';
                 plot.appendChild(dot);
@@ -4448,6 +4487,12 @@
             var when = document.createElement('div');
             when.className = 'use-tip-d';
             when.textContent = whenText(d.day);
+            if (d.running) {
+                var yet = document.createElement('span');
+                yet.className = 'use-tip-w';
+                yet.textContent = t('so far');
+                when.appendChild(yet);
+            }
             tip.appendChild(when);
             if (past) {
                 // running totals, so the label has to say so: "34" on the
@@ -4647,7 +4692,7 @@
     // identical cards leave the reader to decide which one matters, and the
     // answer is always the same one. So it is said once, large, with the chart
     // under it, and everything else is smaller than it.
-    function useHeadline(s, prev, period, allowed, cmp) {
+    function useHeadline(s, prev, period, cmp) {
         var box = document.createElement('section');
         box.className = 'use-head';
 
@@ -4671,15 +4716,11 @@
         var big = document.createElement('div');
         big.className = 'use-big';
         big.textContent = useNum(s.total);
-        // what it is out of, where there is something to be out of. said in
-        // the same breath as the number rather than in a second block, because
-        // "how much" and "how much of what we may" is one question
-        if (allowed !== null && allowed !== undefined) {
-            var of = document.createElement('span');
-            of.className = 'use-big-of';
-            of.textContent = '/ ' + useNum(allowed);
-            big.appendChild(of);
-        }
+        // What it is out of used to be said here as well as in the block
+        // below, which put the same pair of numbers twice within two hundred
+        // pixels. Below is the better of the two places: there it stands
+        // beside the bar that draws it and the other allowances it belongs
+        // with. Here it is the one number the page is about.
         row.appendChild(big);
         // Pointing at the sentence shows the line it is talking about, and
         // taking the pointer away puts it back. Clicking holds it there, for a
@@ -4746,6 +4787,21 @@
         return legend;
     }
 
+
+    // The same question the headline asks, for a number small enough that a
+    // sentence would be bigger than it: more or less than the window before.
+    // Nothing at all where there is no earlier number, or where it was zero --
+    // "up 100% from nothing" is arithmetic, not news.
+    function moved(now, before) {
+        if (before === null || before === undefined || !before) return null;
+        var pct = Math.round(((now - before) / before) * 100);
+        if (!pct) return null;
+        return {
+            up: pct > 0,
+            down: pct < 0,
+            text: (pct > 0 ? '+' : '') + pct + '%'
+        };
+    }
 
     function key(cls, label, note) {
         var el = document.createElement('span');
@@ -4857,10 +4913,22 @@
             v.className = 'use-cell-v';
             v.textContent = r.value;
             cell.appendChild(v);
-            if (r.sub) {
+            if (r.sub || r.move) {
                 var sub = document.createElement('span');
                 sub.className = 'use-cell-s';
-                sub.textContent = r.sub;
+                if (r.sub) sub.appendChild(document.createTextNode(r.sub));
+                // up or down against the same window before this one, in the
+                // same two colours the headline uses. only where the earlier
+                // number means the same thing as this one: a count over a
+                // window can be compared with the window before it, and how
+                // many people are in the company today cannot.
+                if (r.move) {
+                    if (r.sub) sub.appendChild(document.createTextNode('  \u00b7  '));
+                    var m = document.createElement('span');
+                    m.className = 'use-cell-d' + (r.move.up ? ' is-up' : (r.move.down ? ' is-down' : ''));
+                    m.textContent = r.move.text;
+                    sub.appendChild(m);
+                }
                 cell.appendChild(sub);
             }
             strip.appendChild(cell);
@@ -5260,12 +5328,6 @@
             // over those windows is two numbers that never stood side by side.
             var onPlan = Boolean(out.period && out.period.current && !out.period.days);
 
-            var capped = null;
-            if (onPlan) {
-                allow.rows.forEach(function (r) {
-                    if (!r.unmetered && r.label === 'Screenings' && r.of > 0) capped = r.of;
-                });
-            }
 
             // Only where there is a window behind this one to lay underneath.
             // The server sends those days wherever it sends a comparison at
@@ -5285,7 +5347,7 @@
             } : null;
             if (!cmp) alongside = false;
 
-            body.appendChild(useHeadline(s, out.previous, out.period, capped, cmp));
+            body.appendChild(useHeadline(s, out.previous, out.period, cmp));
 
             // Only when there is something to say.
             //
@@ -5324,15 +5386,29 @@
                 body.appendChild(useAllowance(allow.rows, allow.head, allow.agreed, warn));
             }
 
+            var was = out.previous;
             var strip = [
                 {
                     label: 'Flagged', value: useNum(s.flagged), to: 'use-flagged',
-                    sub: s.total ? Math.round((s.flagged / s.total) * 100) + '%' : ''
+                    sub: s.total ? Math.round((s.flagged / s.total) * 100) + '%' : '',
+                    move: moved(s.flagged, was && was.flagged)
                 },
-                { label: 'Addresses', value: useNum(s.addresses), to: 'use-screening' },
-                { label: 'Chains', value: useNum(s.assetCount), to: 'use-assets' },
+                {
+                    label: 'Addresses', value: useNum(s.addresses), to: 'use-screening',
+                    move: moved(s.addresses, was && was.addresses)
+                },
+                {
+                    label: 'Chains', value: useNum(s.assetCount), to: 'use-assets',
+                    move: moved(s.assetCount, was && was.assetCount)
+                },
                 { label: 'Tokens used', value: useNum(shape.tokensUsed), to: 'use-team' },
-                { label: 'Members', value: useNum(shape.members), to: 'use-team' },
+                {
+                    // not a comparison: how many people are here is true now,
+                    // not counted over a window. what the window does hold is
+                    // who arrived during it, which is the useful half anyway.
+                    label: 'Members', value: useNum(shape.members), to: 'use-team',
+                    sub: shape.joined ? '+' + useNum(shape.joined) + ' ' + t('joined') : ''
+                },
                 { label: 'Projects', value: useNum(shape.projects), to: 'use-team' }
             ];
             body.appendChild(useStrip(strip));

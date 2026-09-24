@@ -172,9 +172,24 @@ function fillDays(rows, from, to, zone) {
     // not the one its exclusive end lands on. a period that ends at midnight
     // on the twentieth is over on the nineteenth, and drawing a twentieth on
     // it adds a day of no work that never belonged to it
-    const stop = Math.min(new Date(to).getTime() - 1, Date.now());
-    return pickDays(new Map(rows.map((r) => [r.d, r])),
+    const now = Date.now();
+    const stop = Math.min(new Date(to).getTime() - 1, now);
+    const out = pickDays(new Map(rows.map((r) => [r.d, r])),
         walkDays(new Date(from).getTime(), stop, zone));
+    // A last day that is the day we are in has not finished. At nine in the
+    // morning it holds an hour of work, and drawn like the days around it the
+    // line dives at the right-hand edge and reads as traffic that stopped
+    // rather than a day that has barely started, so it is marked and the chart
+    // draws it differently.
+    //
+    // The test is the day and not the window's end. A period still running
+    // ends in the future and a rolling window ends exactly now, and both of
+    // them are standing in today; a period that is over is not, whatever time
+    // of day it ended at.
+    if (out.length && out[out.length - 1].day === dayIn(now, zone)) {
+        out[out.length - 1].running = true;
+    }
+    return out;
 }
 
 // Only a real zone name, and postgres is asked to hold it in a parameter
@@ -394,8 +409,14 @@ async function forOrg(orgId, opts) {
             shapeOf(orgId, period.from, period.to),
             comparable
                 ? db.query(
+                    // the same counts the tiles show, so each of them can say
+                    // whether it is more or less than last time. it is the
+                    // query that was already being run, with three more
+                    // columns on it rather than three more round trips.
                     `SELECT count(*)::int AS n,
-                            count(*) FILTER (WHERE verdict <> 'clear')::int AS flagged
+                            count(*) FILTER (WHERE verdict <> 'clear')::int AS flagged,
+                            count(DISTINCT address)::int AS addresses,
+                            count(DISTINCT NULLIF(asset, ''))::int AS assets
                        FROM screenings
                       WHERE org_id = $1 AND at >= $2 AND at < $3 AND sandbox = $4`,
                     [Number(orgId), before.from, before.to, sandbox]
@@ -418,6 +439,7 @@ async function forOrg(orgId, opts) {
             previous: head ? {
                 from: before.from, to: before.to,
                 total: head.n, flagged: head.flagged,
+                addresses: head.addresses, assetCount: head.assets,
                 // the same stretch of it, not all of it, while this one runs
                 partial: Boolean(before.partial),
                 days: ghost,
