@@ -200,17 +200,6 @@ async function exists(email) {
     return res.rowCount > 0;
 }
 
-// The account behind an address, by id alone. Only the staging sign-in uses
-// this, which is why it returns an id and nothing else: it is not a way to
-// look somebody up, it is a way to answer "does this address have an account,
-// and which one".
-async function idFor(email) {
-    if (!(await init())) return null;
-    const res = await db.query('SELECT id FROM users WHERE email_hash = $1',
-        [db.blindIndex(String(email || '').trim().toLowerCase())]);
-    return res.rowCount ? String(res.rows[0].id) : null;
-}
-
 async function startSignup({ email, name, password, lang, flags }) {
     if (!(await init())) return { ok: false, reason: 'unavailable' };
     const emailHash = db.blindIndex(email);
@@ -1173,7 +1162,7 @@ function status() {
     };
 }
 module.exports = {
-    startSignup, resendSignup, verifySignup, exists, idFor, inspect, purge, forget, status,
+    startSignup, resendSignup, verifySignup, exists, inspect, purge, forget, status,
     audit, loginHold, recentAudit, noteDevice,
     startTotp, confirmTotp, disableTotp, startTotpPending, finishTotp, recoveryLeft,
     changePassword, listSessions, revokeOtherSessions, deleteAccount,
