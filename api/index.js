@@ -2027,6 +2027,72 @@ const accountLimiter = rateLimit({
     message: { error: 'Too many attempts, please try again later' }
 });
 
+// Signing in on staging without typing anything.
+//
+// It exists because the person building this has to get back into it twenty
+// times a day and the password is on nobody's mind by the afternoon. It is a
+// way past the front door, so it is fenced in four ways:
+//
+//   1. staging only. On production the route is never registered at all, so
+//      there is nothing to find and nothing to get wrong.
+//   2. both variables or nothing. An address with no key, or a key with no
+//      address, is a misconfiguration rather than an open door, and it says so
+//      on boot instead of quietly half-working.
+//   3. the key is compared in constant time and has to be long. staging is on
+//      the public internet -- it is only kept out of search results -- so a
+//      short key is a door with a three digit lock on it.
+//   4. every use is logged, and so is every attempt that got the key wrong.
+//
+// What it does not do is sign anybody in who does not already have an account
+// here. It finds the account for that address and starts a session for it; if
+// there is no such account it refuses, rather than making one.
+const DEV_SIGN_IN_EMAIL = String(process.env.DEV_SIGN_IN_EMAIL || '').trim().toLowerCase();
+const DEV_SIGN_IN_KEY = String(process.env.DEV_SIGN_IN_KEY || '');
+const DEV_SIGN_IN_ON = IS_STAGING && Boolean(DEV_SIGN_IN_EMAIL) && DEV_SIGN_IN_KEY.length >= 24;
+
+if ((DEV_SIGN_IN_EMAIL || DEV_SIGN_IN_KEY) && !IS_STAGING) {
+    console.error('[dev] DEV_SIGN_IN_* is set but APP_ENV is not staging. The route is not registered.');
+} else if ((DEV_SIGN_IN_EMAIL || DEV_SIGN_IN_KEY) && !DEV_SIGN_IN_ON) {
+    console.error('[dev] DEV_SIGN_IN needs both an address and a key of at least 24 characters. Not registered.');
+} else if (DEV_SIGN_IN_ON) {
+    console.warn('[dev] staging sign-in is on for one address at /dev/in');
+}
+
+if (DEV_SIGN_IN_ON) {
+    app.get('/dev/in', accountLimiter, async (req, res) => {
+        res.set('Cache-Control', 'no-store, private');
+        res.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
+        const given = Buffer.from(String(req.query.k || ''));
+        const want = Buffer.from(DEV_SIGN_IN_KEY);
+        // same length first: timingSafeEqual throws on a mismatch, and the
+        // length is not the secret
+        const ok = given.length === want.length && crypto.timingSafeEqual(given, want);
+        if (!ok) {
+            console.warn('[dev] staging sign-in refused: wrong key from ' + req.realIp);
+            return res.status(404).type('text/plain').send('Not found');
+        }
+        try {
+            const userId = await accounts.idFor(DEV_SIGN_IN_EMAIL);
+            if (!userId) {
+                console.error('[dev] staging sign-in: no account for that address');
+                return res.status(409).type('text/plain')
+                    .send('No account here for that address. Sign up first.');
+            }
+            const session = await accounts.startSession(userId);
+            setSessionCookie(res, session.token, session.maxAgeSeconds);
+            await accounts.audit('dev-sign-in', {
+                actor: String(userId), subject: String(userId), ip: req.realIp,
+                detail: 'staging',
+            });
+            console.warn('[dev] staging sign-in: signed in');
+            res.redirect(302, '/dashboard');
+        } catch (err) {
+            console.error('[dev] staging sign-in failed: ' + err.message);
+            res.status(503).type('text/plain').send('Not available right now.');
+        }
+    });
+}
+
 app.post('/v1/account/password', requireCloudflareOrigin, accountLimiter, async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
