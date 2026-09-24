@@ -3435,11 +3435,6 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     color: var(--ink-3);
 }
 .use-tip-r i { width: 8px; height: 8px; border-radius: 3px; flex: none; }
-/* the other window's own date, beside the words rather than instead of them */
-.use-tip-w { color: var(--ink-4); }
-/* and, in the legend, the dates each line covers */
-.use-key-w { color: var(--ink-4); }
-.use-key-w::before { content: '\00b7'; margin: 0 0.3rem; }
 .use-tip-r strong {
     margin-left: auto;
     color: var(--ink);
@@ -3670,13 +3665,6 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     background: transparent;
     border: 2px solid var(--fall);
 }
-
-/* The day still being lived through, drawn as unfinished: the same line, cut
-   into dashes. Not a different colour, because it is not different work -- it
-   is the same work, still happening. */
-.use-line-now { stroke-dasharray: 3 3.5; }
-/* and its point is open, the way the end of something unfinished is */
-.use-dot.is-now { opacity: 0.55; }
 
 /* the line for the period before. dashed and thinner: it is context for the
    line in front of it, not a second measurement of now */

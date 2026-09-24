@@ -4134,19 +4134,6 @@
         return a + ' \u2013 ' + b;
     }
 
-    // The days a line actually covers, taken from the line rather than from the
-    // window it was asked for. A rolling window runs from this moment to the
-    // same moment thirty days ago, so its bounds land mid-afternoon and the
-    // last day of one window and the first day of the next are the same date
-    // -- which reads as an overlap and is not one. The buckets on the chart are
-    // whole days, so the label names those.
-    function daysSpan(days, most) {
-        var n = typeof most === 'number' ? Math.min(days.length, most) : days.length;
-        if (!n) return '';
-        var noon = 'T12:00:00Z';
-        return useRange(days[0].day + noon, days[n - 1].day + noon);
-    }
-
     function useSpan(p) {
         if (!p) return '';
         // the end of a period is the moment the next one begins, so the day
@@ -4203,7 +4190,7 @@
         return days.map(function (d) {
             sum += d.n;
             bad += d.flagged;
-            return { day: d.day, n: sum, flagged: bad, today: d.n, running: d.running };
+            return { day: d.day, n: sum, flagged: bad, today: d.n };
         });
     }
 
@@ -4339,24 +4326,7 @@
                 line.push('L ' + span + ' ' + up(days[0].n));
                 under.push('L ' + span + ' ' + up(days[0].n));
             }
-
-            // The day being lived through is not a day like the others. At
-            // nine in the morning it holds an hour of work, and drawn solid
-            // beside four finished days the line dives at the right-hand edge
-            // and reads as traffic that stopped. The last step is dashed
-            // instead, and the fill stops before it, so the finished part of
-            // the period is the part that looks finished.
-            var live = days.length > 1 && days[days.length - 1].running;
-            var tail = null;
-            if (live) {
-                tail = 'M ' + at(days.length - 2) + ' ' + up(days[days.length - 2].n) +
-                    ' ' + line[line.length - 1];
-                line.pop();
-                under.pop();
-                under.push('L ' + at(days.length - 2) + ' 100 Z');
-            } else {
-                under.push('L ' + span + ' 100 Z');
-            }
+            under.push('L ' + span + ' 100 Z');
 
             var shade = document.createElementNS(SVG_NS, 'path');
             shade.setAttribute('d', under.join(' '));
@@ -4370,14 +4340,6 @@
             // the one thing inside a stretched plot that keeps its shape
             run.setAttribute('vector-effect', 'non-scaling-stroke');
             svg.appendChild(run);
-
-            if (tail) {
-                var soFar = document.createElementNS(SVG_NS, 'path');
-                soFar.setAttribute('d', tail);
-                soFar.setAttribute('class', 'use-line use-line-now');
-                soFar.setAttribute('vector-effect', 'non-scaling-stroke');
-                svg.appendChild(soFar);
-            }
 
             // what came back flagged, as a second line rather than a share of
             // the first: they are the same checks, and stacking them would make
@@ -4398,25 +4360,11 @@
                         ' ' + x + ' ' + y);
                 });
                 if (days.length === 1) bad.push('L ' + span + ' ' + up(days[0].flagged));
-                // the same unfinished day, on the same terms
-                var badTail = null;
-                if (live) {
-                    badTail = 'M ' + at(days.length - 2) + ' ' + up(days[days.length - 2].flagged) +
-                        ' ' + bad[bad.length - 1];
-                    bad.pop();
-                }
                 var flag = document.createElementNS(SVG_NS, 'path');
                 flag.setAttribute('d', bad.join(' '));
                 flag.setAttribute('class', 'use-line-flag');
                 flag.setAttribute('vector-effect', 'non-scaling-stroke');
                 svg.appendChild(flag);
-                if (badTail) {
-                    var flagNow = document.createElementNS(SVG_NS, 'path');
-                    flagNow.setAttribute('d', badTail);
-                    flagNow.setAttribute('class', 'use-line-flag use-line-now');
-                    flagNow.setAttribute('vector-effect', 'non-scaling-stroke');
-                    svg.appendChild(flagNow);
-                }
             }
         }
         plot.appendChild(svg);
@@ -4426,7 +4374,7 @@
         if (days.length && days.length <= 12) {
             days.forEach(function (d, i) {
                 var dot = document.createElement('span');
-                dot.className = 'use-dot' + (d.running ? ' is-now' : '');
+                dot.className = 'use-dot';
                 dot.style.left = share(i) + '%';
                 dot.style.top = up(d.n) + '%';
                 plot.appendChild(dot);
@@ -4487,33 +4435,13 @@
             var when = document.createElement('div');
             when.className = 'use-tip-d';
             when.textContent = whenText(d.day);
-            if (d.running) {
-                var yet = document.createElement('span');
-                yet.className = 'use-tip-w';
-                yet.textContent = t('so far');
-                when.appendChild(yet);
-            }
             tip.appendChild(when);
             if (past) {
                 // running totals, so the label has to say so: "34" on the
                 // eleventh means the month so far, not that Tuesday
                 tip.appendChild(tipLine('use-key-run', 'This period so far', d.n));
                 var then = past[i];
-                if (then) {
-                    // the day of the other window that this point is being
-                    // held against. the axis can only name one of the two, so
-                    // the other one says its own date here
-                    var row = tipLine('use-key-was', 'The period before', then.n);
-                    var was = document.createElement('span');
-                    was.className = 'use-tip-w';
-                    // past the end of the shorter window, the date it ended on
-                    // rather than a day it never had
-                    was.textContent = then.over
-                        ? t('ended') + ' ' + whenText(then.day)
-                        : whenText(then.day);
-                    row.insertBefore(was, row.lastChild);
-                    tip.appendChild(row);
-                }
+                if (then) tip.appendChild(tipLine('use-key-was', 'The period before', then.n));
             } else {
                 tip.appendChild(tipLine('use-key-run', 'Screenings', d.n));
                 if (d.flagged > 0) tip.appendChild(tipLine('use-key-flag', 'Flagged', d.flagged));
@@ -4754,7 +4682,7 @@
             box.appendChild(useLayer('use-alone', useChart(s.days || [], null),
                 useLegend(false)));
             box.appendChild(useLayer('use-against', useChart(s.days || [], cmp.days),
-                useLegend(true, s.days || [], cmp.days)));
+                useLegend(true)));
         } else {
             box.appendChild(useChart(s.days || [], null));
             box.appendChild(useLegend(false));
@@ -4770,19 +4698,16 @@
         return box;
     }
 
-    // The two lines are laid over each other by their day number -- the first
-    // day of this window over the first day of the one before -- so the axis
-    // along the bottom can only name one of them. Two axes for two lines would
-    // double the furniture to explain a line that is there for context. The
-    // legend names them instead, which is what a legend is for.
-    function useLegend(against, mine, was) {
+    // Which line is which, and nothing else. The dates each one covers were
+    // spelled out here for a while: the window on the card above, the earlier
+    // one beside it. Two ranges in a legend is more reading than a legend is
+    // for, and the card already says which window is on screen.
+    function useLegend(against) {
         var legend = document.createElement('div');
         legend.className = 'use-legend';
+        legend.appendChild(key('use-key-run', against ? 'This period' : 'Screenings'));
         legend.appendChild(against
-            ? key('use-key-run', 'This period', daysSpan(mine))
-            : key('use-key-run', 'Screenings'));
-        legend.appendChild(against
-            ? key('use-key-was', 'The period before', daysSpan(was, mine.length))
+            ? key('use-key-was', 'The period before')
             : key('use-key-flag', 'Flagged'));
         return legend;
     }
@@ -4803,22 +4728,13 @@
         };
     }
 
-    function key(cls, label, note) {
+    function key(cls, label) {
         var el = document.createElement('span');
         el.className = 'use-key';
         var dot = document.createElement('i');
         dot.className = cls;
         el.appendChild(dot);
         el.appendChild(document.createTextNode(t(label)));
-        // the dates a line covers, where they are not the ones along the
-        // bottom. a separator and not a sentence, so nothing here needs
-        // translating beyond the words in front of it
-        if (note) {
-            var when = document.createElement('span');
-            when.className = 'use-key-w';
-            when.textContent = note;
-            el.appendChild(when);
-        }
         return el;
     }
 
