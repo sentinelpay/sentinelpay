@@ -4887,9 +4887,21 @@
             box.appendChild(says);
         }
 
+        // One table, not a row of separate ones.
+        //
+        // Every row used to be its own grid, so each of them sized its own
+        // columns to its own contents: "109 / 10,000" is wider than "1 / 10",
+        // so the two bars began fifty pixels apart and ran to different
+        // lengths. Two meters that cannot be compared at a glance are two
+        // meters doing half their job. The rows are cells of one grid now,
+        // which is what makes a column a column.
+        var table = document.createElement('div');
+        table.className = 'use-allow-b';
+
         rows.forEach(function (r) {
             var line = document.createElement('div');
             line.className = 'use-allow-r';
+
             var name = document.createElement('span');
             name.className = 'use-allow-n';
             name.textContent = t(r.label);
@@ -4905,21 +4917,33 @@
             }
             line.appendChild(name);
 
-            var fig = document.createElement('span');
-            fig.className = 'use-allow-v';
-            fig.textContent = r.unmetered
-                ? t('Unmetered')
-                : useNum(r.used) + ' / ' + useNum(r.of);
-            line.appendChild(fig);
+            // used and included are two columns rather than one string, so the
+            // figures stack under each other on the digit rather than on
+            // whichever of them happened to be longer
+            var used = document.createElement('span');
+            used.className = 'use-allow-u';
+            var of = document.createElement('span');
+            of.className = 'use-allow-o';
+            if (r.unmetered) {
+                used.textContent = '';
+                of.textContent = t('Unmetered');
+                of.classList.add('is-word');
+            } else {
+                used.textContent = useNum(r.used);
+                of.textContent = '/ ' + useNum(r.of);
+            }
+            line.appendChild(used);
+            line.appendChild(of);
 
             var track = document.createElement('span');
             track.className = 'use-allow-t';
+            var pct = 0;
             if (r.unmetered) {
                 // no bar at all. an empty track beside "unmetered" reads as a
                 // meter that failed to load, not as one with no end
                 track.classList.add('is-none');
             } else {
-                var pct = r.of > 0 ? Math.min(100, Math.round((r.used / r.of) * 100)) : 0;
+                pct = r.of > 0 ? Math.min(100, Math.round((r.used / r.of) * 100)) : 0;
                 // nothing used draws nothing. a hundred and nine against ten
                 // thousand is one percent of six hundred pixels, which is a
                 // six pixel circle floating at the left of an empty track: it
@@ -4936,8 +4960,26 @@
                 }
             }
             line.appendChild(track);
-            box.appendChild(line);
+
+            // what is left, which is the question the bar is being looked at
+            // to answer. a percentage would need working back into a number
+            // before anybody could act on it.
+            var rest = document.createElement('span');
+            rest.className = 'use-allow-l';
+            if (!r.unmetered && r.of > 0) {
+                var over = r.used >= r.of;
+                rest.textContent = over
+                    ? t('none left')
+                    : useNum(r.of - r.used) + ' ' + t('left');
+                if (over) rest.classList.add('is-out');
+                else if (pct >= 80) rest.classList.add('is-low');
+            }
+            line.appendChild(rest);
+
+            table.appendChild(line);
         });
+        box.appendChild(table);
+
         return box;
     }
 
