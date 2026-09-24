@@ -3796,28 +3796,44 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 
 /* The rest in one line each rather than one card each: facts about the period,
    readable in a single pass instead of six boxes deep. */
+/* The third card in the stack, and built like the other two: the same corner
+   and the same hairline round the outside. The lines between the cells are the
+   fainter of the two rules -- they separate six facts inside one card, and
+   drawn in the same weight as the card's own edge they made a table of six
+   boxes sitting where a card should be. */
 .use-strip {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 1px;
     margin-bottom: 2.2rem;
     border: 1px solid var(--line);
-    border-radius: 12px;
-    background: var(--line);
+    border-radius: 14px;
+    background: var(--line-2);
     overflow: hidden;
 }
 .use-cell {
     display: flex;
     flex-direction: column;
-    gap: 0.15rem;
-    padding: 0.75rem 0.95rem 0.8rem;
+    gap: 0.2rem;
+    padding: 0.95rem 1.15rem 1rem;
     background: var(--surface);
     text-decoration: none;
     color: inherit;
-    transition: background 0.18s ease;
+    transition: color 0.16s ease;
 }
-a.use-cell:hover { background: var(--hover); }
-.use-cell-k { font-size: 0.76rem; color: var(--ink-4); }
+/* A tile that goes somewhere says so by lighting its number, not by filling
+   its whole box with grey. Six cells in a row, one of them shaded end to end,
+   read as a cell that had been selected rather than one being pointed at. */
+a.use-cell:hover .use-cell-v { color: var(--link); }
+a.use-cell:hover .use-cell-k { color: var(--ink-3); }
+a.use-cell:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
+/* the name of a fact, in the weight the cards above use for theirs */
+.use-cell-k {
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--ink-4);
+}
 .use-cell-v {
     font-size: 1.05rem;
     font-weight: 600;
