@@ -4431,6 +4431,11 @@
             here.style.left = x + '%';
             here.style.top = up(d.n) + '%';
 
+            fill(d, i, x);
+            show(true);
+        };
+
+        var fill = function (d, i, x) {
             tip.textContent = '';
             var when = document.createElement('div');
             when.className = 'use-tip-d';
@@ -4449,12 +4454,57 @@
             tip.style.left = x + '%';
             // near the right edge it would hang off the card, so it flips
             tip.classList.toggle('is-left', x > 65);
-            show(true);
         };
 
         plot.addEventListener('pointermove', read);
         plot.addEventListener('pointerdown', read);
         plot.addEventListener('pointerleave', function () { show(false); });
+
+        // The same reading, without a pointer.
+        //
+        // Every number on this chart was behind a mouse: a keyboard could tab
+        // past the card and never learn a single day, and a screen reader was
+        // told "screenings per day" and nothing else. The plot takes focus and
+        // the arrow keys walk it, which is the same path a pointer takes and
+        // the one a screen reader announces as it goes.
+        var at = -1;
+        var step = function (by) {
+            at = at < 0 ? days.length - 1 : at + by;
+            if (at < 0) at = 0;
+            if (at > days.length - 1) at = days.length - 1;
+            mark(at);
+        };
+        var mark = function (i) {
+            var d = days[i];
+            var x = share(i);
+            guide.style.left = x + '%';
+            here.style.left = x + '%';
+            here.style.top = up(d.n) + '%';
+            fill(d, i, x);
+            show(true);
+            // said out loud rather than only drawn, because the drawing is the
+            // half a screen reader cannot use
+            say.textContent = whenText(d.day) + ', ' + useNum(d.n) + ' ' +
+                t(d.n === 1 ? 'screening' : 'screenings') +
+                (d.flagged > 0 ? ', ' + useNum(d.flagged) + ' ' + t('flagged') : '');
+        };
+
+        var say = document.createElement('span');
+        say.className = 'sr-only';
+        say.setAttribute('aria-live', 'polite');
+        plot.appendChild(say);
+
+        plot.tabIndex = 0;
+        plot.setAttribute('role', 'application');
+        plot.setAttribute('aria-label', t('Screenings per day. Use the arrow keys to read a day.'));
+        plot.addEventListener('keydown', function (e) {
+            if (e.key === 'ArrowRight') { step(1); e.preventDefault(); return; }
+            if (e.key === 'ArrowLeft') { step(-1); e.preventDefault(); return; }
+            if (e.key === 'Home') { at = 0; mark(0); e.preventDefault(); return; }
+            if (e.key === 'End') { at = days.length - 1; mark(at); e.preventDefault(); return; }
+            if (e.key === 'Escape') { show(false); say.textContent = ''; at = -1; }
+        });
+        plot.addEventListener('blur', function () { show(false); say.textContent = ''; at = -1; });
         return guide;
     }
 

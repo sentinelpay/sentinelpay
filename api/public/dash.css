@@ -3623,6 +3623,25 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     .use-allow { padding: 0.95rem 1rem 1rem; }
 }
 
+/* Said to a screen reader and to nobody else. Not display:none, which is not
+   read at all, and not opacity or a negative indent, which leave it selectable
+   and draggable: a one pixel clip is the version that is announced and cannot
+   be stumbled into. */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+/* the plot takes focus now, so it has to show that it has it */
+.use-plot-in:focus-visible { outline: 2px solid var(--link); outline-offset: 3px; border-radius: 6px; }
+.use-plot-in:focus { outline: none; }
+
 /* Where a chart would be, for an organisation that has not screened anything
    yet. It takes about the height of two lines rather than the height of a
    plot: there is nothing to look at, and a tall empty box insists on that
