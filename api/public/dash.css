@@ -3532,40 +3532,52 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
    than more tiles: these are the only numbers on the screen that can run out,
    and putting them beside the ones that cannot is how a reader stops being able
    to tell the difference. */
+/* The same card as the chart above it: same padding, same corner, same rule.
+   They were a radius and two paddings apart, which is enough for two cards
+   stacked an inch from each other to read as two different components that
+   happened to end up on the same screen. */
 .use-allow {
     margin-bottom: 1.6rem;
-    padding: 0.9rem 1.1rem 1rem;
+    padding: 1.1rem 1.25rem 1.15rem;
     border: 1px solid var(--line);
-    border-radius: 12px;
+    border-radius: 14px;
     background: var(--surface);
 }
+/* and the same header line: a name on the left, a fact on the right, in the
+   weight and colour the chart card uses for its own */
 .use-allow-h {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
     gap: 1rem;
-    margin-bottom: 0.7rem;
+    margin-bottom: 1rem;
     font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
     color: var(--ink-4);
 }
 .use-allow-p { color: var(--ink-2); font-weight: 600; }
-/* One grid for every row, so a column is a column: the names under each other,
-   the figures stacked on the digit, and the meters starting and ending at the
-   same two places. Two bars that begin fifty pixels apart cannot be compared
-   at a glance, which is the only thing a bar is for. */
-.use-allow-b {
+/* Every allowance is shaped like the card it sits under: a line of words with
+   a name at one end and its number at the other, then a full-width graphic
+   beneath. Strung across one wide line instead -- name, figures, bar, what is
+   left -- it was four islands with gaps between them, which is what made a
+   panel of two facts read as chopped up. */
+.use-allow-b { display: grid; gap: 0.95rem; font-size: 0.82rem; }
+.use-allow-r {
     display: grid;
-    grid-template-columns: max-content max-content max-content minmax(4rem, 1fr) max-content;
-    align-items: center;
-    gap: 0.55rem 0.85rem;
-    font-size: 0.82rem;
+    grid-template-columns: minmax(0, 1fr) max-content max-content max-content;
+    align-items: baseline;
+    gap: 0.45rem 0.5rem;
 }
-.use-allow-r { display: contents; }
+.use-allow-n,
+.use-allow-u,
+.use-allow-o,
+.use-allow-l { grid-row: 1; }
+.use-allow-t { grid-row: 2; grid-column: 1 / -1; }
 .use-allow-n { color: var(--ink-3); }
 /* used, then what it is out of. right-aligned against the slash so a hundred
    and nine and a one sit over each other rather than over their own labels */
 .use-allow-u {
-    justify-self: end;
     color: var(--ink);
     font-weight: 600;
     font-variant-numeric: tabular-nums;
@@ -3573,12 +3585,14 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 .use-allow-o { color: var(--ink-4); font-variant-numeric: tabular-nums; }
 .use-allow-o.is-word { grid-column: 2 / 4; justify-self: start; color: var(--ink-3); }
 /* what is left, at the end of the bar it belongs to */
+/* on the line with the figures rather than stranded under the bar: it is a
+   remark about that ratio, not a third fact */
 .use-allow-l {
-    justify-self: end;
     color: var(--ink-4);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
 }
+.use-allow-l::before { content: '\00b7'; margin-right: 0.5rem; color: var(--ink-4); }
 .use-allow-l.is-low { color: var(--risk-mid); }
 .use-allow-l.is-out { color: var(--risk-high); font-weight: 600; }
 .use-allow-t {
@@ -3606,26 +3620,7 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     /* the bar goes under the numbers: at this width it would be a few
        millimetres wide and say nothing */
     .use-allow-r { grid-template-columns: minmax(0, 1fr) auto; gap: 0.3rem 0.8rem; }
-    /* On a phone the meter cannot share a line with the words, so each entry
-       becomes two lines: the name and its figures, then the bar underneath.
-       Each row is its own grid again for that -- one grid across all of them
-       would need every row to be the same two lines, and `order` inside a
-       shared grid gathers all the bars at the bottom, away from the rows they
-       belong to. Column alignment between rows is what the wide layout is for;
-       here there is barely a column to align. */
-    .use-allow-b { display: block; }
-    .use-allow-r {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) max-content max-content max-content;
-        align-items: center;
-        gap: 0.3rem 0.5rem;
-        padding: 0.4rem 0 0.5rem;
-    }
-    .use-allow-n,
-    .use-allow-u,
-    .use-allow-o,
-    .use-allow-l { grid-row: 1; }
-    .use-allow-t { grid-row: 2; grid-column: 1 / -1; }
+    .use-allow { padding: 0.95rem 1rem 1rem; }
 }
 
 /* The headline. One number this page is about, the shape it made, and whether

@@ -4964,17 +4964,21 @@
             // what is left, which is the question the bar is being looked at
             // to answer. a percentage would need working back into a number
             // before anybody could act on it.
-            var rest = document.createElement('span');
-            rest.className = 'use-allow-l';
-            if (!r.unmetered && r.of > 0) {
+            // How much is left, only once that is news. At thirty-six of ten
+            // thousand the bar and the ratio have already said it, and a
+            // third number saying the same thing in a different arrangement
+            // is the kind of completeness that makes a panel look busy rather
+            // than informative. Near the limit it is the most useful line on
+            // the screen, so that is when it appears.
+            if (!r.unmetered && r.of > 0 && pct >= 80) {
+                var rest = document.createElement('span');
                 var over = r.used >= r.of;
+                rest.className = 'use-allow-l' + (over ? ' is-out' : ' is-low');
                 rest.textContent = over
                     ? t('none left')
                     : useNum(r.of - r.used) + ' ' + t('left');
-                if (over) rest.classList.add('is-out');
-                else if (pct >= 80) rest.classList.add('is-low');
+                line.appendChild(rest);
             }
-            line.appendChild(rest);
 
             table.appendChild(line);
         });
