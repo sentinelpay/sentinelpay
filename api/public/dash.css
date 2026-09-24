@@ -3413,7 +3413,16 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     position: absolute;
     top: 0.2rem;
     transform: translateX(0.5rem);
+    /* Sized by its contents, not by the room left beside it.
+       An absolutely positioned box with only `left` set shrinks to fit the gap
+       between that edge and the end of its container, so at the last day of a
+       period the gap is nothing, the box collapses to its minimum and the
+       words wrap into a tall column. Flipping it to the other side does not
+       help: the transform runs after the width has already been decided.
+       A content width is decided by the content, wherever the box is. */
+    width: max-content;
     min-width: 8.5rem;
+    max-width: 16rem;
     padding: 0.5rem 0.6rem;
     border: 1px solid var(--line);
     border-radius: 10px;
