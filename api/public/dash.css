@@ -3561,7 +3561,16 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     background: var(--line-2);
     overflow: hidden;
 }
-.use-allow-f { display: block; height: 100%; border-radius: 999px; background: var(--link); }
+.use-allow-f {
+    display: block;
+    height: 100%;
+    /* a bar that exists is at least as long as it is round, or it is a dot */
+    min-width: 14px;
+    border-radius: 999px;
+    background: var(--link);
+}
+/* how often the row's allowance comes back, beside the thing it is about */
+.use-allow-p2 { margin-left: 0.4rem; color: var(--ink-4); font-size: 0.78rem; }
 /* near the edge is worth seeing before it is reached, and reaching it is the
    moment screening stops rather than a bill growing */
 .use-allow-f.is-near { background: var(--risk-mid); }

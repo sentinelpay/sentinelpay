@@ -4880,11 +4880,11 @@
         var top = document.createElement('div');
         top.className = 'use-allow-h';
         var lab = document.createElement('span');
-        // "a month", said here, because it is the one place the number and its
-        // period stand together. Somebody who paid for a quarter up front has
-        // every reason to read ten thousand as the quarter's, and the bill
-        // will not correct them -- this is what corrects them.
-        lab.textContent = t('What this plan includes each month');
+        // Not "each month" over the whole block. Screenings reset every month;
+        // seats do not -- you are not given ten fresh colleagues in October.
+        // Saying it once over both made a true sentence about one row into a
+        // false one about the other, so it is said on the row it is true of.
+        lab.textContent = t('What this plan includes');
         top.appendChild(lab);
         var right = document.createElement('span');
         right.className = 'use-allow-p';
@@ -4909,6 +4909,16 @@
             var name = document.createElement('span');
             name.className = 'use-allow-n';
             name.textContent = t(r.label);
+            // how often it comes back, for the rows where that is a question.
+            // somebody who has just paid for a quarter up front has every
+            // reason to read ten thousand as the quarter's allowance, and
+            // nothing else on this page would correct them.
+            if (r.per) {
+                var per = document.createElement('span');
+                per.className = 'use-allow-p2';
+                per.textContent = t(r.per);
+                name.appendChild(per);
+            }
             line.appendChild(name);
 
             var fig = document.createElement('span');
@@ -4925,13 +4935,21 @@
                 // meter that failed to load, not as one with no end
                 track.classList.add('is-none');
             } else {
-                var fill = document.createElement('span');
-                fill.className = 'use-allow-f';
                 var pct = r.of > 0 ? Math.min(100, Math.round((r.used / r.of) * 100)) : 0;
-                fill.style.width = pct + '%';
-                if (pct >= 100) fill.classList.add('is-full');
-                else if (pct >= 80) fill.classList.add('is-near');
-                track.appendChild(fill);
+                // nothing used draws nothing. a hundred and nine against ten
+                // thousand is one percent of six hundred pixels, which is a
+                // six pixel circle floating at the left of an empty track: it
+                // reads as a mark that should not be there rather than as a
+                // bar with a little in it, so a bar that exists is at least
+                // long enough to look like one.
+                if (r.used > 0) {
+                    var fill = document.createElement('span');
+                    fill.className = 'use-allow-f';
+                    fill.style.width = pct + '%';
+                    if (pct >= 100) fill.classList.add('is-full');
+                    else if (pct >= 80) fill.classList.add('is-near');
+                    track.appendChild(fill);
+                }
             }
             line.appendChild(track);
             box.appendChild(line);
@@ -5501,7 +5519,7 @@
             if (sub && sub.included) {
                 var rows = [];
                 if (sub.included.screenings !== null) {
-                    rows.push({ label: 'Screenings', used: s.total, of: sub.included.screenings });
+                    rows.push({ label: 'Screenings', per: 'a month', used: s.total, of: sub.included.screenings });
                 }
                 if (sub.included.seats !== null) {
                     rows.push({ label: 'Seats', used: shape.members, of: sub.included.seats });
@@ -5518,9 +5536,10 @@
                     agreed: false
                 };
             }
-            var trial = [{ label: 'Live checks', used: plan.liveUsed, of: plan.liveIncluded }];
+            // what a trial includes covers the whole trial, not a month of it
+            var trial = [{ label: 'Live checks', per: 'this trial', used: plan.liveUsed, of: plan.liveIncluded }];
             if (!plan.historyOpen) {
-                trial.push({ label: 'History scans', used: plan.historyUsed, of: plan.historyIncluded });
+                trial.push({ label: 'History scans', per: 'this trial', used: plan.historyUsed, of: plan.historyIncluded });
             }
             return { rows: trial, head: orghPlan(plan.state), agreed: false };
         }
