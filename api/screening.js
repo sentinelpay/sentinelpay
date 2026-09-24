@@ -24,6 +24,12 @@ CREATE INDEX IF NOT EXISTS screenings_user_idx ON screenings (user_id, at DESC);
 ALTER TABLE screenings ADD COLUMN IF NOT EXISTS sandbox boolean NOT NULL DEFAULT false;
 ALTER TABLE screenings ADD COLUMN IF NOT EXISTS org_id bigint REFERENCES organisations(id) ON DELETE CASCADE;
 CREATE INDEX IF NOT EXISTS screenings_org_idx ON screenings (org_id, at DESC);
+-- Which project a check belonged to. Nullable and staying that way: a check run
+-- from the dashboard belongs to the company rather than to one of its projects,
+-- and every check written before this column existed has no honest answer. A
+-- default would invent one.
+ALTER TABLE screenings ADD COLUMN IF NOT EXISTS project_id bigint REFERENCES projects(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS screenings_project_idx ON screenings (org_id, project_id, at DESC);
 `;
 
 let ready = null;
@@ -65,7 +71,7 @@ function digestOf(payload) {
     return 'sha256:' + crypto.createHash('sha256').update(JSON.stringify(payload), 'utf8').digest('hex');
 }
 
-async function screen(userId, orgId, address, kind, sandbox) {
+async function screen(userId, orgId, address, kind, sandbox, projectId) {
     const clean = String(address || '').trim();
     if (!clean || clean.length > 128) return { ok: false, reason: 'bad-address' };
 
@@ -116,10 +122,11 @@ async function screen(userId, orgId, address, kind, sandbox) {
     let id = null;
     if (await init()) {
         const res = await db.query(
-            `INSERT INTO screenings (user_id, org_id, kind, asset, address, verdict, score, sources, list_date, detail_enc, digest, sandbox)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
+            `INSERT INTO screenings (user_id, org_id, kind, asset, address, verdict, score, sources, list_date, detail_enc, digest, sandbox, project_id)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`,
             [userId, orgId, kind === 'history' ? 'history' : 'live', sealed.asset, clean, verdict, score,
-             'OFAC SDN', meta.listDate || '', '', digest, Boolean(sandbox)]
+             'OFAC SDN', meta.listDate || '', '', digest, Boolean(sandbox),
+             projectId ? Number(projectId) : null]
         );
         id = res.rows[0].id;
         await db.query('UPDATE screenings SET detail_enc = $1 WHERE id = $2',

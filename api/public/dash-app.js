@@ -5442,6 +5442,27 @@
             flag.body.appendChild(fmain);
             if (!fresh) body.appendChild(flag);
 
+            // ---- who did the work
+            //
+            // Only where there is something to divide. One project, or none at
+            // all, and this is a section telling you that all of your work was
+            // done by you.
+            var work = (s.projects || []).filter(function (r) { return r.n > 0; });
+            if (!fresh && work.length > 1) {
+                var who = useSection('use-projects', 'Projects', 'projects',
+                    'Which part of the business did the checking.');
+                who.body.appendChild(useSide([
+                    'A check is filed under a project when the token that made it belongs to that project.',
+                    'Checks made from this dashboard belong to the organisation rather than to one project.'
+                ]));
+                var wmain = useMain();
+                wmain.appendChild(useShare(work.map(function (r) {
+                    return { label: r.id ? (r.name || t('Unnamed project')) : t('No project'), n: r.n };
+                }), s.total));
+                who.body.appendChild(wmain);
+                body.appendChild(who);
+            }
+
             // ---- chains
             var ass = useSection('use-assets', 'Chains', 'coin',
                 'Which chains the addresses were on.');
@@ -6643,8 +6664,13 @@
             name: '',
             kind: kind === 'test' ? 'test' : 'live',
             days: '90',
+            project: '',
             scopes: {}
         };
+        // The projects this key could belong to. Fetched once when the drawer
+        // opens rather than held anywhere: a project made in the other tab a
+        // minute ago should be on this list.
+        var mine = [];
         var d = drawer('Generate token');
 
         function scopeLabel(key) {
@@ -6685,6 +6711,21 @@
                         return { value: c.value, label: t(c.label) };
                     })
                 }], want.days, function (v) { want.days = v; }), true));
+
+            // Which part of the business this key works for. Every check it
+            // makes is filed under that, which is what lets one bill be read
+            // as two. Offered only where there is a choice: a company with no
+            // projects is not helped by a field whose only answer is none.
+            if (mine.length) {
+                d.body.appendChild(drwSection('Project',
+                    'Checks made with this token are counted under the project you pick.',
+                    selectBox('tk-project', [{
+                        options: [{ value: '', label: t('No project') }].concat(
+                            mine.map(function (pr) {
+                                return { value: String(pr.id), label: pr.name || t('Unnamed project') };
+                            }))
+                    }], want.project, function (v) { want.project = v; }), true));
+            }
 
             var kinds = document.createElement('div');
             kinds.className = 'card-picks';
@@ -7012,6 +7053,7 @@
                         name: want.name,
                         kind: want.kind,
                         days: Number(want.days),
+                        project: want.project,
                         scopes: chosen()
                     })
                 }).then(function (r) {
@@ -7073,6 +7115,21 @@
         }
 
         d.show(stepConfigure);
+
+        // and once the list arrives, draw the step again so the field is there.
+        // the drawer opens immediately either way: waiting on a request before
+        // showing anything is a panel that hangs for no reason a reader can see.
+        var at = (lastMe && lastMe.org && lastMe.org.id) || '';
+        if (at) {
+            fetch('/v1/orgs/' + encodeURIComponent(at) + '/projects', { credentials: 'same-origin' })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (out) {
+                    var rows = (out && out.rows) || [];
+                    mine = rows.filter(function (pr) { return !pr.archivedAt; });
+                    if (mine.length) d.show(stepConfigure, true);
+                })
+                .catch(function () {  });
+        }
     }
 
     // Choosing which company you are working in. It has no sidebar because there

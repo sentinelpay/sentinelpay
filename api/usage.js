@@ -232,7 +232,7 @@ async function daysIn(orgId, from, to, sandbox, zone) {
 async function screeningsIn(orgId, from, to, sandbox, zone) {
     to = until(to);
     const args = [Number(orgId), from, to, Boolean(sandbox), zone];
-    const [sum, days, verdicts, assets] = await Promise.all([
+    const [sum, days, verdicts, assets, byProject] = await Promise.all([
         db.query(
             `SELECT count(*)::int AS n,
                     count(*) FILTER (WHERE verdict <> 'clear')::int AS flagged,
@@ -269,6 +269,19 @@ async function screeningsIn(orgId, from, to, sandbox, zone) {
            GROUP BY 1 ORDER BY n DESC, 1 LIMIT 12`,
             args.slice(0, 4)
         ),
+        // Which part of the business did the work. A company running an
+        // exchange and a card product has one bill and two sets of rules, and
+        // "who is spending the allowance" is the question they ask first when
+        // it starts running out. Checks with no project are its own row rather
+        // than being dropped: work done from the dashboard is still work.
+        db.query(
+            `SELECT s.project_id AS id, p.name AS name, count(*)::int AS n
+               FROM screenings s
+               LEFT JOIN projects p ON p.id = s.project_id
+              WHERE s.org_id = $1 AND s.at >= $2 AND s.at < $3 AND s.sandbox = $4
+           GROUP BY 1, 2 ORDER BY n DESC LIMIT 12`,
+            args.slice(0, 4)
+        ),
     ]);
 
     const head = sum.rows[0] || { n: 0, flagged: 0, addresses: 0, assets: 0 };
@@ -283,6 +296,11 @@ async function screeningsIn(orgId, from, to, sandbox, zone) {
         days: fillDays(days.rows, from, to, zone),
         verdicts: byVerdict,
         assets: assets.rows.map((r) => ({ asset: r.asset, n: r.n })),
+        projects: byProject.rows.map((r) => ({
+            id: r.id ? String(r.id) : '',
+            name: r.name || '',
+            n: r.n,
+        })),
     };
 }
 

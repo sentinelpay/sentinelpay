@@ -1050,7 +1050,15 @@ async function caller(req, res, scope) {
             res.status(409).json({ error: 'That token predates organisations. Issue a new one.' });
             return null;
         }
-        return { ...who, org: { id: String(out.orgId) }, viaToken: out.tokenId, sandbox: out.sandbox };
+        return {
+            ...who,
+            org: { id: String(out.orgId) },
+            viaToken: out.tokenId,
+            // the project the key belongs to, so every check it makes is filed
+            // under the part of the business that made it
+            project: out.projectId || '',
+            sandbox: out.sandbox,
+        };
     }
     const me = await currentUser(req);
     if (!me) { res.status(401).json({ error: 'Sign in first' }); return null; }
@@ -2655,11 +2663,12 @@ app.post('/v1/account/tokens', requireCloudflareOrigin, accountLimiter, async (r
     if (!orgs.roleAtLeast(org.role, 'admin')) {
         return res.status(403).json({ error: 'Only an admin can issue a token.' });
     }
-    const out = await tokens.mint(me.userId, org.id, b.name, b.scopes, b.days, b.kind);
+    const out = await tokens.mint(me.userId, org.id, b.name, b.scopes, b.days, b.kind, b.project);
     if (!out.ok) {
         const said = {
             'no-name': 'Give the token a name you will recognise later.',
             'no-scopes': 'Pick at least one thing this token may do.',
+            'no-project': 'That project does not belong to this organisation.',
             'too-many': 'That is as many live tokens as one account may hold.',
         };
         return res.status(out.reason === 'unavailable' ? 503 : 400).json({
@@ -2915,7 +2924,7 @@ app.post('/v1/screen', screenLimiter, async (req, res) => {
         // against the same sanctions data but spends nothing and lands in its own
         // history. nothing it does can touch what the customer reports on.
         if (me.sandbox) {
-            const out = await screening.screen(me.userId, me.org.id, address, kind, true);
+            const out = await screening.screen(me.userId, me.org.id, address, kind, true, me.project);
             if (!out.ok) return res.status(400).json({ error: 'That does not look like an address' });
             // A sandbox check spends nothing and is billed for nothing, but it
             // is still a row the usage screen counts when the scope is set to
@@ -2942,7 +2951,7 @@ app.post('/v1/screen', screenLimiter, async (req, res) => {
             });
         }
 
-        const out = await screening.screen(me.userId, me.org.id, address, kind, false);
+        const out = await screening.screen(me.userId, me.org.id, address, kind, false, me.project);
         if (!out.ok) return res.status(400).json({ error: 'That does not look like an address' });
 
         await tellOrg(me.org.id, { topic: 'org', id: String(me.org.id) });

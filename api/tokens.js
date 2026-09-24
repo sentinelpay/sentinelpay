@@ -144,6 +144,11 @@ CREATE INDEX IF NOT EXISTS api_tokens_user_idx ON api_tokens (user_id, created_a
 ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'live';
 ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS org_id bigint REFERENCES organisations(id) ON DELETE CASCADE;
 CREATE INDEX IF NOT EXISTS api_tokens_org_idx ON api_tokens (org_id, created_at DESC);
+-- The project this token works for. A company running an exchange and a card
+-- product issues a key for each, and every check made with one belongs to that
+-- side of the business. Nullable: a token may belong to the organisation at
+-- large, and every token issued before this column did.
+ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS project_id bigint REFERENCES projects(id) ON DELETE SET NULL;
 `;
 
 let ready = null;
@@ -212,6 +217,7 @@ function shape(row) {
     return {
         id: String(row.id),
         name: row.name || '',
+        projectId: row.project_id ? String(row.project_id) : '',
         kind: row.kind === 'test' ? 'test' : 'live',
         tail: row.tail || '',
         scopes: scopes,
@@ -222,7 +228,7 @@ function shape(row) {
     };
 }
 
-async function mint(userId, orgId, name, scopes, days, kind) {
+async function mint(userId, orgId, name, scopes, days, kind, projectId) {
     if (!(await init())) return { ok: false, reason: 'unavailable' };
 
     const keep = cleanScopes(scopes);
@@ -242,13 +248,26 @@ async function mint(userId, orgId, name, scopes, days, kind) {
             return { ok: false, reason: 'too-many' };
         }
 
+        // a project of this organisation, or none. asked of the database
+        // rather than trusted from the request: a project id from another
+        // company would otherwise file this company's checks under it.
+        let project = null;
+        if (projectId) {
+            const own = await db.query(
+                'SELECT id FROM projects WHERE id = $1 AND org_id = $2 AND archived_at IS NULL',
+                [Number(projectId), orgId]
+            );
+            if (!own.rowCount) return { ok: false, reason: 'no-project' };
+            project = own.rows[0].id;
+        }
+
         const secret = crypto.randomBytes(32).toString('base64url');
         const res = await db.query(
-            `INSERT INTO api_tokens (user_id, org_id, name, kind, secret_hash, tail, scopes, expires_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, CASE WHEN $8 = 0 THEN NULL
-                                                      ELSE now() + ($8 || ' days')::interval END)
+            `INSERT INTO api_tokens (user_id, org_id, name, kind, secret_hash, tail, scopes, project_id, expires_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CASE WHEN $9 = 0 THEN NULL
+                                                          ELSE now() + ($9 || ' days')::interval END)
              RETURNING *`,
-            [userId, orgId, label, flavour, hashSecret(secret), secret.slice(-4), keep.join(' '), ttl]
+            [userId, orgId, label, flavour, hashSecret(secret), secret.slice(-4), keep.join(' '), project, ttl]
         );
         const row = res.rows[0];
         const id = Number(row.id).toString(36);
@@ -340,6 +359,7 @@ async function read(raw) {
             userId: row.user_id,
             orgId: row.org_id,
             tokenId: String(row.id),
+            projectId: row.project_id ? String(row.project_id) : '',
             name: row.name || '',
             kind: row.kind === 'test' ? 'test' : 'live',
             sandbox: row.kind === 'test',
