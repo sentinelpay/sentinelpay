@@ -3674,6 +3674,15 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 }
 .use-allow-r { display: contents; }
 .use-allow-n { color: var(--ink-3); }
+/* where the half of a plan that is not a number lives */
+.use-allow-more {
+    display: inline-block;
+    margin-top: 1rem;
+    font-size: 0.8rem;
+    color: var(--link);
+    text-decoration: none;
+}
+.use-allow-more:hover { text-decoration: underline; }
 /* used, then what it is out of. right-aligned against the slash so a hundred
    and nine and a one sit over each other rather than over their own labels */
 .use-allow-u {

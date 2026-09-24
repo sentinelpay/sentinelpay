@@ -4942,11 +4942,16 @@
         var top = document.createElement('div');
         top.className = 'use-allow-h';
         var lab = document.createElement('span');
-        // Not "each month" over the whole block. Screenings reset every month;
-        // seats do not -- you are not given ten fresh colleagues in October.
-        // Saying it once over both made a true sentence about one row into a
-        // false one about the other, so it is said on the row it is true of.
-        lab.textContent = t('What this plan includes');
+        // "What this plan includes" was a promise this block does not keep. A
+        // plan includes the lists it screens against, monitoring, the evidence
+        // file, seats, an answer in under a second -- a page of things. What is
+        // here is the two of them that are counted, so it says so, and the line
+        // underneath goes to the rest.
+        //
+        // The period stays on the row rather than the heading, because
+        // screenings reset every month and seats do not: you are not given ten
+        // fresh colleagues in October.
+        lab.textContent = t('Allowances');
         top.appendChild(lab);
         var right = document.createElement('span');
         right.className = 'use-allow-p';
@@ -5063,6 +5068,16 @@
             table.appendChild(line);
         });
         box.appendChild(table);
+
+        // Everything else a plan carries -- which lists, monitoring, the
+        // evidence file, support -- is not a number and cannot be metered, so
+        // it is not here. It is somewhere, though, and a block showing half of
+        // something should say where the other half is.
+        var rest = document.createElement('a');
+        rest.className = 'use-allow-more';
+        rest.href = '/pricing';
+        rest.textContent = t('Everything else this plan includes');
+        box.appendChild(rest);
 
         return box;
     }
