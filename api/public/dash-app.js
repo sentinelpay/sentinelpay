@@ -4620,7 +4620,7 @@
     // identical cards leave the reader to decide which one matters, and the
     // answer is always the same one. So it is said once, large, with the chart
     // under it, and everything else is smaller than it.
-    function useHeadline(s, prev, period, cmp) {
+    function useHeadline(s, prev, period, cmp, fresh) {
         var box = document.createElement('section');
         box.className = 'use-head';
 
@@ -4678,6 +4678,25 @@
         // the pointer is moving, and the swap somebody asked to be quick would
         // be the slowest thing on the screen. Two plots and a class costs a
         // few hundred nodes once and nothing afterwards.
+        // An organisation that has never screened anything gets a sentence
+        // rather than a chart. A full-height plot with one point at zero, an
+        // axis counting to four and a legend for two lines that are not there
+        // is a great deal of furniture built around nothing, and it is the
+        // first thing every new customer sees.
+        if (fresh) {
+            var none = document.createElement('div');
+            none.className = 'use-none';
+            var said = document.createElement('p');
+            said.textContent = t('Nothing has been screened here yet.');
+            none.appendChild(said);
+            var how = document.createElement('p');
+            how.className = 'use-none-s';
+            how.textContent = t('Checks appear here as they run, whether they come from this dashboard or from a token.');
+            none.appendChild(how);
+            box.appendChild(none);
+            return box;
+        }
+
         if (cmp) {
             box.appendChild(useLayer('use-alone', useChart(s.days || [], null),
                 useLegend(false)));
@@ -5309,7 +5328,13 @@
             } : null;
             if (!cmp) alongside = false;
 
-            body.appendChild(useHeadline(s, out.previous, out.period, cmp));
+            // Nothing has ever run here, as opposed to nothing ran this
+            // month. The second is a fact worth six tiles of zero and four
+            // sections counting them; the first is a page telling somebody
+            // eleven times that they have not started yet.
+            var fresh = !shape.everScreened;
+
+            body.appendChild(useHeadline(s, out.previous, out.period, cmp, fresh));
 
             // Only when there is something to say.
             //
@@ -5373,7 +5398,7 @@
                 },
                 { label: 'Projects', value: useNum(shape.projects), to: 'use-team' }
             ];
-            body.appendChild(useStrip(strip));
+            if (!fresh) body.appendChild(useStrip(strip));
 
             // ---- screening
             var sec = useSection('use-screening', 'Screening', 'screening',
@@ -5391,7 +5416,7 @@
                 ['Busiest day', busiest(s.days)]
             ]));
             sec.body.appendChild(main);
-            body.appendChild(sec);
+            if (!fresh) body.appendChild(sec);
 
             // ---- what came back
             var flag = useSection('use-flagged', 'What came back', 'flag',
@@ -5415,7 +5440,7 @@
                 fmain.appendChild(emptyState('Nothing to show yet', ''));
             }
             flag.body.appendChild(fmain);
-            body.appendChild(flag);
+            if (!fresh) body.appendChild(flag);
 
             // ---- chains
             var ass = useSection('use-assets', 'Chains', 'coin',
@@ -5432,7 +5457,7 @@
                 amain.appendChild(emptyState('Nothing to show yet', ''));
             }
             ass.body.appendChild(amain);
-            body.appendChild(ass);
+            if (!fresh) body.appendChild(ass);
 
             // ---- plan
             if (!sandbox) {

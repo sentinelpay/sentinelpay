@@ -22,7 +22,15 @@ const months = require('./months.js');
 // organisation's own birthday is the anchor, so the page still works before
 // anybody has paid for anything.
 
-const CYCLES_BACK = 3;
+// A year of invoices, not a quarter of them.
+//
+// Three was enough to prove the screen worked and far too few to use it. A
+// customer asked what they screened in March, by a regulator or by their own
+// auditor, could not answer from this page at all: the dropdown stopped four
+// months back and there was nothing else to ask. Twelve covers the year an
+// audit tends to reach for, and `cycles` still stops at the day the
+// organisation started, so nobody is offered a month they did not exist for.
+const CYCLES_BACK = 12;
 
 // One copy of the month arithmetic, shared with billing. Two copies would be
 // two answers to "which month is this", and the day they disagree is the day a
@@ -281,7 +289,7 @@ async function screeningsIn(orgId, from, to, sandbox, zone) {
 // The organisation itself: things that are true now rather than counted over a
 // window, plus the two that are (a token used, a person let in).
 async function shapeOf(orgId, from, to) {
-    const [members, projects, tokens, invited] = await Promise.all([
+    const [members, projects, tokens, invited, ever] = await Promise.all([
         db.query('SELECT count(*)::int AS n FROM memberships WHERE org_id = $1', [Number(orgId)]),
         db.query(
             `SELECT count(*)::int AS n,
@@ -301,6 +309,12 @@ async function shapeOf(orgId, from, to) {
               WHERE org_id = $1 AND created_at >= $2 AND created_at < $3`,
             [Number(orgId), from, to]
         ),
+        // Whether this organisation has ever screened anything, in any period
+        // and either scope. A period with nothing in it means one of two very
+        // different things -- we stopped, or we have not started -- and the
+        // page has no business showing the same empty columns for both.
+        db.query('SELECT EXISTS (SELECT 1 FROM screenings WHERE org_id = $1) AS yes',
+            [Number(orgId)]),
     ]);
     return {
         members: members.rows[0].n,
@@ -309,6 +323,7 @@ async function shapeOf(orgId, from, to) {
         tokens: tokens.rows[0].live,
         tokensUsed: tokens.rows[0].used,
         joined: invited.rows[0].n,
+        everScreened: Boolean(ever.rows[0].yes),
     };
 }
 

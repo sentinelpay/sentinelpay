@@ -3623,6 +3623,19 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     .use-allow { padding: 0.95rem 1rem 1rem; }
 }
 
+/* Where a chart would be, for an organisation that has not screened anything
+   yet. It takes about the height of two lines rather than the height of a
+   plot: there is nothing to look at, and a tall empty box insists on that
+   rather than getting out of the way. */
+.use-none {
+    margin-top: 0.9rem;
+    padding: 0.2rem 0 0.4rem;
+    color: var(--ink-2);
+    font-size: 0.88rem;
+}
+.use-none p { margin: 0; }
+.use-none-s { margin-top: 0.25rem !important; color: var(--ink-4); font-size: 0.82rem; }
+
 /* The headline. One number this page is about, the shape it made, and whether
    that is more or less than last time. Everything else on the screen is
    smaller than this on purpose: a page of equal boxes has no first sentence. */
