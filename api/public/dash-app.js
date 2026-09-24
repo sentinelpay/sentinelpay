@@ -4821,16 +4821,6 @@
         }
         line.appendChild(fig);
 
-        var rest = document.createElement('span');
-        rest.className = 'use-meter-l';
-        if (m.used >= m.of) {
-            rest.textContent = t('none left');
-            rest.classList.add('is-out');
-        } else {
-            rest.textContent = fill('{n} left', { n: useNum(m.of - m.used) });
-            if (pct >= 80) rest.classList.add('is-low');
-        }
-        line.appendChild(rest);
         box.appendChild(line);
 
         var track = document.createElement('span');
@@ -4845,36 +4835,6 @@
         }
         box.appendChild(track);
 
-        if (m.track) {
-            var going = document.createElement('p');
-            going.className = 'use-meter-w' + (m.track.over ? ' is-over' : '');
-            going.textContent = fill('At this rate, about {n} by {when}.',
-                { n: useNum(m.track.n), when: m.track.when });
-            box.appendChild(going);
-        }
-        if (m.note) {
-            var why = document.createElement('p');
-            why.className = 'use-meter-n';
-            why.textContent = t(m.note);
-            box.appendChild(why);
-        }
-        return box;
-    }
-
-    // A metric with no shape over time. Seats do not rise and fall through a
-    // month; they are a number that is true today, so the card is the meter
-    // and nothing else rather than a chart of a flat line.
-    function useMetric(m) {
-        var box = document.createElement('section');
-        box.className = 'use-head use-head-flat';
-        var top = document.createElement('div');
-        top.className = 'use-head-t';
-        var lab = document.createElement('span');
-        lab.className = 'use-head-k';
-        lab.textContent = t(m.title);
-        top.appendChild(lab);
-        box.appendChild(top);
-        box.appendChild(useMeter(m));
         return box;
     }
 
@@ -5038,43 +4998,6 @@
             strip.appendChild(cell);
         });
         return strip;
-    }
-
-    // What the plan allows, and how much of it is gone.
-    //
-    // Only things a plan actually limits belong here. The tiles below carry
-    // what happened -- how many were flagged, which chains, who is in the
-    // organisation -- and mixing the two means a reader cannot tell which of
-    // these numbers can run out.
-    // Where the period ends up if the rest of it goes like the part that has
-    // happened. Every usage page worth reading has this, because a meter that
-    // only looks backwards makes somebody do the division themselves to answer
-    // the one question they came with: will this last the month.
-    //
-    // Not on a day or two of history, where a quiet Monday and a busy Tuesday
-    // are the difference between half the allowance and twice it, and not on a
-    // period that is over, which has no rest of it to go.
-    function onTrack(period, rows) {
-        if (!period || !period.current || period.days) return null;
-        var from = new Date(period.from).getTime();
-        var to = new Date(period.to).getTime();
-        var now = Date.now();
-        var gone = now - from;
-        if (gone < 2 * 86400000 || now >= to) return null;
-
-        var meter = null;
-        rows.forEach(function (r) {
-            if (r.label === 'Screenings' && r.of > 0 && r.used > 0) meter = r;
-        });
-        if (!meter) return null;
-
-        var end = Math.round(meter.used * ((to - from) / gone));
-        return {
-            n: end,
-            over: end > meter.of,
-            // the last day of the period, which is the day before it ends
-            when: whenText(new Date(to - 1).toISOString()),
-        };
     }
 
     function useSection(id, title, ico, hint) {
@@ -5422,23 +5345,8 @@
                     label: runs.label,
                     per: runs.per,
                     used: runs.used,
-                    of: runs.of,
-                    track: onTrack(out.period, metered)
+                    of: runs.of
                 } : null));
-
-            // and every other metered thing gets its own, in the order the
-            // plan lists them
-            metered.forEach(function (r) {
-                if (r === runs) return;
-                body.appendChild(useMetric({
-                    title: r.label,
-                    per: r.per,
-                    label: r.label,
-                    used: r.used,
-                    of: r.of,
-                    note: r.note
-                }));
-            });
 
             // Everything else a plan carries -- which lists, monitoring, the
             // evidence file, support -- is not a number and cannot be metered,

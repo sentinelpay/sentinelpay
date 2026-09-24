@@ -3643,7 +3643,6 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     padding-top: 0.9rem;
     border-top: 1px solid var(--line-2);
 }
-.use-head-flat .use-meter { margin-top: 0.85rem; padding-top: 0; border-top: 0; }
 .use-meter-r {
     display: flex;
     align-items: baseline;
@@ -3659,10 +3658,6 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     font-weight: 600;
     font-variant-numeric: tabular-nums;
 }
-.use-meter-l { color: var(--ink-4); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.use-meter-l::before { content: '\00b7'; margin-right: 0.5rem; color: var(--ink-4); }
-.use-meter-l.is-low { color: var(--risk-mid); }
-.use-meter-l.is-out { color: var(--risk-high); font-weight: 600; }
 
 /* the meter runs the width of the card, because it belongs to the chart above
    it rather than sitting in a row of columns beside other meters */
@@ -3686,13 +3681,6 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 .use-meter-f.is-near { background: var(--risk-mid); }
 .use-meter-f.is-full { background: var(--risk-high); }
 
-/* where the period ends up if the rest of it goes like the part that has */
-.use-meter-w { margin: 0.7rem 0 0; font-size: 0.8rem; color: var(--ink-4); }
-.use-meter-w.is-over { color: var(--risk-mid); font-weight: 600; }
-.use-meter-n { margin: 0.7rem 0 0; font-size: 0.8rem; color: var(--ink-4); }
-
-/* a metric with no shape over time is the meter and its name, nothing else */
-.use-head-flat { padding-bottom: 1.15rem; }
 
 /* where the half of a plan that is not a number lives */
 .use-allow-more {
