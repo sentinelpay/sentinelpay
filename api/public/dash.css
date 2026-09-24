@@ -3652,23 +3652,27 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     color: var(--ink-4);
 }
 .use-allow-p { color: var(--ink-2); font-weight: 600; }
-/* Every allowance is shaped like the card it sits under: a line of words with
-   a name at one end and its number at the other, then a full-width graphic
-   beneath. Strung across one wide line instead -- name, figures, bar, what is
-   left -- it was four islands with gaps between them, which is what made a
-   panel of two facts read as chopped up. */
-.use-allow-b { display: grid; gap: 0.95rem; font-size: 0.82rem; }
-.use-allow-r {
+/* One line per allowance: the name at the left, then the figures and a meter
+   of a fixed width closing the right edge.
+   
+   It ran the full width of the card underneath the words for a while, which
+   for a hundred and nine against ten thousand is a six pixel rail with a stub
+   at one end and eight hundred pixels of nothing after it. Two of those, one
+   under each row, read as underlines rather than as meters, and made a card
+   holding two facts three inches tall. Bounded, the meter is something to
+   look at; unbounded it was a rule. */
+.use-allow-b {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) max-content max-content max-content;
-    align-items: baseline;
-    gap: 0.45rem 0.5rem;
+    /* wide enough that a tenth and a two-hundredth do not round to the same
+       stub: at nine rems they both came out fourteen pixels, which is the
+       shortest a bar is allowed to be, and two very different numbers looked
+       like the same one */
+    grid-template-columns: minmax(0, 1fr) max-content max-content minmax(7rem, 14rem);
+    align-items: center;
+    gap: 0.75rem 0.85rem;
+    font-size: 0.82rem;
 }
-.use-allow-n,
-.use-allow-u,
-.use-allow-o,
-.use-allow-l { grid-row: 1; }
-.use-allow-t { grid-row: 2; grid-column: 1 / -1; }
+.use-allow-r { display: contents; }
 .use-allow-n { color: var(--ink-3); }
 /* used, then what it is out of. right-aligned against the slash so a hundred
    and nine and a one sit over each other rather than over their own labels */
@@ -3680,9 +3684,11 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 .use-allow-o { color: var(--ink-4); font-variant-numeric: tabular-nums; }
 .use-allow-o.is-word { grid-column: 2 / 4; justify-self: start; color: var(--ink-3); }
 /* what is left, at the end of the bar it belongs to */
-/* on the line with the figures rather than stranded under the bar: it is a
-   remark about that ratio, not a third fact */
+/* beside the name rather than in a column of its own: at four fifths it is a
+   remark about that row, and a fifth column standing empty on every other row
+   is a column of nothing */
 .use-allow-l {
+    margin-left: 0.5rem;
     color: var(--ink-4);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
@@ -3691,7 +3697,7 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 .use-allow-l.is-low { color: var(--risk-mid); }
 .use-allow-l.is-out { color: var(--risk-high); font-weight: 600; }
 .use-allow-t {
-    height: 6px;
+    height: 7px;
     border-radius: 999px;
     background: var(--line-2);
     overflow: hidden;
@@ -3700,7 +3706,7 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     display: block;
     height: 100%;
     /* a bar that exists is at least as long as it is round, or it is a dot */
-    min-width: 14px;
+    min-width: 10px;
     border-radius: 999px;
     background: var(--link);
 }
@@ -3715,7 +3721,22 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     /* the bar goes under the numbers: at this width it would be a few
        millimetres wide and say nothing */
     .use-allow-r { grid-template-columns: minmax(0, 1fr) auto; gap: 0.3rem 0.8rem; }
+    /* Four columns will not fit across a phone, so the meter goes under the
+       line it belongs to and takes the width. Each row becomes its own grid
+       again for that: one grid across all of them cannot give some cells a
+       second line and not others. */
     .use-allow { padding: 0.95rem 1rem 1rem; }
+    .use-allow-b { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.9rem; }
+    .use-allow-r {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) max-content max-content;
+        align-items: baseline;
+        gap: 0.4rem 0.5rem;
+    }
+    .use-allow-n,
+    .use-allow-u,
+    .use-allow-o { grid-row: 1; }
+    .use-allow-t { grid-row: 2; grid-column: 1 / -1; }
 }
 
 /* Said to a screen reader and to nobody else. Not display:none, which is not

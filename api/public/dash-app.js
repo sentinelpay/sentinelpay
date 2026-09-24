@@ -5055,7 +5055,9 @@
                 rest.textContent = over
                     ? t('none left')
                     : useNum(r.of - r.used) + ' ' + t('left');
-                line.appendChild(rest);
+                // beside the name, inside it, so the row keeps its four columns
+                // whether or not this is there to say
+                name.appendChild(rest);
             }
 
             table.appendChild(line);
