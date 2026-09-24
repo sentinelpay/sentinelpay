@@ -4162,9 +4162,21 @@
         return term;
     }
 
+    // The month, called a month.
+    //
+    // It used to be called the current billing cycle, which it is not. What is
+    // billed is the term: a quarter paid up front, or a year. The allowance is
+    // monthly -- ten thousand screenings a month, as the pricing page says --
+    // so the window this page counts over is a month, and naming it after the
+    // invoice put two different spans of time under one name. One of them said
+    // September to December in the band and the other said September to
+    // October over the chart, and a reader was right to think one was wrong.
+    //
+    // When the plan ends is on the band, where it belongs. This is the window
+    // being counted, and it is a month.
     function usePeriodLabel(p) {
         if (p.days) return useWindowWord(p.days);
-        if (p.current) return t('Current billing cycle');
+        if (p.current) return t('This month');
         return useSpan(p);
     }
 
@@ -4868,7 +4880,11 @@
         var top = document.createElement('div');
         top.className = 'use-allow-h';
         var lab = document.createElement('span');
-        lab.textContent = t('What this plan includes');
+        // "a month", said here, because it is the one place the number and its
+        // period stand together. Somebody who paid for a quarter up front has
+        // every reason to read ten thousand as the quarter's, and the bill
+        // will not correct them -- this is what corrects them.
+        lab.textContent = t('What this plan includes each month');
         top.appendChild(lab);
         var right = document.createElement('span');
         right.className = 'use-allow-p';
