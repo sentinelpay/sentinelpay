@@ -5129,16 +5129,32 @@
         // forward on every page load, so the date it carries is one that never
         // arrives; per-scan has no term at all. Both are endless, and the only
         // honest way to draw an end that does not exist is to say so.
+        // Not a range any more.
+        //
+        // The plan's term and the period being charted are two different true
+        // facts, and both of them began on the twentieth. Set side by side as
+        // two ranges with nothing naming either, they read as one fact
+        // disagreeing with itself: 20 Sep - 20 Dec up here, 20 Sep - 20 Oct on
+        // the card below, and a reader entitled to think one of them is wrong.
+        //
+        // The start is the period's start, which is already on screen. What
+        // the period cannot say is when the plan runs out, so that is what is
+        // said, as a sentence rather than a span.
         function planSpan(sub, plan) {
+            var ends = null;
+            var over = false;
             if (sub) {
-                if (!sub.termEndsAt) return whenText(sub.startedAt) + ' \u2013 \u221e';
-                return useRange(sub.startedAt, sub.termEndsAt);
+                ends = sub.termEndsAt;
+                over = Boolean(sub.cancelledAt);
+            } else {
+                if (!plan || plan.state === 'none' || plan.state === 'pending') return '';
+                if (!plan.startedAt) return '';
+                // a trial does not renew, it runs out
+                over = true;
+                ends = plan.devGrant ? null : plan.expiresAt;
             }
-            if (!plan || plan.state === 'none' || plan.state === 'pending') return '';
-            if (!plan.startedAt) return '';
-            if (plan.devGrant) return whenText(plan.startedAt) + ' \u2013 \u221e';
-            if (!plan.expiresAt) return whenText(plan.startedAt) + ' \u2013 \u221e';
-            return useRange(plan.startedAt, plan.expiresAt);
+            if (!ends) return t('Runs until cancelled');
+            return t(over ? 'Ends' : 'Renews') + ' ' + whenText(ends);
         }
 
         // What is worth saying beside the name, now that the dates say when it
@@ -5153,7 +5169,11 @@
                 //
                 // What the dates cannot say stays: that this one stops at the
                 // end rather than carrying on.
-                if (sub.cancelledAt) box.appendChild(tag(t('Does not renew'), 'mid'));
+                // where the line beside it already reads "Ends 20 Dec 2026",
+                // a chip saying it does not renew is the same news twice
+                if (sub.cancelledAt && !sub.termEndsAt) {
+                    box.appendChild(tag(t('Does not renew'), 'mid'));
+                }
                 if (!sub.paid) {
                     // agreed but not paid for is a real state, and the people
                     // inside the company are the ones who can do something
