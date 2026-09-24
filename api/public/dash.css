@@ -3631,96 +3631,49 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
    They were a radius and two paddings apart, which is enough for two cards
    stacked an inch from each other to read as two different components that
    happened to end up on the same screen. */
-.use-allow {
-    margin-bottom: 1.6rem;
-    padding: 1.1rem 1.25rem 1.15rem;
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    background: var(--surface);
+/* What a metric is allowed, at the foot of the card that draws it.
+   
+   It was a block of its own below the chart, holding every allowance
+   together: a meter for screenings a hand's width from the chart of
+   screenings, and a meter for seats -- a different thing being measured --
+   standing beside it as though the two belonged together. One metric, one
+   card, and the allowance is part of the card rather than a second one. */
+.use-meter {
+    margin-top: 1.1rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--line-2);
 }
-/* and the same header line: a name on the left, a fact on the right, in the
-   weight and colour the chart card uses for its own */
-.use-allow-h {
+.use-head-flat .use-meter { margin-top: 0.85rem; padding-top: 0; border-top: 0; }
+.use-meter-r {
     display: flex;
     align-items: baseline;
-    justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 1rem;
-    font-size: 0.8rem;
-    font-weight: 600;
-    letter-spacing: 0.01em;
-    color: var(--ink-4);
-}
-.use-allow-p { color: var(--ink-2); font-weight: 600; }
-/* One line per allowance: the name at the left, then the figures and a meter
-   of a fixed width closing the right edge.
-   
-   It ran the full width of the card underneath the words for a while, which
-   for a hundred and nine against ten thousand is a six pixel rail with a stub
-   at one end and eight hundred pixels of nothing after it. Two of those, one
-   under each row, read as underlines rather than as meters, and made a card
-   holding two facts three inches tall. Bounded, the meter is something to
-   look at; unbounded it was a rule. */
-.use-allow-b {
-    display: grid;
-    /* wide enough that a tenth and a two-hundredth do not round to the same
-       stub: at nine rems they both came out fourteen pixels, which is the
-       shortest a bar is allowed to be, and two very different numbers looked
-       like the same one */
-    grid-template-columns: minmax(0, 1fr) max-content max-content minmax(7rem, 14rem);
-    align-items: center;
-    gap: 0.75rem 0.85rem;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-bottom: 0.55rem;
     font-size: 0.82rem;
 }
-.use-allow-r { display: contents; }
-.use-allow-n { color: var(--ink-3); }
-/* where the period ends up if the rest of it goes like the part that has */
-.use-allow-w {
-    margin: 0.9rem 0 0;
-    font-size: 0.8rem;
-    color: var(--ink-4);
-}
-.use-allow-w.is-over { color: var(--risk-mid); font-weight: 600; }
-.use-allow-w + .use-allow-more { margin-top: 0.45rem; }
-
-/* where the half of a plan that is not a number lives */
-.use-allow-more {
-    display: inline-block;
-    margin-top: 1rem;
-    font-size: 0.8rem;
-    color: var(--link);
-    text-decoration: none;
-}
-.use-allow-more:hover { text-decoration: underline; }
-/* used, then what it is out of. right-aligned against the slash so a hundred
-   and nine and a one sit over each other rather than over their own labels */
-.use-allow-u {
+/* how often the allowance comes back, beside the allowance it belongs to */
+.use-meter-p { margin-left: 0.4rem; color: var(--ink-4); font-size: 0.78rem; font-weight: 400; }
+.use-meter-v {
     color: var(--ink);
     font-weight: 600;
     font-variant-numeric: tabular-nums;
 }
-.use-allow-o { color: var(--ink-4); font-variant-numeric: tabular-nums; }
-.use-allow-o.is-word { grid-column: 2 / 4; justify-self: start; color: var(--ink-3); }
-/* what is left, at the end of the bar it belongs to */
-/* beside the name rather than in a column of its own: at four fifths it is a
-   remark about that row, and a fifth column standing empty on every other row
-   is a column of nothing */
-.use-allow-l {
-    margin-left: 0.5rem;
-    color: var(--ink-4);
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-}
-.use-allow-l::before { content: '\00b7'; margin-right: 0.5rem; color: var(--ink-4); }
-.use-allow-l.is-low { color: var(--risk-mid); }
-.use-allow-l.is-out { color: var(--risk-high); font-weight: 600; }
-.use-allow-t {
+.use-meter-l { color: var(--ink-4); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.use-meter-l::before { content: '\00b7'; margin-right: 0.5rem; color: var(--ink-4); }
+.use-meter-l.is-low { color: var(--risk-mid); }
+.use-meter-l.is-out { color: var(--risk-high); font-weight: 600; }
+
+/* the meter runs the width of the card, because it belongs to the chart above
+   it rather than sitting in a row of columns beside other meters */
+.use-meter-t {
+    display: block;
     height: 7px;
     border-radius: 999px;
     background: var(--line-2);
     overflow: hidden;
 }
-.use-allow-f {
+.use-meter-f {
     display: block;
     height: 100%;
     /* a bar that exists is at least as long as it is round, or it is a dot */
@@ -3728,33 +3681,32 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     border-radius: 999px;
     background: var(--link);
 }
-/* how often the row's allowance comes back, beside the thing it is about */
-.use-allow-p2 { margin-left: 0.4rem; color: var(--ink-4); font-size: 0.78rem; }
 /* near the edge is worth seeing before it is reached, and reaching it is the
    moment screening stops rather than a bill growing */
-.use-allow-f.is-near { background: var(--risk-mid); }
-.use-allow-f.is-full { background: var(--risk-high); }
+.use-meter-f.is-near { background: var(--risk-mid); }
+.use-meter-f.is-full { background: var(--risk-high); }
+
+/* where the period ends up if the rest of it goes like the part that has */
+.use-meter-w { margin: 0.7rem 0 0; font-size: 0.8rem; color: var(--ink-4); }
+.use-meter-w.is-over { color: var(--risk-mid); font-weight: 600; }
+.use-meter-n { margin: 0.7rem 0 0; font-size: 0.8rem; color: var(--ink-4); }
+
+/* a metric with no shape over time is the meter and its name, nothing else */
+.use-head-flat { padding-bottom: 1.15rem; }
+
+/* where the half of a plan that is not a number lives */
+.use-allow-more {
+    display: inline-block;
+    margin: -0.7rem 0 1.6rem;
+    font-size: 0.8rem;
+    color: var(--link);
+    text-decoration: none;
+}
+.use-allow-more:hover { text-decoration: underline; }
 
 @media (max-width: 720px) {
-    /* the bar goes under the numbers: at this width it would be a few
-       millimetres wide and say nothing */
-    .use-allow-r { grid-template-columns: minmax(0, 1fr) auto; gap: 0.3rem 0.8rem; }
-    /* Four columns will not fit across a phone, so the meter goes under the
-       line it belongs to and takes the width. Each row becomes its own grid
-       again for that: one grid across all of them cannot give some cells a
-       second line and not others. */
-    .use-allow { padding: 0.95rem 1rem 1rem; }
-    .use-allow-b { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.9rem; }
-    .use-allow-r {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) max-content max-content;
-        align-items: baseline;
-        gap: 0.4rem 0.5rem;
-    }
-    .use-allow-n,
-    .use-allow-u,
-    .use-allow-o { grid-row: 1; }
-    .use-allow-t { grid-row: 2; grid-column: 1 / -1; }
+    .use-meter-r { flex-wrap: wrap; }
+    .use-meter-v { margin-left: auto; }
 }
 
 /* Said to a screen reader and to nobody else. Not display:none, which is not
@@ -4014,7 +3966,6 @@ a.use-cell:focus-visible { outline: 2px solid var(--link); outline-offset: -2px;
 
 /* a row with no limit has no bar. an empty track reads as one that failed to
    load rather than one with no end. */
-.use-allow-t.is-none { background: transparent; }
 
 @media (max-width: 720px) {
     .use-big { font-size: 1.85rem; }

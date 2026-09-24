@@ -4696,7 +4696,7 @@
     // identical cards leave the reader to decide which one matters, and the
     // answer is always the same one. So it is said once, large, with the chart
     // under it, and everything else is smaller than it.
-    function useHeadline(s, prev, period, cmp, fresh) {
+    function useHeadline(s, prev, period, cmp, fresh, meter) {
         var box = document.createElement('section');
         box.className = 'use-head';
 
@@ -4782,6 +4782,99 @@
             box.appendChild(useChart(s.days || [], null));
             box.appendChild(useLegend(false));
         }
+
+        // What this metric is allowed, at the foot of the card that draws it.
+        //
+        // It was a block of its own underneath, holding every allowance
+        // together: a meter for screenings a hand's width from the chart of
+        // screenings, and a meter for seats which has no chart at all. One
+        // metric, one card -- the number, its shape over the period, and how
+        // much of it is left -- and seats gets a card of its own, because it
+        // is a different thing being measured.
+        if (meter) box.appendChild(useMeter(meter));
+        return box;
+    }
+
+    // A metric against what the plan allows: how much, out of how much, how
+    // far along, and where the rest of the period is heading.
+    function useMeter(m) {
+        var box = document.createElement('div');
+        box.className = 'use-meter';
+
+        var line = document.createElement('div');
+        line.className = 'use-meter-r';
+
+        // No name on this row. The card is already called Screenings, and
+        // printing it again a finger's width below is the same word twice for
+        // the price of a line.
+        var pct = m.of > 0 ? Math.min(100, Math.round((m.used / m.of) * 100)) : 0;
+        var fig = document.createElement('span');
+        fig.className = 'use-meter-v';
+        fig.textContent = useNum(m.used) + ' / ' + useNum(m.of);
+        // how often the allowance comes back belongs to the allowance, not to
+        // the metric: ten thousand a month, of which forty-six are gone
+        if (m.per) {
+            var per = document.createElement('span');
+            per.className = 'use-meter-p';
+            per.textContent = t(m.per);
+            fig.appendChild(per);
+        }
+        line.appendChild(fig);
+
+        var rest = document.createElement('span');
+        rest.className = 'use-meter-l';
+        if (m.used >= m.of) {
+            rest.textContent = t('none left');
+            rest.classList.add('is-out');
+        } else {
+            rest.textContent = fill('{n} left', { n: useNum(m.of - m.used) });
+            if (pct >= 80) rest.classList.add('is-low');
+        }
+        line.appendChild(rest);
+        box.appendChild(line);
+
+        var track = document.createElement('span');
+        track.className = 'use-meter-t';
+        if (m.used > 0) {
+            var fillEl = document.createElement('span');
+            fillEl.className = 'use-meter-f';
+            fillEl.style.width = pct + '%';
+            if (pct >= 100) fillEl.classList.add('is-full');
+            else if (pct >= 80) fillEl.classList.add('is-near');
+            track.appendChild(fillEl);
+        }
+        box.appendChild(track);
+
+        if (m.track) {
+            var going = document.createElement('p');
+            going.className = 'use-meter-w' + (m.track.over ? ' is-over' : '');
+            going.textContent = fill('At this rate, about {n} by {when}.',
+                { n: useNum(m.track.n), when: m.track.when });
+            box.appendChild(going);
+        }
+        if (m.note) {
+            var why = document.createElement('p');
+            why.className = 'use-meter-n';
+            why.textContent = t(m.note);
+            box.appendChild(why);
+        }
+        return box;
+    }
+
+    // A metric with no shape over time. Seats do not rise and fall through a
+    // month; they are a number that is true today, so the card is the meter
+    // and nothing else rather than a chart of a flat line.
+    function useMetric(m) {
+        var box = document.createElement('section');
+        box.className = 'use-head use-head-flat';
+        var top = document.createElement('div');
+        top.className = 'use-head-t';
+        var lab = document.createElement('span');
+        lab.className = 'use-head-k';
+        lab.textContent = t(m.title);
+        top.appendChild(lab);
+        box.appendChild(top);
+        box.appendChild(useMeter(m));
         return box;
     }
 
@@ -4982,160 +5075,6 @@
             // the last day of the period, which is the day before it ends
             when: whenText(new Date(to - 1).toISOString()),
         };
-    }
-
-    function useAllowance(rows, head, agreed, warn, track) {
-        var box = document.createElement('section');
-        box.className = 'use-allow';
-        var top = document.createElement('div');
-        top.className = 'use-allow-h';
-        var lab = document.createElement('span');
-        // "What this plan includes" was a promise this block does not keep. A
-        // plan includes the lists it screens against, monitoring, the evidence
-        // file, seats, an answer in under a second -- a page of things. What is
-        // here is the two of them that are counted, so it says so, and the line
-        // underneath goes to the rest.
-        //
-        // The period stays on the row rather than the heading, because
-        // screenings reset every month and seats do not: you are not given ten
-        // fresh colleagues in October.
-        lab.textContent = t('Allowances');
-        top.appendChild(lab);
-        var right = document.createElement('span');
-        right.className = 'use-allow-p';
-        right.textContent = head;
-        if (agreed) {
-            // a number somebody shook hands on, not the one on the pricing page
-            right.appendChild(tag(t('Agreed')));
-        }
-        top.appendChild(right);
-        box.appendChild(top);
-
-        if (warn) {
-            var says = document.createElement('p');
-            says.className = 'use-verdict' + (warn.over ? ' is-over' : ' is-near');
-            says.textContent = t(warn.says);
-            box.appendChild(says);
-        }
-
-        // One table, not a row of separate ones.
-        //
-        // Every row used to be its own grid, so each of them sized its own
-        // columns to its own contents: "109 / 10,000" is wider than "1 / 10",
-        // so the two bars began fifty pixels apart and ran to different
-        // lengths. Two meters that cannot be compared at a glance are two
-        // meters doing half their job. The rows are cells of one grid now,
-        // which is what makes a column a column.
-        var table = document.createElement('div');
-        table.className = 'use-allow-b';
-
-        rows.forEach(function (r) {
-            var line = document.createElement('div');
-            line.className = 'use-allow-r';
-
-            var name = document.createElement('span');
-            name.className = 'use-allow-n';
-            name.textContent = t(r.label);
-            // how often it comes back, for the rows where that is a question.
-            // somebody who has just paid for a quarter up front has every
-            // reason to read ten thousand as the quarter's allowance, and
-            // nothing else on this page would correct them.
-            if (r.per) {
-                var per = document.createElement('span');
-                per.className = 'use-allow-p2';
-                per.textContent = t(r.per);
-                name.appendChild(per);
-            }
-            line.appendChild(name);
-
-            // used and included are two columns rather than one string, so the
-            // figures stack under each other on the digit rather than on
-            // whichever of them happened to be longer
-            var used = document.createElement('span');
-            used.className = 'use-allow-u';
-            var of = document.createElement('span');
-            of.className = 'use-allow-o';
-            if (r.unmetered) {
-                used.textContent = '';
-                of.textContent = t('Unmetered');
-                of.classList.add('is-word');
-            } else {
-                used.textContent = useNum(r.used);
-                of.textContent = '/ ' + useNum(r.of);
-            }
-            line.appendChild(used);
-            line.appendChild(of);
-
-            var track = document.createElement('span');
-            track.className = 'use-allow-t';
-            var pct = 0;
-            if (r.unmetered) {
-                // no bar at all. an empty track beside "unmetered" reads as a
-                // meter that failed to load, not as one with no end
-                track.classList.add('is-none');
-            } else {
-                pct = r.of > 0 ? Math.min(100, Math.round((r.used / r.of) * 100)) : 0;
-                // nothing used draws nothing. a hundred and nine against ten
-                // thousand is one percent of six hundred pixels, which is a
-                // six pixel circle floating at the left of an empty track: it
-                // reads as a mark that should not be there rather than as a
-                // bar with a little in it, so a bar that exists is at least
-                // long enough to look like one.
-                if (r.used > 0) {
-                    var fill = document.createElement('span');
-                    fill.className = 'use-allow-f';
-                    fill.style.width = pct + '%';
-                    if (pct >= 100) fill.classList.add('is-full');
-                    else if (pct >= 80) fill.classList.add('is-near');
-                    track.appendChild(fill);
-                }
-            }
-            line.appendChild(track);
-
-            // what is left, which is the question the bar is being looked at
-            // to answer. a percentage would need working back into a number
-            // before anybody could act on it.
-            // How much is left, only once that is news. At thirty-six of ten
-            // thousand the bar and the ratio have already said it, and a
-            // third number saying the same thing in a different arrangement
-            // is the kind of completeness that makes a panel look busy rather
-            // than informative. Near the limit it is the most useful line on
-            // the screen, so that is when it appears.
-            if (!r.unmetered && r.of > 0 && pct >= 80) {
-                var rest = document.createElement('span');
-                var over = r.used >= r.of;
-                rest.className = 'use-allow-l' + (over ? ' is-out' : ' is-low');
-                rest.textContent = over
-                    ? t('none left')
-                    : fill('{n} left', { n: useNum(r.of - r.used) });
-                // beside the name, inside it, so the row keeps its four columns
-                // whether or not this is there to say
-                name.appendChild(rest);
-            }
-
-            table.appendChild(line);
-        });
-        box.appendChild(table);
-
-        if (track) {
-            var going = document.createElement('p');
-            going.className = 'use-allow-w' + (track.over ? ' is-over' : '');
-            going.textContent = fill('At this rate, about {n} by {when}.',
-                { n: useNum(track.n), when: track.when });
-            box.appendChild(going);
-        }
-
-        // Everything else a plan carries -- which lists, monitoring, the
-        // evidence file, support -- is not a number and cannot be metered, so
-        // it is not here. It is somewhere, though, and a block showing half of
-        // something should say where the other half is.
-        var rest = document.createElement('a');
-        rest.className = 'use-allow-more';
-        rest.href = '/pricing';
-        rest.textContent = t('Everything else this plan includes');
-        box.appendChild(rest);
-
-        return box;
     }
 
     function useSection(id, title, ico, hint) {
@@ -5429,9 +5368,6 @@
             // it ends up saying nothing has gone past its limit while one of
             // them sits full and red two inches underneath.
             var allow = sandbox ? { rows: [] } : allowanceRows(sub, plan, s, shape);
-            var full = allow.rows.filter(function (r) {
-                return !r.unmetered && r.of > 0 && r.used >= r.of;
-            });
 
             // What a plan allows belongs to the period that plan is charged
             // for. Over a rolling window, or a cycle that has already been
@@ -5440,7 +5376,6 @@
             // not have ten thousand screenings all month. Used against included
             // over those windows is two numbers that never stood side by side.
             var onPlan = Boolean(out.period && out.period.current && !out.period.days);
-
 
             // Only where there is a window behind this one to lay underneath.
             // The server sends those days wherever it sends a comparison at
@@ -5466,46 +5401,59 @@
             // eleven times that they have not started yet.
             var fresh = !shape.everScreened;
 
-            body.appendChild(useHeadline(s, out.previous, out.period, cmp, fresh));
+            // One metric, one card. The metered rows used to sit together in a
+            // block of their own below the chart, which put a meter for
+            // screenings a hand's width from the chart of screenings, and a
+            // meter for seats -- a different thing entirely -- beside it as
+            // though they belonged together.
+            var metered = onPlan && !fresh
+                ? allow.rows.filter(function (r) { return !r.unmetered && r.of > 0; })
+                : [];
+            var pick = function (label) {
+                for (var i = 0; i < metered.length; i++) {
+                    if (metered[i].label === label) return metered[i];
+                }
+                return null;
+            };
 
-            // Only when there is something to say.
-            //
-            // A line reading "nothing has gone past its limit" is true almost
-            // every day, and a sentence that is almost always the same is one
-            // nobody reads by the third visit -- while it sits in the first
-            // place on the screen anybody looks. What is under it already shows
-            // how full each allowance is.
-            //
-            // The other direction is the most important sentence on the page,
-            // because reaching a limit stops screening rather than growing a
-            // bill, so it says so before it happens as well as after.
-            var near = onPlan ? allow.rows.filter(function (r) {
-                return !r.unmetered && r.of > 0 && r.used < r.of && r.used / r.of >= 0.8;
-            }) : [];
-            // The warning belongs inside the block it is about, not above the
-            // chart: a line that appears for one period and not another moves
-            // everything under it, and what moved was the chart somebody was
-            // in the middle of reading.
-            var warn = null;
-            if (onPlan && full.length) {
-                warn = { over: true, says: full.length === 1
-                    ? 'One thing has reached its limit.'
-                    : 'Some things have reached their limit.' };
-            } else if (onPlan && near.length) {
-                warn = { over: false, says: near.length === 1
-                    ? 'One thing is close to its limit.'
-                    : 'Some things are close to their limit.' };
+            var runs = pick('Screenings') || pick('Live checks');
+            body.appendChild(useHeadline(s, out.previous, out.period, cmp, fresh,
+                runs ? {
+                    label: runs.label,
+                    per: runs.per,
+                    used: runs.used,
+                    of: runs.of,
+                    track: onTrack(out.period, metered)
+                } : null));
+
+            // and every other metered thing gets its own, in the order the
+            // plan lists them
+            metered.forEach(function (r) {
+                if (r === runs) return;
+                body.appendChild(useMetric({
+                    title: r.label,
+                    per: r.per,
+                    label: r.label,
+                    used: r.used,
+                    of: r.of,
+                    note: r.note
+                }));
+            });
+
+            // Everything else a plan carries -- which lists, monitoring, the
+            // evidence file, support -- is not a number and cannot be metered,
+            // so it has no card. It is somewhere, though, and a page showing
+            // the metered half should say where the other half is.
+            if (metered.length) {
+                var rest = document.createElement('a');
+                rest.className = 'use-allow-more';
+                rest.href = '/pricing';
+                rest.textContent = t('Everything else this plan includes');
+                body.appendChild(rest);
             }
 
-            // shown only when something is actually limited. a block whose
-            // every row reads "unmetered" is a heading, a plan name and no
-            // information, which is worse than the space it takes.
-            var limited = onPlan ? allow.rows.filter(function (r) { return !r.unmetered; }) : [];
-            if (limited.length) {
-                body.appendChild(useAllowance(allow.rows, allow.head, allow.agreed, warn,
-                    onTrack(out.period, limited)));
-            }
-
+            // the window before this one, which the tiles read to say whether
+            // each of them is up or down
             var was = out.previous;
             var strip = [
                 {
