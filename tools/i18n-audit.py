@@ -118,12 +118,23 @@ for f in sorted(x for x in os.listdir(PUB) if x.endswith('.js')):
     # often a single word, which the sweep below would never look at.
     lits += re.findall(r"useTile\(\s*'((?:[^'\\]|\\.)+)'", src)
     lits += re.findall(r"useSection\(\s*'[a-z-]+',\s*'((?:[^'\\]|\\.)+)'", src)
+    # a whole sentence with a number in it, translated as one key so the number
+    # can sit where a language puts it. the sweep below skips anything with
+    # braces in it, which is every one of these, so they are collected here.
+    lits += re.findall(r"\bfill\(\s*'((?:[^'\\]|\\.)+)'", src)
     CODEY = re.compile(r'^[^a-zA-Z]|[\\\[\]{}<>=()]|^https?:|\bdata-|\baria-')
     CLASSY = re.compile(r'^[a-z0-9-]+(?: [a-z0-9-]+)*$')
+    # a {name} placeholder inside a sentence is not code, it is where the number
+    # goes. without this the whole sentence looked like code and was dropped,
+    # which is a translation quietly not being asked for.
+    HOLE = re.compile(r'\{[a-z][a-z0-9]*\}')
+
     def codey(lit):
         if lit.strip() in ('Sentinelpay ·', 'Sentinelpay'):
             return True
-        if CODEY.search(lit):
+        # a leading plus is a sign, not syntax: "+{n} this period" is a
+        # sentence and was being dropped for not starting with a letter
+        if CODEY.search(HOLE.sub('x', lit).lstrip('+')):
             return True
         if lit == 'use strict':
             return True

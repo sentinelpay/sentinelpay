@@ -210,6 +210,22 @@
         return window.SentinelI18n ? window.SentinelI18n.t(s) : s;
     }
 
+    // A translated sentence with a number in it, rather than a number glued to
+    // a translated fragment.
+    //
+    // Gluing works in english and falls apart everywhere else. "{n} left" read
+    // as "4 preostalo" in croatian, where the number belongs after the word;
+    // and a sentence assembled from three separate fragments borrowed a key
+    // meaning "by" as in authorship, which in croatian is "od" -- from.
+    // The screen told a reader their period would reach 761 *from* the
+    // nineteenth. One key holds the whole sentence now, so a translator can
+    // put its parts where that language puts them.
+    function fill(key, vals) {
+        return t(key).replace(/\{(\w+)\}/g, function (all, name) {
+            return Object.prototype.hasOwnProperty.call(vals, name) ? vals[name] : all;
+        });
+    }
+
     function icon(name) {
         return '<svg class="nav-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
             'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
@@ -4493,9 +4509,10 @@
             show(true);
             // said out loud rather than only drawn, because the drawing is the
             // half a screen reader cannot use
-            say.textContent = whenText(d.day) + ', ' + useNum(d.n) + ' ' +
-                t(d.n === 1 ? 'screening' : 'screenings') +
-                (d.flagged > 0 ? ', ' + useNum(d.flagged) + ' ' + t('flagged') : '');
+            // label then number, the way the tooltip beside it reads, because
+            // "2 screenings" has three forms in croatian and this had one
+            say.textContent = whenText(d.day) + '. ' + t('Screenings') + ': ' + useNum(d.n) +
+                (d.flagged > 0 ? '. ' + t('Flagged') + ': ' + useNum(d.flagged) : '');
         };
 
         var say = document.createElement('span');
@@ -5090,7 +5107,7 @@
                 rest.className = 'use-allow-l' + (over ? ' is-out' : ' is-low');
                 rest.textContent = over
                     ? t('none left')
-                    : useNum(r.of - r.used) + ' ' + t('left');
+                    : fill('{n} left', { n: useNum(r.of - r.used) });
                 // beside the name, inside it, so the row keeps its four columns
                 // whether or not this is there to say
                 name.appendChild(rest);
@@ -5103,8 +5120,8 @@
         if (track) {
             var going = document.createElement('p');
             going.className = 'use-allow-w' + (track.over ? ' is-over' : '');
-            going.textContent = t('At this rate, about') + ' ' + useNum(track.n) +
-                ' ' + t('by') + ' ' + track.when + '.';
+            going.textContent = fill('At this rate, about {n} by {when}.',
+                { n: useNum(track.n), when: track.when });
             box.appendChild(going);
         }
 
@@ -5510,7 +5527,12 @@
                     // not counted over a window. what the window does hold is
                     // who arrived during it, which is the useful half anyway.
                     label: 'Members', value: useNum(shape.members), to: 'use-team',
-                    sub: shape.joined ? '+' + useNum(shape.joined) + ' ' + t('joined') : ''
+                    // "+1 joined" in croatian is "+1 pridruzenih", which is the
+                    // wrong case for one and the wrong case for two. the
+                    // sentence carries no noun to agree with a number now.
+                    sub: shape.joined
+                        ? fill('+{n} this period', { n: useNum(shape.joined) })
+                        : ''
                 },
                 { label: 'Projects', value: useNum(shape.projects), to: 'use-team' }
             ];
