@@ -3674,6 +3674,15 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 }
 .use-allow-r { display: contents; }
 .use-allow-n { color: var(--ink-3); }
+/* where the period ends up if the rest of it goes like the part that has */
+.use-allow-w {
+    margin: 0.9rem 0 0;
+    font-size: 0.8rem;
+    color: var(--ink-4);
+}
+.use-allow-w.is-over { color: var(--risk-mid); font-weight: 600; }
+.use-allow-w + .use-allow-more { margin-top: 0.45rem; }
+
 /* where the half of a plan that is not a number lives */
 .use-allow-more {
     display: inline-block;

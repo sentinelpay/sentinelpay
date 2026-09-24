@@ -4936,7 +4936,38 @@
     // what happened -- how many were flagged, which chains, who is in the
     // organisation -- and mixing the two means a reader cannot tell which of
     // these numbers can run out.
-    function useAllowance(rows, head, agreed, warn) {
+    // Where the period ends up if the rest of it goes like the part that has
+    // happened. Every usage page worth reading has this, because a meter that
+    // only looks backwards makes somebody do the division themselves to answer
+    // the one question they came with: will this last the month.
+    //
+    // Not on a day or two of history, where a quiet Monday and a busy Tuesday
+    // are the difference between half the allowance and twice it, and not on a
+    // period that is over, which has no rest of it to go.
+    function onTrack(period, rows) {
+        if (!period || !period.current || period.days) return null;
+        var from = new Date(period.from).getTime();
+        var to = new Date(period.to).getTime();
+        var now = Date.now();
+        var gone = now - from;
+        if (gone < 2 * 86400000 || now >= to) return null;
+
+        var meter = null;
+        rows.forEach(function (r) {
+            if (r.label === 'Screenings' && r.of > 0 && r.used > 0) meter = r;
+        });
+        if (!meter) return null;
+
+        var end = Math.round(meter.used * ((to - from) / gone));
+        return {
+            n: end,
+            over: end > meter.of,
+            // the last day of the period, which is the day before it ends
+            when: whenText(new Date(to - 1).toISOString()),
+        };
+    }
+
+    function useAllowance(rows, head, agreed, warn, track) {
         var box = document.createElement('section');
         box.className = 'use-allow';
         var top = document.createElement('div');
@@ -5068,6 +5099,14 @@
             table.appendChild(line);
         });
         box.appendChild(table);
+
+        if (track) {
+            var going = document.createElement('p');
+            going.className = 'use-allow-w' + (track.over ? ' is-over' : '');
+            going.textContent = t('At this rate, about') + ' ' + useNum(track.n) +
+                ' ' + t('by') + ' ' + track.when + '.';
+            box.appendChild(going);
+        }
 
         // Everything else a plan carries -- which lists, monitoring, the
         // evidence file, support -- is not a number and cannot be metered, so
@@ -5446,7 +5485,8 @@
             // information, which is worse than the space it takes.
             var limited = onPlan ? allow.rows.filter(function (r) { return !r.unmetered; }) : [];
             if (limited.length) {
-                body.appendChild(useAllowance(allow.rows, allow.head, allow.agreed, warn));
+                body.appendChild(useAllowance(allow.rows, allow.head, allow.agreed, warn,
+                    onTrack(out.period, limited)));
             }
 
             var was = out.previous;
