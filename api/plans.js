@@ -32,7 +32,7 @@ const PLANS = {
     starter: {
         key: 'starter',
         name: 'Starter',
-        screenings: 1000,
+        screeningsPerMonth: 1000,
         addresses: 100,
         seats: 3,
         // what the term costs in total, not per month: it is what leaves the
@@ -43,7 +43,7 @@ const PLANS = {
     growth: {
         key: 'growth',
         name: 'Growth',
-        screenings: 10000,
+        screeningsPerMonth: 10000,
         addresses: 2500,
         seats: 10,
         price: { quarterly: 119700, yearly: 398400 },
@@ -52,7 +52,7 @@ const PLANS = {
     enterprise: {
         key: 'enterprise',
         name: 'Enterprise',
-        screenings: 50000,
+        screeningsPerMonth: 50000,
         addresses: 25000,
         seats: 25,
         price: { quarterly: 447000, yearly: 1488000 },
@@ -69,6 +69,29 @@ function plan(key) {
 
 function term(key) {
     return TERMS[String(key || '').toLowerCase()] || null;
+}
+
+// What a plan allows in one period of a given term.
+//
+// The catalogue holds a monthly rate because that is the number a buyer
+// compares between us and anybody else. A period is a term, though -- a
+// quarterly plan is invoiced for three months and allowed three months of
+// screening in one go -- so the allowance for a period is the rate times the
+// term. Per-scan has no term and no allowance to run out of.
+//
+// Seats and addresses are not multiplied. Ten seats is ten seats whether the
+// invoice covers three months or twelve; they are a standing limit rather than
+// something spent and refilled.
+function included(planKey, termKey) {
+    const p = plan(planKey);
+    if (!p) return null;
+    const t = term(termKey);
+    const span = t && t.termMonths ? t.termMonths : 1;
+    return {
+        screenings: t && t.metered ? null : p.screeningsPerMonth * span,
+        addresses: p.addresses,
+        seats: p.seats,
+    };
 }
 
 // What this plan on this term costs, in cents, or null when there is no list
@@ -101,5 +124,5 @@ function catalogue() {
 
 module.exports = {
     CURRENCY, PLANS, TERMS,
-    plan, term, listPrice, isPlan, isTerm, catalogue,
+    plan, term, included, listPrice, isPlan, isTerm, catalogue,
 };

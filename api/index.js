@@ -2190,12 +2190,17 @@ app.get('/v1/orgs/:id/projects', async (req, res) => {
 // their own company's work, and a viewer who cannot see how much was screened
 // cannot check the number they are being asked about.
 async function usageFor(req, mine) {
-    // What a period is depends on what was bought. A subscription's periods
-    // are months from the day it started, and that row is the truth: the trial
-    // is only the anchor for an organisation that has not bought anything yet.
+    // What a period is depends on what was bought. A subscription's periods run
+    // from the day it started and are as long as its term, and that row is the
+    // truth: the trial is only the anchor for an organisation that has not
+    // bought anything yet.
     const [sub, plan] = await Promise.all([billing.get(mine.id), trial.get(mine.id)]);
     return usage.forOrg(mine.id, {
         anchor: (sub && sub.startedAt) || plan.startedAt || mine.createdAt,
+        // a quarterly plan is invoiced for three months and allowed a quarter
+        // of screening, so the window counted here is the window billed. with
+        // no plan there is no term, and a month is the honest default.
+        span: (sub && sub.termMonths) || 1,
         // a rolling window cannot begin before the organisation did
         birth: mine.createdAt,
         period: String(req.query.period || ''),

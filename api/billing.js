@@ -127,6 +127,9 @@ function shape(row) {
         plan: row.plan,
         planName: p ? p.name : row.plan,
         term: row.term,
+        // how long a period of this subscription is, which is how long the
+        // term is: the window billed and the window counted are one window
+        termMonths: (t && t.termMonths) || 1,
         metered: Boolean(t && t.metered),
         priceCents: row.price_cents === null ? null : Number(row.price_cents),
         currency: row.currency,
@@ -159,10 +162,14 @@ function pick(own, listed) {
 
 function allowance(row, p) {
     if (!p && !hasOverride(row)) return null;
+    // what the catalogue allows for one period of this term, which is the
+    // window this subscription is invoiced for. an agreed number on the row is
+    // already a period's worth and is taken as written.
+    const listed = p ? plans.included(row.plan, row.term) : null;
     return {
-        screenings: pick(row.included_screenings, p && p.screenings),
-        addresses: pick(row.included_addresses, p && p.addresses),
-        seats: pick(row.included_seats, p && p.seats),
+        screenings: pick(row.included_screenings, listed && listed.screenings),
+        addresses: pick(row.included_addresses, listed && listed.addresses),
+        seats: pick(row.included_seats, listed && listed.seats),
     };
 }
 
@@ -245,7 +252,10 @@ async function freshen(row) {
         termEnds = edge.toISOString();
     }
 
-    const next = stale ? months.periodAround(row.period_start, now) : null;
+    // a period is the term: a quarterly plan is invoiced for three months and
+    // allowed a quarter of screening, and those are the same three months
+    const span = (term && term.termMonths) || 1;
+    const next = stale ? months.periodAround(row.period_start, now, span) : null;
 
     try {
         const out = await db.query(
@@ -314,7 +324,7 @@ async function start(orgId, userId, input) {
     // agreed rather than the day we got round to typing it in.
     const now = startedOn(input && input.started);
     const termEnds = term.termMonths ? months.addMonths(now, term.termMonths) : null;
-    const period = months.periodAround(now, Date.now());
+    const period = months.periodAround(now, Date.now(), term.termMonths || 1);
 
     try {
         const live = await db.query(

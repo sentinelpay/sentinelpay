@@ -107,10 +107,31 @@ test('nothing outside the catalogue is a plan or a term', () => {
 });
 
 test('included allowances are the ones on the cards', () => {
-    assert.equal(plans.plan('starter').screenings, 1000);
+    // the catalogue holds a monthly rate, because that is the number a buyer
+    // compares between us and anybody else
+    assert.equal(plans.plan('starter').screeningsPerMonth, 1000);
     assert.equal(plans.plan('starter').seats, 3);
-    assert.equal(plans.plan('growth').screenings, 10000);
+    assert.equal(plans.plan('growth').screeningsPerMonth, 10000);
     assert.equal(plans.plan('growth').seats, 10);
-    assert.equal(plans.plan('enterprise').screenings, 50000);
+    assert.equal(plans.plan('enterprise').screeningsPerMonth, 50000);
     assert.equal(plans.plan('enterprise').seats, 25);
+});
+
+test('a period allows the term, not the month', () => {
+    // a quarterly plan is invoiced for three months and allowed three months
+    // of screening in one go, so the window counted is the window billed
+    assert.equal(plans.included('growth', 'quarterly').screenings, 30000);
+    assert.equal(plans.included('growth', 'yearly').screenings, 120000);
+    assert.equal(plans.included('starter', 'quarterly').screenings, 3000);
+    assert.equal(plans.included('enterprise', 'yearly').screenings, 600000);
+
+    // seats and addresses are a standing limit rather than something spent
+    // and refilled: ten seats is ten seats whichever term pays for them
+    assert.equal(plans.included('growth', 'quarterly').seats, 10);
+    assert.equal(plans.included('growth', 'yearly').seats, 10);
+    assert.equal(plans.included('growth', 'quarterly').addresses, 2500);
+
+    // per-scan has no term and nothing to run out of
+    assert.equal(plans.included('growth', 'scan').screenings, null);
+    assert.equal(plans.included('nope', 'quarterly'), null);
 });

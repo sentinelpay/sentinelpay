@@ -39,23 +39,33 @@ const atUTC = months.atUTC;
 const addMonths = months.addMonths;
 
 // Every cycle boundary from the anchor, newest first. `back` of them.
-function cycles(anchorAt, now, back) {
+//
+// `span` is the length of one, in months, and it is the term: a quarterly plan
+// is invoiced for three months and allowed a quarter's worth of screening, so
+// the window this page counts is the window the invoice covers. Without a plan
+// it is a month, because there is no term to take a length from.
+function cycles(anchorAt, now, back, span) {
+    const step = Math.max(1, Number(span) || 1);
     // the day it began, not the minute: a cycle is whole days, or the date it
     // starts on is also the date the one before it appears to end on
     const anchor = months.startOfDay(anchorAt || Date.now());
     const today = new Date(now || Date.now());
-    const day = anchor.getUTCDate();
 
-    // the most recent boundary at or before today: this month's anchor day if
-    // it has already been and gone, otherwise last month's
-    const lastOfThis = atUTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0).getUTCDate();
-    let start = atUTC(today.getUTCFullYear(), today.getUTCMonth(), Math.min(day, lastOfThis));
-    if (start.getTime() > today.getTime()) start = addMonths(start, -1);
+    // walk the boundaries from the anchor rather than guessing one: with a span
+    // of three the cycle a day falls in depends on where the anchor is, not
+    // just on which month it is
+    let start = anchor;
+    let guard = 0;
+    while (guard++ < 2400) {
+        const to = addMonths(start, step);
+        if (today.getTime() < to.getTime()) break;
+        start = to;
+    }
 
     const out = [];
     for (let i = 0; i < Math.max(1, back || CYCLES_BACK); i++) {
-        const from = addMonths(start, -i);
-        const to = addMonths(from, 1);
+        const from = addMonths(start, -i * step);
+        const to = addMonths(from, step);
         // a cycle that begins before the anchor is a month this organisation
         // did not exist for, and an empty window nobody asked about
         if (to.getTime() <= anchor.getTime()) break;
@@ -86,9 +96,9 @@ function rolling(days, now, birth) {
     return { key: 'd' + days, from: from.toISOString(), to: end.toISOString(), days };
 }
 
-function periods(anchorAt, now, birth) {
+function periods(anchorAt, now, birth, span) {
     const when = now || Date.now();
-    return cycles(anchorAt, when, CYCLES_BACK)
+    return cycles(anchorAt, when, CYCLES_BACK, span)
         .concat([rolling(30, when, birth), rolling(90, when, birth)]);
 }
 
@@ -396,7 +406,7 @@ async function marksIn(orgId, from, to) {
 // The whole screen's worth, for one organisation and one period.
 async function forOrg(orgId, opts) {
     const o = opts || {};
-    const list = periods(o.anchor, Date.now(), o.birth);
+    const list = periods(o.anchor, Date.now(), o.birth, o.span);
     const period = pickCycle(list, o.period);
     const sandbox = o.scope === 'sandbox';
     const zone = safeZone(o.zone);

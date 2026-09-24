@@ -4174,21 +4174,17 @@
         return term;
     }
 
-    // The month, called a month.
+    // The billing cycle, called the billing cycle.
     //
-    // It used to be called the current billing cycle, which it is not. What is
-    // billed is the term: a quarter paid up front, or a year. The allowance is
-    // monthly -- ten thousand screenings a month, as the pricing page says --
-    // so the window this page counts over is a month, and naming it after the
-    // invoice put two different spans of time under one name. One of them said
-    // September to December in the band and the other said September to
-    // October over the chart, and a reader was right to think one was wrong.
-    //
-    // When the plan ends is on the band, where it belongs. This is the window
-    // being counted, and it is a month.
+    // It is one again. For a while the allowance was monthly while the invoice
+    // covered a quarter, so this window and the billed window were different
+    // lengths and could not share a name: the band said September to December
+    // and the card said September to October, and a reader was right to think
+    // one of them was wrong. The allowance is now the term's, so the window
+    // counted here is the window paid for, and there is one thing to name.
     function usePeriodLabel(p) {
         if (p.days) return useWindowWord(p.days);
-        if (p.current) return t('This month');
+        if (p.current) return t('Current billing cycle');
         return useSpan(p);
     }
 
@@ -4836,6 +4832,13 @@
         box.appendChild(track);
 
         return box;
+    }
+
+    // How often an allowance comes back, in the words of the term that buys it.
+    function termWord(term) {
+        if (term === 'yearly') return 'a year';
+        if (term === 'quarterly') return 'a quarter';
+        return 'a month';
     }
 
     function useLayer(cls, chart, legend) {
@@ -5600,7 +5603,15 @@
             if (sub && sub.included) {
                 var rows = [];
                 if (sub.included.screenings !== null) {
-                    rows.push({ label: 'Screenings', per: 'a month', used: s.total, of: sub.included.screenings });
+                    // the words beside the allowance are the term that buys it:
+                    // three months of screening bought in one go is a quarter
+                    // of screening, and saying a month there would be wrong
+                    rows.push({
+                        label: 'Screenings',
+                        per: termWord(sub.term),
+                        used: s.total,
+                        of: sub.included.screenings
+                    });
                 }
                 if (sub.included.seats !== null) {
                     rows.push({ label: 'Seats', used: shape.members, of: sub.included.seats });

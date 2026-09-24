@@ -3312,6 +3312,15 @@ html.is-theming .btn {
     gap: 0.6rem;
 }
 .use-bar-l { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+/* The two pickers on this bar are the size the pickers on the projects bar
+   are, and the size the Docs chip beside them on the team bar is: one toolbar
+   height across the product, rather than a different one per screen. */
+.use-bar-l .pick { flex: none; }
+.use-bar-l .pick-btn {
+    padding: 0.4rem 0.35rem 0.4rem 0.55rem;
+    gap: 0.15rem;
+    font-size: 0.8rem;
+}
 .use-bar-r {
     margin-left: auto;
     display: flex;

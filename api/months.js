@@ -39,23 +39,30 @@ function startOfDay(date) {
     return atUTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
 }
 
-// The month-long window, anchored on `anchor`, that `now` falls inside.
-function periodAround(anchor, now) {
+// The window, anchored on `anchor`, that `now` falls inside.
+//
+// `span` is how many months long it is, and it is the term: a quarterly plan is
+// billed for three months and allowed a quarter's worth of screening, so the
+// window that resets the allowance and the window that is invoiced are the same
+// window. They were a month apart for a while, which meant the page counted one
+// thing and the bill covered another.
+function periodAround(anchor, now, span) {
+    const step = Math.max(1, Number(span) || 1);
     const at = startOfDay(anchor);
     const when = new Date(now || Date.now());
     if (when.getTime() < at.getTime()) {
-        return { from: at, to: addMonths(at, 1) };
+        return { from: at, to: addMonths(at, step) };
     }
-    // walk forward in months rather than guessing, so clamping never puts the
-    // boundary on the wrong side of today
+    // walk forward rather than guessing, so clamping never puts the boundary on
+    // the wrong side of today
     let from = at;
     let guard = 0;
     while (guard++ < 2400) {
-        const to = addMonths(from, 1);
+        const to = addMonths(from, step);
         if (when.getTime() < to.getTime()) return { from, to };
         from = to;
     }
-    return { from, to: addMonths(from, 1) };
+    return { from, to: addMonths(from, step) };
 }
 
 module.exports = { atUTC, addMonths, startOfDay, periodAround };
