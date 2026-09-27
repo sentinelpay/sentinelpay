@@ -1,7 +1,20 @@
 'use strict';
 
+const path = require('path');
 const crypto = require('crypto');
 const { Pool } = require('pg');
+
+// The tools reach the database through this file and nothing else, and none of
+// them loaded the .env the server loads. So every one of them had to be handed
+// DATABASE_URL and SUBMISSIONS_KEY on the command line, which is a different
+// incantation in bash and in powershell and is how somebody ends up seeding a
+// database with no key and writing personal data in the clear.
+//
+// Loading it here covers the server and all ten tools at once. The path is
+// absolute because a tool is run from the repository root and the server from
+// api/, and dotenv looks next to the working directory. Nothing is overridden:
+// a variable already set by Railway or by a shell wins, as it must.
+require('dotenv').config({ path: path.join(__dirname, '.env'), quiet: true });
 
 const URL_RAW = process.env.DATABASE_URL || '';
 

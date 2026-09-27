@@ -120,11 +120,17 @@ async function main() {
         const anchor = (now && now.startedAt) || (t && t.started_at) || org.created_at;
         const from = (now && now.startedAt) ? 'the subscription'
             : (t && t.started_at) ? 'the trial' : 'the organisation being created';
-        const list = usage.periods(anchor);
+        // A period is as long as the term, so the list has to be asked for in
+        // the same length the page asks for. Without this the tool printed
+        // months beside a subscription whose own period line said a quarter,
+        // which is the tool disagreeing with the row it had just printed.
+        const span = (now && now.termMonths) || 1;
+        const list = usage.periods(anchor, Date.now(), null, span);
         console.log('');
         console.log('usage dates:');
         console.log('  trial state  ' + ((t && t.state) || 'none'));
         console.log('  anchored on  ' + day(anchor) + '   (' + from + ')');
+        console.log('  a period is  ' + span + (span === 1 ? ' month' : ' months'));
         list.forEach((p) => {
             const last = new Date(new Date(p.to).getTime() - 1);
             console.log('  ' + (p.current ? '> ' : '  ') + p.key.padEnd(5) +
