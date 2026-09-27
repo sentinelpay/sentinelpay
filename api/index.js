@@ -711,8 +711,18 @@ app.get(['/dashboard', '/dashboard/*splat'], async (req, res, next) => {
                     // the address wins over the cookie, and says so for the
                     // requests that follow
                     setOrgCookie(res, here.id);
-                    const state = await trial.ensure(here.id, me.userId, me.email);
-                    if (state.state === 'none') {
+                    // A paid subscription is a plan, and somebody who has one
+                    // must never be asked to choose one. The gate only asked
+                    // the trial, which starts every organisation at 'none' --
+                    // so an enterprise contract entered on our side, which is
+                    // how an agreed deal reaches the database, left the
+                    // customer bounced out of their own dashboard and onto the
+                    // pricing page.
+                    const [state, bought] = await Promise.all([
+                        trial.ensure(here.id, me.userId, me.email),
+                        billing.get(here.id),
+                    ]);
+                    if (state.state === 'none' && !bought) {
                         return res.redirect(302, '/choose-a-plan?next=' + encodeURIComponent(req.path));
                     }
                 }
@@ -756,8 +766,13 @@ app.get('/choose-a-plan', async (req, res) => {
         // without this a plan chosen here would land on whichever organisation
         // happened to be open last.
         setOrgCookie(res, mine.id);
-        const state = await trial.ensure(mine.id, me.userId, me.email);
-        if (state.state !== 'none') return res.redirect(302, want || ORGS_LIST);
+        // and the same the other way round: this page is for somebody who has
+        // no plan, so having bought one is a reason to be sent back out of it
+        const [state, bought] = await Promise.all([
+            trial.ensure(mine.id, me.userId, me.email),
+            billing.get(mine.id),
+        ]);
+        if (state.state !== 'none' || bought) return res.redirect(302, want || ORGS_LIST);
     } catch (err) {
         console.error('[plans trial]', err.message);
     }
@@ -3428,9 +3443,31 @@ app.listen(PORT, () => {
     // Work that predates organisations joins whichever one its owner belongs to,
     // once they have made it. Nothing here invents an organisation: an account
     // with none stays with none, and is asked to make one.
-    orgs.reslug()
-        .then(() => Promise.all([projects.init(), invites.init(), billing.init(), tokens.adopt(), screening.adopt(), trial.adopt()]))
-        .catch((err) => console.error('[orgs] migration at boot failed: ' + err.message));
+    // The schema, in the order the tables depend on each other.
+    //
+    // This used to start at orgs, and accounts -- the only thing that creates
+    // `users` -- was never called at boot at all: it built its tables lazily,
+    // on the first request that touched an account. Everything else keys on
+    // users or organisations, so against a database that already had them it
+    // worked, and against an empty one it could not build itself. A fresh
+    // deployment came up with seven "relation does not exist" lines and no
+    // tables, and restarting did not help, because nothing in the restart
+    // created the table the rest were waiting for.
+    //
+    // One at a time, all the way down. The six at the end were run together
+    // and deadlocked against each other: each adds columns and foreign keys to
+    // tables the others also touch, so two transactions took the same two
+    // locks in opposite orders and postgres killed one of them. Three of the
+    // six failed that way on an empty database.
+    //
+    // These are a handful of one-time DDL statements on an idle connection.
+    // Running them in a line costs milliseconds and cannot deadlock, and boot
+    // is not the place to be clever about concurrency.
+    [accounts.init, orgs.init, orgs.reslug,
+     projects.init, invites.init, billing.init,
+     tokens.adopt, screening.adopt, trial.adopt]
+        .reduce((before, step) => before.then(() => step()), Promise.resolve())
+        .catch((err) => console.error('[boot] schema at boot failed: ' + err.message));
 
     const dbState = db.status();
     if (!dbState.configured) {

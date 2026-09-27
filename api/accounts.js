@@ -1162,7 +1162,7 @@ function status() {
     };
 }
 module.exports = {
-    startSignup, resendSignup, verifySignup, exists, inspect, purge, forget, status,
+    init, startSignup, resendSignup, verifySignup, exists, inspect, purge, forget, status,
     audit, loginHold, recentAudit, noteDevice,
     startTotp, confirmTotp, disableTotp, startTotpPending, finishTotp, recoveryLeft,
     changePassword, listSessions, revokeOtherSessions, deleteAccount,

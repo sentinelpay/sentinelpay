@@ -316,35 +316,57 @@ test('an address is recognised by shape without asking anyone', () => {
     assert.strictEqual(screening.identify('not an address'), null);
 });
 
-test('a new account has no plan and no quota until a trial is activated', { skip: !db.available() }, async () => {
-    const email = 'trial-' + crypto.randomBytes(6).toString('hex') + '@primjer-firma.hr';
+// These two were written when a trial hung off the person and were never
+// updated when it moved to the organisation. They went on passing in the sense
+// that they never ran: the suite skips them without a database, and the test
+// database had no schema, because nothing at boot created one. Fixing the boot
+// order made nine skipped tests start running and these two start failing,
+// which is what a skipped test is for.
+async function aPerson(email) {
     const hash = db.blindIndex(email);
     const res = await db.query(
         `INSERT INTO users (email_hash, email_enc, name_enc, password_hash, lang)
          VALUES ($1, $2, $3, 'x', 'hr') RETURNING id`,
         [hash, db.seal('signup-email:' + hash, email), db.seal('signup-name:' + hash, 'T')]
     );
-    const userId = res.rows[0].id;
+    return res.rows[0].id;
+}
 
-    const fresh = await trial.ensure(userId);
+async function anOrg(userId, name) {
+    const res = await db.query(
+        'INSERT INTO organisations (name, slug) VALUES ($1, $2) RETURNING id',
+        [name, crypto.randomBytes(10).toString('hex')]
+    );
+    const orgId = res.rows[0].id;
+    await db.query('INSERT INTO memberships (org_id, user_id, role) VALUES ($1, $2, $3)',
+        [orgId, userId, 'owner']);
+    return orgId;
+}
+
+test('a new organisation has no plan and no quota until a trial is activated', { skip: !db.available() }, async () => {
+    const email = 'trial-' + crypto.randomBytes(6).toString('hex') + '@primjer-firma.hr';
+    const userId = await aPerson(email);
+    const orgId = await anOrg(userId, 'Primjer');
+
+    const fresh = await trial.ensure(orgId, userId, email);
     assert.strictEqual(fresh.state, 'none');
     assert.strictEqual(fresh.liveIncluded, 0, 'nothing is included before a trial exists');
 
-    const refused = await trial.spend(userId, 'live');
+    const refused = await trial.spend(orgId, 'live');
     assert.strictEqual(refused.ok, false);
     assert.strictEqual(refused.reason, 'no-trial');
 
-    const halfway = await trial.activate(userId, {
+    const halfway = await trial.activate(orgId, userId, {
         email, website: 'primjer-firma.hr', consent: true, notGambling: false,
     });
     assert.strictEqual(halfway.reason, 'both-confirmations-required');
 
-    const mismatch = await trial.activate(userId, {
+    const mismatch = await trial.activate(orgId, userId, {
         email: 'someone@gmail.com', website: 'primjer-firma.hr', consent: true, notGambling: true,
     });
     assert.strictEqual(mismatch.state, 'pending', 'a free address does not open a trial by itself');
 
-    const started = await trial.activate(userId, {
+    const started = await trial.activate(orgId, userId, {
         email, website: 'https://www.primjer-firma.hr/o-nama', consent: true, notGambling: true,
     });
     assert.strictEqual(started.state, 'starter');
@@ -352,12 +374,12 @@ test('a new account has no plan and no quota until a trial is activated', { skip
     assert.strictEqual(started.historyLeft, 1);
     assert.strictEqual(started.historyOpen, false, 'the history stays locked until the number is verified');
 
-    assert.strictEqual((await trial.spend(userId, 'live')).liveLeft, 0);
-    assert.strictEqual((await trial.spend(userId, 'live')).reason, 'out-of-checks');
-    await trial.spend(userId, 'history');
-    assert.strictEqual((await trial.spend(userId, 'history')).reason, 'history-locked');
+    assert.strictEqual((await trial.spend(orgId, 'live')).liveLeft, 0);
+    assert.strictEqual((await trial.spend(orgId, 'live')).reason, 'out-of-checks');
+    await trial.spend(orgId, 'history');
+    assert.strictEqual((await trial.spend(orgId, 'history')).reason, 'history-locked');
 
-    const verified = await trial.markPhoneVerified(userId, '+38591' + crypto.randomBytes(3).toString('hex'));
+    const verified = await trial.markPhoneVerified(orgId, '+38591' + crypto.randomBytes(3).toString('hex'));
     assert.strictEqual(verified.state, 'verified');
     assert.strictEqual(verified.historyOpen, true);
     assert.ok(verified.liveLeft > 0, 'verifying the number adds live checks');
@@ -370,20 +392,18 @@ test('one trial per company', { skip: !db.available() }, async () => {
     const ids = [];
     for (const who of ['ana', 'ivo']) {
         const email = who + '@' + host;
-        const hash = db.blindIndex(email);
-        const res = await db.query(
-            `INSERT INTO users (email_hash, email_enc, name_enc, password_hash, lang)
-             VALUES ($1, $2, $3, 'x', 'hr') RETURNING id`,
-            [hash, db.seal('signup-email:' + hash, email), db.seal('signup-name:' + hash, who)]
-        );
-        ids.push({ id: res.rows[0].id, email });
+        const userId = await aPerson(email);
+        // two people at the same company, each with their own organisation:
+        // the point of the rule is that the company gets one trial, not that
+        // one row blocks another
+        ids.push({ id: userId, orgId: await anOrg(userId, who), email });
     }
-    const first = await trial.activate(ids[0].id, {
+    const first = await trial.activate(ids[0].orgId, ids[0].id, {
         email: ids[0].email, website: host, consent: true, notGambling: true,
     });
     assert.strictEqual(first.state, 'starter');
 
-    const second = await trial.activate(ids[1].id, {
+    const second = await trial.activate(ids[1].orgId, ids[1].id, {
         email: ids[1].email, website: host, consent: true, notGambling: true,
     });
     assert.strictEqual(second.ok, false);
