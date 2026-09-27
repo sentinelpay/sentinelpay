@@ -4126,7 +4126,15 @@
     // Whole sentences rather than a number glued to a fragment: croatian needs
     // three plural forms, and a joined fragment cannot be given any of them.
     function useWindowWord(days) {
-        return days === 90 ? t('Last 90 days') : t('Last 30 days');
+        // One key each, and one for every window we offer. This knew about
+        // ninety and called everything else thirty, so when the seven day
+        // window came back to being counted in days the picker listed two
+        // rows both reading "Last 30 days" -- and the first of them was the
+        // week.
+        if (days === 90) return t('Last 90 days');
+        if (days === 30) return t('Last 30 days');
+        if (days === 7) return t('Last 7 days');
+        return fill('Last {n} days', { n: useNum(days) });
     }
 
     // The short windows, which are counted by the hour rather than by the day.
@@ -5616,15 +5624,15 @@
             // The verdict is read off the same rows the block below draws, or
             // it ends up saying nothing has gone past its limit while one of
             // them sits full and red two inches underneath.
-            var allow = sandbox ? { rows: [] } : allowanceRows(sub, plan, s, shape);
-
-            // What a plan allows belongs to the period that plan is charged
-            // for. Over a rolling window, or a cycle that has already been
-            // invoiced, the plan may have been a different one for part of it:
-            // an organisation that moved from starter to growth in august did
-            // not have ten thousand screenings all month. Used against included
-            // over those windows is two numbers that never stood side by side.
-            var onPlan = Boolean(out.period && out.period.current && !out.period.days);
+            // What a plan allows belongs to the cycle it is charged for, and
+            // the meter now says so on every window rather than only on the
+            // cycle. It used to be hidden everywhere else, on the grounds that
+            // used-against-included over a rolling window is two numbers that
+            // never stood side by side -- which was right about the numbers and
+            // fixed by counting the cycle, not by hiding the row. Hiding it
+            // also took a strip of the card's height with it, so the page was a
+            // different height on four of its six periods.
+            var allow = sandbox ? { rows: [] } : allowanceRows(sub, plan, s, shape, out.cycle);
 
             // Only where there is a window behind this one to lay underneath.
             // The server sends those days wherever it sends a comparison at
@@ -5655,7 +5663,7 @@
             // screenings a hand's width from the chart of screenings, and a
             // meter for seats -- a different thing entirely -- beside it as
             // though they belonged together.
-            var metered = onPlan && !fresh
+            var metered = !fresh
                 ? allow.rows.filter(function (r) { return !r.unmetered && r.of > 0; })
                 : [];
             var pick = function (label) {
@@ -5984,7 +5992,7 @@
         // Addresses monitored is left out of both. It is on the cards, but
         // nothing monitors an address yet, and a quota for something that does
         // not exist is not a promise, it is a decoration.
-        function allowanceRows(sub, plan, s, shape) {
+        function allowanceRows(sub, plan, s, shape, cycle) {
             if (sub && sub.included) {
                 var rows = [];
                 if (sub.included.screenings !== null) {
@@ -5994,7 +6002,12 @@
                     rows.push({
                         label: 'Screenings',
                         per: termWord(sub.term),
-                        used: s.total,
+                        // What is spent of the cycle, not of the window being
+                        // looked at. The allowance belongs to the cycle: how
+                        // much of the quarter is gone has one answer, and it is
+                        // the same answer whether somebody is looking at the
+                        // quarter or at yesterday.
+                        used: cycle ? cycle.used : s.total,
                         of: sub.included.screenings
                     });
                 }
