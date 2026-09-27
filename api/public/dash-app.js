@@ -4566,7 +4566,20 @@
 
     // At most five dates, and while there are five or fewer days, every one of
     // them. Past that the axis is cut into four equal steps from the first day
-    // to the last, so the labels stay evenly spaced whatever the window is.
+    // to the last.
+    //
+    // The steps are equal in the only sense the eye can check: the gaps along
+    // the axis. A window of eight days divides into quarters at day 1.75, 3.5
+    // and 5.25, and the label has to name a real day, so it names the nearest.
+    // Rounding the label is fine. Rounding the *position* was not, and that is
+    // what this used to do -- one `at` served as both, so the marks landed at
+    // 0, 2, 4, 5, 7 and the axis read 20, 22, 24, 25, 27: three gaps of two
+    // days and one of one, drawn three gaps wide and one gap narrow. An axis
+    // whose spacing carries no meaning still looks like it does.
+    //
+    // So the position is the exact fraction and the label is the day nearest
+    // it. Two labels can only collide if the step is under a day, which needs
+    // fewer than six days, which the branch above already has.
     var MOST_TICKS = 5;
 
     function ticks(days) {
@@ -4578,12 +4591,10 @@
             });
         }
         var out = [];
-        var seen = {};
+        var last = n - 1;
         for (var i = 0; i < MOST_TICKS; i++) {
-            var at = Math.round((i * (n - 1)) / (MOST_TICKS - 1));
-            if (seen[at]) continue;
-            seen[at] = true;
-            out.push({ at: at, label: shortDay(days[at].day) });
+            var at = (i * last) / (MOST_TICKS - 1);
+            out.push({ at: at, label: shortDay(days[Math.round(at)].day) });
         }
         return out;
     }
