@@ -783,7 +783,15 @@ button { font: inherit; color: inherit; }
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-gutter: stable both-edges;
-    padding: 1.6rem 1.4rem 3rem;
+    /* Named, because the band above the usage page bleeds out to the edge of
+       this box and has to bleed by exactly what this is inset by. It used to
+       repeat the numbers, and when the narrow breakpoint brought the gutter
+       down to 1rem the band went on bleeding 1.4 -- six points past the
+       content box at every width under a thousand, which hung a horizontal
+       scrollbar under the whole page. */
+    --gutter-x: 1.4rem;
+    --gutter-y: 1.6rem;
+    padding: var(--gutter-y) var(--gutter-x) 3rem;
     animation: contentIn 0.55s var(--ease) 0.07s both;
 }
 
@@ -869,7 +877,7 @@ button { font: inherit; color: inherit; }
 
     .menu-btn { display: flex; }
     .top { background: var(--canvas); backdrop-filter: none; }
-    .canvas { padding: 1.2rem 1rem 2.4rem; }
+    .canvas { --gutter-x: 1rem; --gutter-y: 1.2rem; padding: var(--gutter-y) var(--gutter-x) 2.4rem; }
 }
 
 @media (min-width: 560px) {
@@ -3289,12 +3297,15 @@ html.is-theming .btn {
    be something you scroll back up to check. */
 .use-top {
     position: sticky;
-    top: -1.6rem;
+    top: calc(-1 * var(--gutter-y));
     z-index: 5;
-    /* out to the edges of the scrolling area, so the rule under it runs the
-       full width the way a header's does rather than stopping at the column */
-    margin: -1.6rem -1.4rem 1.15rem;
-    padding: 1.6rem 1.4rem 0.7rem;
+    /* Out to the edges of the scrolling area, so the rule under it runs the
+       full width the way a header's does rather than stopping at the column.
+       Bleeding by the gutter rather than by a number that happens to match it
+       at one breakpoint: the two have to be the same value, so they are the
+       same value. */
+    margin: calc(-1 * var(--gutter-y)) calc(-1 * var(--gutter-x)) 1.15rem;
+    padding: var(--gutter-y) var(--gutter-x) 0.7rem;
     /* Opaque, and that is the whole separation. A rule under a bar that never
        moves is a line drawn across a page that does not need dividing; what the
        band has to do while the sections pass under it is hide them, which a
@@ -4152,47 +4163,41 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
    showing, so it does not change as the address bar slides away, and the chart
    does not resize under the reader while they scroll past it. */
 @media (max-width: 720px) {
-    .use-plot { --use-plot-h: clamp(100px, 15svh, 148px); }
+    .use-plot { --use-plot-h: clamp(78px, 15svh, 148px); }
     .use-spark, .use-spark svg { height: 20px; }
     .use-cell { padding: 0.85rem 1rem 0.9rem; }
 
-    /* One row that scrolls sideways, rather than two that stack.
-       A phone is tall for a page and short for a screenful: two rows of cards
-       put the second one under the fold on every handset below about 850
-       points, so somebody opening this met the chart and half the measures.
-       Sideways, the row is one card tall and the four of them are reached the
-       way a phone reaches things.
-       It runs out to the edges of the screen so the last card is cut off by
-       the screen rather than by the column, which is what says there is more
-       of it. */
+    /* Four cards, all four on the screen, two by two.
+       They were one row scrolling sideways for a while, which fitted but put
+       half the measures off the edge -- an overview whose second half has to
+       be found is not an overview, and the bleed it needed overflowed the
+       column by six points and hung a scrollbar under the page.
+       So: no scrolling, and the footnote under each number gives up its line
+       instead. It is the smallest thing in the card and the only one that
+       repeats what the chart above already says.
+       (It is still in the markup, so a screen reader still reads the share.
+       display:none would take it from them as well.) */
     .use-strip {
-        display: flex;
-        gap: 0.6rem;
-        margin-inline: -1rem;
-        padding-inline: 1rem;
-        overflow-x: auto;
-        scroll-snap-type: x proximity;
-        /* A snap point is measured from the edge of the scroll box, not from
-           the edge of its padding, so the row opened already scrolled past its
-           own inset and the first card sat a gutter left of the card above it.
-           This tells the snapping where the content actually starts. */
-        scroll-padding-inline: 1rem;
-        scrollbar-width: none;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.55rem;
     }
-    .use-strip::-webkit-scrollbar { display: none; }
-    /* Wide enough that the number and its delta stay on one line. At half the
-       column they fitted for three digits and wrapped at four, so the row was
-       one height over a quarter and another over ninety days -- the size of
-       the number decided the height of the card. Under two cards to a screen
-       also says plainly that there are more of them. */
-    .use-cell {
-        flex: 0 0 calc(60% - 0.5rem);
-        min-width: 10.5rem;
-        scroll-snap-align: start;
+    .use-cell { padding: 0.6rem 0.8rem 0.65rem; }
+    .use-legend { margin-top: 0.35rem; font-size: 0.7rem; }
+    .use-meter { margin-top: 0.6rem; padding-top: 0.5rem; }
+    .use-cell-s {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        min-height: 0;
+        margin: -1px;
+        padding: 0;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
     }
-    /* the note has a narrower card to sit in, and wrapping it would make the
-       row taller than the thing it is a footnote to */
-    .use-cell-s { font-size: 0.68rem; }
+    .use-cell-v { font-size: 1.3rem; }
+    .use-spark { padding-top: 0.4rem; }
+    .use-spark, .use-spark svg { height: 16px; }
 
     /* The words after the percentage, said to a screen reader and to nobody
        else. On a narrow card they wrapped the headline onto a second line as
@@ -4298,7 +4303,18 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 
 @media (max-width: 720px) {
     .use-big { font-size: 1.85rem; }
-    .use-head { padding: 0.95rem 1rem 1rem; }
+    .use-head { padding: 0.9rem 1rem 0.8rem; }
+}
+
+/* A handset short enough that the chart, the measures and the band do not all
+   fit however tightly they are set -- an iPhone SE has about six hundred
+   points of page and the three of them want nearer seven hundred, and a 740
+   point Galaxy is five short however tightly the rest is set. The
+   sparklines go: they are the one thing in a card whose absence costs a shape
+   rather than a fact, and a fact half off the bottom of the screen costs more
+   than a shape does. */
+@media (max-width: 720px) and (max-height: 745px) {
+    .use-spark { display: none; }
 }
 
 /* what the number is out of, in the same breath as the number and visibly the
