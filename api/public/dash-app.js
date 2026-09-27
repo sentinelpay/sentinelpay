@@ -4572,37 +4572,49 @@
         return 10 * size;
     }
 
-    // At most five dates, and while there are five or fewer days, every one of
-    // them. Past that the axis is cut into four equal steps from the first day
-    // to the last.
+    // At most five dates along the bottom, evenly spaced.
     //
-    // The steps are equal in the only sense the eye can check: the gaps along
-    // the axis. A window of eight days divides into quarters at day 1.75, 3.5
-    // and 5.25, and the label has to name a real day, so it names the nearest.
-    // Rounding the label is fine. Rounding the *position* was not, and that is
-    // what this used to do -- one `at` served as both, so the marks landed at
-    // 0, 2, 4, 5, 7 and the axis read 20, 22, 24, 25, 27: three gaps of two
-    // days and one of one, drawn three gaps wide and one gap narrow. An axis
-    // whose spacing carries no meaning still looks like it does.
+    // Evenly spaced in the sense a reader checks, which is the dates and not
+    // the pixels. Cutting the window into four equal parts spaces the marks
+    // perfectly and lands them between days: eight days quartered falls on day
+    // 1.75, 3.5 and 5.25, and since a label has to name a real day it named
+    // the nearest -- so the axis read 20, 22, 24, 25, 27. Three steps of two
+    // days and one of one, drawn in four equal gaps. The marks were even and
+    // the dates were not, and the dates are what is being read.
     //
-    // So the position is the exact fraction and the label is the day nearest
-    // it. Two labels can only collide if the step is under a day, which needs
-    // fewer than six days, which the branch above already has.
+    // (A day of hours came out right by accident: twenty four divides by four.
+    // That is why this only ever looked broken on a billing cycle.)
+    //
+    // So the step is chosen first, in whole buckets, from the intervals a
+    // calendar actually has -- days, weeks, quarter-days -- and the marks fall
+    // on multiples of it. The last bucket is then not always named, which is
+    // the price: an axis cannot both end on today and step evenly unless the
+    // window happens to divide. Between the two, the even step is the one that
+    // means something, and today is already named above the chart.
     var MOST_TICKS = 5;
+    var NICE_DAYS = [1, 2, 3, 7, 14, 21, 28, 56, 91, 182, 364];
+    var NICE_HOURS = [1, 2, 3, 6, 12, 24, 48, 168];
 
     function ticks(days) {
         var n = days.length;
         if (!n) return [];
-        if (n <= MOST_TICKS) {
-            return days.map(function (d, i) {
-                return { at: i, label: shortDay(d.day) };
-            });
-        }
-        var out = [];
+        if (n === 1) return [{ at: 0, label: shortDay(days[0].day) }];
+
         var last = n - 1;
-        for (var i = 0; i < MOST_TICKS; i++) {
-            var at = (i * last) / (MOST_TICKS - 1);
-            out.push({ at: at, label: shortDay(days[Math.round(at)].day) });
+        var nice = isHourBucket(days[0].day) ? NICE_HOURS : NICE_DAYS;
+        // the smallest interval that fits inside the cap. floor rather than
+        // ceil: a step of seven over thirty days gives five marks and a last
+        // one two days short of the end, which is five marks and not six.
+        var step = 0;
+        for (var i = 0; i < nice.length; i++) {
+            if (Math.floor(last / nice[i]) <= MOST_TICKS - 1) { step = nice[i]; break; }
+        }
+        // a window longer than any interval we keep: work one out
+        if (!step) step = Math.ceil(last / (MOST_TICKS - 1));
+
+        var out = [];
+        for (var at = 0; at <= last; at += step) {
+            out.push({ at: at, label: shortDay(days[at].day) });
         }
         return out;
     }
