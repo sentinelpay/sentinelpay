@@ -5017,6 +5017,62 @@
     // The rest, in one line each rather than one card each. They are facts
     // about the period, not things that can run out, and a reader should be
     // able to take them all in without scrolling past six boxes to do it.
+    // A measure's own shape, at the size of a thumbnail.
+    //
+    // No axes, no labels, no points: at twenty six pixels tall none of them can
+    // be read, and all of them would be noise around the one thing that can --
+    // whether this went up, down, or nowhere. The number above it says how
+    // much; this says what it did on the way.
+    //
+    // Floored at zero rather than at the smallest value in the series. Scaling
+    // a run of 3, 4, 3 between its own minimum and maximum draws a mountain
+    // range out of one extra check; against zero it draws what it was, which
+    // is almost flat. Prices are scaled the other way because a price never
+    // approaches zero, and a count of anything does.
+    function sparkline(values, dir) {
+        var box = document.createElement('span');
+        box.className = 'use-spark' + (dir === 'up' ? ' is-up' : (dir === 'down' ? ' is-down' : ''));
+        var svg = document.createElementNS(SVG_NS, 'svg');
+        svg.setAttribute('viewBox', '0 0 100 100');
+        // stretched to the width of the card, like the chart above it, so
+        // anything inside measured in user units comes out distorted -- which
+        // is why the stroke is told not to scale and why there is nothing in
+        // here but the stroke
+        svg.setAttribute('preserveAspectRatio', 'none');
+        svg.setAttribute('aria-hidden', 'true');
+        svg.setAttribute('focusable', 'false');
+
+        var nums = (values || []).map(function (v) { return Number(v) || 0; });
+        var top = 0;
+        nums.forEach(function (v) { if (v > top) top = v; });
+        // A window with nothing in it is a flat line along the floor, not an
+        // empty box: the card still has to hold a shape, and "nothing happened"
+        // is a shape.
+        var y = function (v) { return top > 0 ? 100 - (v / top) * 96 - 2 : 98; };
+        var x = function (i) { return nums.length > 1 ? (i / (nums.length - 1)) * 100 : 0; };
+
+        var d = [];
+        nums.forEach(function (v, i) {
+            if (!i) { d.push('M 0 ' + y(v)); return; }
+            var px = x(i - 1);
+            var py = y(nums[i - 1]);
+            var cx = x(i);
+            var cy = y(v);
+            var reach = (cx - px) / 2.6;
+            d.push('C ' + (px + reach) + ' ' + py + ' ' + (cx - reach) + ' ' + cy +
+                ' ' + cx + ' ' + cy);
+        });
+        if (nums.length === 1) d.push('L 100 ' + y(nums[0]));
+        if (!nums.length) d.push('M 0 98 L 100 98');
+
+        var path = document.createElementNS(SVG_NS, 'path');
+        path.setAttribute('d', d.join(' '));
+        path.setAttribute('class', 'use-spark-l');
+        svg.appendChild(path);
+        box.appendChild(svg);
+        return box;
+    }
+
     function useStrip(rows) {
         var strip = document.createElement('section');
         strip.className = 'use-strip';
@@ -5087,6 +5143,14 @@
             sub.className = 'use-cell-s';
             if (r.sub) sub.textContent = r.sub;
             cell.appendChild(sub);
+
+            // and the shape of it, along the bottom. Coloured by the same rule
+            // the delta is, so one glance reads the direction twice and never
+            // reads it two different ways.
+            if (r.spark) {
+                cell.appendChild(sparkline(r.spark,
+                    r.move ? (r.move.up ? 'up' : (r.move.down ? 'down' : '')) : ''));
+            }
             strip.appendChild(cell);
         });
         return strip;
@@ -5557,7 +5621,8 @@
                     sub: s.total
                         ? fill('{n}% of checks', { n: Math.round((s.flagged / s.total) * 100) })
                         : '',
-                    move: moved(s.flagged, was && was.flagged)
+                    move: moved(s.flagged, was && was.flagged),
+                    spark: (s.days || []).map(function (d) { return d.flagged; })
                 },
                 {
                     // Not the same question as flagged. Flagged is everything
@@ -5572,7 +5637,8 @@
                     sub: s.flagged
                         ? fill('{n}% of flagged', { n: Math.round((severe / s.flagged) * 100) })
                         : '',
-                    move: moved(severe, was && was.severe)
+                    move: moved(severe, was && was.severe),
+                    spark: (s.days || []).map(function (d) { return d.severe; })
                 },
                 {
                     label: 'Addresses', value: useNum(s.addresses), to: 'use-screening',
@@ -5582,11 +5648,17 @@
                     sub: s.addresses
                         ? fill('{n} checks each', { n: (s.total / s.addresses).toFixed(1) })
                         : '',
-                    move: moved(s.addresses, was && was.addresses)
+                    move: moved(s.addresses, was && was.addresses),
+                    // the distinct addresses of each day, which do not add up
+                    // to the distinct addresses of the window and are not
+                    // meant to: one address asked about on two days is one
+                    // address that week and one on each of the two
+                    spark: (s.days || []).map(function (d) { return d.addresses; })
                 },
                 {
                     label: 'Chains', value: useNum(s.assetCount), to: 'use-assets',
-                    move: moved(s.assetCount, was && was.assetCount)
+                    move: moved(s.assetCount, was && was.assetCount),
+                    spark: (s.days || []).map(function (d) { return d.assets; })
                 }
             ];
             if (!fresh) body.appendChild(useStrip(strip));

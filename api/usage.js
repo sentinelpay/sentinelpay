@@ -267,10 +267,27 @@ function walkDays(fromMs, stopMs, zone, grain) {
     return out;
 }
 
+// A bucket a query never returned is a bucket nothing happened in, which is a
+// zero and not a gap: a chart with the quiet days left out lies about the shape
+// of the work.
+//
+// severe, addresses and assets are here so each measure under the chart can
+// show its own shape rather than borrowing the shape of the total. Note that
+// the daily distinct counts do not add up to the period's distinct count, and
+// should not: an address asked about on Monday and again on Thursday is one
+// address that week and one on each of two days. Both numbers are right about
+// different questions, and nobody should later "fix" one to match the other.
 function pickDays(seen, days) {
     return days.map((day) => {
         const row = seen.get(day);
-        return { day, n: row ? row.n : 0, flagged: row ? row.flagged : 0 };
+        return {
+            day,
+            n: row ? row.n : 0,
+            flagged: row ? row.flagged : 0,
+            severe: row && row.severe ? row.severe : 0,
+            addresses: row && row.addresses ? row.addresses : 0,
+            assets: row && row.assets ? row.assets : 0,
+        };
     });
 }
 
@@ -351,7 +368,10 @@ async function screeningsIn(orgId, from, to, sandbox, zone, grain) {
             // half an hour off utc has no hour in common with it at all.
             `SELECT ${g.column} AS d,
                     count(*)::int AS n,
-                    count(*) FILTER (WHERE verdict <> 'clear')::int AS flagged
+                    count(*) FILTER (WHERE verdict <> 'clear')::int AS flagged,
+                    count(*) FILTER (WHERE verdict = 'severe')::int AS severe,
+                    count(DISTINCT address)::int AS addresses,
+                    count(DISTINCT NULLIF(asset, ''))::int AS assets
                FROM screenings
               WHERE org_id = $1 AND at >= $2 AND at < $3 AND sandbox = $4
            GROUP BY 1 ORDER BY 1`,

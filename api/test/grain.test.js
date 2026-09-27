@@ -180,3 +180,19 @@ test('the query and the walk agree on the shape of a key', () => {
     assert.match(usage.GRAIN.hour.column, /AT TIME ZONE \$5/);
     assert.match(usage.GRAIN.day.column, /AT TIME ZONE \$5/);
 });
+
+// Each measure under the chart draws its own shape, so each needs its own
+// series out of the bucket query. Dropping a column here does not break
+// anything loudly: the field arrives undefined, the client reads it as zero,
+// and the card shows a flat line for a measure that was never flat.
+test('every measure under the chart has a series to draw', () => {
+    const src = require('node:fs').readFileSync(
+        require('node:path').join(__dirname, '..', 'usage.js'), 'utf8');
+    const at = src.indexOf('const [sum, days, verdicts, assets, byProject]');
+    assert.notStrictEqual(at, -1, 'screeningsIn no longer reads its windows in one go');
+    const query = src.slice(at, at + 2600);
+    for (const column of ['AS n', 'AS flagged', 'AS severe', 'AS addresses', 'AS assets']) {
+        assert.ok(query.includes(column),
+            'the bucket query no longer returns ' + column.replace('AS ', ''));
+    }
+});
