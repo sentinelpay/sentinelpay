@@ -20,19 +20,24 @@ test('a window is offered in hours as well as in days', () => {
     const list = usage.periods(at('2026-01-01T00:00:00Z'), at('2026-09-27T07:40:00Z'), null, 3);
     const keys = list.map((p) => p.key);
     assert.ok(keys.includes('h24'), 'no last-24-hours window');
-    assert.ok(keys.includes('h168'), 'no last-7-days window');
-    assert.ok(keys.includes('d30') && keys.includes('d90'), 'the daily windows went missing');
+    assert.ok(keys.includes('d7') && keys.includes('d30') && keys.includes('d90'),
+        'the daily windows went missing');
+    // a week of hours is a hundred and sixty eight points to say what seven
+    // say better, so only the last day is counted that finely
+    assert.ok(!keys.some((k) => k !== 'h24' && k[0] === 'h'),
+        'only the last day should be counted by the hour');
     for (const p of list) {
         assert.ok(p.grain === 'day' || p.grain === 'hour',
             p.key + ' does not say how finely it is counted');
     }
     assert.strictEqual(list.find((p) => p.key === 'h24').grain, 'hour');
+    assert.strictEqual(list.find((p) => p.key === 'd7').grain, 'day');
     assert.strictEqual(list.find((p) => p.key === 'd30').grain, 'day');
 });
 
 test('an hourly window is exactly as long as it says', () => {
     const now = at('2026-09-27T07:40:00Z');
-    for (const [key, hours] of [['h24', 24], ['h168', 168]]) {
+    for (const [key, hours] of [['h24', 24]]) {
         const p = usage.periods(at('2020-01-01T00:00:00Z'), now, null, 3)
             .find((x) => x.key === key);
         assert.strictEqual(at(p.to) - at(p.from), hours * HOUR, key + ' is the wrong length');

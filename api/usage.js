@@ -127,8 +127,12 @@ function periods(anchorAt, now, birth, span) {
     const when = now || Date.now();
     return cycles(anchorAt, when, CYCLES_BACK, span)
         .concat([
+            // only the last day is counted by the hour. a week of hours is a
+            // hundred and sixty eight points to say what seven of them say
+            // better, and the time of day stops being the question that far
+            // out.
             rollingHours(24, when, birth),
-            rollingHours(168, when, birth),
+            rolling(7, when, birth),
             rolling(30, when, birth),
             rolling(90, when, birth),
         ]);
@@ -537,6 +541,7 @@ async function forOrg(orgId, opts) {
                     // columns on it rather than three more round trips.
                     `SELECT count(*)::int AS n,
                             count(*) FILTER (WHERE verdict <> 'clear')::int AS flagged,
+                            count(*) FILTER (WHERE verdict = 'severe')::int AS severe,
                             count(DISTINCT address)::int AS addresses,
                             count(DISTINCT NULLIF(asset, ''))::int AS assets
                        FROM screenings
@@ -560,7 +565,7 @@ async function forOrg(orgId, opts) {
             marks,
             previous: head ? {
                 from: before.from, to: before.to,
-                total: head.n, flagged: head.flagged,
+                total: head.n, flagged: head.flagged, severe: head.severe,
                 addresses: head.addresses, assetCount: head.assets,
                 // the same stretch of it, not all of it, while this one runs
                 partial: Boolean(before.partial),
