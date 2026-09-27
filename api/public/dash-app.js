@@ -4129,6 +4129,13 @@
         return days === 90 ? t('Last 90 days') : t('Last 30 days');
     }
 
+    // The short windows, which are counted by the hour rather than by the day.
+    // Named in the unit a reader thinks in -- nobody asks for the last
+    // hundred and sixty-eight hours.
+    function useHoursWord(hours) {
+        return hours === 24 ? t('Last 24 hours') : t('Last 7 days');
+    }
+
     // cents, because a price is not a float. 'agreed' where there is no list
     // price to print: per-scan bills what was used, and enterprise is a number
     // somebody shook hands on.
@@ -4183,6 +4190,7 @@
     // one of them was wrong. The allowance is now the term's, so the window
     // counted here is the window paid for, and there is one thing to name.
     function usePeriodLabel(p) {
+        if (p.hours) return useHoursWord(p.hours);
         if (p.days) return useWindowWord(p.days);
         if (p.current) return t('Current billing cycle');
         return useSpan(p);
@@ -4460,7 +4468,7 @@
             tip.textContent = '';
             var when = document.createElement('div');
             when.className = 'use-tip-d';
-            when.textContent = whenText(d.day);
+            when.textContent = bucketText(d.day);
             tip.appendChild(when);
             if (past) {
                 // running totals, so the label has to say so: "34" on the
@@ -4507,7 +4515,7 @@
             // half a screen reader cannot use
             // label then number, the way the tooltip beside it reads, because
             // "2 screenings" has three forms in croatian and this had one
-            say.textContent = whenText(d.day) + '. ' + t('Screenings') + ': ' + useNum(d.n) +
+            say.textContent = bucketText(d.day) + '. ' + t('Screenings') + ': ' + useNum(d.n) +
                 (d.flagged > 0 ? '. ' + t('Flagged') + ': ' + useNum(d.flagged) : '');
         };
 
@@ -4599,18 +4607,59 @@
         return out;
     }
 
-    // The day as the reader's own calendar has it. The counting already put
-    // each screening in that reader's day, so the label reads it back in the
-    // same zone rather than translating a date that has no time of day.
-    function shortDay(iso) {
-        var d = new Date(String(iso).length === 10 ? iso + 'T12:00:00Z' : iso);
+    // A bucket as the reader's own calendar has it.
+    //
+    // The counting already put every screening in the reader's day, and in the
+    // reader's hour where the window is short enough to be counted that way.
+    // So a key is read back exactly as it was written -- parsed as UTC and
+    // printed as UTC. That is not a claim about UTC; it is the only way to
+    // print a wall clock that no timezone is allowed to move a second time.
+    //
+    // Converting it instead is how the tooltip came to disagree with the axis
+    // it sits on. '2026-09-20' parsed as midnight UTC and printed in Anchorage
+    // is the nineteenth, so for every reader west of here the axis said the
+    // twentieth and the tooltip said the day before about the same point.
+    function isHourBucket(key) {
+        return String(key || '').length > 10;
+    }
+    function bucketAt(key) {
+        var s = String(key || '');
+        // midday for a day, because a day has no hour of its own and the
+        // middle of one is the furthest a rounding error can be from changing
+        // the date; an hour bucket carries its hour already
+        return new Date(s.length === 10 ? s + 'T12:00:00Z' : s.replace(' ', 'T') + ':00Z');
+    }
+    function bucketShape(key, withYear) {
+        var o = { day: 'numeric', month: 'short', timeZone: 'UTC' };
+        if (withYear) o.year = 'numeric';
+        if (isHourBucket(key)) {
+            o.hour = '2-digit';
+            o.minute = '2-digit';
+            // 14:00 rather than 2 PM: this is an axis, and most of the places
+            // this is sold do not have an afternoon in their clock
+            o.hourCycle = 'h23';
+        }
+        return o;
+    }
+    function shortDay(key) {
+        var d = bucketAt(key);
         if (isNaN(d.getTime())) return '';
         try {
-            return new Intl.DateTimeFormat(navLang(), {
-                day: 'numeric', month: 'short', timeZone: 'UTC'
-            }).format(d);
+            return new Intl.DateTimeFormat(navLang(), bucketShape(key, false)).format(d);
         } catch (err) {
-            return String(iso).slice(0, 10);
+            return String(key).slice(0, 10);
+        }
+    }
+    // The same bucket said in full, for a tooltip and for the busiest one:
+    // there the year earns its room, because the window may have started in
+    // another one.
+    function bucketText(key) {
+        var d = bucketAt(key);
+        if (isNaN(d.getTime())) return '';
+        try {
+            return new Intl.DateTimeFormat(navLang(), bucketShape(key, true)).format(d);
+        } catch (err) {
+            return String(key);
         }
     }
 
@@ -5704,7 +5753,7 @@
                 if (!best || d.n > best.n) best = d;
             });
             if (!best || !best.n) return '—';
-            return whenText(best.day) + '  ·  ' + useNum(best.n);
+            return bucketText(best.day) + '  ·  ' + useNum(best.n);
         }
 
         function verdictWord(key) {
