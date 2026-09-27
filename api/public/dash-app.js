@@ -5265,26 +5265,102 @@
     // Measured against the box that scrolls rather than against the window,
     // and from the top of that box rather than from wherever the reader has
     // scrolled to, so the answer is the same on load and halfway down.
+    // How short the chart is allowed to get before it stops being a chart:
+    // below this the gridlines sit closer together than the numbers labelling
+    // them, and the shape stops being readable at all.
+    var PLOT_FLOOR = 84;
+
+    // how many things there are to give up, in dash.css under [data-fit]
+    var FIT_LEVELS = 4;
+
+    // Make the overview fit the screen it is on, whatever that screen is.
+    //
+    // This was a set of breakpoints for a while -- a chart height per width, a
+    // rule that dropped the sparklines under a certain height -- and a
+    // breakpoint is a guess about a device rather than an answer about a
+    // screen. There is always another combination of width and height it was
+    // not written for, and on that one something is half off the bottom.
+    //
+    // So nothing here is guessed. The page is laid out, measured, and the one
+    // element that can absorb slack without losing a fact gives up exactly the
+    // number of pixels that are missing: the chart. If it reaches its floor
+    // and the overview is still too tall, the sparklines go, because a shape
+    // is worth less than a number nobody can see. If it still does not fit
+    // after that, it does not fit, and the page says so by being scrollable
+    // rather than by pretending.
     function fitFold() {
+        var body = document.querySelector('.use-body');
         var gap = document.querySelector('.use-fold-gap');
         var next = gap && gap.nextElementSibling;
-        if (!gap || !next) return;
+        if (!body || !gap || !next) return;
         var scroller = gap.closest('.canvas') || document.scrollingElement || document.body;
+        var plot = body.querySelector('.use-plot');
 
-        // Measured as a correction to what the gap already is, rather than by
-        // emptying it and asking where things land. An empty block has no
-        // height of its own, so the margin under the row above it and the
-        // margin over the section below it collapse into one through it, and
-        // the moment it is given a height they stop -- which moved everything
-        // by the difference and left the heading six pixels into view. A
-        // correction cannot be wrong about that: it reads where the section
-        // actually is, now, and closes the distance.
-        var top = scroller.getBoundingClientRect().top;
+        // Start from the layout as written every time, or the page would only
+        // ever get tighter: a window being made larger has to give the chart
+        // and the sparklines back.
+        body.removeAttribute('data-fit');
+        // the band is a sibling above the body, so css cannot reach it from a
+        // class on the body and it is told directly
+        var planLine = document.querySelector('.use-bar-r');
+        var title = document.querySelector('.use-h1');
+        if (planLine) planLine.classList.remove('is-shed');
+        if (title) title.classList.remove('is-tight');
+        if (plot) plot.style.removeProperty('--use-plot-h');
+
+        // How far past the bottom of the screen the overview ends. Measured to
+        // the element after the spacer rather than to the spacer, so the
+        // answer does not depend on what the spacer happens to be holding.
+        var over = function () {
+            gap.style.height = '0px';
+            var top = scroller.getBoundingClientRect().top;
+            var lands = next.getBoundingClientRect().top - top + scroller.scrollTop;
+            return lands - scroller.clientHeight;
+        };
+
+        // The plot's height is read off the plot, not off the custom property
+        // that sets it: that property holds a clamp(), and a clamp() is a
+        // string until the browser resolves it against the element -- so
+        // asking the property what the chart is gives a token, not a number,
+        // and everything downstream of it quietly did nothing.
+        var area = body.querySelector('.use-plot-a');
+        var roomLeft = function () {
+            return Math.max(0, (area ? area.getBoundingClientRect().height : 0) - PLOT_FLOOR);
+        };
+
+        // Given up in this order, each step costing less than the one after
+        // it: the shapes in the cards, then the notes and the key -- which
+        // repeat things said elsewhere on the page -- then the plan line,
+        // which is the whole of the billing screen in one sentence.
+        // The chart takes whatever is still missing at each step, down to its
+        // floor, because a shorter chart is still a chart and a fact below the
+        // fold is not a fact.
+        var missing = over();
+        for (var level = 0; level <= FIT_LEVELS && missing > 0; level++) {
+            if (level) {
+                body.setAttribute('data-fit', String(level));
+                if (planLine) planLine.classList.toggle('is-shed', level >= 3);
+                if (title) title.classList.toggle('is-tight', level >= 4);
+                missing = over();
+            }
+            if (missing > 0 && roomLeft() > 0) {
+                var give = Math.min(missing, roomLeft());
+                plot.style.setProperty('--use-plot-h',
+                    Math.round(area.getBoundingClientRect().height - give) + 'px');
+                missing = over();
+            }
+        }
+
+        // And whatever is left of the screen goes under the overview, so the
+        // next section begins below it rather than half in view. A correction
+        // to what the spacer already is: an empty block has no height, so the
+        // margins above and below it collapse through it and stop collapsing
+        // the moment it is given one -- which moved everything by the
+        // difference and left a heading six pixels into view.
         var have = gap.getBoundingClientRect().height;
-        var lands = next.getBoundingClientRect().top - top + scroller.scrollTop;
-        var want = have + (scroller.clientHeight - lands);
-        // A short window, or a tall chart, and the overview already fills the
-        // screen or more. Then there is nothing to add and nothing to hide.
+        var lands2 = next.getBoundingClientRect().top - scroller.getBoundingClientRect().top +
+            scroller.scrollTop;
+        var want = have + (scroller.clientHeight - lands2);
         gap.style.height = Math.round(want > 0 ? want : 0) + 'px';
     }
 
