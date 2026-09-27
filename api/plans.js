@@ -63,6 +63,110 @@ const PLANS = {
     },
 };
 
+// The half of a plan that is not a number.
+//
+// Quotas were data here from the start, because a quota that lives only in a
+// card's bullet list cannot be enforced. Everything else a plan carries -- the
+// lists, the monitoring, the evidence file, the response time -- stayed in the
+// pricing page's bullet lists, which meant the product could not say what a
+// customer had bought without pointing at the sales page. So it is data too.
+//
+// Tiers are cumulative the way the pricing cards say they are: a Growth
+// customer has what Growth adds and everything under it. `carries()` does that
+// walk, so nothing has to repeat a line to inherit it.
+//
+// `built` is the part that matters. A claim on a pricing page is a promise to
+// somebody deciding whether to buy; the same claim inside the product, beside
+// the meter counting what they are using, reads as a description of what they
+// already have. Those are not the same sentence. Anything not built yet is
+// false here, and the dashboard shows only what is true -- so the gap between
+// what we sell and what we ship is a value that can be queried and counted,
+// rather than something remembered.
+const TIERS = [
+    {
+        key: 'trial',
+        adds: [
+            { key: 'history-sweep', built: false,
+              text: 'A one-off sweep of a connected key, back through its whole history' },
+            // Only OFAC SDN is loaded (see sanctions.js). The other three are
+            // sold and not built, which is why this is the one claim on the
+            // page that a customer could most reasonably feel misled by.
+            { key: 'lists-ofac', built: true,
+              text: 'Counterparties screened against the OFAC SDN list' },
+            { key: 'lists-eu-uk-un', built: false,
+              text: 'Counterparties screened against the EU, UK and UN lists' },
+            { key: 'verdict-fast', built: true,
+              text: 'An answer in under a second, with its evidence attached' },
+            { key: 'evidence-file', built: true,
+              text: 'An evidence file you keep, whether or not you stay' },
+        ],
+    },
+    {
+        key: 'starter',
+        adds: [
+            { key: 'rescreen-on-change', built: false,
+              text: 'Re-screened the moment a list changes' },
+            { key: 'reproducible', built: true,
+              text: 'Any verdict reproducible a year later' },
+            { key: 'data-export', built: true,
+              text: 'Your data leaves with you, in full, on request' },
+        ],
+    },
+    {
+        key: 'growth',
+        adds: [
+            { key: 'chains', built: false,
+              text: 'Ten chains from one key, not ten integrations' },
+            { key: 'monitoring', built: false,
+              text: 'Continuous monitoring and alerts' },
+            { key: 'threshold-preview', built: false,
+              text: 'See what a threshold would have caught before you set it' },
+            { key: 'api', built: true,
+              text: 'API access, with a token per project' },
+        ],
+    },
+    {
+        key: 'enterprise',
+        adds: [
+            { key: 'four-eyes', built: false,
+              text: 'Four eyes on severe findings, enforced' },
+            { key: 'residency-sso', built: false,
+              text: 'EU data residency, SSO and an agreed response time' },
+        ],
+    },
+];
+
+// The quota rows, which are numbers and so are already data. They are named
+// here only so the pricing page can be checked against them line for line:
+// the page once said ten thousand screenings a month while the product allowed
+// a quarter of them at a time, and nothing could have caught that.
+const QUOTA_FEATURES = ['quota-screenings', 'quota-addresses', 'quota-seats'];
+
+// Everything a plan carries, its own tier and every tier under it, in the order
+// the pricing page introduces them. A key not in TIERS at all is nobody's.
+function carries(planKey) {
+    const want = String(planKey || '').toLowerCase();
+    const out = [];
+    for (const tier of TIERS) {
+        for (const f of tier.adds) out.push({ ...f, tier: tier.key });
+        if (tier.key === want) return out;
+    }
+    // A trial is not a plan, and asking about one is not a mistake: it carries
+    // the base tier and nothing else.
+    return want === 'trial' ? out.filter((f) => f.tier === 'trial') : [];
+}
+
+// What a plan carries and we actually ship. This is what the product shows.
+function shipped(planKey) {
+    return carries(planKey).filter((f) => f.built);
+}
+
+// What a plan is sold as carrying and we do not ship yet. Nothing renders this;
+// it is here so the gap can be listed, counted and tested rather than felt.
+function promised(planKey) {
+    return carries(planKey).filter((f) => !f.built);
+}
+
 function plan(key) {
     return PLANS[String(key || '').toLowerCase()] || null;
 }
@@ -123,6 +227,7 @@ function catalogue() {
 }
 
 module.exports = {
-    CURRENCY, PLANS, TERMS,
+    CURRENCY, PLANS, TERMS, TIERS, QUOTA_FEATURES,
     plan, term, included, listPrice, isPlan, isTerm, catalogue,
+    carries, shipped, promised,
 };

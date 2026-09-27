@@ -3415,6 +3415,48 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 .use-fact:last-child { border-bottom: 0; }
 .use-fact-v { color: var(--ink-2); font-weight: 600; text-align: right; }
 
+/* What the plan carries that is not a number. Same type size and same rhythm
+   as the facts above it, because it is the same kind of statement: one line,
+   one thing you have. The rule between rows is dropped -- these have no second
+   column for the eye to travel to, so a line across would separate rather than
+   align. */
+.use-carries-t {
+    margin: 1.1rem 0 0.35rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-4);
+}
+.use-carries {
+    margin: 0 0 1rem;
+    padding: 0;
+    list-style: none;
+}
+.use-carry {
+    position: relative;
+    padding: 0.3rem 0 0.3rem 1.35rem;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    color: var(--ink-4);
+}
+/* A tick drawn in css rather than an icon per row: a dozen of the same mark
+   down one edge is a bullet, and a bullet does not need to be in the sprite.
+   Ink rather than green: green on this page means a verdict came back clear,
+   and a feature list borrowing that colour would be speaking a vocabulary the
+   reader has already been taught to read as risk. */
+.use-carry::before {
+    content: '';
+    position: absolute;
+    left: 0.15rem;
+    top: 0.68rem;
+    width: 0.42rem;
+    height: 0.22rem;
+    border-left: 1.6px solid var(--ink-4);
+    border-bottom: 1.6px solid var(--ink-4);
+    transform: rotate(-45deg);
+}
+
 /* The chart, with an axis on both sides. Gridlines are drawn by the container
    rather than inside the svg: the plot is stretched to the width of its card,
    and anything inside a stretched svg is stretched with it -- a hairline
@@ -3690,16 +3732,6 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 .use-meter-f.is-near { background: var(--risk-mid); }
 .use-meter-f.is-full { background: var(--risk-high); }
 
-
-/* where the half of a plan that is not a number lives */
-.use-allow-more {
-    display: inline-block;
-    margin: -0.7rem 0 1.6rem;
-    font-size: 0.8rem;
-    color: var(--link);
-    text-decoration: none;
-}
-.use-allow-more:hover { text-decoration: underline; }
 
 @media (max-width: 720px) {
     .use-meter-r { flex-wrap: wrap; }

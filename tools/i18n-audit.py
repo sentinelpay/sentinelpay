@@ -167,5 +167,16 @@ for f in SERVER:
         found += PW_RULE.findall(src[inside:inside + 1600])
     total += report('server', f, found)
 
+# The catalogue's own words. What a plan carries beyond its numbers is data in
+# plans.js and travels to the browser over the api, so the dashboard translates
+# a string the audit never sees in a source file: it can read every t('...') on
+# the page and still miss every one of these. Read them where they are written
+# instead, or the next line added to the catalogue is quietly english.
+CATALOGUE = 'api/plans.js'
+FEATURE_TEXT = re.compile(r"\btext:\s*'((?:\\.|[^'])+)'")
+if os.path.exists(CATALOGUE):
+    src = open(CATALOGUE, encoding='utf-8').read()
+    total += report('catalogue', CATALOGUE, FEATURE_TEXT.findall(src))
+
 print()
 print('MISSING TOTAL:', total)

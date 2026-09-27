@@ -2242,6 +2242,12 @@ app.get('/v1/orgs/:id/usage', async (req, res) => {
         ...out,
         plan: { ...plan, historyLeft: plan.historyLeft === Infinity ? null : plan.historyLeft },
         subscription: sub,
+        // The half of a plan that is not a number. Only what we ship: a
+        // pricing page argues for a sale, but this sits beside the meter of
+        // what somebody is already using, where the same sentence stops being
+        // a pitch and becomes a description of what they have.
+        includes: plans.shipped(sub && sub.plan ? sub.plan
+            : (plan.state && plan.state !== 'none' ? 'trial' : '')),
         coverage: {
             source: 'OFAC SDN',
             listDate: listed.listDate || '',

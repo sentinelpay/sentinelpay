@@ -5070,6 +5070,28 @@
         return box;
     }
 
+    // The half of a plan that is not a number: which lists, what is kept, what
+    // can be reached over the api. Facts above it are a key and a value, and
+    // these have no value to put in a second column -- they either come with
+    // the plan or they do not -- so they are a list rather than a table with an
+    // empty half.
+    //
+    // The server sends only what we ship, so nothing here has to be hedged.
+    // Anything sold and not built is left out rather than dressed up as
+    // "coming soon", which on a screen somebody is paying to look at reads as
+    // an excuse rather than a feature.
+    function useCarries(rows) {
+        var box = document.createElement('ul');
+        box.className = 'use-carries';
+        rows.forEach(function (r) {
+            var li = document.createElement('li');
+            li.className = 'use-carry';
+            li.textContent = t(r.text);
+            box.appendChild(li);
+        });
+        return box;
+    }
+
     function viewUsage(me) {
         // Two pieces rather than one: the band runs the full width of the
         // screen the way a header does, and the page keeps the same centred
@@ -5351,17 +5373,11 @@
                     of: runs.of
                 } : null));
 
-            // Everything else a plan carries -- which lists, monitoring, the
-            // evidence file, support -- is not a number and cannot be metered,
-            // so it has no card. It is somewhere, though, and a page showing
-            // the metered half should say where the other half is.
-            if (metered.length) {
-                var rest = document.createElement('a');
-                rest.className = 'use-allow-more';
-                rest.href = '/pricing';
-                rest.textContent = t('Everything else this plan includes');
-                body.appendChild(rest);
-            }
+            // What a plan carries beyond the meters used to be a bare link here
+            // to /pricing. It floated between two cards belonging to neither,
+            // and it sent somebody who had already bought Growth to a page
+            // selling three plans to find their own. The answer belongs on this
+            // page, in the section that is already about the plan.
 
             // the window before this one, which the tiles read to say whether
             // each of them is up or down
@@ -5530,6 +5546,15 @@
                         ['History scans', plan.historyOpen ? t('Unmetered') : useNum(plan.historyUsed) + ' / ' + useNum(plan.historyIncluded)],
                         ['This period', useSpan(out.period)]
                     ])));
+                }
+                // and the half that is not a number, under the half that is
+                var carries = out.includes || [];
+                if (carries.length) {
+                    var ch = document.createElement('h3');
+                    ch.className = 'use-carries-t';
+                    ch.textContent = t('Also included');
+                    pmain.appendChild(ch);
+                    pmain.appendChild(useCarries(carries));
                 }
                 pl.body.appendChild(pmain);
                 body.appendChild(pl);
