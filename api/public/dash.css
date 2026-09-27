@@ -4067,6 +4067,15 @@ a.use-cell:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
 @media (min-width: 721px) {
     .use-plot { --use-plot-h: clamp(112px, 19vh, 148px); }
 }
+/* And on a phone, where the overview has to hold a chart and two rows of
+   cards. In svh rather than vh: svh is the height with the browser's own bars
+   showing, so it does not change as the address bar slides away, and the chart
+   does not resize under the reader while they scroll past it. */
+@media (max-width: 720px) {
+    .use-plot { --use-plot-h: clamp(100px, 15svh, 148px); }
+    .use-spark, .use-spark svg { height: 20px; }
+    .use-cell { padding: 0.85rem 1rem 0.9rem; }
+}
 
 /* One row of six once the column can hold them without a label breaking. The
    threshold is measured rather than guessed: below it "Korišteni tokeni" and
@@ -4085,6 +4094,36 @@ a.use-cell:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
    depends on where the block starts, and that moves with the band above it and
    with whether the rail is expanded. */
 .use-fold-gap { pointer-events: none; }
+
+/* The shape of one measure, along the bottom of its card. Pushed to the
+   bottom by the note above it taking the slack, so four cards with different
+   amounts to say still line their lines up with each other. */
+.use-spark {
+    display: block;
+    margin-top: auto;
+    padding-top: 0.6rem;
+    height: 26px;
+}
+.use-spark svg { display: block; width: 100%; height: 26px; overflow: visible; }
+.use-spark-l {
+    fill: none;
+    /* Solid mid ink, not the faint one the notes use. Grey here is a state and
+       not an absence -- it says this measure is level with the window before,
+       or has no window before it -- and at 45% alpha beside a coloured
+       neighbour it read as a line that had failed to load. */
+    stroke: var(--ink-3);
+    stroke-width: 1.6;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    /* the plot is stretched to the width of the card, so a stroke measured in
+       user units comes out thick one way and thin the other unless it is told
+       to stay in screen units */
+    vector-effect: non-scaling-stroke;
+}
+/* the same two colours the delta uses, so a glance reads the direction twice
+   and never reads it two different ways */
+.use-spark.is-up .use-spark-l { stroke: var(--link); }
+.use-spark.is-down .use-spark-l { stroke: var(--fall); }
 
 /* a row with no limit has no bar. an empty track reads as one that failed to
    load rather than one with no end. */
