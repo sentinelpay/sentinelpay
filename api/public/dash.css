@@ -4071,8 +4071,15 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 .use-cell-d {
     display: inline-flex;
     align-items: baseline;
-    gap: 0.16rem;
-    font-size: 0.78rem;
+    gap: 0.2rem;
+    /* Small enough to read as a remark about the number rather than as a
+       second number beside it. The headline sets its delta at about two fifths
+       of its figure; at 0.78rem against a 1.45rem figure this was three
+       fifths, and two numbers of nearly the same size on one line are compared
+       by the eye instead of being read -- which is what "not centred" was
+       describing. The centres were already exact: measured at zero pixels
+       apart, the same as the headline's. */
+    font-size: 0.72rem;
     font-weight: 600;
     color: var(--ink-4);
     font-variant-numeric: tabular-nums;
@@ -4097,7 +4104,14 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     border: 0;
     border-radius: 999px;
     background: none;
+    /* `font` is a shorthand, so it resets font-size to the inherited one --
+       and this rule is more specific than the one above that sets it. The
+       delta was therefore drawn at 14px rather than at its own size, which is
+       most of a card's number: two figures of nearly one size on a line are
+       compared rather than read, and that is what looked out of alignment.
+       So the size goes back afterwards, the way the headline's does. */
     font: inherit;
+    font-size: 0.72rem;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
     cursor: pointer;
@@ -4123,10 +4137,10 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 @media (prefers-reduced-motion: reduce) {
     .use-cell-d.is-live { transition: none; }
 }
-/* the arrow carries the direction at the size of its own line rather than of
-   the figure beside it, which at this size would make it the loudest mark in
-   the card */
-.use-cell-d .use-arrow { font-size: 0.74rem; }
+/* Larger than the words beside it, the way the headline's is. The arrow is
+   what carries the direction to somebody who cannot tell our blue from our
+   violet, so it is the one part of this that should not shrink with the rest. */
+.use-cell-d .use-arrow { font-size: 0.8rem; }
 .use-cell-d.is-up { color: var(--link); }
 .use-cell-d.is-down { color: var(--fall); }
 
