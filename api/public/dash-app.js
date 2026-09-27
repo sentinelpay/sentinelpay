@@ -5083,6 +5083,66 @@
         return strip;
     }
 
+    // The overview is the first screen, and only the overview.
+    //
+    // Somebody opening this page should meet the chart and the measures under
+    // it, and meet the sections by scrolling to them -- not by noticing half a
+    // heading peeking over the bottom edge and wondering whether the page had
+    // finished loading.
+    //
+    // There is no css for "as tall as whatever is left", because how much is
+    // left depends on where this block starts, which depends on the height of
+    // the band above it and on whether the rail is expanded. So it is measured.
+    // Measured against the box that scrolls rather than against the window,
+    // and from the top of that box rather than from wherever the reader has
+    // scrolled to, so the answer is the same on load and halfway down.
+    function fitFold() {
+        var gap = document.querySelector('.use-fold-gap');
+        var next = gap && gap.nextElementSibling;
+        if (!gap || !next) return;
+        var scroller = gap.closest('.canvas') || document.scrollingElement || document.body;
+
+        // Measured as a correction to what the gap already is, rather than by
+        // emptying it and asking where things land. An empty block has no
+        // height of its own, so the margin under the row above it and the
+        // margin over the section below it collapse into one through it, and
+        // the moment it is given a height they stop -- which moved everything
+        // by the difference and left the heading six pixels into view. A
+        // correction cannot be wrong about that: it reads where the section
+        // actually is, now, and closes the distance.
+        var top = scroller.getBoundingClientRect().top;
+        var have = gap.getBoundingClientRect().height;
+        var lands = next.getBoundingClientRect().top - top + scroller.scrollTop;
+        var want = have + (scroller.clientHeight - lands);
+        // A short window, or a tall chart, and the overview already fills the
+        // screen or more. Then there is nothing to add and nothing to hide.
+        gap.style.height = Math.round(want > 0 ? want : 0) + 'px';
+    }
+
+    var foldWaiting = false;
+    var foldAgain = null;
+    function queueFold() {
+        if (!foldWaiting) {
+            foldWaiting = true;
+            requestAnimationFrame(function () {
+                foldWaiting = false;
+                fitFold();
+            });
+        }
+        // And once more when the page has stopped moving. Swapping a period
+        // animates every block in from a few pixels away, and a rectangle read
+        // mid-animation is the rectangle of something still arriving -- which
+        // is how the first measurement came out six pixels short and left a
+        // heading peeking over the bottom edge. The correction is idempotent,
+        // so running it again costs a reflow and settles it.
+        if (foldAgain) clearTimeout(foldAgain);
+        foldAgain = setTimeout(function () {
+            foldAgain = null;
+            fitFold();
+        }, 520);
+    }
+    window.addEventListener('resize', queueFold);
+
     function useSection(id, title, ico, hint) {
         var sec = document.createElement('section');
         sec.className = 'use-sec';
@@ -5462,6 +5522,22 @@
             // the window before this one, which the tiles read to say whether
             // each of them is up or down
             var was = out.previous;
+            // What this period did, and nothing else.
+            //
+            // This used to carry six things, three of which were members,
+            // projects and tokens used -- none of them a measure of the
+            // period, and all three already sitting in the Team section
+            // below, there with the halves that matter: who joined during the
+            // window, and how many tokens exist as against how many were used.
+            // So the row repeated what was under it, less well, and did it in
+            // three boxes that read 0, 1, 0 for almost every customer. A row
+            // of measures where half the numbers are zero looks broken however
+            // it is styled, and the fault was the choice of numbers.
+            //
+            // These four are all counted over the window, all comparable with
+            // the window before, and all about the work rather than about the
+            // account.
+            var severe = (s.verdicts && s.verdicts.severe) || 0;
             var strip = [
                 {
                     label: 'Flagged', value: useNum(s.flagged), to: 'use-flagged',
@@ -5475,29 +5551,39 @@
                     move: moved(s.flagged, was && was.flagged)
                 },
                 {
+                    // Not the same question as flagged. Flagged is everything
+                    // worth a second look; this is the part a compliance
+                    // officer has to act on, and on a busy account it is the
+                    // only one of the two that can be read at a glance.
+                    label: 'Severe', value: useNum(severe), to: 'use-flagged',
+                    sub: s.flagged
+                        ? fill('{n}% of flagged', { n: Math.round((severe / s.flagged) * 100) })
+                        : '',
+                    move: moved(severe, was && was.severe)
+                },
+                {
                     label: 'Addresses', value: useNum(s.addresses), to: 'use-screening',
+                    // how hard the same address is being asked about. one is a
+                    // list being walked once; ten is a book of customers being
+                    // rechecked, which is a different product being bought.
+                    sub: s.addresses
+                        ? fill('{n} checks each', { n: (s.total / s.addresses).toFixed(1) })
+                        : '',
                     move: moved(s.addresses, was && was.addresses)
                 },
                 {
                     label: 'Chains', value: useNum(s.assetCount), to: 'use-assets',
                     move: moved(s.assetCount, was && was.assetCount)
-                },
-                { label: 'Tokens used', value: useNum(shape.tokensUsed), to: 'use-team' },
-                {
-                    // not a comparison: how many people are here is true now,
-                    // not counted over a window. what the window does hold is
-                    // who arrived during it, which is the useful half anyway.
-                    label: 'Members', value: useNum(shape.members), to: 'use-team',
-                    // "+1 joined" in croatian is "+1 pridruzenih", which is the
-                    // wrong case for one and the wrong case for two. the
-                    // sentence carries no noun to agree with a number now.
-                    sub: shape.joined
-                        ? fill('+{n} this period', { n: useNum(shape.joined) })
-                        : ''
-                },
-                { label: 'Projects', value: useNum(shape.projects), to: 'use-team' }
+                }
             ];
             if (!fresh) body.appendChild(useStrip(strip));
+
+            // and whatever is left of the first screen, so the next section
+            // begins below it rather than half in view
+            var fold = document.createElement('div');
+            fold.className = 'use-fold-gap';
+            fold.setAttribute('aria-hidden', 'true');
+            body.appendChild(fold);
 
             // ---- screening
             var sec = useSection('use-screening', 'Screening', 'screening',
@@ -5696,6 +5782,9 @@
             get.textContent = t('Download CSV');
             foot.appendChild(get);
             body.appendChild(foot);
+
+            // the page is built; now it can be measured
+            queueFold();
         }
 
         // Which rows belong in the allowance block, and what the heading beside

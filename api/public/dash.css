@@ -3966,15 +3966,13 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
    fainter of the two rules -- they separate six facts inside one card, and
    drawn in the same weight as the card's own edge they made a table of six
    boxes sitting where a card should be. */
-/* Six facts about the period. Three across is what fits when the column is
-   ordinary, but it costs a second row, and a second row is what pushed half of
-   these under the fold on a laptop -- somebody opening this page saw a chart
-   and three numbers and had to be told the other three existed.
-   Wide enough and they go in one row, which is both shorter and how a row of
-   secondary metrics is usually read: across, once. */
+/* Four measures of the period, in one row. Never two rows: the second one
+   fell under the fold on a laptop, so somebody opening this page saw a chart
+   and half a row and had to be told the rest was there. Two across where four
+   would leave a number no room to be read. */
 .use-strip {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 1px;
     margin-bottom: 2.2rem;
     border: 1px solid var(--line);
@@ -4057,13 +4055,19 @@ a.use-cell:focus-visible { outline: 2px solid var(--link); outline-offset: -2px;
    threshold is measured rather than guessed: below it "Korišteni tokeni" and
    "Verwendete Token" wrap to two lines, and a wrapped label in one tile of six
    sets the height of all of them. */
-@container (min-width: 820px) {
-    .use-strip { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+@container (min-width: 620px) {
+    .use-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
-/* and two across where three would leave a number no room */
-@container (max-width: 560px) {
+/* and two across where four would leave a number no room */
+@container (max-width: 619px) {
     .use-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* Whatever is left of the first screen under the overview. Its height is
+   measured rather than declared -- see fitFold() -- because how much is left
+   depends on where the block starts, and that moves with the band above it and
+   with whether the rail is expanded. */
+.use-fold-gap { pointer-events: none; }
 
 /* a row with no limit has no bar. an empty track reads as one that failed to
    load rather than one with no end. */
