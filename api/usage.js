@@ -329,9 +329,17 @@ async function daysIn(orgId, from, to, sandbox, zone, grain) {
     to = until(to);
     const g = grain || GRAIN.day;
     const rows = await db.query(
+        // the same five measures the current window returns, because every
+        // one of them is drawn against its own earlier self. two of them were
+        // missing here, so the cards for severe and for addresses had a
+        // window before them made entirely of zeros -- a comparison that
+        // would have drawn a line along the floor and called it last month.
         `SELECT ${g.column} AS d,
                 count(*)::int AS n,
-                count(*) FILTER (WHERE verdict <> 'clear')::int AS flagged
+                count(*) FILTER (WHERE verdict <> 'clear')::int AS flagged,
+                count(*) FILTER (WHERE verdict = 'severe')::int AS severe,
+                count(DISTINCT address)::int AS addresses,
+                count(DISTINCT NULLIF(asset, ''))::int AS assets
            FROM screenings
           WHERE org_id = $1 AND at >= $2 AND at < $3 AND sandbox = $4
        GROUP BY 1 ORDER BY 1`,
