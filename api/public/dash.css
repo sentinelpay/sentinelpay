@@ -3988,6 +3988,7 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
    The radius steps down with the box: 14px on the chart card, 12 here. A
    smaller box wearing the same corner as a larger one looks rounder than it. */
 .use-cell {
+    position: relative;
     display: flex;
     flex-direction: column;
     /* the card above sets its contents 1.25rem in from its own border, and the
@@ -4004,12 +4005,31 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 /* A card that goes somewhere lifts slightly rather than filling with grey: a
    shaded box among unshaded ones reads as selected, which is a different thing
    from being pointed at. */
-a.use-cell:hover {
+.use-cell:hover {
     border-color: var(--panel-line);
     box-shadow: var(--lift);
 }
-a.use-cell:hover .use-cell-k { color: var(--ink-3); }
-a.use-cell:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+.use-cell:hover .use-cell-k { color: var(--ink-3); }
+
+/* The link, stretched over the whole card so the card is the target, while
+   the delta stays a button of its own on top of it. */
+.use-cell-go { text-decoration: none; color: inherit; }
+.use-cell-go::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+}
+/* Reached by keyboard, the ring goes round the card rather than round the
+   three words of the label -- the stretched layer is already the shape of the
+   card, so it is the thing to draw it on. On :focus-visible and not
+   :focus-within, or a click of the mouse would leave a card ringed like an
+   error until something else was clicked. */
+.use-cell-go:focus-visible { outline: none; }
+.use-cell-go:focus-visible::after {
+    outline: 2px solid var(--link);
+    outline-offset: 2px;
+}
 /* the name of a fact, in the weight the cards above use for theirs */
 .use-cell-k {
     font-size: 0.76rem;
@@ -4056,6 +4076,52 @@ a.use-cell:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
     font-weight: 600;
     color: var(--ink-4);
     font-variant-numeric: tabular-nums;
+    /* On the shared baseline this hangs off the bottom of a figure twice its
+       size: it is a separate remark about the number, not part of it. Centred
+       on the figure instead, the same as the headline's. Digits have no
+       descender, so the middle of the line box and the middle of the digits
+       are the same place and there is nothing to correct for. */
+    align-self: center;
+}
+
+/* As a button it has to stop looking like one: no chrome of its own and the
+   same metrics it had as text. It sits above the card's stretched link so a
+   click on it holds the comparison rather than following the link. */
+.use-cell-d.is-live {
+    position: relative;
+    z-index: 1;
+    padding: 0.16rem 0.4rem;
+    /* put in and pulled straight back out, so the field paints when it appears
+       without moving the word it is behind */
+    margin: -0.16rem -0.4rem;
+    border: 0;
+    border-radius: 999px;
+    background: none;
+    font: inherit;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+.use-cell-d.is-live:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+/* Held is a decision, and wears the colour of the direction it is in rather
+   than a fourth colour to learn -- the same mix the headline's control uses,
+   so the two say "this is on" the same way. Pointing is not deciding and gets
+   no field at all. */
+.use-cell.is-held .use-cell-d.is-live {
+    background: color-mix(in srgb, var(--ink-3) 10%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink-3) 20%, transparent);
+}
+.use-cell.is-held .use-cell-d.is-live.is-up {
+    background: color-mix(in srgb, var(--link) 10%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--link) 24%, transparent);
+}
+.use-cell.is-held .use-cell-d.is-live.is-down {
+    background: color-mix(in srgb, var(--fall) 11%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fall) 24%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+    .use-cell-d.is-live { transition: none; }
 }
 /* the arrow carries the direction at the size of its own line rather than of
    the figure beside it, which at this size would make it the loudest mark in
@@ -4144,7 +4210,8 @@ a.use-cell:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
     transition: opacity 0.16s ease;
 }
 .use-cell:hover .use-spark-g,
-.use-cell:focus-visible .use-spark-g { opacity: 0.8; }
+.use-cell:focus-within .use-spark-g,
+.use-cell.is-held .use-spark-g { opacity: 0.8; }
 @media (prefers-reduced-motion: reduce) {
     .use-spark-g { transition: none; }
 }
