@@ -4972,32 +4972,52 @@
                     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 });
             }
+            // A tile is the headline card in miniature, and deliberately so:
+            // the name of the thing, the number, what it is doing compared
+            // with last time, then a quiet line of context. Reading down the
+            // page, every box answers the same four questions in the same
+            // order and in the same places.
             var k = document.createElement('span');
             k.className = 'use-cell-k';
             k.textContent = t(r.label);
             cell.appendChild(k);
+
+            // The number and its delta share a row and a baseline, exactly as
+            // the headline's do. They used to be two rows apart, with the
+            // delta down in the footnote beside an unrelated percentage --
+            // which asked the eye to travel from a figure to a remark about it
+            // past a remark about something else.
+            var row = document.createElement('span');
+            row.className = 'use-cell-r';
             var v = document.createElement('span');
-            v.className = 'use-cell-v';
+            // A zero is a fact and not an achievement. Kept full size so the
+            // rows still line up, and set in the muted ink so a screen of
+            // nothing-yet does not read as a screen of results.
+            v.className = 'use-cell-v' + (r.value === '0' ? ' is-none' : '');
             v.textContent = r.value;
-            cell.appendChild(v);
-            if (r.sub || r.move) {
-                var sub = document.createElement('span');
-                sub.className = 'use-cell-s';
-                if (r.sub) sub.appendChild(document.createTextNode(r.sub));
-                // up or down against the same window before this one, in the
-                // same two colours the headline uses. only where the earlier
-                // number means the same thing as this one: a count over a
-                // window can be compared with the window before it, and how
-                // many people are in the company today cannot.
-                if (r.move) {
-                    if (r.sub) sub.appendChild(document.createTextNode('  \u00b7  '));
-                    var m = document.createElement('span');
-                    m.className = 'use-cell-d' + (r.move.up ? ' is-up' : (r.move.down ? ' is-down' : ''));
-                    m.textContent = r.move.text;
-                    sub.appendChild(m);
-                }
-                cell.appendChild(sub);
+            row.appendChild(v);
+            // up or down against the same window before this one, in the same
+            // two colours the headline uses. only where the earlier number
+            // means the same thing as this one: a count over a window can be
+            // compared with the window before it, and how many people are in
+            // the company today cannot.
+            if (r.move) {
+                var m = document.createElement('span');
+                m.className = 'use-cell-d' + (r.move.up ? ' is-up' : (r.move.down ? ' is-down' : ''));
+                m.textContent = r.move.text;
+                row.appendChild(m);
             }
+            cell.appendChild(row);
+
+            // Always here, even with nothing to say. Six boxes in a grid take
+            // the height of the tallest, so a tile with a line of context and
+            // one without were the same height with the difference showing as
+            // dead space under the shorter one -- which is the whole of why
+            // this block looked ragged beside the card above it.
+            var sub = document.createElement('span');
+            sub.className = 'use-cell-s';
+            if (r.sub) sub.textContent = r.sub;
+            cell.appendChild(sub);
             strip.appendChild(cell);
         });
         return strip;
@@ -5385,7 +5405,13 @@
             var strip = [
                 {
                     label: 'Flagged', value: useNum(s.flagged), to: 'use-flagged',
-                    sub: s.total ? Math.round((s.flagged / s.total) * 100) + '%' : '',
+                    // a share with no noun beside it is a number the reader
+                    // has to guess the denominator of, and the two candidates
+                    // here -- of the checks, of the addresses -- are both
+                    // plausible and give different answers
+                    sub: s.total
+                        ? fill('{n}% of checks', { n: Math.round((s.flagged / s.total) * 100) })
+                        : '',
                     move: moved(s.flagged, was && was.flagged)
                 },
                 {
