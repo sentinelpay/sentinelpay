@@ -5029,7 +5029,7 @@
     // range out of one extra check; against zero it draws what it was, which
     // is almost flat. Prices are scaled the other way because a price never
     // approaches zero, and a count of anything does.
-    function sparkline(values, dir) {
+    function sparkline(values, dir, before) {
         var box = document.createElement('span');
         box.className = 'use-spark' + (dir === 'up' ? ' is-up' : (dir === 'down' ? ' is-down' : ''));
         var svg = document.createElementNS(SVG_NS, 'svg');
@@ -5043,12 +5043,18 @@
         svg.setAttribute('focusable', 'false');
 
         var nums = (values || []).map(function (v) { return Number(v) || 0; });
+        // The window before this one, laid under it. Drawn to the same scale
+        // as the line above it, which is the whole point: two lines in one box
+        // each scaled to its own maximum are two pictures of nothing, because
+        // the one that is half the size would be drawn exactly as tall.
+        var was = (before || []).map(function (v) { return Number(v) || 0; });
         var top = 0;
         var low = nums.length ? nums[0] : 0;
         nums.forEach(function (v) {
             if (v > top) top = v;
             if (v < low) low = v;
         });
+        was.forEach(function (v) { if (v > top) top = v; });
         // Every day the same number. Its height against its own maximum is
         // then always the maximum, so the line would pin itself to the top
         // edge whether the number is five or five thousand -- a position that
@@ -5065,22 +5071,41 @@
         };
         var x = function (i) { return nums.length > 1 ? (i / (nums.length - 1)) * 100 : 0; };
 
-        var d = [];
-        nums.forEach(function (v, i) {
-            if (!i) { d.push('M 0 ' + y(v)); return; }
-            var px = x(i - 1);
-            var py = y(nums[i - 1]);
-            var cx = x(i);
-            var cy = y(v);
-            var reach = (cx - px) / 2.6;
-            d.push('C ' + (px + reach) + ' ' + py + ' ' + (cx - reach) + ' ' + cy +
-                ' ' + cx + ' ' + cy);
-        });
-        if (nums.length === 1) d.push('L 100 ' + y(nums[0]));
-        if (!nums.length) d.push('M 0 98 L 100 98');
+        // one curve builder, used for this window and for the one before it
+        function shape(series, across) {
+            var d = [];
+            series.forEach(function (v, i) {
+                var cx = across(i);
+                var cy = y(v);
+                if (!i) { d.push('M ' + cx + ' ' + cy); return; }
+                var px = across(i - 1);
+                var py = y(series[i - 1]);
+                var reach = (cx - px) / 2.6;
+                d.push('C ' + (px + reach) + ' ' + py + ' ' + (cx - reach) + ' ' + cy +
+                    ' ' + cx + ' ' + cy);
+            });
+            if (series.length === 1) d.push('L 100 ' + y(series[0]));
+            if (!series.length) d.push('M 0 98 L 100 98');
+            return d.join(' ');
+        }
+
+        // The earlier window first, so it sits under this one where the two
+        // cross. It has its own spacing: the two windows are the same length
+        // in principle, and a period still running is compared against only as
+        // much of the one before it as has elapsed, so in practice one can be
+        // a bucket shorter.
+        if (was.length) {
+            var ghost = document.createElementNS(SVG_NS, 'path');
+            ghost.setAttribute('d', shape(was, function (i) {
+                return was.length > 1 ? (i / (was.length - 1)) * 100 : 0;
+            }));
+            ghost.setAttribute('class', 'use-spark-g');
+            ghost.setAttribute('vector-effect', 'non-scaling-stroke');
+            svg.appendChild(ghost);
+        }
 
         var path = document.createElementNS(SVG_NS, 'path');
-        path.setAttribute('d', d.join(' '));
+        path.setAttribute('d', shape(nums, x));
         path.setAttribute('class', 'use-spark-l');
         svg.appendChild(path);
         box.appendChild(svg);
@@ -5163,7 +5188,8 @@
             // reads it two different ways.
             if (r.spark) {
                 cell.appendChild(sparkline(r.spark,
-                    r.move ? (r.move.up ? 'up' : (r.move.down ? 'down' : '')) : ''));
+                    r.move ? (r.move.up ? 'up' : (r.move.down ? 'down' : '')) : '',
+                    r.before));
             }
             strip.appendChild(cell);
         });
@@ -5625,6 +5651,14 @@
             // the window before, and all about the work rather than about the
             // account.
             var severe = (s.verdicts && s.verdicts.severe) || 0;
+            // The same days of the window before, wherever there is one. The
+            // server sends them for the chart's own ghost line, and they carry
+            // every measure, so each card can lay its own earlier self under
+            // itself rather than under a copy of the total.
+            var older = (was && was.days) || [];
+            var earlier = function (key) {
+                return older.length ? older.map(function (d) { return d[key]; }) : null;
+            };
             var strip = [
                 {
                     label: 'Flagged', value: useNum(s.flagged), to: 'use-flagged',
@@ -5636,7 +5670,8 @@
                         ? fill('{n}% of checks', { n: Math.round((s.flagged / s.total) * 100) })
                         : '',
                     move: moved(s.flagged, was && was.flagged),
-                    spark: (s.days || []).map(function (d) { return d.flagged; })
+                    spark: (s.days || []).map(function (d) { return d.flagged; }),
+                    before: earlier('flagged')
                 },
                 {
                     // Not the same question as flagged. Flagged is everything
@@ -5652,7 +5687,8 @@
                         ? fill('{n}% of flagged', { n: Math.round((severe / s.flagged) * 100) })
                         : '',
                     move: moved(severe, was && was.severe),
-                    spark: (s.days || []).map(function (d) { return d.severe; })
+                    spark: (s.days || []).map(function (d) { return d.severe; }),
+                    before: earlier('severe')
                 },
                 {
                     label: 'Addresses', value: useNum(s.addresses), to: 'use-screening',
@@ -5667,12 +5703,14 @@
                     // to the distinct addresses of the window and are not
                     // meant to: one address asked about on two days is one
                     // address that week and one on each of the two
-                    spark: (s.days || []).map(function (d) { return d.addresses; })
+                    spark: (s.days || []).map(function (d) { return d.addresses; }),
+                    before: earlier('addresses')
                 },
                 {
                     label: 'Chains', value: useNum(s.assetCount), to: 'use-assets',
                     move: moved(s.assetCount, was && was.assetCount),
-                    spark: (s.days || []).map(function (d) { return d.assets; })
+                    spark: (s.days || []).map(function (d) { return d.assets; }),
+                    before: earlier('assets')
                 }
             ];
             if (!fresh) body.appendChild(useStrip(strip));

@@ -4127,6 +4127,28 @@ a.use-cell:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
    the direction twice and never reads it two different ways */
 .use-spark.is-down .use-spark-l { stroke: var(--fall); }
 
+/* The window before this one, laid underneath. Dashed and violet, the same
+   two marks the chart above uses for the same thing, so a reader learns the
+   idea once.
+   Hidden until the card is pointed at or reached by keyboard: it answers a
+   question somebody is asking of this card, and four of them showing at once
+   is eight lines in a row of four small boxes. */
+.use-spark-g {
+    fill: none;
+    stroke: var(--fall);
+    stroke-width: 1.3;
+    stroke-dasharray: 3 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0;
+    transition: opacity 0.16s ease;
+}
+.use-cell:hover .use-spark-g,
+.use-cell:focus-visible .use-spark-g { opacity: 0.8; }
+@media (prefers-reduced-motion: reduce) {
+    .use-spark-g { transition: none; }
+}
+
 /* a row with no limit has no bar. an empty track reads as one that failed to
    load rather than one with no end. */
 
