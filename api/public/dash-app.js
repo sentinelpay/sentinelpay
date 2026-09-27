@@ -5116,17 +5116,14 @@
         var strip = document.createElement('section');
         strip.className = 'use-strip';
         rows.forEach(function (r) {
-            var cell = r.to ? document.createElement('a') : document.createElement('div');
+            // A div with a link stretched across it rather than a link
+            // wrapping everything. The delta has to be a button -- it draws
+            // the line it is talking about -- and a button inside an anchor is
+            // not allowed html and is not reachable the way either of them
+            // should be. As siblings they each get their own keyboard stop and
+            // the whole card is still one click target.
+            var cell = document.createElement('div');
             cell.className = 'use-cell';
-            if (r.to) {
-                cell.href = '#' + r.to;
-                cell.addEventListener('click', function (e) {
-                    var target = document.getElementById(r.to);
-                    if (!target) return;
-                    e.preventDefault();
-                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                });
-            }
             // A tile is the headline card in miniature, and deliberately so:
             // the name of the thing, the number, what it is doing compared
             // with last time, then a quiet line of context. Reading down the
@@ -5135,7 +5132,21 @@
             var k = document.createElement('span');
             k.className = 'use-cell-k';
             k.textContent = t(r.label);
-            cell.appendChild(k);
+            if (r.to) {
+                var go = document.createElement('a');
+                go.className = 'use-cell-go';
+                go.href = '#' + r.to;
+                go.appendChild(k);
+                go.addEventListener('click', function (e) {
+                    var target = document.getElementById(r.to);
+                    if (!target) return;
+                    e.preventDefault();
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+                cell.appendChild(go);
+            } else {
+                cell.appendChild(k);
+            }
 
             // The number and its delta share a row and a baseline, exactly as
             // the headline's do. They used to be two rows apart, with the
@@ -5157,8 +5168,24 @@
             // compared with the window before it, and how many people are in
             // the company today cannot.
             if (r.move) {
-                var m = document.createElement('span');
-                m.className = 'use-cell-d' + (r.move.up ? ' is-up' : (r.move.down ? ' is-down' : ''));
+                // The delta doubles as the control that draws what it is
+                // talking about, exactly as the headline's does: pointing puts
+                // the earlier window under the line for as long as the pointer
+                // stays, and clicking holds it there. Pointing is not
+                // deciding, so the two look different.
+                var live = Boolean(r.before && r.before.length);
+                var m = document.createElement(live ? 'button' : 'span');
+                m.className = 'use-cell-d' + (r.move.up ? ' is-up' : (r.move.down ? ' is-down' : '')) +
+                    (live ? ' is-live' : '');
+                if (live) {
+                    m.type = 'button';
+                    m.setAttribute('aria-pressed', 'false');
+                    m.addEventListener('click', function () {
+                        var held = !cell.classList.contains('is-held');
+                        cell.classList.toggle('is-held', held);
+                        m.setAttribute('aria-pressed', held ? 'true' : 'false');
+                    });
+                }
                 // the same arrow the headline uses, for the same reason: a
                 // colour alone says which way this went only to somebody who
                 // can tell our blue from our violet, and about a tenth of the
@@ -5169,6 +5196,15 @@
                 arrow.textContent = r.move.up ? '\u2191' : (r.move.down ? '\u2193' : '\u2192');
                 m.appendChild(arrow);
                 m.appendChild(document.createTextNode(r.move.text));
+                if (live) {
+                    // read aloud, and to nobody else: on its own the button is
+                    // a percentage, which says nothing about what pressing it
+                    // does or what the number is measured against
+                    var says = document.createElement('span');
+                    says.className = 'sr-only';
+                    says.textContent = ' ' + t('vs the period before');
+                    m.appendChild(says);
+                }
                 row.appendChild(m);
             }
             cell.appendChild(row);
