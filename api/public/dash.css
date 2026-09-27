@@ -4155,6 +4155,69 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     .use-plot { --use-plot-h: clamp(100px, 15svh, 148px); }
     .use-spark, .use-spark svg { height: 20px; }
     .use-cell { padding: 0.85rem 1rem 0.9rem; }
+
+    /* One row that scrolls sideways, rather than two that stack.
+       A phone is tall for a page and short for a screenful: two rows of cards
+       put the second one under the fold on every handset below about 850
+       points, so somebody opening this met the chart and half the measures.
+       Sideways, the row is one card tall and the four of them are reached the
+       way a phone reaches things.
+       It runs out to the edges of the screen so the last card is cut off by
+       the screen rather than by the column, which is what says there is more
+       of it. */
+    .use-strip {
+        display: flex;
+        gap: 0.6rem;
+        margin-inline: -1rem;
+        padding-inline: 1rem;
+        overflow-x: auto;
+        scroll-snap-type: x proximity;
+        /* A snap point is measured from the edge of the scroll box, not from
+           the edge of its padding, so the row opened already scrolled past its
+           own inset and the first card sat a gutter left of the card above it.
+           This tells the snapping where the content actually starts. */
+        scroll-padding-inline: 1rem;
+        scrollbar-width: none;
+    }
+    .use-strip::-webkit-scrollbar { display: none; }
+    /* Wide enough that the number and its delta stay on one line. At half the
+       column they fitted for three digits and wrapped at four, so the row was
+       one height over a quarter and another over ninety days -- the size of
+       the number decided the height of the card. Under two cards to a screen
+       also says plainly that there are more of them. */
+    .use-cell {
+        flex: 0 0 calc(60% - 0.5rem);
+        min-width: 10.5rem;
+        scroll-snap-align: start;
+    }
+    /* the note has a narrower card to sit in, and wrapping it would make the
+       row taller than the thing it is a footnote to */
+    .use-cell-s { font-size: 0.68rem; }
+
+    /* The words after the percentage, said to a screen reader and to nobody
+       else. On a narrow card they wrapped the headline onto a second line as
+       soon as the figure grew a digit, so the card was one height over a
+       quarter and another over ninety days -- the number decided the layout.
+       The arrow and the percentage carry the same thing in the room there is.
+       Not display:none, which is not read out at all. */
+    .use-delta-w {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        padding: 0;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+    }
+
+    /* and the band above gives back what it can, because on the smallest
+       handsets the overview is a few points from fitting and every one of
+       them is the difference between seeing the measures and being told
+       they are there */
+    .use-h1 { margin-bottom: 0.5rem; }
+    .use-top { margin-bottom: 0.85rem; padding-bottom: 0.55rem; }
+    .use-head { margin-bottom: 0.6rem; }
 }
 
 /* One row of six once the column can hold them without a label breaking. The
