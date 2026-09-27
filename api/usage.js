@@ -558,7 +558,16 @@ async function forOrg(orgId, opts) {
         // here, which they are not for two calendar months.
         const alongside = comparable;
 
-        const [work, shape, past, marks, ghost] = await Promise.all([
+        // The billing cycle this organisation is in, whichever window is being
+        // looked at. The allowance belongs to the cycle and not to the window:
+        // "how much of the quarter is spent" has one answer, and it should not
+        // disappear because somebody asked to see yesterday. Counted here so
+        // the meter can say the same thing on every period rather than
+        // vanishing on four of them and taking the card's height with it.
+        const cycle = list.find((p) => p.current) || null;
+        const sameWindow = cycle && cycle.key === period.key;
+
+        const [work, shape, past, marks, ghost, spent] = await Promise.all([
             screeningsIn(orgId, period.from, period.to, sandbox, zone, grain),
             shapeOf(orgId, period.from, period.to),
             comparable
@@ -581,6 +590,15 @@ async function forOrg(orgId, opts) {
             alongside
                 ? daysIn(orgId, before.from, before.to, sandbox, zone, grain)
                 : Promise.resolve(null),
+            // free when the window already is the cycle
+            !cycle || sameWindow
+                ? Promise.resolve(null)
+                : db.query(
+                    `SELECT count(*)::int AS n
+                       FROM screenings
+                      WHERE org_id = $1 AND at >= $2 AND at < $3 AND sandbox = $4`,
+                    [Number(orgId), cycle.from, until(cycle.to), Boolean(sandbox)]
+                ),
         ]);
         const head = past.rows[0] || null;
         return {
@@ -591,6 +609,12 @@ async function forOrg(orgId, opts) {
             zone,
             screenings: work,
             marks,
+            // what the plan's allowance is measured against, always the cycle
+            cycle: cycle ? {
+                from: cycle.from,
+                to: cycle.to,
+                used: sameWindow ? work.total : ((spent && spent.rows[0]) || { n: 0 }).n,
+            } : null,
             previous: head ? {
                 from: before.from, to: before.to,
                 total: head.n, flagged: head.flagged, severe: head.severe,
