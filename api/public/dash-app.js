@@ -5044,11 +5044,25 @@
 
         var nums = (values || []).map(function (v) { return Number(v) || 0; });
         var top = 0;
-        nums.forEach(function (v) { if (v > top) top = v; });
+        var low = nums.length ? nums[0] : 0;
+        nums.forEach(function (v) {
+            if (v > top) top = v;
+            if (v < low) low = v;
+        });
+        // Every day the same number. Its height against its own maximum is
+        // then always the maximum, so the line would pin itself to the top
+        // edge whether the number is five or five thousand -- a position that
+        // looks like a reading and carries none. Drawn down the middle
+        // instead, which says the one thing that is true: it did not move.
+        var flat = !nums.length || low === top;
         // A window with nothing in it is a flat line along the floor, not an
         // empty box: the card still has to hold a shape, and "nothing happened"
         // is a shape.
-        var y = function (v) { return top > 0 ? 100 - (v / top) * 96 - 2 : 98; };
+        var y = function (v) {
+            if (!top) return 98;
+            if (flat) return 50;
+            return 100 - (v / top) * 96 - 2;
+        };
         var x = function (i) { return nums.length > 1 ? (i / (nums.length - 1)) * 100 : 0; };
 
         var d = [];
