@@ -3290,8 +3290,8 @@ html.is-theming .btn {
     z-index: 5;
     /* out to the edges of the scrolling area, so the rule under it runs the
        full width the way a header's does rather than stopping at the column */
-    margin: -1.6rem -1.4rem 1.6rem;
-    padding: 1.6rem 1.4rem 0.85rem;
+    margin: -1.6rem -1.4rem 1.15rem;
+    padding: 1.6rem 1.4rem 0.7rem;
     /* Opaque, and that is the whole separation. A rule under a bar that never
        moves is a line drawn across a page that does not need dividing; what the
        band has to do while the sections pass under it is hide them, which a
@@ -3304,7 +3304,7 @@ html.is-theming .btn {
 @media (min-width: 900px) {
     .use-top-in { max-width: 54rem; }
 }
-.use-h1 { margin-bottom: 0.9rem; }
+.use-h1 { margin-bottom: 0.65rem; }
 .use-bar {
     display: flex;
     align-items: center;
@@ -3462,6 +3462,17 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
    and anything inside a stretched svg is stretched with it -- a hairline
    becomes a band, and text becomes unreadable. */
 .use-plot {
+    /* The axis labels and the plot they label have to be exactly as tall as
+       each other or the gridlines stop meeting their numbers. They were two
+       copies of 148px, which is two chances to change one of them.
+
+       A laptop is not as tall as it is wide, and a chart sized for a desktop
+       pushed the row of tiles under it off the bottom of the screen -- so
+       somebody opening this page met a chart and had to be told the rest was
+       there. It gives height back on a short window and takes none on a tall
+       one. Held to a floor, because below it the gridlines are closer together
+       than the numbers beside them. */
+    --use-plot-h: 148px;
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     grid-template-rows: auto auto;
@@ -3475,7 +3486,7 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     flex-direction: column;
     justify-content: space-between;
     align-items: flex-end;
-    height: 148px;
+    height: var(--use-plot-h);
     font-size: 0.68rem;
     color: var(--ink-4);
     font-variant-numeric: tabular-nums;
@@ -3488,7 +3499,7 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 .use-plot-a {
     grid-column: 2;
     grid-row: 1;
-    height: 148px;
+    height: var(--use-plot-h);
     border-bottom: 1px solid var(--line);
     background-image:
         linear-gradient(to bottom, var(--line-2) 1px, transparent 1px),
@@ -3690,8 +3701,8 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
    standing beside it as though the two belonged together. One metric, one
    card, and the allowance is part of the card rather than a second one. */
 .use-meter {
-    margin-top: 1.1rem;
-    padding-top: 0.9rem;
+    margin-top: 0.8rem;
+    padding-top: 0.7rem;
     border-top: 1px solid var(--line-2);
 }
 .use-meter-r {
@@ -3774,8 +3785,8 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
    that is more or less than last time. Everything else on the screen is
    smaller than this on purpose: a page of equal boxes has no first sentence. */
 .use-head {
-    margin-bottom: 0.9rem;
-    padding: 1.1rem 1.25rem 1.15rem;
+    margin-bottom: 0.75rem;
+    padding: 1rem 1.25rem 0.95rem;
     border: 1px solid var(--line);
     border-radius: 14px;
     background: var(--surface);
@@ -3932,6 +3943,13 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 /* A control has been moved and the answer has not arrived. It is a fade and
    not a spinner: what is on the screen is still the last true thing, and
    taking it away to say so would leave less on the page than waiting does. */
+/* The blocks below the band lay themselves out against this, not against the
+   window. The rail beside them can be expanded, collapsed or set to open on
+   hover, so the room a card actually has is not something a viewport width
+   knows -- two people at the same screen size can have two different pages.
+   Containment is on the inline axis only, and the chart's tooltip hangs off
+   .use-plot-in well inside here, so nothing's containing block moves. */
+.use-body { container-type: inline-size; }
 .use-body.is-waiting { opacity: 0.55; transition: opacity 120ms ease; }
 @media (prefers-reduced-motion: reduce) {
     .use-body.is-waiting { transition: none; }
@@ -3948,6 +3966,12 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
    fainter of the two rules -- they separate six facts inside one card, and
    drawn in the same weight as the card's own edge they made a table of six
    boxes sitting where a card should be. */
+/* Six facts about the period. Three across is what fits when the column is
+   ordinary, but it costs a second row, and a second row is what pushed half of
+   these under the fold on a laptop -- somebody opening this page saw a chart
+   and three numbers and had to be told the other three existed.
+   Wide enough and they go in one row, which is both shorter and how a row of
+   secondary metrics is usually read: across, once. */
 .use-strip {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -4025,12 +4049,27 @@ a.use-cell:focus-visible { outline: 2px solid var(--link); outline-offset: -2px;
 .use-cell-d.is-up { color: var(--link); }
 .use-cell-d.is-down { color: var(--fall); }
 
+@media (min-width: 721px) {
+    .use-plot { --use-plot-h: clamp(112px, 19vh, 148px); }
+}
+
+/* One row of six once the column can hold them without a label breaking. The
+   threshold is measured rather than guessed: below it "Korišteni tokeni" and
+   "Verwendete Token" wrap to two lines, and a wrapped label in one tile of six
+   sets the height of all of them. */
+@container (min-width: 820px) {
+    .use-strip { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+}
+/* and two across where three would leave a number no room */
+@container (max-width: 560px) {
+    .use-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 /* a row with no limit has no bar. an empty track reads as one that failed to
    load rather than one with no end. */
 
 @media (max-width: 720px) {
     .use-big { font-size: 1.85rem; }
-    .use-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .use-head { padding: 0.95rem 1rem 1rem; }
 }
 
