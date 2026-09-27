@@ -74,6 +74,7 @@ function cycles(anchorAt, now, back, span) {
             from: (from.getTime() < anchor.getTime() ? anchor : from).toISOString(),
             to: to.toISOString(),
             current: i === 0,
+            grain: 'day',
         });
     }
     return out;
@@ -93,13 +94,44 @@ function rolling(days, now, birth) {
     if (birth && new Date(birth).getTime() > from.getTime()) {
         from = months.startOfDay(birth);
     }
-    return { key: 'd' + days, from: from.toISOString(), to: end.toISOString(), days };
+    return { key: 'd' + days, from: from.toISOString(), to: end.toISOString(), days, grain: 'day' };
+}
+
+// A window short enough that a day is the wrong unit.
+//
+// Thirty days of work is a shape you read in days. What happened this morning
+// is not: a single column for today answers "how busy was today" with one
+// number and hides the whole of it. So the short windows are counted by the
+// hour, which is also the only thing that puts a time of day on the axis
+// honestly -- a daily bucket has no hour in it to print.
+//
+// Never before the organisation existed, same as the daily windows, but to the
+// instant rather than the start of that day: an account four hours old has
+// four hours of history, not a day of mostly nothing.
+function rollingHours(hours, now, birth) {
+    const end = new Date(now || Date.now());
+    let from = new Date(end.getTime() - hours * 3600000);
+    if (birth && new Date(birth).getTime() > from.getTime()) {
+        from = new Date(birth);
+    }
+    return {
+        key: 'h' + hours,
+        from: from.toISOString(),
+        to: end.toISOString(),
+        hours,
+        grain: 'hour',
+    };
 }
 
 function periods(anchorAt, now, birth, span) {
     const when = now || Date.now();
     return cycles(anchorAt, when, CYCLES_BACK, span)
-        .concat([rolling(30, when, birth), rolling(90, when, birth)]);
+        .concat([
+            rollingHours(24, when, birth),
+            rollingHours(168, when, birth),
+            rolling(30, when, birth),
+            rolling(90, when, birth),
+        ]);
 }
 
 function pickCycle(list, key) {
@@ -140,6 +172,51 @@ function dayIn(ms, zone) {
     }
 }
 
+// The same, to the hour. Named in the reader's zone like a day is, so a bucket
+// is an hour of their clock rather than an hour of UTC -- which matters most
+// exactly where it is least expected: half an hour off UTC, an hour of utc is
+// two halves of two of their hours.
+function hourIn(ms, zone) {
+    try {
+        const parts = new Intl.DateTimeFormat('en-CA', {
+            timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', hourCycle: 'h23',
+        }).formatToParts(new Date(ms));
+        const of = (type) => (parts.find((p) => p.type === type) || {}).value;
+        return of('year') + '-' + of('month') + '-' + of('day') + ' ' + of('hour') + ':00';
+    } catch (err) {
+        return new Date(ms).toISOString().slice(0, 13).replace('T', ' ') + ':00';
+    }
+}
+
+// What a bucket is, in the three places that have to agree about it: how
+// postgres groups the rows, how a moment is named, and how far one step is.
+//
+// They have to agree or the chart quietly loses data -- the walk names a
+// bucket the query never produced, so it fills it with a zero and the work
+// that happened in it is drawn as an empty hour. One table, read by all three.
+const GRAIN = {
+    day: {
+        step: 86400000,
+        // midday, so a step cannot skip a day or count one twice across a
+        // clock change
+        anchor: (ms) => noonOf(ms),
+        nameOf: dayIn,
+        column: "to_char(date_trunc('day', at AT TIME ZONE $5), 'YYYY-MM-DD')",
+    },
+    hour: {
+        step: 3600000,
+        // the middle of the hour, for the same reason
+        anchor: (ms) => Math.floor(ms / 3600000) * 3600000 + 1800000,
+        nameOf: hourIn,
+        column: "to_char(date_trunc('hour', at AT TIME ZONE $5), 'YYYY-MM-DD HH24:00')",
+    },
+};
+
+function grainOf(period) {
+    return GRAIN[(period && period.grain) === 'hour' ? 'hour' : 'day'];
+}
+
 // Every one of the reader's days the window touches, in order and once each.
 //
 // The walk has to step in one calendar and stop in another, and getting that
@@ -157,23 +234,31 @@ function dayIn(ms, zone) {
 // about where the window ends. It starts a day early and ends a day late, since
 // a zone can be fourteen hours from UTC and the reader's own first and last day
 // can sit outside the UTC dates of the bounds.
-function walkDays(fromMs, stopMs, zone) {
-    const first = dayIn(fromMs, zone);
-    const last = dayIn(stopMs, zone);
+function walkDays(fromMs, stopMs, zone, grain) {
+    const g = grain || GRAIN.day;
+    const first = g.nameOf(fromMs, zone);
+    const last = g.nameOf(stopMs, zone);
     const out = [];
-    let cursor = noonOf(fromMs) - 86400000;
-    const end = noonOf(stopMs) + 86400000;
+    let cursor = g.anchor(fromMs) - g.step;
+    const end = g.anchor(stopMs) + g.step;
     let guard = 0;
     let seen = '';
-    while (cursor <= end && guard++ < 500) {
-        const key = dayIn(cursor, zone);
+    // a week of hours is 168 of them, and the walk starts one early and ends
+    // one late, so the old limit of five hundred was a day and a half short of
+    // silently truncating the axis
+    while (cursor <= end && guard++ < 5000) {
+        const key = g.nameOf(cursor, zone);
+        // Where a zone puts its clocks back, two of these steps land in the
+        // same named hour. The query grouped by that name too, so the row
+        // already holds both -- naming it once keeps the count whole rather
+        // than drawing the hour twice with half of it in each.
         if (key !== seen && key >= first && key <= last) {
             out.push(key);
             seen = key;
         }
-        cursor += 86400000;
+        cursor += g.step;
     }
-    // a window too short to contain a whole day is still a day on the chart
+    // a window too short to contain a whole bucket is still one on the chart
     if (!out.length) out.push(last);
     return out;
 }
@@ -185,7 +270,7 @@ function pickDays(seen, days) {
     });
 }
 
-function fillDays(rows, from, to, zone) {
+function fillDays(rows, from, to, zone, grain) {
     // the last day is the one holding the last instant the window contains,
     // not the one its exclusive end lands on. a period that ends at midnight
     // on the twentieth is over on the nineteenth, and drawing a twentieth on
@@ -193,7 +278,7 @@ function fillDays(rows, from, to, zone) {
     const now = Date.now();
     const stop = Math.min(new Date(to).getTime() - 1, now);
     const out = pickDays(new Map(rows.map((r) => [r.d, r])),
-        walkDays(new Date(from).getTime(), stop, zone));
+        walkDays(new Date(from).getTime(), stop, zone, grain));
     return out;
 }
 
@@ -219,10 +304,11 @@ function until(to) {
     return new Date(Math.min(new Date(to).getTime(), Date.now())).toISOString();
 }
 
-async function daysIn(orgId, from, to, sandbox, zone) {
+async function daysIn(orgId, from, to, sandbox, zone, grain) {
     to = until(to);
+    const g = grain || GRAIN.day;
     const rows = await db.query(
-        `SELECT to_char(date_trunc('day', at AT TIME ZONE $5), 'YYYY-MM-DD') AS d,
+        `SELECT ${g.column} AS d,
                 count(*)::int AS n,
                 count(*) FILTER (WHERE verdict <> 'clear')::int AS flagged
            FROM screenings
@@ -236,11 +322,12 @@ async function daysIn(orgId, from, to, sandbox, zone) {
     // the card. one function, so there is one answer to what a day is
     const stop = Math.min(new Date(to).getTime() - 1, Date.now());
     return pickDays(new Map(rows.rows.map((r) => [r.d, r])),
-        walkDays(new Date(from).getTime(), stop, zone));
+        walkDays(new Date(from).getTime(), stop, zone, grain));
 }
 
-async function screeningsIn(orgId, from, to, sandbox, zone) {
+async function screeningsIn(orgId, from, to, sandbox, zone, grain) {
     to = until(to);
+    const g = grain || GRAIN.day;
     const args = [Number(orgId), from, to, Boolean(sandbox), zone];
     const [sum, days, verdicts, assets, byProject] = await Promise.all([
         db.query(
@@ -256,8 +343,9 @@ async function screeningsIn(orgId, from, to, sandbox, zone) {
             // A day is the reader's day. Bucketing in utc puts an evening in
             // one column for somebody in Zagreb and the next column for
             // somebody in New York, and both of them are looking at their own
-            // working day.
-            `SELECT to_char(date_trunc('day', at AT TIME ZONE $5), 'YYYY-MM-DD') AS d,
+            // working day. The same holds of an hour, and more sharply: a zone
+            // half an hour off utc has no hour in common with it at all.
+            `SELECT ${g.column} AS d,
                     count(*)::int AS n,
                     count(*) FILTER (WHERE verdict <> 'clear')::int AS flagged
                FROM screenings
@@ -303,7 +391,7 @@ async function screeningsIn(orgId, from, to, sandbox, zone) {
         clear: head.n - head.flagged,
         addresses: head.addresses,
         assetCount: head.assets,
-        days: fillDays(days.rows, from, to, zone),
+        days: fillDays(days.rows, from, to, zone, grain),
         verdicts: byVerdict,
         assets: assets.rows.map((r) => ({ asset: r.asset, n: r.n })),
         projects: byProject.rows.map((r) => ({
@@ -370,7 +458,7 @@ function previousOf(period) {
     const done = Math.min(now, to.getTime()) - from.getTime();
     const running = now < to.getTime();
 
-    if (period.days) {
+    if (period.days || period.hours) {
         const span = to.getTime() - from.getTime();
         const start = new Date(from.getTime() - span);
         return { from: start.toISOString(), to: new Date(start.getTime() + (running ? done : span)).toISOString() };
@@ -410,6 +498,10 @@ async function forOrg(orgId, opts) {
     const period = pickCycle(list, o.period);
     const sandbox = o.scope === 'sandbox';
     const zone = safeZone(o.zone);
+    // how finely this window is counted. it belongs to the window rather than
+    // to a setting: the same chart is read in hours over a day and in days
+    // over a quarter, and nobody should have to ask for that.
+    const grain = grainOf(period);
 
     if (!db.available()) {
         return { ok: false, reason: 'unavailable', period, periods: list, scope: sandbox ? 'sandbox' : 'live' };
@@ -435,7 +527,7 @@ async function forOrg(orgId, opts) {
         const alongside = comparable;
 
         const [work, shape, past, marks, ghost] = await Promise.all([
-            screeningsIn(orgId, period.from, period.to, sandbox, zone),
+            screeningsIn(orgId, period.from, period.to, sandbox, zone, grain),
             shapeOf(orgId, period.from, period.to),
             comparable
                 ? db.query(
@@ -454,7 +546,7 @@ async function forOrg(orgId, opts) {
                 : Promise.resolve({ rows: [] }),
             marksIn(orgId, period.from, period.to),
             alongside
-                ? daysIn(orgId, before.from, before.to, sandbox, zone)
+                ? daysIn(orgId, before.from, before.to, sandbox, zone, grain)
                 : Promise.resolve(null),
         ]);
         const head = past.rows[0] || null;
@@ -520,4 +612,10 @@ function csv(out, org) {
     return lines.join('\r\n') + '\r\n';
 }
 
-module.exports = { forOrg, cycles, periods, csv, addMonths, CYCLES_BACK };
+module.exports = {
+    forOrg, cycles, periods, csv, addMonths, CYCLES_BACK,
+    // the bucketing, so a test can hold it to what it claims without a
+    // database: what a window is cut into is the part that has been wrong
+    // before, and it is arithmetic over a calendar rather than a query
+    GRAIN, grainOf, walkDays, previousOf,
+};
