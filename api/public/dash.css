@@ -4107,11 +4107,14 @@ a.use-cell:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
 .use-spark svg { display: block; width: 100%; height: 26px; overflow: visible; }
 .use-spark-l {
     fill: none;
-    /* Solid mid ink, not the faint one the notes use. Grey here is a state and
-       not an absence -- it says this measure is level with the window before,
-       or has no window before it -- and at 45% alpha beside a coloured
-       neighbour it read as a line that had failed to load. */
-    stroke: var(--ink-3);
+    /* Blue because it is one of our lines, which is the rule the chart above
+       already follows: its line is blue whether usage rose or fell, and the
+       direction is carried by the delta beside the number.
+       This was grey where there was no delta -- level with the window before,
+       or nothing before it to be level with. That is a third state nobody
+       asked the colour to carry, and among coloured neighbours it read as a
+       line that had failed to load rather than as a fact. */
+    stroke: var(--link);
     stroke-width: 1.6;
     stroke-linejoin: round;
     stroke-linecap: round;
@@ -4120,9 +4123,8 @@ a.use-cell:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
        to stay in screen units */
     vector-effect: non-scaling-stroke;
 }
-/* the same two colours the delta uses, so a glance reads the direction twice
-   and never reads it two different ways */
-.use-spark.is-up .use-spark-l { stroke: var(--link); }
+/* and violet where it fell, the same violet the delta uses, so a glance reads
+   the direction twice and never reads it two different ways */
 .use-spark.is-down .use-spark-l { stroke: var(--fall); }
 
 /* a row with no limit has no bar. an empty track reads as one that failed to
