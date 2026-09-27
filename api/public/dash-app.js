@@ -5064,7 +5064,16 @@
             if (r.move) {
                 var m = document.createElement('span');
                 m.className = 'use-cell-d' + (r.move.up ? ' is-up' : (r.move.down ? ' is-down' : ''));
-                m.textContent = r.move.text;
+                // the same arrow the headline uses, for the same reason: a
+                // colour alone says which way this went only to somebody who
+                // can tell our blue from our violet, and about a tenth of the
+                // men reading this cannot
+                var arrow = document.createElement('span');
+                arrow.className = 'use-arrow';
+                arrow.setAttribute('aria-hidden', 'true');
+                arrow.textContent = r.move.up ? '\u2191' : (r.move.down ? '\u2193' : '\u2192');
+                m.appendChild(arrow);
+                m.appendChild(document.createTextNode(r.move.text));
                 row.appendChild(m);
             }
             cell.appendChild(row);
@@ -5555,7 +5564,11 @@
                     // worth a second look; this is the part a compliance
                     // officer has to act on, and on a busy account it is the
                     // only one of the two that can be read at a glance.
-                    label: 'Severe', value: useNum(severe), to: 'use-flagged',
+                    // "Severe" alone is a verdict, and the dictionary already
+                    // owns that word as one: in croatian it is "kritican",
+                    // a masculine adjective agreeing with a noun that is not
+                    // here. A label over a count needs the noun.
+                    label: 'Severe findings', value: useNum(severe), to: 'use-flagged',
                     sub: s.flagged
                         ? fill('{n}% of flagged', { n: Math.round((severe / s.flagged) * 100) })
                         : '',
