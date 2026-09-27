@@ -22,6 +22,8 @@
     --panel: #ffffff;
     --panel-line: rgba(14, 35, 88, 0.12);
     --panel-shadow: 0 14px 34px -12px rgba(14, 35, 88, 0.28);
+    /* a card answering a pointer, not a panel above the page */
+    --lift: 0 2px 10px -4px rgba(14, 35, 88, 0.16);
 
     --opt: #33456b;
     --opt-bg-hover: #f2f4fb;
@@ -113,6 +115,7 @@
     --panel: #161d3a;
     --panel-line: rgba(233, 238, 249, 0.14);
     --panel-shadow: 0 18px 44px -14px rgba(0, 0, 0, 0.7);
+    --lift: 0 2px 12px -4px rgba(0, 0, 0, 0.55);
 
     --opt: #c3cde4;
     --opt-bg-hover: rgba(233, 238, 249, 0.07);
@@ -3973,33 +3976,40 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 .use-strip {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 1px;
+    gap: 0.7rem;
     margin-bottom: 2.2rem;
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    background: var(--line-2);
-    overflow: hidden;
 }
+/* Each measure on its own card rather than in a cell of a ruled box.
+   A rectangle divided by hairlines into equal compartments is a table, and it
+   reads as one: four numbers filed rather than four numbers shown. Cards of
+   their own, in the same family as the chart above and a size below it, read
+   as four things -- which they are, since each one goes somewhere different
+   when it is clicked.
+   The radius steps down with the box: 14px on the chart card, 12 here. A
+   smaller box wearing the same corner as a larger one looks rounder than it. */
 .use-cell {
     display: flex;
     flex-direction: column;
-    /* The card above sets its contents 1.25rem in from its own border, and
-       this block's border sits directly under that one. Matching the inset
-       puts every label on this page on one vertical line; 1.15 put them a
-       hair off it, which is not nameable at a glance and is visible all the
-       same. */
-    padding: 1.1rem 1.25rem 1.15rem;
+    /* the card above sets its contents 1.25rem in from its own border, and the
+       left edge of the first of these sits under that one, so they share the
+       inset and every label on the page starts on one vertical line */
+    padding: 1rem 1.25rem 1.05rem;
     background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
     text-decoration: none;
     color: inherit;
-    transition: color 0.16s ease;
+    transition: border-color 0.16s ease, box-shadow 0.16s ease;
 }
-/* A tile that goes somewhere says so by lighting its number, not by filling
-   its whole box with grey. Six cells in a row, one of them shaded end to end,
-   read as a cell that had been selected rather than one being pointed at. */
-a.use-cell:hover .use-cell-v { color: var(--link); }
+/* A card that goes somewhere lifts slightly rather than filling with grey: a
+   shaded box among unshaded ones reads as selected, which is a different thing
+   from being pointed at. */
+a.use-cell:hover {
+    border-color: var(--panel-line);
+    box-shadow: var(--lift);
+}
 a.use-cell:hover .use-cell-k { color: var(--ink-3); }
-a.use-cell:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
+a.use-cell:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
 /* the name of a fact, in the weight the cards above use for theirs */
 .use-cell-k {
     font-size: 0.76rem;
@@ -4039,11 +4049,18 @@ a.use-cell:focus-visible { outline: 2px solid var(--link); outline-offset: -2px;
 /* the same blue for up and violet for down the headline uses, so one colour
    means one thing wherever a number is compared with an earlier one */
 .use-cell-d {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.16rem;
     font-size: 0.78rem;
     font-weight: 600;
     color: var(--ink-4);
     font-variant-numeric: tabular-nums;
 }
+/* the arrow carries the direction at the size of its own line rather than of
+   the figure beside it, which at this size would make it the loudest mark in
+   the card */
+.use-cell-d .use-arrow { font-size: 0.74rem; }
 .use-cell-d.is-up { color: var(--link); }
 .use-cell-d.is-down { color: var(--fall); }
 
