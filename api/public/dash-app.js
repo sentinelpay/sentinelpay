@@ -5530,10 +5530,13 @@
     // small change rather than a search.
     var RISK_BANDS = { mid: 51, high: 81 };
 
+    // Returns the class, not a word: it is only ever used as one, and a bare
+    // lowercase word coming out of a return reads to the i18n sweep as a
+    // sentence nobody translated.
     function riskBand(n) {
-        if (n >= RISK_BANDS.high) return 'high';
-        if (n >= RISK_BANDS.mid) return 'mid';
-        return 'low';
+        if (n >= RISK_BANDS.high) return 'is-high';
+        if (n >= RISK_BANDS.mid) return 'is-mid';
+        return 'is-low';
     }
 
     // How risky a check came back: one bar, one of three colours, and the
@@ -5552,10 +5555,8 @@
     // engine cannot keep, and it has to be kept in sight until it can.
     function riskChip(score, verdict) {
         var n = Math.max(0, Math.min(100, Math.round(Number(score) || 0)));
-        var band = riskBand(n);
-
         var el = document.createElement('span');
-        el.className = 'use-risk is-' + band;
+        el.className = 'use-risk ' + riskBand(n);
         // Said once, in full, to a screen reader: the bar is a picture and the
         // figure on its own does not say what it is out of.
         el.setAttribute('role', 'img');
