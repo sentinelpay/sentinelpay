@@ -3445,31 +3445,22 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
    width of the month */
 .use-last-w { font-variant-numeric: tabular-nums; }
 
-/* How risky a check came back: a bar and a figure.
-   The bar is the same shape the allowance and the verdict shares use, at the
-   size of a row. It is what makes the column readable -- most checks come back
-   near nothing, so six figures are a wall of the same digit, and six bars are
-   six lengths with the long one found without reading. */
+/* How risky a check came back: one bar, one of three colours.
+   It was a length filled to the score, which made a low score a stub a few
+   pixels long with a rounded cap -- six of those read as dirt on the screen
+   rather than as readings. Every bar is now the same length and says which of
+   three states this is; the figure beside it says how far into that state. */
 .use-risk {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
 }
-.use-risk-t {
+.use-risk-b {
     display: block;
-    width: 44px;
+    width: 34px;
     height: 5px;
     border-radius: 999px;
-    background: var(--line-2);
-    overflow: hidden;
-}
-.use-risk-f {
-    display: block;
-    height: 100%;
-    border-radius: 999px;
-    /* Quiet by default. A screen that colours the ordinary case has nothing
-       left to say with colour when a real one arrives. */
-    background: var(--ink-4);
+    background: var(--risk-low);
 }
 .use-risk-n {
     min-width: 1.6rem;
@@ -3477,13 +3468,12 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     font-size: 0.8rem;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
-    color: var(--ink-4);
+    color: var(--risk-low);
 }
-/* and spent where it buys attention */
-.use-risk.is-mid .use-risk-f { background: var(--risk-mid); }
-.use-risk.is-mid .use-risk-n { color: var(--risk-mid); }
-.use-risk.is-high .use-risk-f { background: var(--risk-high); }
-.use-risk.is-high .use-risk-n { color: var(--risk-high); }
+.use-risk.is-mid .use-risk-b, .use-risk.is-mid .use-risk-n { color: var(--risk-mid); }
+.use-risk.is-mid .use-risk-b { background: var(--risk-mid); }
+.use-risk.is-high .use-risk-b, .use-risk.is-high .use-risk-n { color: var(--risk-high); }
+.use-risk.is-high .use-risk-b { background: var(--risk-high); }
 
 .use-last-foot {
     display: flex;

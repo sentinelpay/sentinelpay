@@ -5514,21 +5514,35 @@
             });
     }
 
-    // How risky a check came back.
+    // Where the bands sit.
     //
-    // A bar and a figure, because "a part of a hundred" already has a shape on
-    // this page -- the allowance under the chart and the verdict shares both
-    // draw one -- and a reader who has learned it once should not be handed a
-    // second way of saying the same thing.
+    // One set of numbers for every organisation and every project, on purpose.
+    // A band is not a preference: it is the line between a check somebody has
+    // to act on and one they do not, and in a product whose job is to be
+    // shown to a regulator, "these are the vendor's bands" is a sentence that
+    // defends itself while "we chose ours" is one that has to be defended.
     //
-    // The bar is also what makes the column readable. Most checks come back
-    // near nothing, so a column of figures is a wall of the same digit with
-    // the one row that matters buried in it; a column of bars is six lengths,
-    // and the long one is found without reading anything.
+    // It will have to be settable one day -- a bank and a webshop do not have
+    // one risk appetite -- and when it is, the band in force has to be sealed
+    // into each check alongside the score. A verdict this product promises is
+    // reproducible a year later cannot be reproduced if the line it was
+    // measured against has moved since. Kept in one place so that day is a
+    // small change rather than a search.
+    var RISK_BANDS = { mid: 51, high: 81 };
+
+    function riskBand(n) {
+        if (n >= RISK_BANDS.high) return 'high';
+        if (n >= RISK_BANDS.mid) return 'mid';
+        return 'low';
+    }
+
+    // How risky a check came back: one bar, one of three colours, and the
+    // figure beside it.
     //
-    // Colour is spent only where it buys attention. A low score is drawn in
-    // the quiet ink, because a screen that colours the ordinary case has
-    // nothing left to say with colour when a real one arrives.
+    // The bar was a length once -- filled to the score -- which made a low
+    // score a stub a few pixels long with a rounded cap, and six of those read
+    // as dirt on the screen rather than as readings. It says which of three
+    // states this is, and the figure says how far into it.
     //
     // A word of warning that belongs next to this and not in a commit message:
     // api/screening.js scores an address 100 if it is on the OFAC SDN list and
@@ -5538,7 +5552,7 @@
     // engine cannot keep, and it has to be kept in sight until it can.
     function riskChip(score, verdict) {
         var n = Math.max(0, Math.min(100, Math.round(Number(score) || 0)));
-        var band = n >= 75 ? 'high' : (n >= 25 ? 'mid' : 'low');
+        var band = riskBand(n);
 
         var el = document.createElement('span');
         el.className = 'use-risk is-' + band;
@@ -5549,15 +5563,9 @@
             (verdict === 'severe' ? t('Sanctioned')
                 : (verdict === 'clear' ? t('Clear') : t('Worth a look'))));
 
-        var track = document.createElement('span');
-        track.className = 'use-risk-t';
-        var fill_ = document.createElement('span');
-        fill_.className = 'use-risk-f';
-        // nothing is nothing: an empty track reads as no risk, where a stub of
-        // colour reads as a little of it
-        fill_.style.width = n ? Math.max(6, n) + '%' : '0';
-        track.appendChild(fill_);
-        el.appendChild(track);
+        var bar = document.createElement('span');
+        bar.className = 'use-risk-b';
+        el.appendChild(bar);
 
         var fig = document.createElement('span');
         fig.className = 'use-risk-n';
