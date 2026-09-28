@@ -1813,6 +1813,26 @@
         return a.slice(0, 8) + '\u2026' + a.slice(-6);
     }
 
+    // A moment, small enough to repeat down a column.
+    //
+    // whenText with a time gives "27 Sep 2026, 07:42" -- the year on six rows
+    // that are all from this week is four characters of nothing, six times
+    // over, next to the one part that changes. This is a real timestamp and
+    // not a bucket key, so it is shown in the zone the reader chose.
+    function whenShort(iso) {
+        if (!iso) return '';
+        var d = new Date(iso);
+        if (isNaN(d.getTime())) return '';
+        try {
+            return new Intl.DateTimeFormat(navLang(), {
+                day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+                hourCycle: 'h23', timeZone: zoneNow()
+            }).format(d);
+        } catch (err) {
+            return whenText(iso, true);
+        }
+    }
+
     function prefOn(key, fallback) {
         var v = prefs()[key];
         return v === undefined ? fallback : !!v;
@@ -5444,40 +5464,44 @@
 
     // One check, small enough that six of them fit under a chart.
     //
-    // The verdict leads, because it is the only part somebody scans for: an
-    // address is a string to be compared, not read, and the time is context.
-    // On a narrow screen the row folds into two lines rather than shrinking
-    // four columns until none of them can be read.
+    // The same shape as a row on the checks screen -- address, verdict, chain,
+    // time -- because somebody who has read one of them should not have to
+    // learn the other. The address is set in the mono face for the reason the
+    // checks screen gives: it is the one thing on the row nobody reads as a
+    // word, and a column of them only lines up in a face where the characters
+    // are one width.
     function lastRow(r) {
         var row = document.createElement('button');
         row.type = 'button';
-        row.className = 'use-last-r';
+        row.className = 'tr is-last chk-row';
 
-        var mark = document.createElement('span');
-        mark.className = 'use-last-v is-' +
-            (r.verdict === 'severe' ? 'bad' : (r.verdict === 'clear' ? 'ok' : 'mid'));
-        mark.setAttribute('aria-hidden', 'true');
-        row.appendChild(mark);
+        var who = document.createElement('div');
+        who.className = 'chk-addr';
+        who.textContent = addrText(r.address);
+        if (r.projectName) {
+            var pr = document.createElement('span');
+            pr.className = 'chk-proj';
+            pr.textContent = r.projectName;
+            who.appendChild(pr);
+        }
+        row.appendChild(who);
 
-        var addr = document.createElement('span');
-        addr.className = 'use-last-a';
-        addr.textContent = addrText(r.address);
-        row.appendChild(addr);
+        var v = document.createElement('div');
+        v.appendChild(tag(
+            r.verdict === 'clear' ? t('Clear')
+                : (r.verdict === 'severe' ? t('Sanctioned') : t('Worth a look')),
+            r.verdict === 'severe' ? 'bad' : (r.verdict === 'clear' ? 'ok' : 'mid')
+        ));
+        row.appendChild(v);
 
-        var said = document.createElement('span');
-        said.className = 'use-last-s';
-        said.textContent = r.verdict === 'clear' ? t('Clear')
-            : (r.verdict === 'severe' ? t('Sanctioned') : t('Worth a look'));
-        row.appendChild(said);
-
-        var chain = document.createElement('span');
-        chain.className = 'use-last-c';
+        var chain = document.createElement('div');
+        chain.className = 'tr-dim';
         chain.textContent = r.asset || t('Not recognised');
         row.appendChild(chain);
 
-        var when = document.createElement('span');
-        when.className = 'use-last-w';
-        when.textContent = whenText(r.at, true);
+        var when = document.createElement('div');
+        when.className = 'tr-dim use-last-w';
+        when.textContent = whenShort(r.at);
         row.appendChild(when);
 
         row.addEventListener('click', function () { openCheck(r); });
@@ -5975,8 +5999,12 @@
             // prose beside them would take a third of the width to explain
             // what the rows are already showing
             sec.body.classList.add('is-wide');
+            // In a card, because every other list in this product is in one.
+            // Six rows loose on the canvas is a table somebody dropped on the
+            // page; the same six inside the same border as the rest of the
+            // dashboard are part of it.
             var list = document.createElement('div');
-            list.className = 'use-last';
+            list.className = 'card use-last';
             sec.body.appendChild(list);
 
             var foot = document.createElement('div');
