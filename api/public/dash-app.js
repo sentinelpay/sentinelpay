@@ -1833,6 +1833,18 @@
         }
     }
 
+    // A chain, as a person says it.
+    //
+    // The stored code follows OFAC, because that is where a hit comes from:
+    // their SDN file writes "Digital Currency Address - XBT" and screening.js
+    // matches their vocabulary so the two can never drift. Nobody says XBT.
+    // So the code stays in the data and the word changes on the way out.
+    var CHAIN_SAID = { XBT: 'BTC' };
+    function chainText(code) {
+        var c = String(code || '');
+        return CHAIN_SAID[c] || c;
+    }
+
     function prefOn(key, fallback) {
         var v = prefs()[key];
         return v === undefined ? fallback : !!v;
@@ -5496,7 +5508,7 @@
 
         var chain = document.createElement('div');
         chain.className = 'tr-dim';
-        chain.textContent = r.asset || t('Not recognised');
+        chain.textContent = chainText(r.asset) || t('Not recognised');
         row.appendChild(chain);
 
         var when = document.createElement('div');
@@ -6007,14 +6019,14 @@
             list.className = 'card use-last';
             sec.body.appendChild(list);
 
+            // The way into the log, and nothing beside it.
+            //
+            // There was a "busiest day" here. It is a superlative with nothing
+            // to do attached to it, about a peak the chart above already draws
+            // and points at, and it sat in a footer whose one job is the door
+            // to the rows.
             var foot = document.createElement('div');
             foot.className = 'use-last-foot';
-            // The one fact the overview does not carry: not how many, but
-            // when the work actually landed.
-            var peak = document.createElement('span');
-            peak.className = 'use-last-peak';
-            peak.textContent = fill('Busiest: {when}', { when: busiest(s.days) });
-            foot.appendChild(peak);
             var open = document.createElement('a');
             open.className = 'chip use-open';
             open.href = orgHome(org.slug) + '/checks?scope=' + encodeURIComponent(out.scope) +
@@ -6083,7 +6095,7 @@
             var amain = useMain();
             if (s.assets && s.assets.length) {
                 amain.appendChild(useShare(s.assets.map(function (a) {
-                    return { label: a.asset === 'other' ? t('Not recognised') : a.asset, n: a.n };
+                    return { label: a.asset === 'other' ? t('Not recognised') : chainText(a.asset), n: a.n };
                 }), s.total));
             } else {
                 amain.appendChild(emptyState('Nothing to show yet', ''));
@@ -6519,7 +6531,7 @@
 
             var chain = document.createElement('div');
             chain.className = 'tr-dim';
-            chain.textContent = r.asset || t('Not recognised');
+            chain.textContent = chainText(r.asset) || t('Not recognised');
             row.appendChild(chain);
 
             var when = document.createElement('div');

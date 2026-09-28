@@ -3445,16 +3445,16 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
    width of the month */
 .use-last-w { font-variant-numeric: tabular-nums; }
 
+/* one control, at the end of the row it belongs to */
 .use-last-foot {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     flex-wrap: wrap;
     gap: 0.6rem;
     /* no margin of its own: the section body is a grid and already puts a row
        gap between this and the card above it */
 }
-.use-last-peak { font-size: 0.8rem; color: var(--ink-4); }
 
 /* Two lines rather than four columns. Four of them on a phone leaves the
    address -- the only part that has to be read exactly -- with no room, and

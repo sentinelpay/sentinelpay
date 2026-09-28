@@ -15,6 +15,7 @@
 //   - it never touches anything it did not write
 //
 //   DATABASE_URL=... node tools/seed-usage.js <org-slug> [--days 45] [--busy 10] [--yes]
+//                        [--review]   also write the verdict the engine cannot reach yet
 //   DATABASE_URL=... node tools/seed-usage.js <org-slug> --from 2026-06-20 [--yes]
 //   DATABASE_URL=... node tools/seed-usage.js <org-slug> --clear [--yes]
 //   DATABASE_URL=... node tools/seed-usage.js <org-slug> --show
@@ -60,17 +61,82 @@ const ASSETS = ['XBT', 'XBT', 'XBT', 'XBT', 'ETH', 'ETH', 'ETH', 'TRX', 'TRX', '
 // screen built for a busy account should be looked at with.
 const BUSY = Math.max(1, Math.min(200, Number(value('busy')) || 1));
 const POOL = 240;
-function anAddress() {
+
+// Addresses that look like addresses.
+//
+// They used to be "sample-addr-7", which reads as a fixture from across the
+// room and, worse, is recognised as no chain at all: screening.js decides what
+// a chain is from the shape of the address, so a name that matches none of its
+// patterns is a row whose chain column is a guess written by the seeder rather
+// than the answer the product would give.
+//
+// These are built to those same patterns, so the product identifies them the
+// way it identifies a real one. They are random inside the pattern and carry
+// no valid checksum, which is deliberate: they are unmistakable in a wallet
+// and cannot be confused for somebody's money.
+const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+const BECH = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+const HEX = '0123456789abcdef';
+
+function runOf(alphabet, n, rand) {
+    let out = '';
+    for (let i = 0; i < n; i++) out += alphabet[Math.floor(rand() * alphabet.length)];
+    return out;
+}
+
+// One generator per chain, matching the patterns in api/screening.js.
+const SHAPES = {
+    XBT: (r) => (r() < 0.6
+        ? 'bc1q' + runOf(BECH, 38, r)
+        : (r() < 0.5 ? '1' : '3') + runOf(B58, 32, r)),
+    ETH: (r) => '0x' + runOf(HEX, 40, r),
+    TRX: (r) => 'T' + runOf(B58, 33, r),
+    LTC: (r) => (r() < 0.5 ? 'ltc1q' + runOf(BECH, 38, r) : 'L' + runOf(B58, 32, r)),
+    SOL: (r) => runOf(B58, 43, r),
+};
+
+// The pool is built once and drawn from, so an address repeats the way a real
+// customer does. A third of it is hot and takes most of the traffic, which is
+// also what a real book of business looks like.
+const BOOK = [];
+(function fillBook() {
+    const chains = Object.keys(SHAPES);
+    for (let i = 0; i < POOL; i++) {
+        const asset = ASSETS[i % ASSETS.length];
+        const make = SHAPES[asset] || SHAPES.XBT;
+        BOOK.push({ asset, address: make(Math.random) });
+        void chains;
+    }
+})();
+
+// An address and the chain it is on, together: they are not independent, and
+// picking them apart is how a fixture ends up with an ethereum address filed
+// under bitcoin.
+function aCheck() {
     const hot = Math.random() < 0.6;
     const n = hot
         ? Math.floor(Math.random() * (POOL / 3))
         : Math.floor(Math.random() * POOL);
-    return 'sample-addr-' + n;
+    return BOOK[n];
 }
 
-function pick(list) {
-    return list[Math.floor(Math.random() * list.length)];
-}
+// What the engine can actually answer.
+//
+// api/screening.js has two outcomes and no third: an address is on the OFAC
+// SDN list, which is `severe` and scores 100, or it is not, which is `clear`
+// and scores 0. There is nothing in between and no score between them.
+//
+// The dashboard carries a third verdict -- "worth a look" -- and a filter for
+// it, written for the day indirect exposure is scored. Until that day it is a
+// state no real check can be in, and a fixture that writes it is a fixture
+// that disagrees with the product: on a seeded staging "flagged" and "severe"
+// are two different numbers, and in production they are the same number.
+//
+// So the default is what the engine does. --review seeds the planned state
+// instead, for looking at the screen that is being built for it.
+const VERDICTS = flag('review')
+    ? { severe: 0.05, review: 0.09 }
+    : { severe: 0.05, review: 0 };
 
 // A week with quiet weekends and a couple of busy afternoons looks like work.
 // A flat line at the same number every day looks like a fixture, and the point
@@ -197,45 +263,63 @@ async function main() {
         const args = [];
         const values = pending.map((r) => {
             const at = args.length;
-            args.push(String(r.d), String(r.minute), r.asset, r.address, r.verdict, r.score);
-            return '($' + (at + 1) + ', $' + (at + 2) + ', $' + (at + 3) + ', $' + (at + 4) +
-                ', $' + (at + 5) + ', $' + (at + 6) + ')';
+            args.push(r.at, r.asset, r.address, r.verdict, r.score);
+            return '($' + (at + 1) + '::timestamptz, $' + (at + 2) + ', $' + (at + 3) +
+                ', $' + (at + 4) + ', $' + (at + 5) + ')';
         }).join(', ');
         await db.query(
             `INSERT INTO screenings
                 (user_id, org_id, at, kind, asset, address, verdict, score, sources, list_date, sandbox)
-             SELECT $${args.length + 1}, $${args.length + 2},
-                    -- never later than this moment. the offset within the day
-                    -- is added to a day that has already happened, and on
-                    -- today that lands in the evening, so a fixture was
-                    -- quietly writing screenings that had not happened yet --
-                    -- which every count over a running period then disagreed
-                    -- about, depending on where it stopped.
-                    least(now() - (v.d || ' days')::interval + (v.minute || ' minutes')::interval,
-                          now() - interval '1 minute'),
+             SELECT $${args.length + 1}, $${args.length + 2}, v.at,
                     'live', v.asset, v.address, v.verdict, v.score::int,
                     $${args.length + 3}, '2026-09-01', false
-               FROM (VALUES ${values}) AS v(d, minute, asset, address, verdict, score)`,
+               FROM (VALUES ${values}) AS v(at, asset, address, verdict, score)`,
             args.concat([userId, org.id, MARK])
         );
         wrote += pending.length;
         pending = [];
     }
 
+    // The moment a check happened, worked out here rather than in the
+    // statement.
+    //
+    // It used to be "now, minus d days, plus a few hundred minutes, and never
+    // later than a minute ago". On any day but today that is a time of day; on
+    // today it is the evening, so every one of today's rows was clamped to the
+    // same instant a minute ago -- a whole day of work landing on one
+    // timestamp, which is exactly what the screen showed: six rows, one time.
+    //
+    // From midnight instead, and today simply stops at the hour it is now.
+    const NOW = Date.now();
+    const MIDNIGHT = new Date(NOW).setUTCHours(0, 0, 0, 0);
+    function momentOn(daysAgo) {
+        const day = MIDNIGHT - daysAgo * 86400000;
+        // a working day, thickest around the middle of it
+        const mid = 8 * 60 + Math.round((Math.random() + Math.random() + Math.random()) / 3 * 10 * 60);
+        const at = day + mid * 60000 + Math.floor(Math.random() * 60000);
+        return at >= NOW ? null : at;
+    }
+
     for (let d = days - 1; d >= 0; d--) {
         const many = howMany(d);
         for (let i = 0; i < many; i++) {
-            // a few of them come back as something worth looking at, in the
-            // proportion a real book of business tends to
+            const at = momentOn(d);
+            // today, after the hour it is now: work that has not happened
+            if (at === null) continue;
+            // the proportion a real book of business tends to
             const roll = Math.random();
-            const verdict = roll < 0.05 ? 'severe' : (roll < 0.14 ? 'review' : 'clear');
+            const verdict = roll < VERDICTS.severe
+                ? 'severe'
+                : (roll < VERDICTS.severe + VERDICTS.review ? 'review' : 'clear');
+            const one = aCheck();
             pending.push({
-                d,
-                minute: Math.floor(Math.random() * 600) + 480,
-                asset: pick(ASSETS),
-                address: anAddress(),
+                at: new Date(at).toISOString(),
+                asset: one.asset,
+                address: one.address,
                 verdict,
-                score: verdict === 'clear' ? 0 : 60 + Math.floor(Math.random() * 40),
+                // the engine scores a hit at 100 and everything else at 0.
+                // see the note on VERDICTS.
+                score: verdict === 'severe' ? 100 : (verdict === 'review' ? 60 + Math.floor(Math.random() * 39) : 0),
             });
             if (pending.length >= BATCH) await flush();
         }
