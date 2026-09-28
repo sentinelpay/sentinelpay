@@ -1797,6 +1797,22 @@
         return {};
     }
 
+    // An address as it should be read on a screen.
+    //
+    // A crypto address is forty-odd characters of which a person checks the
+    // first few and the last few -- that is how one is compared against
+    // another, and the middle is never read. Shortened, a row holds an address
+    // and everything about it; written out, the address is the row.
+    //
+    // There is a preference for writing them in full, offered since the
+    // settings screen was built and read by nothing at all: it drew its own
+    // switch and was never asked again. Asked here.
+    function addrText(address) {
+        var a = String(address || '');
+        if (a.length < 18 || prefOn('full-address', false)) return a;
+        return a.slice(0, 8) + '\u2026' + a.slice(-6);
+    }
+
     function prefOn(key, fallback) {
         var v = prefs()[key];
         return v === undefined ? fallback : !!v;
@@ -5388,6 +5404,86 @@
     }
     window.addEventListener('resize', queueFold);
 
+    // The last few checks of a window, fetched after the page is drawn.
+    //
+    // Its own request, because it is rows and everything else on this screen is
+    // counts, and because a period swapped is a new window to ask about. The
+    // answer to an older question is thrown away rather than drawn: switching
+    // twice quickly used to be a race everywhere on this page, and this is one
+    // more place to lose it.
+    var lastAsked = 0;
+    function lastChecks(into, org, out) {
+        var mine = ++lastAsked;
+        into.textContent = '';
+        into.classList.add('is-waiting');
+        var url = '/v1/orgs/' + encodeURIComponent(org.id) + '/checks?limit=6' +
+            '&scope=' + encodeURIComponent(out.scope) +
+            '&from=' + encodeURIComponent(out.period.from) +
+            '&to=' + encodeURIComponent(out.period.to);
+        fetch(url, { credentials: 'same-origin' })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (body) {
+                if (mine !== lastAsked) return;
+                into.classList.remove('is-waiting');
+                var rows = (body && body.rows) || [];
+                if (!rows.length) {
+                    into.appendChild(emptyState('Nothing to show yet', ''));
+                    return;
+                }
+                rows.forEach(function (r) { into.appendChild(lastRow(r)); });
+            })
+            .catch(function (err) {
+                if (mine !== lastAsked) return;
+                into.classList.remove('is-waiting');
+                // Said, rather than left blank. An empty box where rows were
+                // promised reads as an account with no work in it.
+                console.error('[usage] last checks: ' + err.message);
+                into.appendChild(emptyState('That did not load.', ''));
+            });
+    }
+
+    // One check, small enough that six of them fit under a chart.
+    //
+    // The verdict leads, because it is the only part somebody scans for: an
+    // address is a string to be compared, not read, and the time is context.
+    // On a narrow screen the row folds into two lines rather than shrinking
+    // four columns until none of them can be read.
+    function lastRow(r) {
+        var row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'use-last-r';
+
+        var mark = document.createElement('span');
+        mark.className = 'use-last-v is-' +
+            (r.verdict === 'severe' ? 'bad' : (r.verdict === 'clear' ? 'ok' : 'mid'));
+        mark.setAttribute('aria-hidden', 'true');
+        row.appendChild(mark);
+
+        var addr = document.createElement('span');
+        addr.className = 'use-last-a';
+        addr.textContent = addrText(r.address);
+        row.appendChild(addr);
+
+        var said = document.createElement('span');
+        said.className = 'use-last-s';
+        said.textContent = r.verdict === 'clear' ? t('Clear')
+            : (r.verdict === 'severe' ? t('Sanctioned') : t('Worth a look'));
+        row.appendChild(said);
+
+        var chain = document.createElement('span');
+        chain.className = 'use-last-c';
+        chain.textContent = r.asset || t('Not recognised');
+        row.appendChild(chain);
+
+        var when = document.createElement('span');
+        when.className = 'use-last-w';
+        when.textContent = whenText(r.at, true);
+        row.appendChild(when);
+
+        row.addEventListener('click', function () { openCheck(r); });
+        return row;
+    }
+
     function useSection(id, title, ico, hint) {
         var sec = document.createElement('section');
         sec.className = 'use-sec';
@@ -5855,23 +5951,42 @@
             body.appendChild(fold);
 
             // ---- screening
-            var sec = useSection('use-screening', 'Screening', 'screening',
-                'Every address this organisation checked in the period.');
-            sec.body.appendChild(useSide([
-                'One screening is one address checked against the lists at that moment.',
-                sandbox
-                    ? 'Sandbox checks read the same lists and spend nothing, so they are counted here but never billed.'
-                    : 'A check is counted when it runs, whether it came from this dashboard or from a token.'
-            ]));
-            var main = useMain();
-            main.appendChild(useFacts([
-                ['Screenings', useNum(s.total)],
-                ['Addresses', useNum(s.addresses)],
-                ['Busiest day', busiest(s.days)]
-            ]));
-            // and the way from the number to the rows behind it. a count on a
-            // compliance screen that cannot be opened is a number somebody is
-            // asked to stand behind without being shown what it is made of.
+            // ---- screening
+            //
+            // This section used to say: screenings, addresses, busiest day.
+            // Two of those three are the headline of this page and a card
+            // under it, said there with a comparison and a shape, and said
+            // here again with neither. A section whose job is to repeat the
+            // section above it is a section a reader learns to skip.
+            //
+            // What the rest of the page cannot do is show a single check.
+            // Everything above is a count, and the code that wrote those
+            // counts said it plainly: a number on a compliance screen that
+            // cannot be opened is a number somebody is asked to stand behind
+            // without being shown what it is made of. It then offered a link
+            // and no rows.
+            //
+            // So: the last checks of this window, as rows, each one opening
+            // the evidence it was sealed with. The counts stay upstairs where
+            // they are already explained.
+            var sec = useSection('use-screening', 'Screening',
+                'screening', 'The last checks in this period.');
+            // no side column here: the rows are the content, and a column of
+            // prose beside them would take a third of the width to explain
+            // what the rows are already showing
+            sec.body.classList.add('is-wide');
+            var list = document.createElement('div');
+            list.className = 'use-last';
+            sec.body.appendChild(list);
+
+            var foot = document.createElement('div');
+            foot.className = 'use-last-foot';
+            // The one fact the overview does not carry: not how many, but
+            // when the work actually landed.
+            var peak = document.createElement('span');
+            peak.className = 'use-last-peak';
+            peak.textContent = fill('Busiest: {when}', { when: busiest(s.days) });
+            foot.appendChild(peak);
             var open = document.createElement('a');
             open.className = 'chip use-open';
             open.href = orgHome(org.slug) + '/checks?scope=' + encodeURIComponent(out.scope) +
@@ -5879,9 +5994,12 @@
                 '&to=' + encodeURIComponent(out.period.to);
             open.innerHTML = icon('screening');
             open.appendChild(document.createTextNode(t('See these checks')));
-            main.appendChild(open);
-            sec.body.appendChild(main);
-            if (!fresh) body.appendChild(sec);
+            foot.appendChild(open);
+            sec.body.appendChild(foot);
+            if (!fresh) {
+                body.appendChild(sec);
+                lastChecks(list, org, out);
+            }
 
             // ---- what came back
             var flag = useSection('use-flagged', 'What came back', 'flag',
@@ -6357,7 +6475,7 @@
 
             var who = document.createElement('div');
             who.className = 'chk-addr';
-            who.textContent = r.address;
+            who.textContent = addrText(r.address);
             if (r.projectName) {
                 var pr = document.createElement('span');
                 pr.className = 'chk-proj';

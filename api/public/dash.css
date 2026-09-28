@@ -3399,7 +3399,13 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 
 /* a tile jumps to its section, so the section needs room above it or the
    heading lands flush against the top of the window */
-.use-sec { padding-top: 1.6rem; border-top: 1px solid var(--line-2); scroll-margin-top: 1.2rem; }
+/* Scrolled to from the cards above. The band at the top does not move out of
+   the way -- measured, it covers 117 points of the scrolling box -- so at
+   1.2rem the heading of the section somebody just asked for arrived
+   underneath it. A little over the band, so it lands clear rather than
+   touching. On a phone the band is static and covers nothing, and the rule
+   below gives that room back. */
+.use-sec { padding-top: 1.6rem; border-top: 1px solid var(--line-2); scroll-margin-top: 8.5rem; }
 .use-sec + .use-sec { margin-top: 1.6rem; }
 .use-sec-h { display: flex; align-items: flex-start; gap: 0.6rem; margin-bottom: 1rem; }
 .use-sec-t { margin: 0; font-family: var(--sp-display); font-size: 1rem; color: var(--ink); }
@@ -3411,6 +3417,92 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
     gap: 1.6rem;
 }
+/* A section whose content is rows rather than a paragraph and a table: the
+   rows are the explanation, and a column of prose beside them would take a
+   third of the width to say what they are already showing. */
+.use-sec-b.is-wide { grid-template-columns: minmax(0, 1fr); }
+
+/* The last checks of the window.
+   Separated by hairlines rather than boxed: six of them under a card of cards
+   would be a third kind of container on one screen, and what they are is a
+   list. */
+.use-last { min-width: 0; }
+.use-last.is-waiting { min-height: 7rem; opacity: 0.55; }
+
+.use-last-r {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+    align-items: center;
+    gap: 0 0.75rem;
+    width: 100%;
+    padding: 0.55rem 0.2rem;
+    border: 0;
+    border-bottom: 1px solid var(--line-2);
+    border-radius: 6px;
+    background: none;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.14s ease;
+}
+.use-last-r:last-child { border-bottom: 0; }
+.use-last-r:hover { background: var(--hover); }
+.use-last-r:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
+
+/* The verdict leads, because it is the only part of a row anybody scans for.
+   A dot rather than a word in a pill: six pills down one edge is six boxes,
+   and the word is right there beside it. */
+.use-last-v {
+    width: 8px;
+    height: 8px;
+    border-radius: 3px;
+    background: var(--ink-4);
+}
+.use-last-v.is-ok { background: var(--risk-low); }
+.use-last-v.is-mid { background: var(--risk-mid); }
+.use-last-v.is-bad { background: var(--risk-high); }
+
+.use-last-a {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.82rem;
+    color: var(--ink-2);
+    font-variant-numeric: tabular-nums;
+}
+.use-last-s { font-size: 0.78rem; color: var(--ink-3); }
+.use-last-c, .use-last-w { font-size: 0.76rem; color: var(--ink-4); white-space: nowrap; }
+
+.use-last-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    /* no margin of its own: the section body is a grid and already puts a row
+       gap between this and the list above it */
+}
+.use-last-peak { font-size: 0.8rem; color: var(--ink-4); }
+
+/* Two lines instead of five columns. Squeezing five of them into a phone
+   leaves none of them readable; folded, the address keeps the width it needs
+   and everything about the check sits under it. */
+@media (max-width: 720px) {
+    .use-last-r {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 0.15rem 0.6rem;
+        padding: 0.6rem 0.2rem;
+    }
+    .use-last-c, .use-last-w {
+        grid-row: 2;
+        font-size: 0.72rem;
+    }
+    .use-last-c { grid-column: 2; }
+    .use-last-w { grid-column: 3; }
+    .use-last-s { grid-column: 3; grid-row: 1; }
+}
+
 .use-side p { margin: 0 0 0.7rem; font-size: 0.82rem; line-height: 1.6; color: var(--ink-4); }
 .use-side p:last-child { margin-bottom: 0; }
 .use-main { min-width: 0; }
@@ -3684,6 +3776,8 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     /* the band is not sticky on a phone: it would eat a third of a short
        screen, and there is no long sideways scan to keep your place in */
     .use-top { position: static; top: auto; padding-bottom: 0.9rem; }
+    /* nothing is covering the top here, so a section does not have to duck */
+    .use-sec { scroll-margin-top: 1rem; }
     .use-bar-l { flex: 1 1 100%; }
     /* the rule divides two things sitting side by side. once they are stacked
        it is a mark dangling at the end of a line, dividing nothing. */
