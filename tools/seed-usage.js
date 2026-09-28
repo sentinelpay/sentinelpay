@@ -138,6 +138,27 @@ const VERDICTS = flag('review')
     ? { severe: 0.05, review: 0.09 }
     : { severe: 0.05, review: 0 };
 
+// A risk score, in the shape a book of business makes.
+//
+// Most addresses are uninteresting and score near nothing; a few are worth a
+// second look; a handful are on the list. So: a long tail, not a flat spread,
+// which is also what makes a column of these readable -- a screen of numbers
+// scattered evenly between 0 and 100 says nothing about which row to open.
+//
+// The engine does not produce any of this yet. screening.js scores 100 for a
+// hit on the OFAC SDN list and 0 for everything else, and until the heuristics
+// exist every number between those two is the fixture's invention. That is
+// what a fixture is for while a screen is being built, and it is also a debt:
+// the day this is demonstrated to somebody who can buy it, the numbers have to
+// be real.
+function aScore() {
+    const roll = Math.random();
+    if (roll < VERDICTS.severe) return 100;
+    if (roll < VERDICTS.severe + 0.06) return 60 + Math.floor(Math.random() * 30);
+    if (roll < VERDICTS.severe + 0.2) return 25 + Math.floor(Math.random() * 30);
+    return Math.floor(Math.random() * 22);
+}
+
 // A week with quiet weekends and a couple of busy afternoons looks like work.
 // A flat line at the same number every day looks like a fixture, and the point
 // of this is to see what the chart does with a real shape.
@@ -306,20 +327,18 @@ async function main() {
             const at = momentOn(d);
             // today, after the hour it is now: work that has not happened
             if (at === null) continue;
-            // the proportion a real book of business tends to
-            const roll = Math.random();
-            const verdict = roll < VERDICTS.severe
-                ? 'severe'
-                : (roll < VERDICTS.severe + VERDICTS.review ? 'review' : 'clear');
             const one = aCheck();
+            const score = aScore();
             pending.push({
                 at: new Date(at).toISOString(),
                 asset: one.asset,
                 address: one.address,
-                verdict,
-                // the engine scores a hit at 100 and everything else at 0.
-                // see the note on VERDICTS.
-                score: verdict === 'severe' ? 100 : (verdict === 'review' ? 60 + Math.floor(Math.random() * 39) : 0),
+                // The verdict follows the score rather than the other way
+                // round, so the two can never disagree inside one row: a
+                // hundred is a list match and is severe, and everything below
+                // it is clear until there is a middle for it to be in.
+                verdict: score >= 100 ? 'severe' : (VERDICTS.review && score >= 60 ? 'review' : 'clear'),
+                score,
             });
             if (pending.length >= BATCH) await flush();
         }
