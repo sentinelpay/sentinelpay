@@ -3445,6 +3445,26 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
    width of the month */
 .use-last-w { font-variant-numeric: tabular-nums; }
 
+/* How risky a check came back. The figure carries the weight and the "/100"
+   is the smaller half of the same number, the way the allowance under the
+   chart is written -- one idea, one shape for it, wherever it appears.
+   No pill: six filled capsules down a column is six boxes, and the colour is
+   already on the figure. */
+.use-risk {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.05rem;
+    font-size: 0.86rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-3);
+}
+.use-risk-of { font-size: 0.7rem; font-weight: 400; color: var(--ink-4); }
+/* the three bands, in the colours this page already uses for risk */
+.use-risk.is-low { color: var(--risk-low); }
+.use-risk.is-mid { color: var(--risk-mid); }
+.use-risk.is-high { color: var(--risk-high); }
+
 /* one control, at the end of the row it belongs to */
 .use-last-foot {
     display: flex;

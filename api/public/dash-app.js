@@ -5474,6 +5474,40 @@
             });
     }
 
+    // How risky a check came back, as a number out of a hundred.
+    //
+    // Three bands, and the colours this page already uses for risk -- the same
+    // green, amber and red the verdict share draws with, so a reader is not
+    // taught a second palette for the same idea.
+    //
+    // A word of warning that belongs next to this and not in a commit message:
+    // api/screening.js scores an address 100 if it is on the OFAC SDN list and
+    // 0 if it is not. There is nothing in between yet. Every number here
+    // between those two comes from the fixture, which is what it is for until
+    // the heuristics exist -- but a screen showing 63/100 is making a promise
+    // the engine cannot keep, and it has to be kept in sight until it can.
+    function riskChip(score, verdict) {
+        var n = Math.max(0, Math.min(100, Math.round(Number(score) || 0)));
+        var band = n >= 75 ? 'high' : (n >= 25 ? 'mid' : 'low');
+        var el = document.createElement('span');
+        el.className = 'use-risk is-' + band;
+        var fig = document.createElement('strong');
+        fig.textContent = String(n);
+        el.appendChild(fig);
+        var of = document.createElement('span');
+        of.className = 'use-risk-of';
+        of.textContent = '/100';
+        el.appendChild(of);
+        // The number is the reading; the word is what a reading of a hundred
+        // means, and a screen reader gets both rather than a bare figure.
+        var said = document.createElement('span');
+        said.className = 'sr-only';
+        said.textContent = ' ' + (verdict === 'severe' ? t('Sanctioned')
+            : (verdict === 'clear' ? t('Clear') : t('Worth a look')));
+        el.appendChild(said);
+        return el;
+    }
+
     // One check, small enough that six of them fit under a chart.
     //
     // The same shape as a row on the checks screen -- address, verdict, chain,
@@ -5499,11 +5533,7 @@
         row.appendChild(who);
 
         var v = document.createElement('div');
-        v.appendChild(tag(
-            r.verdict === 'clear' ? t('Clear')
-                : (r.verdict === 'severe' ? t('Sanctioned') : t('Worth a look')),
-            r.verdict === 'severe' ? 'bad' : (r.verdict === 'clear' ? 'ok' : 'mid')
-        ));
+        v.appendChild(riskChip(r.score, r.verdict));
         row.appendChild(v);
 
         var chain = document.createElement('div');
