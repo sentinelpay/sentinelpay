@@ -3445,27 +3445,46 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
    width of the month */
 .use-last-w { font-variant-numeric: tabular-nums; }
 
-/* How risky a check came back. The figure carries the weight and the "/100"
-   is the smaller half of the same number, the way the allowance under the
-   chart is written -- one idea, one shape for it, wherever it appears.
-   No pill: six filled capsules down a column is six boxes, and the colour is
-   already on the figure. */
+/* How risky a check came back: a bar and a figure.
+   The bar is the same shape the allowance and the verdict shares use, at the
+   size of a row. It is what makes the column readable -- most checks come back
+   near nothing, so six figures are a wall of the same digit, and six bars are
+   six lengths with the long one found without reading. */
 .use-risk {
     display: inline-flex;
-    align-items: baseline;
-    gap: 0.05rem;
-    font-size: 0.86rem;
+    align-items: center;
+    gap: 0.5rem;
+}
+.use-risk-t {
+    display: block;
+    width: 44px;
+    height: 5px;
+    border-radius: 999px;
+    background: var(--line-2);
+    overflow: hidden;
+}
+.use-risk-f {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    /* Quiet by default. A screen that colours the ordinary case has nothing
+       left to say with colour when a real one arrives. */
+    background: var(--ink-4);
+}
+.use-risk-n {
+    min-width: 1.6rem;
+    text-align: right;
+    font-size: 0.8rem;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
-    color: var(--ink-3);
+    color: var(--ink-4);
 }
-.use-risk-of { font-size: 0.7rem; font-weight: 400; color: var(--ink-4); }
-/* the three bands, in the colours this page already uses for risk */
-.use-risk.is-low { color: var(--risk-low); }
-.use-risk.is-mid { color: var(--risk-mid); }
-.use-risk.is-high { color: var(--risk-high); }
+/* and spent where it buys attention */
+.use-risk.is-mid .use-risk-f { background: var(--risk-mid); }
+.use-risk.is-mid .use-risk-n { color: var(--risk-mid); }
+.use-risk.is-high .use-risk-f { background: var(--risk-high); }
+.use-risk.is-high .use-risk-n { color: var(--risk-high); }
 
-/* one control, at the end of the row it belongs to */
 .use-last-foot {
     display: flex;
     align-items: center;
