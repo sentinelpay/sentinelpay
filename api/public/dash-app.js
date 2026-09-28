@@ -5474,37 +5474,56 @@
             });
     }
 
-    // How risky a check came back, as a number out of a hundred.
+    // How risky a check came back.
     //
-    // Three bands, and the colours this page already uses for risk -- the same
-    // green, amber and red the verdict share draws with, so a reader is not
-    // taught a second palette for the same idea.
+    // A bar and a figure, because "a part of a hundred" already has a shape on
+    // this page -- the allowance under the chart and the verdict shares both
+    // draw one -- and a reader who has learned it once should not be handed a
+    // second way of saying the same thing.
+    //
+    // The bar is also what makes the column readable. Most checks come back
+    // near nothing, so a column of figures is a wall of the same digit with
+    // the one row that matters buried in it; a column of bars is six lengths,
+    // and the long one is found without reading anything.
+    //
+    // Colour is spent only where it buys attention. A low score is drawn in
+    // the quiet ink, because a screen that colours the ordinary case has
+    // nothing left to say with colour when a real one arrives.
     //
     // A word of warning that belongs next to this and not in a commit message:
     // api/screening.js scores an address 100 if it is on the OFAC SDN list and
     // 0 if it is not. There is nothing in between yet. Every number here
     // between those two comes from the fixture, which is what it is for until
-    // the heuristics exist -- but a screen showing 63/100 is making a promise
-    // the engine cannot keep, and it has to be kept in sight until it can.
+    // the heuristics exist -- but a screen showing 63 is making a promise the
+    // engine cannot keep, and it has to be kept in sight until it can.
     function riskChip(score, verdict) {
         var n = Math.max(0, Math.min(100, Math.round(Number(score) || 0)));
         var band = n >= 75 ? 'high' : (n >= 25 ? 'mid' : 'low');
+
         var el = document.createElement('span');
         el.className = 'use-risk is-' + band;
-        var fig = document.createElement('strong');
+        // Said once, in full, to a screen reader: the bar is a picture and the
+        // figure on its own does not say what it is out of.
+        el.setAttribute('role', 'img');
+        el.setAttribute('aria-label', fill('Risk {n} of 100', { n: n }) + ', ' +
+            (verdict === 'severe' ? t('Sanctioned')
+                : (verdict === 'clear' ? t('Clear') : t('Worth a look'))));
+
+        var track = document.createElement('span');
+        track.className = 'use-risk-t';
+        var fill_ = document.createElement('span');
+        fill_.className = 'use-risk-f';
+        // nothing is nothing: an empty track reads as no risk, where a stub of
+        // colour reads as a little of it
+        fill_.style.width = n ? Math.max(6, n) + '%' : '0';
+        track.appendChild(fill_);
+        el.appendChild(track);
+
+        var fig = document.createElement('span');
+        fig.className = 'use-risk-n';
         fig.textContent = String(n);
+        fig.setAttribute('aria-hidden', 'true');
         el.appendChild(fig);
-        var of = document.createElement('span');
-        of.className = 'use-risk-of';
-        of.textContent = '/100';
-        el.appendChild(of);
-        // The number is the reading; the word is what a reading of a hundred
-        // means, and a screen reader gets both rather than a bare figure.
-        var said = document.createElement('span');
-        said.className = 'sr-only';
-        said.textContent = ' ' + (verdict === 'severe' ? t('Sanctioned')
-            : (verdict === 'clear' ? t('Clear') : t('Worth a look')));
-        el.appendChild(said);
         return el;
     }
 
