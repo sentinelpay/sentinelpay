@@ -5318,6 +5318,28 @@
     // them, and the shape stops being readable at all.
     var PLOT_FLOOR = 84;
 
+    // And how tall it is allowed to get when there is room going spare.
+    //
+    // A screen taller than the overview left three hundred points of nothing
+    // between the last card and the fold -- the spacer holding a void open
+    // rather than the page filling one. The room goes to the chart, which is
+    // the one thing here that reads better larger.
+    //
+    // Capped, because a window is not an argument for an enormous chart: past
+    // this a hundred days of work is a wide flat ribbon, and the shape stops
+    // being the point.
+    var PLOT_ROOF = 280;
+
+    // How much of the next section has to fit before it is allowed to show.
+    //
+    // The overview owns the first screen so that a heading does not peek over
+    // the bottom edge looking like the page failed to finish. That is a rule
+    // about slivers, and on a tall screen it was being applied to a gap big
+    // enough to hold the whole section -- so the page ended two thirds of the
+    // way down and the rest was dark. Past this much room the section arrives
+    // as a section, which is not a sliver and does not need hiding.
+    var PEEK_MIN = 180;
+
     // how many things there are to give up, in dash.css under [data-fit]
     var FIT_LEVELS = 4;
 
@@ -5384,6 +5406,18 @@
         // floor, because a shorter chart is still a chart and a fact below the
         // fold is not a fact.
         var missing = over();
+
+        // Room going spare: give it to the chart before the spacer holds it
+        // open as emptiness.
+        if (missing < 0 && area) {
+            var tall = area.getBoundingClientRect().height;
+            if (tall < PLOT_ROOF) {
+                var take = Math.min(-missing, PLOT_ROOF - tall);
+                plot.style.setProperty('--use-plot-h', Math.round(tall + take) + 'px');
+                missing = over();
+            }
+        }
+
         for (var level = 0; level <= FIT_LEVELS && missing > 0; level++) {
             if (level) {
                 body.setAttribute('data-fit', String(level));
@@ -5399,12 +5433,18 @@
             }
         }
 
-        // And whatever is left of the screen goes under the overview, so the
-        // next section begins below it rather than half in view. A correction
-        // to what the spacer already is: an empty block has no height, so the
-        // margins above and below it collapse through it and stop collapsing
-        // the moment it is given one -- which moved everything by the
-        // difference and left a heading six pixels into view.
+        // Room enough for the next section to be itself: let the page run.
+        if (missing <= -PEEK_MIN) {
+            gap.style.height = '0px';
+            return;
+        }
+
+        // Otherwise whatever is left of the screen goes under the overview, so
+        // the next section begins below it rather than half in view. A
+        // correction to what the spacer already is: an empty block has no
+        // height, so the margins above and below it collapse through it and
+        // stop collapsing the moment it is given one -- which moved everything
+        // by the difference and left a heading six pixels into view.
         var have = gap.getBoundingClientRect().height;
         var lands2 = next.getBoundingClientRect().top - scroller.getBoundingClientRect().top +
             scroller.scrollTop;
