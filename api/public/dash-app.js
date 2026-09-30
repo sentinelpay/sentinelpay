@@ -5692,7 +5692,156 @@
         read.appendChild(of);
 
         el.appendChild(read);
+        riskTipOn(el, band);
         return el;
+    }
+
+    // Where the lines are, for the person reading the row rather than the one
+    // who drew them.
+    //
+    // The pill says sixty-five and says it in amber. It cannot say why amber:
+    // the line is this organisation's, it is set in Settings two pages away,
+    // and the person reading a row at nine in the morning is often not the
+    // person who set it. So the card shows all four bands with their numbers
+    // and marks the one this check fell in. That is the whole of it -- a card
+    // that repeated the word already on the pill would be a second way to read
+    // the same thing, and worth nobody's mouse.
+    //
+    // One node for the whole page, not one per row. Six rows under the chart
+    // today, forty on the checks screen tomorrow, and a card per row is forty
+    // boxes and forty listeners for a thing only ever seen once at a time.
+    var riskTip = null;
+
+    // Only where there is a mouse. A touch screen has no hover to hang this
+    // on: the first tap opens the check, which is the right way in and already
+    // works. Asked once, because it does not change under us.
+    var HAS_MOUSE = !window.matchMedia ||
+        window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+    function riskTipNode() {
+        if (riskTip) return riskTip;
+        riskTip = document.createElement('div');
+        riskTip.className = 'risk-tip';
+        // it is a picture of what the pill already says out loud: the pill
+        // carries the reading in its aria-label, and a screen reader meeting
+        // this as well would hear the same bands on every one of six rows
+        riskTip.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(riskTip);
+
+        // A fixed box is placed against the window, so anything that moves the
+        // pill under it leaves it pointing at nothing. Capture, because the
+        // page scrolls inside a pane and that scroll never reaches the window
+        // by bubbling. Pointerdown too: the row under this opens a check, and
+        // a card left hanging over a drawer is a card in the way.
+        window.addEventListener('scroll', riskTipHide, true);
+        window.addEventListener('resize', riskTipHide);
+        window.addEventListener('pointerdown', riskTipHide, true);
+        return riskTip;
+    }
+
+    // The four bands as they stand for this organisation, top of each band to
+    // the point below the next one: 0-50, 51-80, 81-99, 100. The last is a
+    // single point at the default and a range once somebody moves it, so it is
+    // written as a range only when it is one.
+    function riskRows(band) {
+        var l = riskLines();
+        return [
+            { cls: 'is-low', word: t('Low'), from: 0, to: l.mid - 1 },
+            { cls: 'is-mid', word: t('Medium'), from: l.mid, to: l.high - 1 },
+            { cls: 'is-high', word: t('High'), from: l.high, to: l.severe - 1 },
+            { cls: 'is-severe', word: t('Severe'), from: l.severe, to: 100 }
+        ].map(function (b) {
+            var row = document.createElement('div');
+            row.className = 'risk-tip-r ' + b.cls + (b.cls === band ? ' is-on' : '');
+            row.appendChild(document.createElement('i'));
+            var k = document.createElement('span');
+            k.textContent = b.word;
+            row.appendChild(k);
+            var v = document.createElement('strong');
+            // an en dash between the ends, and no dash at all where both ends
+            // are the same number: "100-100" is a range of one thing
+            v.textContent = b.from >= b.to ? useNum(b.from)
+                : useNum(b.from) + '–' + useNum(b.to);
+            row.appendChild(v);
+            return row;
+        });
+    }
+
+    // Put it over the pill, or under it where over would leave the page.
+    function riskTipPlace(el, tip) {
+        var a = el.getBoundingClientRect();
+        var b = tip.getBoundingClientRect();
+        var gap = 8;
+        var edge = 8;
+
+        var top = a.top - b.height - gap;
+        // not enough room above: under it instead, which is the only other
+        // place it can go without covering the row it explains
+        if (top < edge) top = a.bottom + gap;
+
+        // centred on the pill, then pulled back inside the window. A card that
+        // hangs off the right edge of a narrow window is a card with its
+        // numbers outside the screen.
+        var left = a.left + (a.width - b.width) / 2;
+        var most = document.documentElement.clientWidth - b.width - edge;
+        if (left > most) left = most;
+        if (left < edge) left = edge;
+
+        tip.style.top = Math.round(top) + 'px';
+        tip.style.left = Math.round(left) + 'px';
+    }
+
+    // A short wait before it appears, and none at all once it already has.
+    //
+    // The pills are a column and a pointer crossing the rows to reach anything
+    // else passes over every one of them. Without the wait that is six cards
+    // flashing on the way past, which is the difference between a product that
+    // answers when asked and one that shouts at a moving mouse. Once a card is
+    // already up the wait would read as lag instead, so moving from one pill
+    // to the next swaps it at once.
+    var RISK_TIP_WAIT = 140;
+    var riskTipSoon = 0;
+
+    function riskTipHide() {
+        if (riskTipSoon) { clearTimeout(riskTipSoon); riskTipSoon = 0; }
+        if (riskTip) riskTip.classList.remove('is-on');
+    }
+
+    function riskTipShow(el, band) {
+        // the rows are rebuilt when the period changes, and a wait started on
+        // a pill that has since been thrown away would place a card against a
+        // box with no position at all
+        if (el.isConnected === false) return;
+        var tip = riskTipNode();
+        tip.textContent = '';
+        var head = document.createElement('div');
+        head.className = 'risk-tip-d';
+        head.textContent = t('Risk bands');
+        tip.appendChild(head);
+        riskRows(band).forEach(function (r) { tip.appendChild(r); });
+        // placed with the content in it and before it is shown, or the first
+        // card of a session is measured as an empty box and lands high
+        riskTipPlace(el, tip);
+        tip.classList.add('is-on');
+    }
+
+    function riskTipOn(el, band) {
+        if (!HAS_MOUSE) return;
+        el.addEventListener('pointerenter', function (e) {
+            // a pointer that is not a mouse reaches pointerenter too, on the
+            // tap that is about to open the check
+            if (e.pointerType && e.pointerType !== 'mouse') return;
+            if (riskTipSoon) clearTimeout(riskTipSoon);
+            if (riskTip && riskTip.classList.contains('is-on')) {
+                riskTipShow(el, band);
+                return;
+            }
+            riskTipSoon = setTimeout(function () {
+                riskTipSoon = 0;
+                riskTipShow(el, band);
+            }, RISK_TIP_WAIT);
+        });
+        el.addEventListener('pointerleave', riskTipHide);
     }
 
     // One check, small enough that six of them fit under a chart.
