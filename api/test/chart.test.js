@@ -195,3 +195,44 @@ test('no mark falls between two days', () => {
         }
     }
 });
+
+// The chart is one size whether or not a period is laid under it.
+//
+// Where there is a window behind this one the card holds two charts stacked --
+// this period, and this period with the last one under it -- and the code that
+// works out how tall the chart should be found only the first of them with a
+// querySelector. So one was sized and the other kept whatever the stylesheet
+// said, and asking to compare took the chart from 280 points to 148. Worse on
+// a page that opened already comparing: the chart it measured was the hidden
+// one, a hidden element measures zero, and zero said there was no room to give
+// up or to take, so the fitting did nothing at all.
+test('every chart on the screen is sized, not the first one', () => {
+    const at = SRC.indexOf('function fitFold(');
+    assert.notStrictEqual(at, -1, 'the overview no longer fits itself to the screen');
+    const body = SRC.slice(at, SRC.indexOf('\n    }', at));
+
+    assert.doesNotMatch(body, /querySelector\('\.use-plot'\)/,
+        'the height is worked out for the first chart only');
+    assert.match(body, /querySelectorAll\('\.use-plot'\)/,
+        'the charts are not gathered together');
+    assert.match(body, /querySelectorAll\('\.use-plot-a'\)/,
+        'the height is still read off one chart');
+    assert.match(body, /offsetHeight\)\s*\{[\s\S]{0,80}break;/,
+        'a chart that is not laid out can still be the one measured');
+});
+
+// And the two of them sit in one cell, so the card cannot change height when
+// the reader swaps between them: their legends say different things and wrap
+// at different widths.
+test('the two charts share a cell rather than taking turns in the flow', () => {
+    const css = fs.readFileSync(
+        path.join(__dirname, '..', 'public', 'dash.css'), 'utf8');
+    assert.match(css, /\.use-plots\s*\{[^}]*display:\s*grid/,
+        'the charts are not stacked');
+    assert.match(css, /\.use-plots > \.use-alone[\s\S]{0,60}grid-area:\s*1 \/ 1/,
+        'the charts are not in the same cell');
+    assert.doesNotMatch(css, /\.use-against\s*\{\s*display:\s*none/,
+        'the hidden chart is out of the flow again, so the card resizes under the reader');
+    assert.match(SRC, /stack\.className = 'use-plots'/,
+        'nothing builds the stack the stylesheet lays out');
+});

@@ -4980,10 +4980,20 @@
         }
 
         if (cmp) {
-            box.appendChild(useLayer('use-alone', useChart(s.days || [], null),
+            // Both charts in one cell, one on top of the other, rather than one
+            // in the flow and the other out of it. Laid out side by side in
+            // time they are two different heights -- the legends say different
+            // things and wrap at different widths -- and the card changed size
+            // under the reader at the moment they asked to compare. Stacked,
+            // the card is as tall as the taller of them whichever is showing,
+            // and swapping moves nothing.
+            var stack = document.createElement('div');
+            stack.className = 'use-plots';
+            stack.appendChild(useLayer('use-alone', useChart(s.days || [], null),
                 useLegend(false)));
-            box.appendChild(useLayer('use-against', useChart(s.days || [], cmp.days),
+            stack.appendChild(useLayer('use-against', useChart(s.days || [], cmp.days),
                 useLegend(true)));
+            box.appendChild(stack);
         } else {
             box.appendChild(useChart(s.days || [], null));
             box.appendChild(useLegend(false));
@@ -5446,7 +5456,27 @@
         var next = gap && gap.nextElementSibling;
         if (!body || !gap || !next) return;
         var scroller = gap.closest('.canvas') || document.scrollingElement || document.body;
-        var plot = body.querySelector('.use-plot');
+
+        // Every chart on the screen, not the first one.
+        //
+        // Where there is a period behind this one the card holds two charts
+        // stacked -- this period, and this period with the last one under it --
+        // and a querySelector finds only the first. So the height worked out
+        // here was given to one of them and the other kept whatever the
+        // stylesheet said, and the chart changed size the moment somebody asked
+        // to compare. They are one chart as far as this is concerned and they
+        // are sized together.
+        var plots = body.querySelectorAll('.use-plot');
+        var setPlotH = function (px) {
+            for (var i = 0; i < plots.length; i++) {
+                plots[i].style.setProperty('--use-plot-h', Math.round(px) + 'px');
+            }
+        };
+        var clearPlotH = function () {
+            for (var i = 0; i < plots.length; i++) {
+                plots[i].style.removeProperty('--use-plot-h');
+            }
+        };
 
         // Start from the layout as written every time, or the page would only
         // ever get tighter: a window being made larger has to give the chart
@@ -5458,7 +5488,7 @@
         var title = document.querySelector('.use-h1');
         if (planLine) planLine.classList.remove('is-shed');
         if (title) title.classList.remove('is-tight');
-        if (plot) plot.style.removeProperty('--use-plot-h');
+        clearPlotH();
 
         // How far past the bottom of the screen the overview ends. Measured to
         // the element after the spacer rather than to the spacer, so the
@@ -5491,7 +5521,18 @@
         // string until the browser resolves it against the element -- so
         // asking the property what the chart is gives a token, not a number,
         // and everything downstream of it quietly did nothing.
-        var area = body.querySelector('.use-plot-a');
+        //
+        // And it is read off a chart that is actually laid out. The two stacked
+        // charts share a cell and the one not being shown is hidden; a chart
+        // that is not laid out measures zero, and zero told everything after
+        // this that there was no room to give up and none to take -- so on a
+        // screen that opened already comparing, the fitting did nothing at all.
+        var areas = body.querySelectorAll('.use-plot-a');
+        var area = null;
+        for (var ai = 0; ai < areas.length; ai++) {
+            if (areas[ai].offsetHeight) { area = areas[ai]; break; }
+        }
+        if (!area) area = areas[0] || null;
         var plotTall = function () { return area ? area.offsetHeight : 0; };
         var roomLeft = function () { return Math.max(0, plotTall() - PLOT_FLOOR); };
 
@@ -5510,7 +5551,7 @@
             var tall = plotTall();
             if (tall < PLOT_ROOF) {
                 var take = Math.min(-missing, PLOT_ROOF - tall);
-                plot.style.setProperty('--use-plot-h', Math.round(tall + take) + 'px');
+                setPlotH(tall + take);
                 missing = over();
             }
         }
@@ -5524,7 +5565,7 @@
             }
             if (missing > 0 && roomLeft() > 0) {
                 var give = Math.min(missing, roomLeft());
-                plot.style.setProperty('--use-plot-h', Math.round(plotTall() - give) + 'px');
+                setPlotH(plotTall() - give);
                 missing = over();
             }
         }
