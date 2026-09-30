@@ -3553,6 +3553,81 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     color: var(--risk-severe);
 }
 
+/* What the colour means, on a mouse.
+   It earns its place by saying something the pill cannot: the lines this
+   organisation drew. A score of sixty-five is amber here and red somewhere
+   else, and nothing else on this screen says where the line is -- it is set in
+   Settings, two pages away, by somebody who may not be the person reading the
+   row. A card that only repeated "High" would be a second way to read a word
+   already on the screen, and that is the overkill this is not.
+   The chart's reading card, in every respect that can be shared: the same
+   surface, the same hairline, the same corner, the same lift off the page, the
+   same dim label over rows of label-and-figure. Somebody who has read one has
+   read this. Fixed rather than absolute, because the rows sit in a card that
+   clips, and a card that explains a row is no use with its bottom cut off. */
+.risk-tip {
+    position: fixed;
+    z-index: 60;
+    width: max-content;
+    max-width: 15rem;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    box-shadow: 0 10px 24px rgba(14, 35, 88, 0.12);
+    font-size: 0.74rem;
+    opacity: 0;
+    /* it explains the thing under the pointer and must never become the thing
+       under the pointer: crossing it would take the pointer off the pill, and
+       the card would close under the cursor that reached for it */
+    pointer-events: none;
+    /* a lift of two pixels as it arrives, which is the distance every other
+       panel in here travels */
+    transform: translateY(2px);
+    transition: opacity 0.12s ease, transform 0.12s var(--ease);
+}
+.risk-tip.is-on { opacity: 1; transform: none; }
+.risk-tip-d {
+    margin-bottom: 0.35rem;
+    color: var(--ink-4);
+}
+.risk-tip-r {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.11rem 0;
+    color: var(--ink-4);
+}
+/* the band this check fell in, and the three it did not: one line carries the
+   ink and the rest step back, so the answer is found without being read */
+.risk-tip-r.is-on { color: var(--ink); font-weight: 650; }
+.risk-tip-r i {
+    width: 8px;
+    height: 8px;
+    border-radius: 3px;
+    flex: none;
+    background: currentColor;
+    opacity: 0.35;
+}
+.risk-tip-r.is-on i { opacity: 1; }
+.risk-tip-r.is-low i { color: var(--risk-low); }
+.risk-tip-r.is-mid i { color: var(--risk-mid); }
+.risk-tip-r.is-high i { color: var(--risk-high); }
+.risk-tip-r.is-severe i { color: var(--risk-severe); }
+.risk-tip-r strong {
+    margin-left: auto;
+    padding-left: 1.1rem;
+    font-weight: inherit;
+    font-variant-numeric: tabular-nums;
+}
+
+/* No card without a mouse. On a touch screen there is no hover to begin with
+   -- the first tap would open the check under it -- and the row is the way in
+   there. */
+@media not all and (hover: hover) and (pointer: fine) {
+    .risk-tip { display: none; }
+}
+
 .use-last-foot {
     display: flex;
     align-items: center;

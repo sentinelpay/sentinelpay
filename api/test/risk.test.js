@@ -121,3 +121,27 @@ test('the screen falls back where the bands make no sense', () => {
     assert.match(body, /return RISK_BANDS/,
         'there is no fallback when the bands make no sense');
 });
+
+// The card that opens under a mouse says where this organisation drew its
+// lines. That is the only reason it exists -- a card repeating the word already
+// printed on the pill would be a second way to read the same thing -- so it has
+// to read the organisation's bands and not the ones the product ships with.
+test('the hover card reads the same lines the pill was coloured by', () => {
+    const src = fs.readFileSync(
+        path.join(__dirname, '..', 'public', 'dash-app.js'), 'utf8');
+
+    const at = src.indexOf('function riskRows(');
+    assert.notStrictEqual(at, -1, 'the hover card no longer lists the bands');
+    const body = src.slice(at, at + 1200);
+    assert.match(body, /riskLines\(\)/,
+        'the card does not read the bands this organisation set');
+
+    // and it never opens where there is no mouse to open it with: on a touch
+    // screen the tap under it belongs to the row, which opens the check
+    assert.match(src, /\(hover: hover\) and \(pointer: fine\)/,
+        'the card is not held back to pointers that can hover');
+    const css = fs.readFileSync(
+        path.join(__dirname, '..', 'public', 'dash.css'), 'utf8');
+    assert.match(css, /\.risk-tip\s*\{[^}]*pointer-events:\s*none/,
+        'the card can take the pointer, which would close it as it is reached for');
+});
