@@ -3566,6 +3566,46 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     height: 100%;
     border-radius: 999px;
     background: currentColor;
+    /* it grows from the left, because that is the end it is measured from */
+    transform-origin: left center;
+}
+
+/* Under the pointer.
+   A pill that opens a card when it is pointed at should say it is the thing
+   being pointed at, and the row's own tint is too broad an answer -- it
+   highlights the whole row when the pill is what was reached for.
+   Three things, all small: it lifts a point off the page, it takes a shadow in
+   its own colour rather than a grey one, and the bar draws itself again from
+   the end it is measured from. The last is the one worth having: a bar that
+   fills in front of you is a bar you have been told is a proportion, and it
+   costs a third of a second of something the reader is already looking at.
+   Nothing changes size, so nothing around it moves. */
+.use-risk {
+    transition:
+        transform 0.18s var(--ease),
+        box-shadow 0.18s var(--ease),
+        border-color 0.18s ease;
+}
+.use-risk:hover,
+.chk-row:focus-visible .use-risk {
+    transform: translateY(-1px);
+    border-color: currentColor;
+    box-shadow: 0 3px 10px color-mix(in srgb, currentColor 22%, transparent);
+}
+.use-risk:hover .use-risk-b,
+.chk-row:focus-visible .use-risk .use-risk-b { animation: riskFill 0.42s var(--ease) both; }
+@keyframes riskFill {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+}
+
+/* Somebody who has asked for less movement is asking for this too. The lift
+   and the shadow stay: they are a state, not a motion, and without them the
+   pill stops answering the pointer at all. */
+@media (prefers-reduced-motion: reduce) {
+    .use-risk { transition: none; }
+    .use-risk:hover .use-risk-b,
+    .chk-row:focus-visible .use-risk .use-risk-b { animation: none; }
 }
 
 /* the figure and its scale, on one baseline */
@@ -4259,9 +4299,23 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     .use-body.is-waiting { transition: none; }
 }
 
-.use-against { display: none; }
-.use-head.is-against .use-alone { display: none; }
-.use-head.is-against .use-against { display: block; }
+/* One cell, two charts, one on top of the other.
+   They were in and out of the flow before -- display:none on whichever was not
+   wanted -- and that made the card as tall as whichever one was showing. The
+   two are not the same height: their legends say different things and wrap at
+   different widths, so asking to compare could resize the card under the
+   reader, which is the one moment they are looking closely at it.
+   Stacked, the card is as tall as the taller of the two whatever is on screen,
+   and the swap moves nothing at all. visibility rather than display, because
+   the one underneath must still be laid out to hold the height up -- and
+   because visibility, unlike opacity, takes it out of the tab order and out of
+   the way of the pointer. */
+.use-plots { display: grid; }
+.use-plots > .use-alone,
+.use-plots > .use-against { grid-area: 1 / 1; min-width: 0; }
+.use-against { visibility: hidden; }
+.use-head.is-against .use-alone { visibility: hidden; }
+.use-head.is-against .use-against { visibility: visible; }
 
 /* The rest in one line each rather than one card each: facts about the period,
    readable in a single pass instead of six boxes deep. */
