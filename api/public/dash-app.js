@@ -85,6 +85,10 @@
         // a check that came back as something other than clear. a marker put in
         // by a person, not a warning sign: it says look here, not stop.
         flag: '<path d="M6 21V4.6a.6.6 0 0 1 .35-.55C7.6 3.5 9 3.2 10.4 3.2c2.9 0 4.3 1.6 7.2 1.6.9 0 1.7-.1 2.4-.3v8.6c-.7.2-1.5.3-2.4.3-2.9 0-4.3-1.6-7.2-1.6-1.4 0-2.8.3-4.4.9"/>',
+        // a scale cut into three, which is the whole of what the bands are.
+        // not the flag: that already means what came back, and a mark that
+        // means two things teaches the reader one of them wrongly.
+        bands: '<path d="M3.4 12h17.2"/><path d="M9.6 8.4v7.2"/><path d="M15.4 8.4v7.2"/>',
         // a chain: the thing an address is on. two links of one, rather than a
         // coin, because what is counted is the network and not the money.
         coin: '<rect x="2.6" y="8.8" width="10.2" height="6.4" rx="3.2"/>' +
@@ -4658,19 +4662,58 @@
 
         var last = n - 1;
         var nice = isHourBucket(days[0].day) ? NICE_HOURS : NICE_DAYS;
-        // the smallest interval that fits inside the cap. floor rather than
-        // ceil: a step of seven over thirty days gives five marks and a last
-        // one two days short of the end, which is five marks and not six.
+
+        // A step that divides the window exactly, first.
+        //
+        // Then the marks are evenly spaced *and* the last one lands on the
+        // last bucket, so the axis begins where the line begins and ends where
+        // it ends. Without this the first mark sat against the left edge and
+        // the last stopped short of the right, which reads as an axis that ran
+        // out rather than one that was measured.
         var step = 0;
-        for (var i = 0; i < nice.length; i++) {
-            if (Math.floor(last / nice[i]) <= MOST_TICKS - 1) { step = nice[i]; break; }
+        for (var d = 1; d <= last; d++) {
+            if (last % d) continue;
+            if (Math.floor(last / d) > MOST_TICKS - 1) continue;
+            // two marks is the two ends and nothing in between, which is not
+            // an axis; fall through to the nice steps for a window whose only
+            // divisors are itself
+            if (last / d + 1 >= 3) { step = d; break; }
         }
-        // a window longer than any interval we keep: work one out
-        if (!step) step = Math.ceil(last / (MOST_TICKS - 1));
+
+        var ends = true;
+        if (!step) {
+            // Nothing divides it -- twelve days, say, whose only divisors are
+            // eleven and one. Take the smallest interval a calendar has that
+            // fits, and name the last bucket as well: the final gap is then
+            // shorter than the others, which at the end of a line reads as the
+            // line stopping, where an uneven gap in the middle would read as
+            // the axis lying.
+            ends = false;
+            // one fewer than the cap allows, because the last bucket is
+            // going to be named on top of these
+            for (var i = 0; i < nice.length; i++) {
+                if (Math.floor(last / nice[i]) <= MOST_TICKS - 2) { step = nice[i]; break; }
+            }
+            if (!step) step = Math.ceil(last / (MOST_TICKS - 2));
+        }
 
         var out = [];
         for (var at = 0; at <= last; at += step) {
             out.push({ at: at, label: shortDay(days[at].day) });
+        }
+        if (!ends && out[out.length - 1].at !== last) {
+            // How far the last mark fell short. A long way, and the end is a
+            // mark of its own; a short way, and it takes the place of the one
+            // before it rather than crowding against it -- two labels a day
+            // apart at the end of a year of work is a collision, not a
+            // reading.
+            // Whichever leaves the end nearer the rhythm: appending makes a
+            // last gap of the remainder, replacing makes one of the remainder
+            // plus a step. Half a step is where the two swap over.
+            var rest = last - out[out.length - 1].at;
+            var end = { at: last, label: shortDay(days[last].day) };
+            if (rest >= step * 0.5) out.push(end);
+            else out[out.length - 1] = end;
         }
         return out;
     }
@@ -5381,11 +5424,27 @@
         // How far past the bottom of the screen the overview ends. Measured to
         // the element after the spacer rather than to the spacer, so the
         // answer does not depend on what the spacer happens to be holding.
+        // Measured with layout offsets rather than with painted rectangles.
+        //
+        // A rectangle includes the transform an element is being animated by,
+        // and every block on this page arrives with one. So the first
+        // measurement after a period swap was of things still in flight, and
+        // a second pass half a second later corrected it -- which was fine
+        // while the correction only moved a spacer, and became a visible jump
+        // the moment it could also change the height of the chart.
+        //
+        // offsetTop and offsetHeight are layout, not paint: a transform does
+        // not touch them. One pass, right the first time, and nothing moves
+        // after the page has settled.
+        var topOf = function (el) {
+            var y = 0;
+            for (var node = el; node; node = node.offsetParent) y += node.offsetTop;
+            return y;
+        };
+        var floor = topOf(scroller);
         var over = function () {
             gap.style.height = '0px';
-            var top = scroller.getBoundingClientRect().top;
-            var lands = next.getBoundingClientRect().top - top + scroller.scrollTop;
-            return lands - scroller.clientHeight;
+            return (topOf(next) - floor) - scroller.clientHeight;
         };
 
         // The plot's height is read off the plot, not off the custom property
@@ -5394,9 +5453,8 @@
         // asking the property what the chart is gives a token, not a number,
         // and everything downstream of it quietly did nothing.
         var area = body.querySelector('.use-plot-a');
-        var roomLeft = function () {
-            return Math.max(0, (area ? area.getBoundingClientRect().height : 0) - PLOT_FLOOR);
-        };
+        var plotTall = function () { return area ? area.offsetHeight : 0; };
+        var roomLeft = function () { return Math.max(0, plotTall() - PLOT_FLOOR); };
 
         // Given up in this order, each step costing less than the one after
         // it: the shapes in the cards, then the notes and the key -- which
@@ -5410,7 +5468,7 @@
         // Room going spare: give it to the chart before the spacer holds it
         // open as emptiness.
         if (missing < 0 && area) {
-            var tall = area.getBoundingClientRect().height;
+            var tall = plotTall();
             if (tall < PLOT_ROOF) {
                 var take = Math.min(-missing, PLOT_ROOF - tall);
                 plot.style.setProperty('--use-plot-h', Math.round(tall + take) + 'px');
@@ -5427,8 +5485,7 @@
             }
             if (missing > 0 && roomLeft() > 0) {
                 var give = Math.min(missing, roomLeft());
-                plot.style.setProperty('--use-plot-h',
-                    Math.round(area.getBoundingClientRect().height - give) + 'px');
+                plot.style.setProperty('--use-plot-h', Math.round(plotTall() - give) + 'px');
                 missing = over();
             }
         }
@@ -5445,15 +5502,12 @@
         // height, so the margins above and below it collapse through it and
         // stop collapsing the moment it is given one -- which moved everything
         // by the difference and left a heading six pixels into view.
-        var have = gap.getBoundingClientRect().height;
-        var lands2 = next.getBoundingClientRect().top - scroller.getBoundingClientRect().top +
-            scroller.scrollTop;
-        var want = have + (scroller.clientHeight - lands2);
+        var have = gap.offsetHeight;
+        var want = have + (scroller.clientHeight - (topOf(next) - floor));
         gap.style.height = Math.round(want > 0 ? want : 0) + 'px';
     }
 
     var foldWaiting = false;
-    var foldAgain = null;
     function queueFold() {
         if (!foldWaiting) {
             foldWaiting = true;
@@ -5462,17 +5516,11 @@
                 fitFold();
             });
         }
-        // And once more when the page has stopped moving. Swapping a period
-        // animates every block in from a few pixels away, and a rectangle read
-        // mid-animation is the rectangle of something still arriving -- which
-        // is how the first measurement came out six pixels short and left a
-        // heading peeking over the bottom edge. The correction is idempotent,
-        // so running it again costs a reflow and settles it.
-        if (foldAgain) clearTimeout(foldAgain);
-        foldAgain = setTimeout(function () {
-            foldAgain = null;
-            fitFold();
-        }, 520);
+        // No second pass. There used to be one half a second later, because
+        // the measurement was of painted rectangles and those were still
+        // moving; now it is of layout, which is not. A correction that arrives
+        // after the reader has started looking is a jump, and the chart is
+        // tall enough for it to be a large one.
     }
     window.addEventListener('resize', queueFold);
 
@@ -5533,9 +5581,26 @@
     // Returns the class, not a word: it is only ever used as one, and a bare
     // lowercase word coming out of a return reads to the i18n sweep as a
     // sentence nobody translated.
+    // The lines this organisation draws, where it has said. Read from the
+    // organisation the page is looking at rather than held per person: two
+    // people in the same company must be shown the same verdict for the same
+    // address, or "flagged" means something different depending on who is
+    // looking at it.
+    function riskLines() {
+        var set = lastMe && lastMe.org && lastMe.org.risk;
+        var mid = set && Number(set.mid);
+        var high = set && Number(set.high);
+        // a band that does not make sense is not one anybody meant to write:
+        // fall back to what the product ships with rather than colour checks
+        // by accident
+        if (!(mid >= 1 && high <= 100 && mid < high)) return RISK_BANDS;
+        return { mid: mid, high: high };
+    }
+
     function riskBand(n) {
-        if (n >= RISK_BANDS.high) return 'is-high';
-        if (n >= RISK_BANDS.mid) return 'is-mid';
+        var lines = riskLines();
+        if (n >= lines.high) return 'is-high';
+        if (n >= lines.mid) return 'is-mid';
         return 'is-low';
     }
 
@@ -5564,9 +5629,21 @@
             (verdict === 'severe' ? t('Sanctioned')
                 : (verdict === 'clear' ? t('Clear') : t('Worth a look'))));
 
+        // A track of one length with the score filled into it, so fourteen
+        // out of a hundred is a seventh of the bar and looks like a seventh
+        // of it. The track is what was missing when this was tried before:
+        // without it a low score was a stub floating in space and read as a
+        // speck rather than as a reading.
+        var track = document.createElement('span');
+        track.className = 'use-risk-t';
         var bar = document.createElement('span');
         bar.className = 'use-risk-b';
-        el.appendChild(bar);
+        // A square end below a couple of percent: a rounded cap on a two
+        // pixel bar is a dot, and a dot is not a length.
+        bar.style.width = n + '%';
+        if (n > 0 && n < 4) bar.style.borderRadius = '2px';
+        track.appendChild(bar);
+        el.appendChild(track);
 
         var fig = document.createElement('span');
         fig.className = 'use-risk-n';
@@ -6850,6 +6927,110 @@
             }).catch(function () {
                 toast(t('That did not work.'), 'bad');
                 save.disabled = false;
+            });
+        });
+
+        // Where this organisation draws the line between a score worth a look
+        // and one worth acting on.
+        //
+        // Here and not in a person's preferences: it changes what everybody in
+        // the company is shown about the same address, and it is sealed into
+        // every check that runs after it. A preference is something one person
+        // can be wrong about on their own; this is not one.
+        var riskCard = orghCard('Risk bands', 'bands');
+        var rb = document.createElement('div');
+        rb.className = 'orgh-body';
+        var rp = document.createElement('p');
+        rp.className = 'orgh-line';
+        rp.textContent = t('A check scores out of a hundred. Below the first number it is green, below the second amber, and above it red.');
+        rb.appendChild(rp);
+
+        var now = (org.risk && org.risk.mid && org.risk.high) ? org.risk : { mid: 51, high: 81 };
+        var row = document.createElement('div');
+        row.className = 'orgh-bands';
+        var fields = {};
+        [['mid', 'Amber from', now.mid], ['high', 'Red from', now.high]].forEach(function (f) {
+            var box = document.createElement('label');
+            box.className = 'orgh-band';
+            var lab = document.createElement('span');
+            lab.className = 'orgh-band-k';
+            lab.textContent = t(f[1]);
+            box.appendChild(lab);
+            var input = document.createElement('input');
+            input.type = 'number';
+            input.className = 'orgh-in orgh-band-v';
+            input.min = '1';
+            input.max = '100';
+            input.step = '1';
+            input.value = String(f[2]);
+            input.disabled = !may;
+            box.appendChild(input);
+            fields[f[0]] = input;
+            row.appendChild(box);
+        });
+        rb.appendChild(row);
+
+        var rsave = document.createElement('button');
+        rsave.type = 'button';
+        rsave.className = 'btn btn-primary orgh-act';
+        rsave.textContent = t('Save');
+        rsave.disabled = true;
+        rb.appendChild(rsave);
+        riskCard.appendChild(rb);
+        if (!may) {
+            var rnote = document.createElement('p');
+            rnote.className = 'orgh-line is-quiet';
+            rnote.textContent = t('Only an admin or the owner can change this.');
+            riskCard.appendChild(rnote);
+        }
+        page.appendChild(riskCard);
+
+        var bandsNow = function () {
+            return { mid: Number(fields.mid.value), high: Number(fields.high.value) };
+        };
+        var bandsOk = function () {
+            var v = bandsNow();
+            return Number.isInteger(v.mid) && Number.isInteger(v.high) &&
+                v.mid >= 1 && v.high <= 100 && v.mid < v.high;
+        };
+        var bandsMoved = function () {
+            var v = bandsNow();
+            return v.mid !== Number(now.mid) || v.high !== Number(now.high);
+        };
+        [fields.mid, fields.high].forEach(function (input) {
+            input.addEventListener('input', function () {
+                rsave.disabled = !may || !bandsOk() || !bandsMoved();
+            });
+        });
+        rsave.addEventListener('click', function () {
+            if (!bandsOk()) return;
+            rsave.disabled = true;
+            fetch('/v1/orgs/' + encodeURIComponent(org.id) + '/risk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify(bandsNow())
+            }).then(function (r) {
+                return r.json().catch(function () { return {}; }).then(function (b) {
+                    return { ok: r.ok, body: b };
+                });
+            }).then(function (r) {
+                if (!r.ok) {
+                    toast((r.body && r.body.error) || t('That did not work.'), 'bad');
+                    rsave.disabled = false;
+                    return;
+                }
+                // put back where the page reads it from, so every screen that
+                // colours a score picks up the new lines without a reload
+                org.risk = r.body.org.risk;
+                if (lastMe && lastMe.org) lastMe.org.risk = r.body.org.risk;
+                now = r.body.org.risk;
+                forgetOrgCache();
+                toast(t('Risk bands saved'), 'good');
+                render();
+            }).catch(function () {
+                toast(t('That did not work.'), 'bad');
+                rsave.disabled = false;
             });
         });
 

@@ -2621,6 +2621,30 @@ html.is-theming .btn {
 .orgh-ico .nav-i { width: 15px; height: 15px; }
 .orgh-card-t { margin: 0; font-size: 0.86rem; font-weight: 650; color: var(--ink); letter-spacing: 0; text-transform: none; }
 .orgh-body { margin-top: 0.7rem; }
+
+/* Two numbers side by side, because they are one decision read together: the
+   amber line means nothing without the red one beside it. */
+.orgh-bands {
+    display: flex;
+    flex-wrap: wrap;
+    /* or the two fields stretch to the height of the row they are in, which on
+       a flex row is whatever the tallest thing in it happens to be */
+    align-items: flex-start;
+    gap: 0.9rem;
+    margin: 0.85rem 0 0.2rem;
+}
+.orgh-band { display: flex; flex-direction: column; gap: 0.3rem; }
+.orgh-band-k { font-size: 0.76rem; font-weight: 600; color: var(--ink-4); }
+/* The shared field is built to sit in a row -- flex: 1 1 14rem -- and this
+   sits in a column, where that basis is fourteen rems of height rather than of
+   width. Hence a number box the height of a paragraph. */
+/* Two classes, because the shared rule it is undoing sits further down this
+   file and would otherwise win on order alone. */
+.orgh-band .orgh-band-v {
+    flex: 0 0 auto;
+    width: 6.5rem;
+    font-variant-numeric: tabular-nums;
+}
 .orgh-line { margin: 0; font-size: 0.88rem; line-height: 1.6; color: var(--ink-2); }
 .orgh-line.is-quiet { margin-top: 0.15rem; font-size: 0.8rem; color: var(--ink-4); }
 
@@ -3455,10 +3479,19 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     align-items: center;
     gap: 0.5rem;
 }
+/* one length for every row, so the fill inside it is comparable down the
+   column */
+.use-risk-t {
+    display: block;
+    width: 44px;
+    height: 5px;
+    border-radius: 999px;
+    background: var(--line-2);
+    overflow: hidden;
+}
 .use-risk-b {
     display: block;
-    width: 34px;
-    height: 5px;
+    height: 100%;
     border-radius: 999px;
     background: var(--risk-low);
 }

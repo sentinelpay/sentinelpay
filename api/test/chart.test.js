@@ -61,44 +61,55 @@ test('five at the most, however long the window', () => {
     }
 });
 
-test('the gaps along the axis are all the same', () => {
+test('the gaps along the axis are the same, but for the last', () => {
     for (let n = 1; n <= 400; n++) {
         const at = ticks(window_(n)).map((t) => t.at);
         if (at.length < 3) continue;
         const step = at[1] - at[0];
-        for (let i = 1; i < at.length; i++) {
-            // the positions are exact fractions, so this is arithmetic rather
-            // than a rounding allowance: marks that differ by a hair are the
-            // bug this test exists for
-            assert.ok(Math.abs((at[i] - at[i - 1]) - step) < 1e-9,
-                n + ' days: gaps ' + at.map((x) => Math.round(x * 100) / 100).join(', ') +
-                ' are not equal');
+        // Every gap but the final one. A window whose length has no divisor
+        // small enough cannot both step evenly and end on its last bucket,
+        // and ending on it is worth more: a short gap at the end of a line
+        // reads as the line stopping, where an uneven gap in the middle
+        // reads as the axis lying.
+        for (let i = 1; i < at.length - 1; i++) {
+            assert.strictEqual(at[i] - at[i - 1], step,
+                n + ' days: gaps ' + at.join(', ') + ' are not equal before the end');
         }
+        // Measured across every length from three to four hundred, the final
+        // gap lands between half a step and one and a half: appending leaves
+        // the remainder, replacing leaves the remainder plus a step, and half
+        // a step is where the rule swaps between them.
+        const lastGap = at[at.length - 1] - at[at.length - 2];
+        assert.ok(lastGap >= step * 0.5 && lastGap <= step * 1.5,
+            n + ' days: the final gap of ' + lastGap + ' is out of step with ' + step);
     }
 });
 
-test('the first day is always named, and nothing past the last', () => {
+test('the axis begins on the first day and ends on the last', () => {
     for (let n = 1; n <= 400; n++) {
         const days = window_(n);
         const out = ticks(days);
         assert.strictEqual(out[0].at, 0, n + ' days: the axis does not start at the first day');
         assert.strictEqual(out[0].label, days[0].day);
-        assert.ok(out[out.length - 1].at <= n - 1,
-            n + ' days: the axis names a day past the end of the window');
+        // Both ends, always. The first mark sitting against the left edge
+        // while the last stopped short of the right read as an axis that had
+        // run out rather than one that had been measured.
+        assert.strictEqual(out[out.length - 1].at, n - 1,
+            n + ' days: the axis does not end on the last day');
+        assert.strictEqual(out[out.length - 1].label, days[n - 1].day);
     }
 });
 
-// An axis cannot both end on the last day and step evenly unless the window
-// happens to divide by the step. The even step is the one that carries
-// meaning, so the last day goes unnamed where the two disagree -- but never by
-// more than one whole step, or the chart would trail off with nothing to read
-// against most of its right-hand side.
-test('the axis reaches within one step of the end', () => {
-    for (let n = 2; n <= 400; n++) {
+// Two labels a day apart at the end of a year of work is a collision, not a
+// reading: where the end falls close to the mark before it, it takes that
+// mark's place rather than crowding against it.
+test('the end never crowds the mark before it', () => {
+    for (let n = 3; n <= 400; n++) {
         const at = ticks(window_(n)).map((t) => t.at);
-        const step = at.length > 1 ? at[1] - at[0] : n - 1;
-        assert.ok((n - 1) - at[at.length - 1] < step,
-            n + ' days: the last mark is more than a step short of the end');
+        if (at.length < 3) continue;
+        const step = at[1] - at[0];
+        assert.ok(at[at.length - 1] - at[at.length - 2] >= step * 0.5,
+            n + ' days: ' + at.join(', ') + ' ends with two marks on top of each other');
     }
 });
 
@@ -133,7 +144,9 @@ test('a short window names every day it has', () => {
 // so it stepped 2, 2, 1, 2 and looked exactly as wrong as it was.
 test('eight days step by two, not by two two one two', () => {
     const out = ticks(window_(8)).map((t) => dayOf(t.label));
-    assert.deepStrictEqual(out, [20, 22, 24, 26]);
+    // seven has no divisor that leaves three marks, so the end takes the
+    // place of the mark before it and the axis still closes on the 27th
+    assert.deepStrictEqual(out, [20, 22, 24, 26, 27]);
 });
 
 // An hour window divides by four, which is why this only ever looked wrong on
@@ -167,6 +180,7 @@ test('neither of the old axes comes back', () => {
     const at = ticks(window_(8)).map((t) => t.at);
     assert.notDeepStrictEqual(at, [0, 2, 4, 5, 7], 'the uneven positions are back');
     assert.notDeepStrictEqual(at, [0, 1.75, 3.5, 5.25, 7], 'the uneven dates are back');
+    assert.notDeepStrictEqual(at, [0, 2, 4, 6], 'the axis stops short of the end again');
     for (const v of at) {
         assert.strictEqual(v, Math.round(v), 'a mark landed between two days');
     }

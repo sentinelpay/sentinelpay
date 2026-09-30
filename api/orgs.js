@@ -57,6 +57,19 @@ CREATE TABLE IF NOT EXISTS organisations (
 );
 CREATE INDEX IF NOT EXISTS organisations_host_idx ON organisations (host) WHERE host <> '';
 
+-- Where this organisation draws the line between a score worth looking at and
+-- one worth acting on.
+--
+-- On the organisation and not on the person: two people in the same company
+-- must see the same verdict for the same address, or the word "flagged" means
+-- something different depending on who is looking at it. It is a policy, not a
+-- preference.
+--
+-- The defaults are the ones the product shipped with, so nothing moves for an
+-- organisation that never touches them.
+ALTER TABLE organisations ADD COLUMN IF NOT EXISTS risk_mid  integer NOT NULL DEFAULT 51;
+ALTER TABLE organisations ADD COLUMN IF NOT EXISTS risk_high integer NOT NULL DEFAULT 81;
+
 CREATE TABLE IF NOT EXISTS memberships (
     org_id      bigint      NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
     user_id     bigint      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -136,6 +149,10 @@ function shape(row) {
         role: row.role || '',
         members: row.members === undefined ? undefined : Number(row.members),
         plan: row.plan_state === undefined ? undefined : planOf(row),
+        risk: row.risk_mid === undefined ? undefined : {
+            mid: Number(row.risk_mid),
+            high: Number(row.risk_high),
+        },
     };
 }
 
@@ -455,7 +472,42 @@ async function reslug() {
     }
 }
 
+// Move the line between the bands.
+//
+// Guarded rather than trusted: a band that is not a whole number between one
+// and a hundred, or a middle above the top, is not a policy anybody meant to
+// write, and a screen that accepts it starts colouring checks by accident.
+//
+// Nothing here touches checks that have already run. What a verdict was
+// measured against is sealed into the check itself -- see screening.js -- so
+// moving the line changes what happens next and not what happened before.
+async function setRisk(orgId, mid, high) {
+    if (!(await init())) return { ok: false, reason: 'unavailable' };
+    const m = Number(mid);
+    const h = Number(high);
+    if (!Number.isInteger(m) || !Number.isInteger(h)) return { ok: false, reason: 'bad-bands' };
+    if (m < 1 || h > 100 || m >= h) return { ok: false, reason: 'bad-bands' };
+    try {
+        const res = await db.query(
+            `UPDATE organisations SET risk_mid = $2, risk_high = $3
+              WHERE id = $1
+          RETURNING id, name, host, slug, created_at, risk_mid, risk_high`,
+            [Number(orgId), m, h]
+        );
+        if (!res.rowCount) return { ok: false, reason: 'gone' };
+        return { ok: true, org: shape(res.rows[0]) };
+    } catch (err) {
+        console.error('[orgs] could not set the risk bands: ' + err.message);
+        return { ok: false, reason: 'unavailable' };
+    }
+}
+
+// What the product ships with, and what a check is measured against where an
+// organisation has never said otherwise.
+const RISK_DEFAULT = { mid: 51, high: 81 };
+
 module.exports = {
+    setRisk, RISK_DEFAULT,
     ROLES, ROLE_KEYS, ROLE_RANK, NAME_MAX, ORGS_PER_USER,
     init, create, listFor, membership, bySlug, roleAtLeast, remove, weightOf, reslug,
     members, memberIds, rename, setRole, removeMember,
