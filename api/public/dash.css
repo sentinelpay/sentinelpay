@@ -3474,14 +3474,54 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 /* Four columns: the address takes what is left, the rest take what they need.
    Narrower than the checks table's because there is no filter bar above it and
    no project column to keep room for. */
+/* Every row here is its own grid -- they are separate elements and nothing
+   makes their columns agree -- so a column only lines up where its width does
+   not depend on what is in it. The time does already: six timestamps of the
+   same shape, set in tabular figures, at the end of the row. The chain did
+   not, and one four letter ticker in six pulled the whole tail of that row
+   eight pixels out of line with the five around it. It is given a width
+   instead of taking one. */
 .tr.is-last {
-    grid-template-columns: minmax(0, 1fr) max-content max-content max-content;
+    grid-template-columns: minmax(0, 1fr) max-content 3.5rem max-content;
     padding: 0.7rem 1.15rem;
 }
 
+/* The two quiet columns at the end of the row: which chain, and when.
+   They sit next to each other with only the grid gap between them, and in one
+   weight and one colour they read as a single run of characters -- "LTC 28.
+   ruj 19:09" -- that has to be taken apart before either half can be used.
+   What follows gives each of them a shape of its own without giving either any
+   more weight than it has earned: the score is what this row is for, and
+   nothing down here may compete with it. */
+
 /* a time repeated down a column, so it lines up rather than shifting with the
    width of the month */
-.use-last-w { font-variant-numeric: tabular-nums; }
+.use-last-w {
+    font-variant-numeric: tabular-nums;
+    /* the .tr-dim gap is sized for separate facts, and these two are one */
+    gap: 0.3rem;
+}
+/* the part that repeats on six rows out of six steps back; the part that
+   differs on every one of them keeps the ink */
+.use-when-d { color: var(--ink-4); }
+.use-when-t { color: var(--ink-3); }
+
+/* A ticker is a code, like the address at the other end of the row, so it is
+   set in the same face. Three characters of one width make the column a rail:
+   the eye finds the chain by position instead of reading for it. The room is
+   held whether or not the ticker fills it, because a four letter chain must
+   not push the whole column over on the one row that has one. */
+.use-chain {
+    display: inline-block;
+    min-width: 3ch;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.76rem;
+    letter-spacing: 0.02em;
+    color: var(--ink-3);
+}
+/* the absence of the fact rather than the fact, so it is quieter still -- and
+   it carries the words behind it, on a pointer and to a screen reader */
+.use-chain.is-none { color: var(--ink-4); cursor: help; }
 
 /* How risky a check came back: a reading in its own field.
    The same shape the product already uses for a small stated fact -- a hairline
@@ -3650,7 +3690,13 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     .tr.is-last .chk-addr { grid-column: 1; grid-row: 1; }
     .tr.is-last > div:nth-child(2) { grid-column: 2; grid-row: 1; }
     .tr.is-last .tr-dim:not(.use-last-w) { grid-column: 1; grid-row: 2; }
-    .tr.is-last .use-last-w { grid-column: 2; grid-row: 2; text-align: right; }
+    /* justify-content, not text-align: .tr-dim is a flex row and text-align
+       has never had anything to say about where a flex item is put. It was
+       written when this cell held a bare string, and a bare string in a flex
+       box is an anonymous item at the start of the line -- so the time has sat
+       a few pixels short of the edge it was meant to be flush with since the
+       day the rule was added. */
+    .tr.is-last .use-last-w { grid-column: 2; grid-row: 2; justify-content: flex-end; }
 }
 
 .use-side p { margin: 0 0 0.7rem; font-size: 0.82rem; line-height: 1.6; color: var(--ink-4); }

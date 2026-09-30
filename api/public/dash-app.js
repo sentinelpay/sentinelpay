@@ -1842,6 +1842,40 @@
         }
     }
 
+    // The same moment in two pieces, because the two are not read the same
+    // way.
+    //
+    // Six rows under a chart are usually six rows from today, so the date is
+    // the part that repeats and the clock is the part that differs. Printed in
+    // one weight they read as one blob and the eye has to find the clock
+    // inside it every time. Split, the date can step back and the clock can
+    // carry the ink, and a column of them is scanned rather than read -- which
+    // is the same argument whenShort already makes for dropping the year.
+    //
+    // Built from two formatters rather than by cutting up one string: where
+    // the date ends and the clock begins is different in every locale, and a
+    // separator found by searching for a comma is a bug in the first language
+    // that does not use one.
+    function whenParts(iso) {
+        if (!iso) return null;
+        var d = new Date(iso);
+        if (isNaN(d.getTime())) return null;
+        try {
+            var zone = zoneNow();
+            return {
+                day: new Intl.DateTimeFormat(navLang(), {
+                    day: 'numeric', month: 'short', timeZone: zone
+                }).format(d),
+                clock: new Intl.DateTimeFormat(navLang(), {
+                    hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: zone
+                }).format(d)
+            };
+        } catch (err) {
+            // one piece is better than none: the row still says when
+            return { day: '', clock: whenShort(iso) };
+        }
+    }
+
     // A chain, as a person says it.
     //
     // The stored code follows OFAC, because that is where a hit comes from:
@@ -5872,14 +5906,46 @@
         v.appendChild(riskChip(r.score));
         row.appendChild(v);
 
+        // The ticker in the mono face, for the same reason the address above it
+        // is in one: BTC, ETH, TRX are codes and nobody reads them as words.
+        // Three characters of one width, so the column is a rail rather than a
+        // ragged edge -- and a chain we could not recognise is a sentence and
+        // not a ticker, so it is set as one.
         var chain = document.createElement('div');
-        chain.className = 'tr-dim';
-        chain.textContent = chainText(r.asset) || t('Not recognised');
+        chain.className = 'tr-dim use-last-c';
+        var code = chainText(r.asset);
+        var mark = document.createElement('span');
+        mark.className = 'use-chain';
+        if (code) {
+            mark.textContent = code;
+        } else {
+            // the dash this product already writes wherever a value is not
+            // there, rather than a sentence that would be the longest thing in
+            // a column of three letter codes and take the column with it. The
+            // words are still said -- to a screen reader, and to a pointer.
+            mark.textContent = '—';
+            mark.classList.add('is-none');
+            mark.title = t('Not recognised');
+            mark.setAttribute('aria-label', t('Not recognised'));
+        }
+        chain.appendChild(mark);
         row.appendChild(chain);
 
         var when = document.createElement('div');
         when.className = 'tr-dim use-last-w';
-        when.textContent = whenShort(r.at);
+        var at = whenParts(r.at);
+        if (at) {
+            if (at.day) {
+                var day = document.createElement('span');
+                day.className = 'use-when-d';
+                day.textContent = at.day;
+                when.appendChild(day);
+            }
+            var clock = document.createElement('span');
+            clock.className = 'use-when-t';
+            clock.textContent = at.clock;
+            when.appendChild(clock);
+        }
         row.appendChild(when);
 
         row.addEventListener('click', function () { openCheck(r); });
