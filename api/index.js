@@ -2672,11 +2672,11 @@ app.post('/v1/orgs/:id/risk', requireCloudflareOrigin, accountLimiter, async (re
         return res.status(403).json({ error: 'Only an admin or the owner can change the risk bands.' });
     }
     const body = req.body || {};
-    const out = await orgs.setRisk(mine.id, body.mid, body.high);
+    const out = await orgs.setRisk(mine.id, body.mid, body.high, body.severe);
     if (!out.ok) {
         if (out.reason === 'bad-bands') {
             return res.status(400).json({
-                error: 'Give two whole numbers between 1 and 100, with the first below the second.',
+                error: 'Give three whole numbers between 1 and 100, each one above the last.',
             });
         }
         return res.status(out.reason === 'gone' ? 404 : 503).json({
@@ -2685,7 +2685,7 @@ app.post('/v1/orgs/:id/risk', requireCloudflareOrigin, accountLimiter, async (re
     }
     await accounts.audit('org-risk-bands', {
         actor: String(me.userId), subject: out.org.id, ip: req.realIp,
-        detail: out.org.risk.mid + '/' + out.org.risk.high,
+        detail: out.org.risk.mid + '/' + out.org.risk.high + '/' + out.org.risk.severe,
     });
     await tellOrg(out.org.id, { topic: 'org', id: String(out.org.id) });
     res.set('Cache-Control', 'no-store, private');

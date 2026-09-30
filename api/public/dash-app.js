@@ -71,8 +71,13 @@
         // things a screen talks about
         plan: '<path d="m12.4 3.6 7.2 7.2a2 2 0 0 1 0 2.8l-5.6 5.6a2 2 0 0 1-2.8 0L4 12V5.6a2 2 0 0 1 2-2Z"/>' +
             '<circle cx="8.6" cy="8.6" r="1.3"/>',
-        screening: '<circle cx="10.8" cy="10.8" r="6.2"/><path d="m15.4 15.4 4.2 4.2"/>' +
-            '<path d="m8.2 10.9 1.9 1.9 3.4-3.6"/>',
+        // The lens carries the weight of this mark and the handle is a hair,
+        // so the eye centres it on the lens. Balanced on the bounding box it
+        // therefore sat up and to the left of every other glyph in the same
+        // box. The lens is nearer the middle now and the handle is shorter to
+        // pay for it.
+        screening: '<circle cx="11.4" cy="11.4" r="6.4"/><path d="m15.9 15.9 3.7 3.7"/>' +
+            '<path d="m8.7 11.5 2 2 3.5-3.7"/>',
         coverage: '<path d="M12 3.4 5 6v5.4c0 4.6 3.1 7.6 7 9.2 3.9-1.6 7-4.6 7-9.2V6Z"/>' +
             '<path d="m8.8 11.6 2.4 2.4 4-4.4"/>',
         swap: '<path d="M4.4 9.2h13.2"/><path d="m14.6 6.2 3 3-3 3"/>' +
@@ -5576,7 +5581,7 @@
     // reproducible a year later cannot be reproduced if the line it was
     // measured against has moved since. Kept in one place so that day is a
     // small change rather than a search.
-    var RISK_BANDS = { mid: 51, high: 81 };
+    var RISK_BANDS = { mid: 51, high: 81, severe: 100 };
 
     // Returns the class, not a word: it is only ever used as one, and a bare
     // lowercase word coming out of a return reads to the i18n sweep as a
@@ -5590,27 +5595,42 @@
         var set = lastMe && lastMe.org && lastMe.org.risk;
         var mid = set && Number(set.mid);
         var high = set && Number(set.high);
+        var severe = set && Number(set.severe);
         // a band that does not make sense is not one anybody meant to write:
         // fall back to what the product ships with rather than colour checks
         // by accident
-        if (!(mid >= 1 && high <= 100 && mid < high)) return RISK_BANDS;
-        return { mid: mid, high: high };
+        if (!(mid >= 1 && mid < high && high < severe && severe <= 100)) return RISK_BANDS;
+        return { mid: mid, high: high, severe: severe };
     }
 
     function riskBand(n) {
         var lines = riskLines();
+        if (n >= lines.severe) return 'is-severe';
         if (n >= lines.high) return 'is-high';
         if (n >= lines.mid) return 'is-mid';
         return 'is-low';
     }
 
-    // How risky a check came back: one bar, one of three colours, and the
-    // figure beside it.
+    // The word for a band, which is what the colour means. Said to a screen
+    // reader, and to anybody who cannot tell our red from our deeper red.
+    function riskWord(band) {
+        if (band === 'is-severe') return t('Severe');
+        if (band === 'is-high') return t('High');
+        if (band === 'is-mid') return t('Medium');
+        return t('Low');
+    }
+
+    // How risky a check came back, as a reading in its own field.
     //
-    // The bar was a length once -- filled to the score -- which made a low
-    // score a stub a few pixels long with a rounded cap, and six of those read
-    // as dirt on the screen rather than as readings. It says which of three
-    // states this is, and the figure says how far into it.
+    // The number and what it is out of, together: a bare figure in a column
+    // with no heading is a number whose scale the reader has to be told, and
+    // "out of a hundred" said once at the top is a sentence they have to carry
+    // down six rows. Inside a field it is one object -- a reading -- rather
+    // than a figure floating beside a bar.
+    //
+    // Four bands, because three could not tell apart a score somebody should
+    // look at and a score that is on the list. The last one is not a judgement
+    // call and does not share a colour with one.
     //
     // A word of warning that belongs next to this and not in a commit message:
     // api/screening.js scores an address 100 if it is on the OFAC SDN list and
@@ -5618,48 +5638,27 @@
     // between those two comes from the fixture, which is what it is for until
     // the heuristics exist -- but a screen showing 63 is making a promise the
     // engine cannot keep, and it has to be kept in sight until it can.
-    function riskChip(score, verdict) {
+    function riskChip(score) {
         var n = Math.max(0, Math.min(100, Math.round(Number(score) || 0)));
+        var band = riskBand(n);
+
         var el = document.createElement('span');
-        el.className = 'use-risk ' + riskBand(n);
-        // Said once, in full, to a screen reader: the bar is a picture and the
-        // figure on its own does not say what it is out of.
+        el.className = 'use-risk ' + band;
+        // The colour is the band and the band has a word. Said here rather
+        // than drawn, so it reaches a screen reader and anybody who cannot
+        // tell our red from our deeper red.
         el.setAttribute('role', 'img');
-        el.setAttribute('aria-label', fill('Risk {n} of 100', { n: n }) + ', ' +
-            (verdict === 'severe' ? t('Sanctioned')
-                : (verdict === 'clear' ? t('Clear') : t('Worth a look'))));
+        el.setAttribute('aria-label', fill('Risk {n} of 100', { n: n }) + ', ' + riskWord(band));
 
-        // A track of one length with the score filled into it, so fourteen
-        // out of a hundred is a seventh of the bar and looks like a seventh
-        // of it. The track is what was missing when this was tried before:
-        // without it a low score was a stub floating in space and read as a
-        // speck rather than as a reading.
-        var track = document.createElement('span');
-        track.className = 'use-risk-t';
-        // No mark for the threshold on the track. It was tried: a hairline at
-        // the amber line, so a bar could be read against it. At forty eight
-        // points wide it is a pixel nobody sees, and where it is seen it says
-        // what the colour already said -- the bar changing colour *is* the
-        // line being crossed.
-        var bar = document.createElement('span');
-        bar.className = 'use-risk-b';
-        // A square end below a couple of percent: a rounded cap on a two
-        // pixel bar is a dot, and a dot is not a length.
-        // A floor of three points, so "a little" is visibly different from
-        // "none": two percent of forty eight points is one pixel, and one
-        // pixel with a round cap is a speck of dirt rather than a reading.
-        // Squared off down there, because a cap that wide on a bar that short
-        // is the whole of the bar.
-        bar.style.width = n ? 'max(3px, ' + n + '%)' : '0';
-        if (n > 0 && n < 8) bar.style.borderRadius = '1.5px';
-        track.appendChild(bar);
-        el.appendChild(track);
-
-        var fig = document.createElement('span');
+        var fig = document.createElement('strong');
         fig.className = 'use-risk-n';
         fig.textContent = String(n);
-        fig.setAttribute('aria-hidden', 'true');
         el.appendChild(fig);
+
+        var of = document.createElement('span');
+        of.className = 'use-risk-of';
+        of.textContent = '/100';
+        el.appendChild(of);
         return el;
     }
 
@@ -5688,7 +5687,7 @@
         row.appendChild(who);
 
         var v = document.createElement('div');
-        v.appendChild(riskChip(r.score, r.verdict));
+        v.appendChild(riskChip(r.score));
         row.appendChild(v);
 
         var chain = document.createElement('div');
@@ -6954,14 +6953,16 @@
         rb.className = 'orgh-body';
         var rp = document.createElement('p');
         rp.className = 'orgh-line';
-        rp.textContent = t('A check scores out of a hundred. Below the first number it is green, below the second amber, and above it red.');
+        rp.textContent = t('A check scores out of a hundred. Below the first number it is low, then medium, then high, and from the last it is severe.');
         rb.appendChild(rp);
 
-        var now = (org.risk && org.risk.mid && org.risk.high) ? org.risk : { mid: 51, high: 81 };
+        var now = (org.risk && org.risk.mid && org.risk.high && org.risk.severe)
+            ? org.risk : { mid: 51, high: 81, severe: 100 };
         var row = document.createElement('div');
         row.className = 'orgh-bands';
         var fields = {};
-        [['mid', 'Amber from', now.mid], ['high', 'Red from', now.high]].forEach(function (f) {
+        [['mid', 'Medium from', now.mid], ['high', 'High from', now.high],
+         ['severe', 'Severe from', now.severe]].forEach(function (f) {
             var box = document.createElement('label');
             box.className = 'orgh-band';
             var lab = document.createElement('span');
@@ -6998,18 +6999,23 @@
         page.appendChild(riskCard);
 
         var bandsNow = function () {
-            return { mid: Number(fields.mid.value), high: Number(fields.high.value) };
+            return {
+                mid: Number(fields.mid.value),
+                high: Number(fields.high.value),
+                severe: Number(fields.severe.value),
+            };
         };
         var bandsOk = function () {
             var v = bandsNow();
-            return Number.isInteger(v.mid) && Number.isInteger(v.high) &&
-                v.mid >= 1 && v.high <= 100 && v.mid < v.high;
+            return [v.mid, v.high, v.severe].every(Number.isInteger) &&
+                v.mid >= 1 && v.mid < v.high && v.high < v.severe && v.severe <= 100;
         };
         var bandsMoved = function () {
             var v = bandsNow();
-            return v.mid !== Number(now.mid) || v.high !== Number(now.high);
+            return v.mid !== Number(now.mid) || v.high !== Number(now.high) ||
+                v.severe !== Number(now.severe);
         };
-        [fields.mid, fields.high].forEach(function (input) {
+        [fields.mid, fields.high, fields.severe].forEach(function (input) {
             input.addEventListener('input', function () {
                 rsave.disabled = !may || !bandsOk() || !bandsMoved();
             });

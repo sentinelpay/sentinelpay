@@ -34,7 +34,7 @@ async function aPerson(email) {
 }
 
 test('the bands ship with the product', () => {
-    assert.deepStrictEqual(orgs.RISK_DEFAULT, { mid: 51, high: 81 });
+    assert.deepStrictEqual(orgs.RISK_DEFAULT, { mid: 51, high: 81, severe: 100 });
 });
 
 test('a band nobody meant is refused', { skip: !live }, async () => {
@@ -43,16 +43,19 @@ test('a band nobody meant is refused', { skip: !live }, async () => {
     const made = await orgs.create(who, 'Bands', 'localhost', 'owner');
     const id = made.org.id;
 
-    for (const [mid, high, why] of [
-        [0, 80, 'a band below one'],
-        [51, 101, 'a band above a hundred'],
-        [80, 80, 'a middle equal to the top'],
-        [90, 50, 'a middle above the top'],
-        [51.5, 80, 'a band that is not whole'],
-        ['fifty', 80, 'a band that is not a number'],
-        [null, 80, 'a band that is missing'],
+    for (const [mid, high, severe, why] of [
+        [0, 80, 95, 'a band below one'],
+        [51, 81, 101, 'a band above a hundred'],
+        [80, 80, 95, 'a middle equal to the one above it'],
+        [90, 50, 95, 'a middle above the one above it'],
+        [51.5, 80, 95, 'a band that is not whole'],
+        ['fifty', 80, 95, 'a band that is not a number'],
+        [null, 80, 95, 'a band that is missing'],
+        [40, 70, 70, 'a top equal to the one below it'],
+        [40, 70, 60, 'a top below the one below it'],
+        [40, 70, null, 'a top that is missing'],
     ]) {
-        const out = await orgs.setRisk(id, mid, high);
+        const out = await orgs.setRisk(id, mid, high, severe);
         assert.strictEqual(out.ok, false, why + ' was accepted');
         assert.strictEqual(out.reason, 'bad-bands', why + ' gave the wrong reason');
     }
@@ -68,12 +71,12 @@ test('a band that makes sense is kept, and read back', { skip: !live }, async ()
     const who = await aPerson('bands2-' + Date.now() + '@example.com');
     const made = await orgs.create(who, 'Bands two', 'localhost', 'owner');
 
-    const out = await orgs.setRisk(made.org.id, 40, 70);
+    const out = await orgs.setRisk(made.org.id, 40, 70, 90);
     assert.strictEqual(out.ok, true);
-    assert.deepStrictEqual(out.org.risk, { mid: 40, high: 70 });
+    assert.deepStrictEqual(out.org.risk, { mid: 40, high: 70, severe: 90 });
 
     const back = await orgs.membership(who, made.org.id);
-    assert.deepStrictEqual(back.risk, { mid: 40, high: 70 },
+    assert.deepStrictEqual(back.risk, { mid: 40, high: 70, severe: 90 },
         'the bands did not survive being read back');
 });
 
@@ -83,7 +86,7 @@ test('a check seals the bands it was measured against', { skip: !live }, async (
     await orgs.init();
     const who = await aPerson('bands3-' + Date.now() + '@example.com');
     const made = await orgs.create(who, 'Bands three', 'localhost', 'owner');
-    await orgs.setRisk(made.org.id, 30, 60);
+    await orgs.setRisk(made.org.id, 30, 60, 85);
 
     // no bands passed: the token path has none, and the check has to find
     // them rather than fall back to what the product ships with
@@ -93,13 +96,13 @@ test('a check seals the bands it was measured against', { skip: !live }, async (
 
     const one = await screening.byId(made.org.id, done.id, false);
     assert.ok(one, 'the check could not be opened');
-    assert.deepStrictEqual(one.bands, { mid: 30, high: 60 },
+    assert.deepStrictEqual(one.bands, { mid: 30, high: 60, severe: 85 },
         'the check did not record the lines it was read against');
 
     // and moving the line afterwards does not move what was already sealed
-    await orgs.setRisk(made.org.id, 10, 20);
+    await orgs.setRisk(made.org.id, 10, 20, 30);
     const again = await screening.byId(made.org.id, done.id, false);
-    assert.deepStrictEqual(again.bands, { mid: 30, high: 60 },
+    assert.deepStrictEqual(again.bands, { mid: 30, high: 60, severe: 85 },
         'moving the bands rewrote a verdict that had already been given');
 });
 
@@ -113,7 +116,7 @@ test('the screen falls back where the bands make no sense', () => {
     const body = src.slice(at, at + 700);
     assert.match(body, /lastMe && lastMe\.org && lastMe\.org\.risk/,
         'the bands are not read from the organisation');
-    assert.match(body, /mid >= 1 && high <= 100 && mid < high/,
+    assert.match(body, /mid >= 1 && mid < high && high < severe && severe <= 100/,
         'the dashboard does not check the bands before using them');
     assert.match(body, /return RISK_BANDS/,
         'there is no fallback when the bands make no sense');
