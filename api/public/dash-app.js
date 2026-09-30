@@ -4814,13 +4814,33 @@
     }
 
     // A list where the length of each line is its share. Used for what came
-    // back and for which chains were asked about.
-    function useShare(rows, total, kindOf) {
+    // back, for which projects did the work, and for which chains were asked
+    // about.
+    //
+    // A line is a link wherever the log can be asked the question the line
+    // answers. This screen could say that forty-seven checks came back flagged
+    // and then offer one door -- every check in the month, unfiltered -- which
+    // left the reader to find the forty-seven by hand on a screen that already
+    // knew how to filter for them. A number that can be opened should open.
+    //
+    // `linkOf` returns an address or nothing, per row, and nothing is the
+    // honest answer for the chains: the log has no filter for a chain, and a
+    // link that drops the filter on the way is worse than no link, because it
+    // looks like it worked.
+    function useShare(rows, total, kindOf, linkOf) {
         var list = document.createElement('div');
         list.className = 'use-share';
         rows.forEach(function (r) {
-            var line = document.createElement('div');
-            line.className = 'use-share-l';
+            var href = linkOf ? linkOf(r) : '';
+            var line = document.createElement(href ? 'a' : 'div');
+            line.className = 'use-share-l' + (href ? ' is-open' : '');
+            if (href) {
+                line.href = href;
+                // said, because the line reads "Sanctioned 47" and a link
+                // announced as "Sanctioned 47" does not say where it goes
+                line.setAttribute('aria-label',
+                    r.label + ', ' + useNum(r.n) + '. ' + t('See these checks'));
+            }
             var name = document.createElement('span');
             name.className = 'use-share-n';
             name.textContent = r.label;
@@ -4839,6 +4859,26 @@
             list.appendChild(line);
         });
         return list;
+    }
+
+    // The way into the log, carrying what the reader was looking at when they
+    // decided to go there.
+    //
+    // The window and the scope always, because a list of every check ever made
+    // is not what somebody clicked on a number in September to see. Whatever
+    // else is passed narrows it further -- a verdict, a project -- so a number
+    // about one kind of answer opens the rows that answer made.
+    function logHref(org, out, extra) {
+        var q = ['scope=' + encodeURIComponent(out.scope),
+            'from=' + encodeURIComponent(out.period.from),
+            'to=' + encodeURIComponent(out.period.to)];
+        if (extra) {
+            Object.keys(extra).forEach(function (k) {
+                if (extra[k] === '' || extra[k] === null || extra[k] === undefined) return;
+                q.push(encodeURIComponent(k) + '=' + encodeURIComponent(extra[k]));
+            });
+        }
+        return orgHome(org.slug) + '/checks?' + q.join('&');
     }
 
     // One number with its name above it. `of` makes it a meter, `to` makes it
@@ -5604,33 +5644,131 @@
     }
     window.addEventListener('resize', queueFold);
 
-    // The last few checks of a window, fetched after the page is drawn.
+    // Never fewer than this, however short the screen: six is what this card
+    // has always shown, and below it it stops being a sample of the period and
+    // becomes a decoration with some addresses in it.
+    var SAMPLE_MIN = 6;
+    // And never more, however tall. This is the door to the log, not the log:
+    // past a dozen rows somebody is reading a list on the wrong screen, and the
+    // list they should be reading has a search box on it.
+    var SAMPLE_MAX = 14;
+
+    // How many rows this screen has room for.
+    //
+    // Six was a number that suited a laptop. On a tall monitor the card ended
+    // a third of the way down its own screen and on a short one it ran past
+    // the bottom -- which is the guess-a-breakpoint mistake the overview above
+    // already stopped making. So it is measured: what is left of a screen once
+    // the section's heading and its footer have taken theirs, divided by the
+    // height of a row, which is itself measured rather than assumed.
+    //
+    // The row is measured by building one and reading it, because a row is
+    // one line on a wide screen and two on a phone, and which of those it is
+    // today is a question for the stylesheet and not for this file.
+    function sampleSize(into, section) {
+        var scroller = into.closest('.canvas') || document.scrollingElement;
+        if (!scroller || !scroller.clientHeight) return SAMPLE_MIN;
+
+        var probe = lastRow({
+            address: 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq',
+            score: 0, asset: 'XBT', at: new Date().toISOString()
+        });
+        // out of the way of a reader and out of the way of a screen reader,
+        // but still laid out -- an element that is not laid out has no height
+        // and would send this straight back to the floor
+        probe.style.position = 'absolute';
+        probe.style.visibility = 'hidden';
+        probe.style.pointerEvents = 'none';
+        probe.setAttribute('aria-hidden', 'true');
+        probe.tabIndex = -1;
+        into.appendChild(probe);
+        var rowTall = probe.offsetHeight;
+        into.removeChild(probe);
+        if (!rowTall) return SAMPLE_MIN;
+
+        // everything in the section that is not rows: the heading, the hint,
+        // the footer, and the card's own edges. The card is empty as this
+        // runs, so what is left of the section is exactly that.
+        var chrome = section ? section.offsetHeight : 0;
+        // a little air under the card, so the last row is not flush with the
+        // bottom of the screen looking like the list was cut off
+        var room = scroller.clientHeight - chrome - 24;
+        var fits = Math.floor(room / rowTall);
+        return Math.max(SAMPLE_MIN, Math.min(SAMPLE_MAX, fits));
+    }
+
+    // The checks of a window worth putting on a page about how much was
+    // screened, fetched after the page is drawn.
     //
     // Its own request, because it is rows and everything else on this screen is
     // counts, and because a period swapped is a new window to ask about. The
     // answer to an older question is thrown away rather than drawn: switching
     // twice quickly used to be a race everywhere on this page, and this is one
     // more place to lose it.
+    //
+    // Two requests, not one, and this is the whole point of the section.
+    //
+    // It used to ask for the newest six and print them. On an account running
+    // three thousand checks a month the newest six are six clear checks,
+    // forever, while the hundred that scored sit where nobody on this screen
+    // will ever meet them. A page for a compliance team that orders its only
+    // list of work by when it happened is a page that shows the quiet part of
+    // the job. So the flagged ones come first and the newest fill what is left
+    // -- ordered by whether somebody has to do something about them, which is
+    // the order the work is actually in.
     var lastAsked = 0;
-    function lastChecks(into, org, out) {
+    function lastChecks(into, org, out, section) {
         var mine = ++lastAsked;
         into.textContent = '';
         into.classList.add('is-waiting');
-        var url = '/v1/orgs/' + encodeURIComponent(org.id) + '/checks?limit=6' +
-            '&scope=' + encodeURIComponent(out.scope) +
+
+        var want = sampleSize(into, section);
+        var base = '/v1/orgs/' + encodeURIComponent(org.id) + '/checks' +
+            '?scope=' + encodeURIComponent(out.scope) +
             '&from=' + encodeURIComponent(out.period.from) +
             '&to=' + encodeURIComponent(out.period.to);
-        fetch(url, { credentials: 'same-origin' })
-            .then(function (r) { return r.ok ? r.json() : null; })
-            .then(function (body) {
+        var ask = function (extra) {
+            return fetch(base + '&limit=' + want + (extra || ''), { credentials: 'same-origin' })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (body) { return (body && body.rows) || []; });
+        };
+
+        // Side by side rather than one after the other: they do not depend on
+        // each other and a reader waiting for rows should wait once.
+        Promise.all([ask('&verdict=flagged'), ask('')])
+            .then(function (both) {
                 if (mine !== lastAsked) return;
                 into.classList.remove('is-waiting');
-                var rows = (body && body.rows) || [];
-                if (!rows.length) {
+                var flagged = both[0];
+                var latest = both[1];
+
+                if (!flagged.length && !latest.length) {
                     into.appendChild(emptyState('Nothing to show yet', ''));
                     return;
                 }
-                rows.forEach(function (r) { into.appendChild(lastRow(r)); });
+
+                // A flagged check is already in the newest rows often enough
+                // that printing both lists would show it twice, which reads as
+                // the same address checked twice rather than as one row in two
+                // groups.
+                var seen = {};
+                var shown = flagged.slice(0, want);
+                shown.forEach(function (r) { seen[r.id] = true; });
+                var rest = [];
+                for (var i = 0; i < latest.length && shown.length + rest.length < want; i++) {
+                    if (!seen[latest[i].id]) rest.push(latest[i]);
+                }
+
+                // The labels only where there are two groups to tell apart. One
+                // group needs no heading saying which of one it is, and an
+                // account with nothing flagged -- which is most accounts, most
+                // months -- sees exactly the card it saw before.
+                var split = shown.length > 0 && rest.length > 0;
+                if (shown.length && split) into.appendChild(sampleLabel('Needs your attention'));
+                shown.forEach(function (r) { into.appendChild(lastRow(r)); });
+                if (rest.length && split) into.appendChild(sampleLabel('Latest'));
+                rest.forEach(function (r) { into.appendChild(lastRow(r)); });
+                trimToScreen(into, section);
             })
             .catch(function (err) {
                 if (mine !== lastAsked) return;
@@ -5640,6 +5778,47 @@
                 console.error('[usage] last checks: ' + err.message);
                 into.appendChild(emptyState('That did not load.', ''));
             });
+    }
+
+    // And the same measurement once more, now that the rows are really there.
+    //
+    // How many rows fit has to be decided before they are asked for, and at
+    // that moment two things about them are not known: whether there will be a
+    // group label over them at all, and whether any address will wrap. Both
+    // cost height, and the section ran a dozen points past the bottom of the
+    // screen -- which put the door to the log, the one thing somebody came
+    // down here to click, just under the fold.
+    //
+    // Rather than reserving room for labels that usually are not there, the
+    // rows are counted back down until the section fits. It runs in the same
+    // turn as the render, before any of it has been painted, so nothing is
+    // ever seen to be removed.
+    //
+    // From the end, which is the newest of the quiet ones. A check somebody has
+    // to act on is never the row given up to make the page tidy.
+    function trimToScreen(into, section) {
+        var scroller = into.closest('.canvas') || document.scrollingElement;
+        if (!scroller || !scroller.clientHeight || !section) return;
+        var guard = 60;
+        while (section.offsetHeight > scroller.clientHeight && guard--) {
+            var rows = into.querySelectorAll('.tr.is-last');
+            if (rows.length <= SAMPLE_MIN) return;
+            var last = rows[rows.length - 1];
+            var before = last.previousElementSibling;
+            into.removeChild(last);
+            // a label with nothing left under it is a heading for an empty
+            // column, so it goes with the last of its rows
+            if (before && before.classList.contains('use-last-g')) into.removeChild(before);
+        }
+    }
+
+    // What the rows under it have in common. Built like the heading row the
+    // checks screen puts over its table, because that is what it is.
+    function sampleLabel(text) {
+        var row = document.createElement('div');
+        row.className = 'use-last-g';
+        row.textContent = t(text);
+        return row;
     }
 
     // Where the bands sit.
@@ -6481,7 +6660,7 @@
             // The scale said once, at the top of the column, rather than
             // stamped onto every row as "/100" six times over.
             var sec = useSection('use-screening', 'Screening',
-                'screening', 'The last checks in this period, scored out of a hundred.');
+                'screening', 'What needs a person first, then the latest. Scored out of a hundred.');
             // no side column here: the rows are the content, and a column of
             // prose beside them would take a third of the width to explain
             // what the rows are already showing
@@ -6504,16 +6683,33 @@
             foot.className = 'use-last-foot';
             var open = document.createElement('a');
             open.className = 'chip use-open';
-            open.href = orgHome(org.slug) + '/checks?scope=' + encodeURIComponent(out.scope) +
-                '&from=' + encodeURIComponent(out.period.from) +
-                '&to=' + encodeURIComponent(out.period.to);
+            open.href = logHref(org, out, null);
             open.innerHTML = icon('screening');
-            open.appendChild(document.createTextNode(t('See these checks')));
+            open.appendChild(document.createTextNode(t('All checks')));
+            // How many it is all of.
+            //
+            // The rows above are a handful out of a period that may hold three
+            // thousand, and the door said "see these checks" without ever
+            // saying how many these were. A reader who does four hundred a day
+            // and counts six rows is not reassured by that door, they are
+            // worried by it. The number turns the handful from "is that all?"
+            // into "these are the newest of 3,124".
+            //
+            // Set off by a middle dot rather than written into the label,
+            // which keeps the sentence out of the way of grammar: croatian
+            // counts in three plural forms and "see all 3 checks" is not the
+            // same word as "see all 5 checks".
+            if (s.total > 0) {
+                var howMany = document.createElement('span');
+                howMany.className = 'use-open-n';
+                howMany.textContent = useNum(s.total);
+                open.appendChild(howMany);
+            }
             foot.appendChild(open);
             sec.body.appendChild(foot);
             if (!fresh) {
                 body.appendChild(sec);
-                lastChecks(list, org, out);
+                lastChecks(list, org, out, sec);
             }
 
             // ---- what came back
@@ -6533,6 +6729,10 @@
             if (vrows.length) {
                 fmain.appendChild(useShare(vrows, s.total, function (r) {
                     return r.key === 'clear' ? 'ok' : (r.key === 'severe' ? 'bad' : 'mid');
+                }, function (r) {
+                    // the log's filter takes the same words this list is made
+                    // of, so each line opens exactly the checks it counted
+                    return logHref(org, out, { verdict: r.key });
                 }));
             } else {
                 fmain.appendChild(emptyState('Nothing to show yet', ''));
@@ -6555,8 +6755,16 @@
                 ]));
                 var wmain = useMain();
                 wmain.appendChild(useShare(work.map(function (r) {
-                    return { label: r.id ? (r.name || t('Unnamed project')) : t('No project'), n: r.n };
-                }), s.total));
+                    return {
+                        label: r.id ? (r.name || t('Unnamed project')) : t('No project'),
+                        n: r.n,
+                        // the log files a check with no project under 'none',
+                        // which is a filter and not the absence of one
+                        key: r.id ? String(r.id) : 'none'
+                    };
+                }), s.total, null, function (r) {
+                    return logHref(org, out, { project: r.key });
+                }));
                 who.body.appendChild(wmain);
                 body.appendChild(who);
             }
@@ -6836,13 +7044,26 @@
         var org = me.org || {};
         page.appendChild(pageHead('Checks', 'Every address this organisation has checked, and what came back.'));
 
-        // The usage screen links here with a window and a scope on the address,
-        // so arriving from a number lands on the rows that number was made of.
+        // The usage screen links here with a window, a scope, and -- where the
+        // number that was clicked was a number about one kind of answer or one
+        // project -- that filter as well. Arriving from a number lands on the
+        // rows that number was made of, which is the whole point of a number
+        // being a link. Without the last two, "47 flagged" opened a list of
+        // every check in the month and left the reader to find them.
+        //
+        // Read against the sets the pickers offer rather than taken as given:
+        // an unknown verdict is not a filter, it is a list that silently
+        // matches nothing, and the reader is told they have no flagged checks.
         var asked = new URLSearchParams(location.search);
+        var VERDICTS_ASKABLE = ['flagged', 'severe', 'review', 'clear'];
+        var wantVerdict = String(asked.get('verdict') || '');
+        var wantProject = String(asked.get('project') || '');
         var want = {
             scope: asked.get('scope') === 'sandbox' ? 'sandbox' : 'live',
-            verdict: '',
-            project: '',
+            verdict: VERDICTS_ASKABLE.indexOf(wantVerdict) === -1 ? '' : wantVerdict,
+            // a project is an id or the absence of one; anything else is not a
+            // project this organisation has
+            project: (wantProject === 'none' || /^[0-9]+$/.test(wantProject)) ? wantProject : '',
             address: '',
             from: asked.get('from') || '',
             to: asked.get('to') || '',
@@ -6888,9 +7109,16 @@
             all.addEventListener('click', function () {
                 want.from = '';
                 want.to = '';
+                // and everything else that came in on the address with them.
+                // The button says every check; leaving a verdict on would hand
+                // back one kind of check and call it all of them, with the
+                // banner that said so already removed.
+                want.verdict = '';
+                want.project = '';
                 want.cursor = '';
                 rows = [];
                 only.remove();
+                pickers();
                 load();
             });
             only.appendChild(all);
