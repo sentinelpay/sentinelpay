@@ -3506,19 +3506,17 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 .use-when-d { color: var(--ink-4); }
 .use-when-t { color: var(--ink-3); }
 
-/* A ticker is a code, like the address at the other end of the row, so it is
-   set in the same face. Three characters of one width make the column a rail:
-   the eye finds the chain by position instead of reading for it. The room is
-   held whether or not the ticker fills it, because a four letter chain must
-   not push the whole column over on the one row that has one. */
-.use-chain {
-    display: inline-block;
-    min-width: 3ch;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 0.76rem;
-    letter-spacing: 0.02em;
-    color: var(--ink-3);
-}
+/* The mono face is the address's and nothing else's. It is what says "this is
+   a string to be compared character by character, not read", and a ticker
+   given the same treatment borrows a meaning it does not have -- three letters
+   anybody reads as a word. So the chain is set in the text face, at the size
+   of the timestamp beside it, and the two quiet facts at the end of the row
+   look like the pair they are.
+   Centred in its column rather than pushed to the left of it: the column is
+   wider than three letters so that four never move it, and a ticker left
+   against that edge leaves the extra room piled up on one side. */
+.use-last-c { justify-content: center; }
+.use-chain { color: var(--ink-3); }
 /* the absence of the fact rather than the fact, so it is quieter still -- and
    it carries the words behind it, on a pointer and to a screen reader */
 .use-chain.is-none { color: var(--ink-4); cursor: help; }
@@ -3689,7 +3687,9 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     }
     .tr.is-last .chk-addr { grid-column: 1; grid-row: 1; }
     .tr.is-last > div:nth-child(2) { grid-column: 2; grid-row: 1; }
-    .tr.is-last .tr-dim:not(.use-last-w) { grid-column: 1; grid-row: 2; }
+    /* on two lines the chain sits under the address and lines up with it, so
+       the centring it is given in its own narrow column upstairs comes off */
+    .tr.is-last .tr-dim:not(.use-last-w) { grid-column: 1; grid-row: 2; justify-content: flex-start; }
     /* justify-content, not text-align: .tr-dim is a flex row and text-align
        has never had anything to say about where a flex item is put. It was
        written when this cell held a bare string, and a bare string in a flex
