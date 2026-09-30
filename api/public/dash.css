@@ -3483,7 +3483,7 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
    column */
 .use-risk-t {
     display: block;
-    width: 44px;
+    width: 48px;
     height: 5px;
     border-radius: 999px;
     background: var(--line-2);
@@ -3495,18 +3495,25 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     border-radius: 999px;
     background: var(--risk-low);
 }
+/* The figure is quiet until it is not.
+   Emphasis is a budget. Six rows of bold colour spend all of it on the five
+   that do not matter, and the one that does has nothing left to be louder
+   with -- so below the first line the number is plain ink at a normal weight,
+   and above it takes the colour of its band and the weight to go with it.
+   The track keeps its colour on every row, so the traffic light is still
+   there to be scanned; it is the shouting that is rationed, not the signal. */
 .use-risk-n {
-    min-width: 1.6rem;
+    min-width: 1.7rem;
     text-align: right;
     font-size: 0.8rem;
-    font-weight: 600;
+    font-weight: 500;
     font-variant-numeric: tabular-nums;
-    color: var(--risk-low);
+    color: var(--ink-4);
 }
-.use-risk.is-mid .use-risk-b, .use-risk.is-mid .use-risk-n { color: var(--risk-mid); }
 .use-risk.is-mid .use-risk-b { background: var(--risk-mid); }
-.use-risk.is-high .use-risk-b, .use-risk.is-high .use-risk-n { color: var(--risk-high); }
+.use-risk.is-mid .use-risk-n { color: var(--risk-mid); font-weight: 650; }
 .use-risk.is-high .use-risk-b { background: var(--risk-high); }
+.use-risk.is-high .use-risk-n { color: var(--risk-high); font-weight: 650; }
 
 .use-last-foot {
     display: flex;

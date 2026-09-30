@@ -5636,12 +5636,22 @@
         // speck rather than as a reading.
         var track = document.createElement('span');
         track.className = 'use-risk-t';
+        // No mark for the threshold on the track. It was tried: a hairline at
+        // the amber line, so a bar could be read against it. At forty eight
+        // points wide it is a pixel nobody sees, and where it is seen it says
+        // what the colour already said -- the bar changing colour *is* the
+        // line being crossed.
         var bar = document.createElement('span');
         bar.className = 'use-risk-b';
         // A square end below a couple of percent: a rounded cap on a two
         // pixel bar is a dot, and a dot is not a length.
-        bar.style.width = n + '%';
-        if (n > 0 && n < 4) bar.style.borderRadius = '2px';
+        // A floor of three points, so "a little" is visibly different from
+        // "none": two percent of forty eight points is one pixel, and one
+        // pixel with a round cap is a speck of dirt rather than a reading.
+        // Squared off down there, because a cap that wide on a bar that short
+        // is the whole of the bar.
+        bar.style.width = n ? 'max(3px, ' + n + '%)' : '0';
+        if (n > 0 && n < 8) bar.style.borderRadius = '1.5px';
         track.appendChild(bar);
         el.appendChild(track);
 
@@ -6180,8 +6190,10 @@
             // So: the last checks of this window, as rows, each one opening
             // the evidence it was sealed with. The counts stay upstairs where
             // they are already explained.
+            // The scale said once, at the top of the column, rather than
+            // stamped onto every row as "/100" six times over.
             var sec = useSection('use-screening', 'Screening',
-                'screening', 'The last checks in this period.');
+                'screening', 'The last checks in this period, scored out of a hundred.');
             // no side column here: the rows are the content, and a column of
             // prose beside them would take a third of the width to explain
             // what the rows are already showing
