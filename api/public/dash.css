@@ -2625,7 +2625,14 @@ html.is-theming .btn {
     background: var(--canvas);
     color: var(--ink-3);
 }
-.orgh-ico .nav-i { width: 15px; height: 15px; }
+/* and the rail's margin comes off, or the glyph sits a fifth of the badge left
+   of its middle: place-items centres the box, and a 0.6rem margin on its right
+   is part of that box. It reads worst on a glyph whose own weight is not
+   central -- the magnifier, whose lens is up and left of its handle -- which is
+   why that one looked broken while the shield beside it only looked a little
+   off. In rem, so it moves with the browser's text size: the same page is
+   wrong by a different amount on two machines. */
+.orgh-ico .nav-i { width: 15px; height: 15px; margin-right: 0; }
 .orgh-card-t { margin: 0; font-size: 0.86rem; font-weight: 650; color: var(--ink); letter-spacing: 0; text-transform: none; }
 .orgh-body { margin-top: 0.7rem; }
 
@@ -2738,7 +2745,7 @@ html.is-theming .btn {
     background: var(--canvas);
     color: var(--ink-3);
 }
-.prj-mark .nav-i { width: 17px; height: 17px; }
+.prj-mark .nav-i { width: 17px; height: 17px; margin-right: 0; }
 .prj-t { flex: 1 1 auto; min-width: 0; }
 .prj-n { display: block; font-size: 0.9rem; font-weight: 650; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .prj-sub { display: block; margin-top: 0.1rem; font-size: 0.78rem; color: var(--ink-4); }
@@ -3285,7 +3292,7 @@ html.is-theming .btn {
 .tr.is-team.is-asked { background: var(--canvas); }
 .tr.is-team.is-asked .tr-name { color: var(--ink-2); }
 .mem-av.is-empty { background: var(--canvas); border: 1px dashed var(--line); color: var(--ink-4); }
-.mem-av.is-empty .nav-i { width: 15px; height: 15px; }
+.mem-av.is-empty .nav-i { width: 15px; height: 15px; margin-right: 0; }
 
 /* several addresses at once, so the field is a box rather than a line */
 .drw-area {
@@ -3488,9 +3495,11 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
    loudest colour on the page, and weight is what is left. */
 .use-risk {
     display: inline-flex;
-    align-items: baseline;
-    gap: 0.08rem;
-    padding: 0.16rem 0.5rem;
+    /* centre, not baseline: the bar has no baseline of its own, and a flex row
+       that asks for one puts a box without text on its bottom edge */
+    align-items: center;
+    gap: 0.42rem;
+    padding: 0.16rem 0.5rem 0.16rem 0.45rem;
     border: 1px solid var(--risk-low);
     border-radius: 999px;
     background: var(--risk-low-bg);
@@ -3498,8 +3507,43 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
 }
-.use-risk-n { font-size: 0.82rem; font-weight: 650; }
-.use-risk-of { font-size: 0.68rem; font-weight: 500; opacity: 0.75; }
+
+/* The length. One track, one width, on every row. Wide enough that a low score
+   is still a length: at forty points across, fourteen out of a hundred is six
+   pixels, which reads as a short bar. Much under that and every low score is
+   the three point floor and the bar stops saying anything. */
+.use-risk-t {
+    position: relative;
+    flex: 0 0 auto;
+    width: 2.5rem;
+    height: 4px;
+    border-radius: 999px;
+    /* the track is the colour of its own band at a tenth: a grey rail under a
+       red bar is a second colour on a chip that is meant to read as one */
+    background: color-mix(in srgb, currentColor 16%, transparent);
+    overflow: hidden;
+}
+.use-risk-b {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: currentColor;
+}
+
+/* the figure and its scale, on one baseline */
+.use-risk-v { display: inline-flex; align-items: baseline; gap: 0.08rem; }
+/* room for three digits whether or not there are three, so a column of these
+   is one width: a pill that grows by a digit puts a ragged right edge down the
+   rows, and the scores that widen it are the ones that should stand out for
+   being red rather than for being long */
+.use-risk-n {
+    min-width: 3ch;
+    text-align: right;
+    font-size: 0.82rem;
+    font-weight: 650;
+    line-height: 1.1;
+}
+.use-risk-of { font-size: 0.68rem; font-weight: 500; opacity: 0.75; line-height: 1.1; }
 
 .use-risk.is-mid { border-color: var(--risk-mid); background: var(--risk-mid-bg); color: var(--risk-mid); }
 .use-risk.is-high { border-color: var(--risk-high); background: var(--risk-high-bg); color: var(--risk-high); }

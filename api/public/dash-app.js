@@ -5620,13 +5620,19 @@
         return t('Low');
     }
 
-    // How risky a check came back, as a reading in its own field.
+    // How risky a check came back, as a reading in its own field: a length,
+    // then the number and what it is out of.
     //
-    // The number and what it is out of, together: a bare figure in a column
-    // with no heading is a number whose scale the reader has to be told, and
-    // "out of a hundred" said once at the top is a sentence they have to carry
-    // down six rows. Inside a field it is one object -- a reading -- rather
-    // than a figure floating beside a bar.
+    // Both, because they answer different questions. The bar is read down a
+    // column without being read at all -- six of them and the eye knows which
+    // row is the tall one before it has read a digit. The figure is what gets
+    // quoted, disputed and pasted into a ticket, and it carries its own scale
+    // so nobody has to remember a heading from six rows up.
+    //
+    // One track, one length, every row, with the score filled into it, so
+    // fourteen out of a hundred is a seventh of the track and looks like a
+    // seventh of it. Bars of differing track lengths do not compare, which is
+    // the only thing a bar is for.
     //
     // Four bands, because three could not tell apart a score somebody should
     // look at and a score that is on the list. The last one is not a judgement
@@ -5650,15 +5656,42 @@
         el.setAttribute('role', 'img');
         el.setAttribute('aria-label', fill('Risk {n} of 100', { n: n }) + ', ' + riskWord(band));
 
+        var track = document.createElement('span');
+        track.className = 'use-risk-t';
+        // No mark on the track for the band line. It was tried: a hairline
+        // where amber begins, so a bar could be read against it. At this width
+        // it is a pixel nobody sees, and where it is seen it says what the
+        // colour already said -- the bar changing colour *is* the line being
+        // crossed.
+        var bar = document.createElement('span');
+        // A floor of three points, so "a little" is visibly different from
+        // "none": two percent of a track this wide is one pixel, and one pixel
+        // under a round cap is a speck of dirt rather than a reading. Squared
+        // off down there for the same reason -- a cap that wide on a bar that
+        // short is the whole of the bar.
+        bar.className = 'use-risk-b';
+        bar.style.width = n ? 'max(3px, ' + n + '%)' : '0';
+        if (n > 0 && n < 8) bar.style.borderRadius = '1.5px';
+        track.appendChild(bar);
+        el.appendChild(track);
+
+        // The two halves of one number, kept in a box of their own so they sit
+        // on a shared baseline while the bar beside them is centred on the
+        // pill: a bar has no baseline, and asking it to share one drops it.
+        var read = document.createElement('span');
+        read.className = 'use-risk-v';
+
         var fig = document.createElement('strong');
         fig.className = 'use-risk-n';
         fig.textContent = String(n);
-        el.appendChild(fig);
+        read.appendChild(fig);
 
         var of = document.createElement('span');
         of.className = 'use-risk-of';
         of.textContent = '/100';
-        el.appendChild(of);
+        read.appendChild(of);
+
+        el.appendChild(read);
         return el;
     }
 
