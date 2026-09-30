@@ -2657,6 +2657,41 @@ app.post('/v1/orgs/:id/members/:uid/remove', requireCloudflareOrigin, accountLim
     res.json({ ok: true, left: Boolean(out.left) });
 });
 
+// Where this organisation draws its risk bands.
+//
+// An admin's decision, not a member's: it changes what every person in the
+// company is shown about the same address, and it goes into the evidence a
+// check is sealed with. Audited for the same reason -- somebody will one day
+// have to say when the line moved and who moved it.
+app.post('/v1/orgs/:id/risk', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const mine = await orgs.membership(me.userId, req.params.id);
+    if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
+    if (!orgs.roleAtLeast(mine.role, 'admin')) {
+        return res.status(403).json({ error: 'Only an admin or the owner can change the risk bands.' });
+    }
+    const body = req.body || {};
+    const out = await orgs.setRisk(mine.id, body.mid, body.high);
+    if (!out.ok) {
+        if (out.reason === 'bad-bands') {
+            return res.status(400).json({
+                error: 'Give two whole numbers between 1 and 100, with the first below the second.',
+            });
+        }
+        return res.status(out.reason === 'gone' ? 404 : 503).json({
+            error: 'Accounts are not available right now. Please try again shortly.',
+        });
+    }
+    await accounts.audit('org-risk-bands', {
+        actor: String(me.userId), subject: out.org.id, ip: req.realIp,
+        detail: out.org.risk.mid + '/' + out.org.risk.high,
+    });
+    await tellOrg(out.org.id, { topic: 'org', id: String(out.org.id) });
+    res.set('Cache-Control', 'no-store, private');
+    res.json({ ok: true, org: out.org });
+});
+
 app.post('/v1/orgs/:id/rename', requireCloudflareOrigin, accountLimiter, async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
@@ -3001,7 +3036,8 @@ app.post('/v1/screen', screenLimiter, async (req, res) => {
         // against the same sanctions data but spends nothing and lands in its own
         // history. nothing it does can touch what the customer reports on.
         if (me.sandbox) {
-            const out = await screening.screen(me.userId, me.org.id, address, kind, true, me.project);
+            const out = await screening.screen(me.userId, me.org.id, address, kind, true, me.project,
+                me.org.risk);
             if (!out.ok) return res.status(400).json({ error: 'That does not look like an address' });
             // A sandbox check spends nothing and is billed for nothing, but it
             // is still a row the usage screen counts when the scope is set to
@@ -3028,7 +3064,8 @@ app.post('/v1/screen', screenLimiter, async (req, res) => {
             });
         }
 
-        const out = await screening.screen(me.userId, me.org.id, address, kind, false, me.project);
+        const out = await screening.screen(me.userId, me.org.id, address, kind, false, me.project,
+            me.org.risk);
         if (!out.ok) return res.status(400).json({ error: 'That does not look like an address' });
 
         await tellOrg(me.org.id, { topic: 'org', id: String(me.org.id) });

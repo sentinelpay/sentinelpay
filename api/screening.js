@@ -71,7 +71,28 @@ function digestOf(payload) {
     return 'sha256:' + crypto.createHash('sha256').update(JSON.stringify(payload), 'utf8').digest('hex');
 }
 
-async function screen(userId, orgId, address, kind, sandbox, projectId) {
+// The bands this organisation draws, read here when the caller has not got
+// them.
+//
+// A check made from the dashboard already carries them: the membership row is
+// read to decide whether the person may screen at all, and the bands come with
+// it. A check made through a token does not -- a token carries an organisation
+// id and nothing else -- and defaulting there would quietly measure every API
+// check against the shipped lines while the dashboard used the company's own.
+// One lookup on a primary key, on the path that has no other way to know.
+async function bandsFor(orgId) {
+    try {
+        const res = await db.query(
+            'SELECT risk_mid, risk_high FROM organisations WHERE id = $1', [Number(orgId)]);
+        if (!res.rowCount) return null;
+        return { mid: Number(res.rows[0].risk_mid), high: Number(res.rows[0].risk_high) };
+    } catch (err) {
+        console.error('[screening] could not read the risk bands: ' + err.message);
+        return null;
+    }
+}
+
+async function screen(userId, orgId, address, kind, sandbox, projectId, bands) {
     const clean = String(address || '').trim();
     if (!clean || clean.length > 128) return { ok: false, reason: 'bad-address' };
 
@@ -107,12 +128,31 @@ async function screen(userId, orgId, address, kind, sandbox, projectId) {
         });
     }
 
+    // Read before the row is written, so what is sealed is what was in force
+    // when the check ran rather than whatever it is by the time it is asked.
+    const asked = bands && bands.mid && bands.high ? bands : (await bandsFor(orgId));
+    const lines = {
+        mid: Number(asked && asked.mid) || 51,
+        high: Number(asked && asked.high) || 81,
+    };
+
     const sealed = {
         address: clean,
         asset: shape ? shape.asset : (hit ? hit.asset : ''),
         chain: shape ? shape.name : '',
         verdict,
         score,
+        // The lines this score was read against, at the moment it was read.
+        //
+        // An organisation can move them, and this product promises a verdict
+        // reproducible a year later. A score of sixty means one thing under a
+        // middle band of fifty-one and another under one of seventy, so a
+        // sealed check that records the score and not the bands records half
+        // a verdict: next March nobody could say whether the amber it showed
+        // was right, only what number it had.
+        //
+        // Sealed, so it is covered by the digest along with everything else.
+        bands: lines,
         reasons,
         checkedAt: new Date().toISOString(),
         sources: [{ name: 'OFAC SDN', listDate: meta.listDate || '', addresses: meta.addressCount || 0 }],
