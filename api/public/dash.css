@@ -3491,6 +3491,9 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
    second h2 inside a card puts a rung in the outline of the page that leads
    nowhere. */
 .use-last-g {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
     padding: 0.5rem 1.15rem;
     border-bottom: 1px solid var(--line-2);
     background: var(--hover);
@@ -3500,6 +3503,26 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     text-transform: uppercase;
     color: var(--ink-4);
 }
+/* How many the rows under it are some of. Pushed to the far end, in figures
+   that do not shout: it is the scale of the group, not a reading. */
+.use-last-gn {
+    margin-left: auto;
+    letter-spacing: 0;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-4);
+}
+/* and where all of them can be reached, the band is the way there. It is a
+   band before it is a link, like the share lines above it: nothing changes
+   until the pointer is on it. */
+.use-last-g.is-open {
+    color: var(--ink-4);
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.14s ease, color 0.14s ease;
+}
+.use-last-g.is-open:hover { background: var(--canvas); color: var(--ink-3); }
+.use-last-g.is-open:hover .use-last-gn { color: var(--ink-3); }
+.use-last-g.is-open:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
 /* the first one sits against the top of the card, where the card's own corner
    is already rounded */
 .use-last > .use-last-g:first-child { border-radius: 13px 13px 0 0; }

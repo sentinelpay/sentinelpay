@@ -31,7 +31,7 @@ const CSS = fs.readFileSync(
 function body(sig, span) {
     const at = SRC.indexOf(sig);
     assert.notStrictEqual(at, -1, sig + ' is gone');
-    return SRC.slice(at, at + (span || 2600));
+    return SRC.slice(at, at + (span || 5200));
 }
 
 test('the sample asks for what needs a person, not only for what is newest', () => {
@@ -53,9 +53,9 @@ test('the groups are named only where there are two of them', () => {
     const fn = body('function lastChecks(');
     assert.match(fn, /var split = shown\.length > 0 && rest\.length > 0/,
         'the labels do not depend on there being two groups');
-    assert.match(fn, /split\) into\.appendChild\(sampleLabel\('Needs your attention'\)\)/,
+    assert.match(fn, /sampleLabel\('Needs your attention'/,
         'the flagged group is not named');
-    assert.match(fn, /split\) into\.appendChild\(sampleLabel\('Latest'\)\)/,
+    assert.match(fn, /sampleLabel\('Latest'/,
         'the rest of the sample is not named');
 });
 
@@ -132,4 +132,31 @@ test('a share line looks like a line first and a link second', () => {
         'a share line that is a link is underlined at rest');
     assert.match(CSS, /\.use-share-l\.is-open:hover/, 'nothing answers the pointer');
     assert.match(CSS, /\.use-share-l\.is-open:focus-visible/, 'nothing answers the keyboard');
+});
+
+// A month with forty-four hits used to fill every row with hits: the card
+// stopped being a sample of the period -- nothing on the screen said what an
+// ordinary check looks like any more -- and it showed eleven of forty-four
+// while saying nothing about the other thirty-three.
+test('the flagged group never takes the whole card', () => {
+    const fn = body('function lastChecks(');
+    assert.match(fn, /var most = Math\.max\(1, Math\.floor\(want \/ 2\)\)/,
+        'the flagged group has no ceiling of its own');
+    assert.match(fn, /flagged\.slice\(0, most\)/,
+        'the flagged group is still taking the whole sample');
+});
+
+test('a group that shows some of its rows says how many there are', () => {
+    const fn = body('function lastChecks(');
+    assert.match(fn, /flaggedAll/, 'nothing counts the flagged checks of the window');
+    assert.match(fn, /flaggedAll > shown\.length \? flaggedAll : 0/,
+        'the count is printed even when the group is all of itself, which is noise');
+    assert.match(fn, /logHref\(org, out, \{ verdict: 'flagged' \}\)/,
+        'the band does not open the checks it names');
+
+    const label = body('function sampleLabel(');
+    assert.match(label, /createElement\(href \? 'a' : 'div'\)/,
+        'the band cannot be a way through to the rest of its rows');
+    assert.match(CSS, /\.use-last-gn\s*\{[^}]*tabular-nums/,
+        'the count on a band is not set in tabular figures');
 });

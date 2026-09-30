@@ -5747,26 +5747,56 @@
                     return;
                 }
 
+                // The flagged group takes half the card at most.
+                //
+                // Letting it take whatever it wanted was wrong twice over on
+                // an account with real work in it. A month with forty-four
+                // hits filled every row with hits, so the card stopped being a
+                // sample of the period -- there was no longer anything on this
+                // screen saying what an ordinary check looks like -- and it
+                // showed eleven of forty-four while saying nothing about the
+                // other thirty-three. A truncated list that does not admit it
+                // is truncated is the one thing a compliance screen may not be.
+                //
+                // Half, and never less than one: this is a page about a period
+                // and both halves of it are the period.
+                var most = Math.max(1, Math.floor(want / 2));
                 // A flagged check is already in the newest rows often enough
                 // that printing both lists would show it twice, which reads as
                 // the same address checked twice rather than as one row in two
                 // groups.
                 var seen = {};
-                var shown = flagged.slice(0, want);
+                var shown = flagged.slice(0, most);
                 shown.forEach(function (r) { seen[r.id] = true; });
                 var rest = [];
                 for (var i = 0; i < latest.length && shown.length + rest.length < want; i++) {
                     if (!seen[latest[i].id]) rest.push(latest[i]);
                 }
 
+                // How many there are altogether, which is not how many are
+                // shown. The counts are already on this page -- the section
+                // below breaks the period down by what came back -- so this
+                // takes them from there rather than asking again.
+                var answers = (out.screenings && out.screenings.verdicts) || {};
+                var flaggedAll = Object.keys(answers).reduce(function (n, k) {
+                    return k === 'clear' ? n : n + (Number(answers[k]) || 0);
+                }, 0);
+
                 // The labels only where there are two groups to tell apart. One
                 // group needs no heading saying which of one it is, and an
                 // account with nothing flagged -- which is most accounts, most
                 // months -- sees exactly the card it saw before.
                 var split = shown.length > 0 && rest.length > 0;
-                if (shown.length && split) into.appendChild(sampleLabel('Needs your attention'));
+                if (shown.length && split) {
+                    // named, counted, and a way through to all of them: five
+                    // rows out of forty-four is a sample of the flagged, and a
+                    // sample has to say what it is a sample of
+                    into.appendChild(sampleLabel('Needs your attention',
+                        flaggedAll > shown.length ? flaggedAll : 0,
+                        logHref(org, out, { verdict: 'flagged' })));
+                }
                 shown.forEach(function (r) { into.appendChild(lastRow(r)); });
-                if (rest.length && split) into.appendChild(sampleLabel('Latest'));
+                if (rest.length && split) into.appendChild(sampleLabel('Latest', 0, ''));
                 rest.forEach(function (r) { into.appendChild(lastRow(r)); });
                 trimToScreen(into, section);
             })
@@ -5814,10 +5844,28 @@
 
     // What the rows under it have in common. Built like the heading row the
     // checks screen puts over its table, because that is what it is.
-    function sampleLabel(text) {
-        var row = document.createElement('div');
-        row.className = 'use-last-g';
-        row.textContent = t(text);
+    //
+    // With a count where the rows under it are only some of what it names, and
+    // a way to all of them where there is one. A band reading "needs your
+    // attention" over five rows, on a month that had forty-four, is a band
+    // that has told the reader the wrong number by not telling them one.
+    function sampleLabel(text, count, href) {
+        var row = document.createElement(href ? 'a' : 'div');
+        row.className = 'use-last-g' + (href ? ' is-open' : '');
+        if (href) row.href = href;
+        var name = document.createElement('span');
+        name.textContent = t(text);
+        row.appendChild(name);
+        if (count > 0) {
+            var n = document.createElement('span');
+            n.className = 'use-last-gn';
+            n.textContent = useNum(count);
+            row.appendChild(n);
+            if (href) {
+                row.setAttribute('aria-label',
+                    t(text) + ', ' + useNum(count) + '. ' + t('See these checks'));
+            }
+        }
         return row;
     }
 
