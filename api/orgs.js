@@ -67,8 +67,12 @@ CREATE INDEX IF NOT EXISTS organisations_host_idx ON organisations (host) WHERE 
 --
 -- The defaults are the ones the product shipped with, so nothing moves for an
 -- organisation that never touches them.
-ALTER TABLE organisations ADD COLUMN IF NOT EXISTS risk_mid  integer NOT NULL DEFAULT 51;
-ALTER TABLE organisations ADD COLUMN IF NOT EXISTS risk_high integer NOT NULL DEFAULT 81;
+ALTER TABLE organisations ADD COLUMN IF NOT EXISTS risk_mid    integer NOT NULL DEFAULT 51;
+ALTER TABLE organisations ADD COLUMN IF NOT EXISTS risk_high   integer NOT NULL DEFAULT 81;
+-- and a fourth band above high, for a score that is not a judgement call.
+-- a hundred by default, which is what the engine gives an address that is on
+-- the list and nothing else.
+ALTER TABLE organisations ADD COLUMN IF NOT EXISTS risk_severe integer NOT NULL DEFAULT 100;
 
 CREATE TABLE IF NOT EXISTS memberships (
     org_id      bigint      NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
@@ -152,6 +156,7 @@ function shape(row) {
         risk: row.risk_mid === undefined ? undefined : {
             mid: Number(row.risk_mid),
             high: Number(row.risk_high),
+            severe: Number(row.risk_severe),
         },
     };
 }
@@ -481,18 +486,22 @@ async function reslug() {
 // Nothing here touches checks that have already run. What a verdict was
 // measured against is sealed into the check itself -- see screening.js -- so
 // moving the line changes what happens next and not what happened before.
-async function setRisk(orgId, mid, high) {
+async function setRisk(orgId, mid, high, severe) {
     if (!(await init())) return { ok: false, reason: 'unavailable' };
     const m = Number(mid);
     const h = Number(high);
-    if (!Number.isInteger(m) || !Number.isInteger(h)) return { ok: false, reason: 'bad-bands' };
-    if (m < 1 || h > 100 || m >= h) return { ok: false, reason: 'bad-bands' };
+    const v = Number(severe);
+    if (![m, h, v].every(Number.isInteger)) return { ok: false, reason: 'bad-bands' };
+    // in order and inside the scale, or it is not a set of bands: a middle
+    // above a top draws no line at all, and a top above a hundred draws one
+    // no score can cross
+    if (!(m >= 1 && m < h && h < v && v <= 100)) return { ok: false, reason: 'bad-bands' };
     try {
         const res = await db.query(
-            `UPDATE organisations SET risk_mid = $2, risk_high = $3
+            `UPDATE organisations SET risk_mid = $2, risk_high = $3, risk_severe = $4
               WHERE id = $1
-          RETURNING id, name, host, slug, created_at, risk_mid, risk_high`,
-            [Number(orgId), m, h]
+          RETURNING id, name, host, slug, created_at, risk_mid, risk_high, risk_severe`,
+            [Number(orgId), m, h, v]
         );
         if (!res.rowCount) return { ok: false, reason: 'gone' };
         return { ok: true, org: shape(res.rows[0]) };
@@ -504,7 +513,7 @@ async function setRisk(orgId, mid, high) {
 
 // What the product ships with, and what a check is measured against where an
 // organisation has never said otherwise.
-const RISK_DEFAULT = { mid: 51, high: 81 };
+const RISK_DEFAULT = { mid: 51, high: 81, severe: 100 };
 
 module.exports = {
     setRisk, RISK_DEFAULT,

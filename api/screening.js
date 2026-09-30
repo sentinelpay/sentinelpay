@@ -83,9 +83,14 @@ function digestOf(payload) {
 async function bandsFor(orgId) {
     try {
         const res = await db.query(
-            'SELECT risk_mid, risk_high FROM organisations WHERE id = $1', [Number(orgId)]);
+            'SELECT risk_mid, risk_high, risk_severe FROM organisations WHERE id = $1',
+            [Number(orgId)]);
         if (!res.rowCount) return null;
-        return { mid: Number(res.rows[0].risk_mid), high: Number(res.rows[0].risk_high) };
+        return {
+            mid: Number(res.rows[0].risk_mid),
+            high: Number(res.rows[0].risk_high),
+            severe: Number(res.rows[0].risk_severe),
+        };
     } catch (err) {
         console.error('[screening] could not read the risk bands: ' + err.message);
         return null;
@@ -130,10 +135,13 @@ async function screen(userId, orgId, address, kind, sandbox, projectId, bands) {
 
     // Read before the row is written, so what is sealed is what was in force
     // when the check ran rather than whatever it is by the time it is asked.
-    const asked = bands && bands.mid && bands.high ? bands : (await bandsFor(orgId));
+    const asked = bands && bands.mid && bands.high && bands.severe
+        ? bands
+        : (await bandsFor(orgId));
     const lines = {
         mid: Number(asked && asked.mid) || 51,
         high: Number(asked && asked.high) || 81,
+        severe: Number(asked && asked.severe) || 100,
     };
 
     const sealed = {

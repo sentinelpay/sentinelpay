@@ -83,6 +83,11 @@
     --risk-mid-bg: rgba(148, 98, 15, 0.1);
     --risk-high: #b4243c;
     --risk-high-bg: rgba(180, 36, 60, 0.08);
+    /* A fourth step above high, for a score that is not a judgement call: on
+       the list. Deeper rather than brighter, because the one above the loudest
+       colour on the page cannot be louder and has to be heavier. */
+    --risk-severe: #7d0f24;
+    --risk-severe-bg: rgba(125, 15, 36, 0.12);
 
     --r: 10px;
     --r-lg: 14px;
@@ -172,6 +177,8 @@
     --risk-mid-bg: rgba(224, 178, 94, 0.14);
     --risk-high: #ff8095;
     --risk-high-bg: rgba(255, 128, 149, 0.14);
+    --risk-severe: #ff4d6d;
+    --risk-severe-bg: rgba(255, 77, 109, 0.2);
 }
 
 * { box-sizing: border-box; }
@@ -3469,51 +3476,38 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
    width of the month */
 .use-last-w { font-variant-numeric: tabular-nums; }
 
-/* How risky a check came back: one bar, one of three colours.
-   It was a length filled to the score, which made a low score a stub a few
-   pixels long with a rounded cap -- six of those read as dirt on the screen
-   rather than as readings. Every bar is now the same length and says which of
-   three states this is; the figure beside it says how far into that state. */
+/* How risky a check came back: a reading in its own field.
+   The same shape the product already uses for a small stated fact -- a hairline
+   ring, a full round end, a tint of its own colour -- so it is recognised as
+   one rather than learned as a new thing. The figure carries the weight and
+   the scale beside it is the smaller half of the same number, which is how the
+   allowance under the chart is written.
+   Four bands: green, amber, red, and a deeper red above them. The last is not
+   a judgement call -- it is on the list -- and does not share a colour with
+   one. Deeper rather than brighter, because nothing can be louder than the
+   loudest colour on the page, and weight is what is left. */
 .use-risk {
     display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-/* one length for every row, so the fill inside it is comparable down the
-   column */
-.use-risk-t {
-    display: block;
-    width: 48px;
-    height: 5px;
+    align-items: baseline;
+    gap: 0.08rem;
+    padding: 0.16rem 0.5rem;
+    border: 1px solid var(--risk-low);
     border-radius: 999px;
-    background: var(--line-2);
-    overflow: hidden;
-}
-.use-risk-b {
-    display: block;
-    height: 100%;
-    border-radius: 999px;
-    background: var(--risk-low);
-}
-/* The figure is quiet until it is not.
-   Emphasis is a budget. Six rows of bold colour spend all of it on the five
-   that do not matter, and the one that does has nothing left to be louder
-   with -- so below the first line the number is plain ink at a normal weight,
-   and above it takes the colour of its band and the weight to go with it.
-   The track keeps its colour on every row, so the traffic light is still
-   there to be scanned; it is the shouting that is rationed, not the signal. */
-.use-risk-n {
-    min-width: 1.7rem;
-    text-align: right;
-    font-size: 0.8rem;
-    font-weight: 500;
+    background: var(--risk-low-bg);
+    color: var(--risk-low);
     font-variant-numeric: tabular-nums;
-    color: var(--ink-4);
+    white-space: nowrap;
 }
-.use-risk.is-mid .use-risk-b { background: var(--risk-mid); }
-.use-risk.is-mid .use-risk-n { color: var(--risk-mid); font-weight: 650; }
-.use-risk.is-high .use-risk-b { background: var(--risk-high); }
-.use-risk.is-high .use-risk-n { color: var(--risk-high); font-weight: 650; }
+.use-risk-n { font-size: 0.82rem; font-weight: 650; }
+.use-risk-of { font-size: 0.68rem; font-weight: 500; opacity: 0.75; }
+
+.use-risk.is-mid { border-color: var(--risk-mid); background: var(--risk-mid-bg); color: var(--risk-mid); }
+.use-risk.is-high { border-color: var(--risk-high); background: var(--risk-high-bg); color: var(--risk-high); }
+.use-risk.is-severe {
+    border-color: var(--risk-severe);
+    background: var(--risk-severe-bg);
+    color: var(--risk-severe);
+}
 
 .use-last-foot {
     display: flex;
