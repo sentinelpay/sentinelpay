@@ -3193,6 +3193,102 @@ html.is-theming .btn {
 }
 .chk-seal p { margin: 0.5rem 0 0; font-size: 0.78rem; color: var(--ink-4); }
 
+/* Where an alert sits with a person.
+   Not the risk pill and deliberately not like it: the pill is what the engine
+   found and this is what somebody decided, and giving them one shape would
+   merge the two things this panel exists to keep apart. So: the tag this
+   product already uses for a small stated fact about a row, in the colours the
+   bands use, because the meanings line up -- nothing doing is neutral, work in
+   hand is the middle colour, cleared is the low one, confirmed is the top. */
+.chk-statel {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0 0 1.1rem;
+    font-size: 0.78rem;
+    color: var(--ink-4);
+}
+.chk-state {
+    flex: none;
+    padding: 0.14rem 0.5rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--canvas);
+    font-size: 0.7rem;
+    font-weight: 650;
+    white-space: nowrap;
+    color: var(--ink-3);
+}
+.chk-state.is-holding { color: var(--risk-mid); border-color: var(--risk-mid); background: var(--risk-mid-bg); }
+.chk-state.is-cleared { color: var(--risk-low); border-color: var(--risk-low); background: var(--risk-low-bg); }
+.chk-state.is-confirmed { color: var(--risk-severe); border-color: var(--risk-severe); background: var(--risk-severe-bg); }
+.chk-state-by { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Why the engine said what it said. Sealed with the check on the day it ran
+   and shown to nobody until now, because the panel was built from the row in
+   the list rather than from the record. */
+.chk-why { margin-top: 1.1rem; }
+.chk-why-l {
+    margin: 0 0 0.35rem;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--ink-2);
+}
+.chk-why-l:last-child { margin-bottom: 0; }
+/* the named entity on the list, which is the one part of a reason somebody
+   reads twice */
+.chk-why-w { display: block; margin-top: 0.1rem; font-weight: 650; color: var(--ink); }
+
+/* And what a person made of it.
+   Set apart from the facts above by the rule this product uses between two
+   kinds of thing, because that is exactly what it is: everything above the
+   line is what happened, everything below it is what somebody decided about
+   what happened. */
+.chk-decide {
+    margin-top: 1.3rem;
+    padding-top: 1.1rem;
+    border-top: 1px solid var(--line-2);
+}
+.chk-note {
+    width: 100%;
+    min-height: 4.4rem;
+    resize: vertical;
+    font: inherit;
+    font-size: 0.82rem;
+    line-height: 1.5;
+}
+.chk-acts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.7rem;
+}
+.chk-acts .btn { flex: 0 1 auto; }
+
+/* Every decision anybody ever made about this check, newest first. Append
+   only: a decision changed does not erase the one before it, or the fact that
+   somebody made it, and that is the whole reason this list is here rather than
+   one line saying what it is now. */
+.chk-hist { margin-top: 1.2rem; }
+.chk-hist-i {
+    padding: 0.6rem 0;
+    border-top: 1px solid var(--line-2);
+}
+.chk-hist-t {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-size: 0.74rem;
+    color: var(--ink-4);
+}
+.chk-hist-n {
+    margin: 0.4rem 0 0;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--ink-2);
+    overflow-wrap: anywhere;
+}
+
 @media (max-width: 720px) {
     .chk-bar { flex-wrap: wrap; gap: 0.55rem; }
     .chk-bar .bar-find { flex: 1 1 100%; max-width: none; }
@@ -3811,7 +3907,18 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     color: var(--ink-4);
 }
 .use-fact:last-child { border-bottom: 0; }
-.use-fact-v { color: var(--ink-2); font-weight: 600; text-align: right; }
+/* A value that cannot be broken anywhere -- an address -- still has to fit the
+   panel it is in. A bitcoin address reaches the edge of the drawer with nothing
+   to spare and a monero one is twice as long again, so the break is allowed
+   rather than left to overflow the one place somebody reads an address
+   character by character. */
+.use-fact-v {
+    min-width: 0;
+    color: var(--ink-2);
+    font-weight: 600;
+    text-align: right;
+    overflow-wrap: anywhere;
+}
 
 /* What the plan carries that is not a number. Same type size and same rhythm
    as the facts above it, because it is the same kind of statement: one line,

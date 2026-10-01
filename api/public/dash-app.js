@@ -7349,9 +7349,66 @@
 
     // One check, opened. The digest is over the record as it was sealed, so a
     // copy of this handed to somebody else can be checked against ours.
+    // The four things a check can be to a person, in the order somebody moves
+    // through them. `open` is the state of every check nobody has touched.
+    var CHECK_STATES = {
+        open: { word: 'Open', cls: 'is-open' },
+        holding: { word: 'In review', cls: 'is-holding' },
+        cleared: { word: 'Cleared', cls: 'is-cleared' },
+        confirmed: { word: 'Confirmed', cls: 'is-confirmed' }
+    };
+
+    function stateTag(state) {
+        var it = CHECK_STATES[state] || CHECK_STATES.open;
+        var el = document.createElement('span');
+        el.className = 'chk-state ' + it.cls;
+        el.textContent = t(it.word);
+        return el;
+    }
+
+    // One check, opened.
+    //
+    // It used to be drawn from the row in the list, which is everything the
+    // list happened to be carrying and nothing else -- no reasons, no bands, no
+    // sources. The sealed record was written on every check from the first day
+    // and the endpoint to read it has existed all along; nothing ever called
+    // it. So this asks for the check, and what opens is the evidence rather
+    // than a larger copy of the row that was clicked.
+    //
+    // The row is still drawn first, immediately, from what the list already
+    // knows. A panel that opens empty and fills a moment later is a panel that
+    // felt slow whatever it then did.
     function openCheck(row) {
         var d = drawer('Check');
-        d.show(function () {
+        var full = null;
+        var may = false;
+
+        var paint = function () {
+            d.show(function () { build(d, row, full, may, paint); });
+        };
+        paint();
+
+        var org = (lastMe && lastMe.org) || {};
+        if (!org.id || !row.id) return;
+        var url = '/v1/orgs/' + encodeURIComponent(org.id) +
+            '/checks/' + encodeURIComponent(row.id) +
+            '?scope=' + encodeURIComponent(lastMe && lastMe.sandbox ? 'sandbox' : 'live');
+        fetch(url, { credentials: 'same-origin' })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (body) {
+                if (!body || !body.check) return;
+                full = body.check;
+                may = roleAtLeastLocal(org.role, 'analyst');
+                if (d.box.isConnected) paint();
+            })
+            .catch(function (err) {
+                // the panel keeps what it has. A check that will not open in
+                // full still says what it was and when, and saying so is
+                // better than replacing it with an apology.
+                console.error('[check] ' + err.message);
+            });
+
+        function build(d, row, full, may, again) {
             var said = {
                 clear: 'No match on the OFAC Specially Designated Nationals list',
                 severe: 'On the OFAC Specially Designated Nationals list',
@@ -7362,16 +7419,63 @@
             head.textContent = t(said[row.verdict] || row.verdict);
             d.body.appendChild(head);
 
+            // Where it sits with a person, at the top, because on an alert it
+            // is the first thing anybody wants and the last thing that was
+            // impossible to record.
+            var state = (full && full.state) || row.state || 'open';
+            if (row.verdict !== 'clear') {
+                var line = document.createElement('div');
+                line.className = 'chk-statel';
+                line.appendChild(stateTag(state));
+                if (full && full.decidedBy) {
+                    var by = document.createElement('span');
+                    by.className = 'chk-state-by';
+                    by.textContent = full.decidedBy +
+                        (full.decidedAt ? '  \u00b7  ' + whenText(full.decidedAt, true) : '');
+                    line.appendChild(by);
+                }
+                d.body.appendChild(line);
+            }
+
             d.body.appendChild(useFacts([
                 ['Address', row.address],
-                ['Chain', row.asset || t('Not recognised')],
+                ['Chain', chainText(row.asset) || t('Not recognised')],
+                ['Risk', String(Math.round(Number(row.score) || 0)) + '/100'],
                 ['When', whenText(row.at, true)],
-                ['Project', row.projectName || t('No project')],
+                ['Project', (full && full.projectName) || row.projectName || t('No project')],
                 ['List', 'OFAC SDN'],
                 ['List dated', row.listDate
                     ? (whenText(listDay(row.listDate)) || row.listDate)
                     : '\u2014']
             ]));
+
+            // Why the engine said what it said. Sealed with the check and
+            // never shown until now.
+            if (full && full.reasons && full.reasons.length) {
+                var why = document.createElement('div');
+                why.className = 'chk-why';
+                var wl = document.createElement('div');
+                wl.className = 'chk-seal-k';
+                wl.textContent = t('Why');
+                why.appendChild(wl);
+                full.reasons.forEach(function (r) {
+                    var p = document.createElement('p');
+                    p.className = 'chk-why-l';
+                    p.textContent = r.label || r.code || '';
+                    if (r.entity) {
+                        var who = document.createElement('span');
+                        who.className = 'chk-why-w';
+                        who.textContent = r.entity;
+                        p.appendChild(who);
+                    }
+                    why.appendChild(p);
+                });
+                d.body.appendChild(why);
+            }
+
+            if (full && row.verdict !== 'clear') {
+                d.body.appendChild(decideBlock(full, may, again));
+            }
 
             // The digest is over the record as it was sealed, so a copy of
             // this handed to an auditor can be checked against ours. It is the
@@ -7387,9 +7491,9 @@
                 var code = document.createElement('code');
                 code.textContent = row.digest;
                 seal.appendChild(code);
-                var why = document.createElement('p');
-                why.textContent = t('Taken over this record when it was sealed. It does not change, so a copy can be checked against ours.');
-                seal.appendChild(why);
+                var note = document.createElement('p');
+                note.textContent = t('Taken over this record when it was sealed. It does not change, so a copy can be checked against ours.');
+                seal.appendChild(note);
                 d.body.appendChild(seal);
             }
 
@@ -7399,7 +7503,134 @@
             close.textContent = t('Close');
             close.addEventListener('click', function () { d.shut(); });
             d.acts.appendChild(close);
-        });
+        }
+
+        // What a person concluded, and the way to conclude it.
+        //
+        // The reason is not optional and the field says so before anybody
+        // types: a cleared alert with no reason is the sentence an auditor asks
+        // about and nobody can answer. Taking one up needs no argument, so that
+        // button does not ask for one.
+        function decideBlock(check, may, again) {
+            var box = document.createElement('div');
+            box.className = 'chk-decide';
+
+            var lab = document.createElement('div');
+            lab.className = 'chk-seal-k';
+            lab.textContent = t('Decision');
+            box.appendChild(lab);
+
+            if (!may) {
+                var no = document.createElement('p');
+                no.className = 'chk-why-l';
+                no.textContent = t('Only an analyst, an admin or the owner can work an alert.');
+                box.appendChild(no);
+            } else {
+                var why = document.createElement('textarea');
+                why.className = 'field chk-note';
+                why.rows = 2;
+                why.maxLength = 2000;
+                why.placeholder = t('Why. This is kept with the decision.');
+                box.appendChild(why);
+
+                var acts = document.createElement('div');
+                acts.className = 'chk-acts';
+                var busy = false;
+                var send = function (state, btn) {
+                    if (busy) return;
+                    busy = true;
+                    btn.disabled = true;
+                    fetch('/v1/orgs/' + encodeURIComponent(org.id) +
+                        '/checks/' + encodeURIComponent(check.id) + '/decision', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ state: state, note: why.value })
+                    })
+                        .then(function (r) { return r.json().then(function (b) { return { r: r, b: b }; }); })
+                        .then(function (out) {
+                            busy = false;
+                            btn.disabled = false;
+                            if (!out.r.ok) {
+                                toast(out.b && out.b.error ? out.b.error : t('Something went wrong'), true);
+                                return;
+                            }
+                            // asked again rather than patched in place: the
+                            // history is the point of this panel, and a panel
+                            // that draws what it hoped happened is a panel
+                            // that can disagree with the record
+                            reopen(check.id);
+                        })
+                        .catch(function (err) {
+                            busy = false;
+                            btn.disabled = false;
+                            toast(t('Something went wrong'), true);
+                            console.error('[decision] ' + err.message);
+                        });
+                };
+                [
+                    { state: 'cleared', label: 'Not a match', cls: 'btn-quiet' },
+                    { state: 'confirmed', label: 'Confirmed match', cls: 'btn-danger' },
+                    { state: check.state === 'holding' ? 'open' : 'holding',
+                      label: check.state === 'holding' ? 'Put it back' : 'Take it up',
+                      cls: 'btn-quiet' }
+                ].forEach(function (a) {
+                    var b = document.createElement('button');
+                    b.type = 'button';
+                    b.className = 'btn';
+                    b.classList.add(a.cls);
+                    b.textContent = t(a.label);
+                    b.addEventListener('click', function () { send(a.state, b); });
+                    acts.appendChild(b);
+                });
+                box.appendChild(acts);
+            }
+
+            // Everything anybody ever concluded about this check, newest
+            // first. Append only: a decision changed does not erase the one
+            // before it, or the fact that somebody made it.
+            if (check.history && check.history.length) {
+                var list = document.createElement('div');
+                list.className = 'chk-hist';
+                check.history.forEach(function (h) {
+                    var it = document.createElement('div');
+                    it.className = 'chk-hist-i';
+                    var top = document.createElement('div');
+                    top.className = 'chk-hist-t';
+                    top.appendChild(stateTag(h.state));
+                    var who = document.createElement('span');
+                    who.textContent = (h.by || t('Someone')) + '  \u00b7  ' + whenText(h.at, true);
+                    top.appendChild(who);
+                    it.appendChild(top);
+                    if (h.note) {
+                        var n = document.createElement('p');
+                        n.className = 'chk-hist-n';
+                        n.textContent = h.note;
+                        it.appendChild(n);
+                    }
+                    list.appendChild(it);
+                });
+                box.appendChild(list);
+            }
+            return box;
+        }
+
+        // Re-open the same check from the server, so what is on the screen is
+        // what is in the record.
+        function reopen(id) {
+            fetch('/v1/orgs/' + encodeURIComponent(org.id) +
+                '/checks/' + encodeURIComponent(id) +
+                '?scope=' + encodeURIComponent(lastMe && lastMe.sandbox ? 'sandbox' : 'live'),
+                { credentials: 'same-origin' })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (b) {
+                    if (!b || !b.check) return;
+                    full = b.check;
+                    row.state = full.state;
+                    if (d.box.isConnected) paint();
+                })
+                .catch(function (err) { console.error('[check] ' + err.message); });
+        }
     }
 
     // What the plan is and how it changes. There is no card on file to show,
