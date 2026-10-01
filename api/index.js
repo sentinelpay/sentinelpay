@@ -2279,6 +2279,7 @@ app.get('/v1/orgs/:id/checks', async (req, res) => {
             verdict: String(q.verdict || ''),
             project: String(q.project || ''),
             address: String(q.address || '').slice(0, 128),
+            state: String(q.state || ''),
             cursor: q.cursor || '',
             limit: q.limit,
         });
@@ -2307,6 +2308,73 @@ app.get('/v1/orgs/:id/checks/:check', async (req, res) => {
         console.error('[check]', err.message);
         res.status(500).json({ error: 'Could not read that check' });
     }
+});
+
+// What is waiting for a person, and how much of it there is.
+//
+// The first question of the working day, and until now the product could not
+// answer it: it could say how many checks came back flagged and not which of
+// them anybody had dealt with, because there was nowhere to record that they
+// had. One round trip, because this is what the first screen is made of.
+app.get('/v1/orgs/:id/queue', async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const mine = await orgs.membership(me.userId, req.params.id);
+    if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
+    res.set('Cache-Control', 'no-store, private');
+    try {
+        const sandbox = String(req.query.scope || '') === 'sandbox';
+        const out = await screening.queue(mine.id, sandbox, req.query.limit);
+        res.json({ ok: true, ...out, may: orgs.roleAtLeast(mine.role, 'analyst') });
+    } catch (err) {
+        console.error('[queue]', err.message);
+        res.status(500).json({ error: 'Could not read the queue' });
+    }
+});
+
+// A person's conclusion about one alert.
+//
+// An analyst's decision, not an admin's: working alerts is what the analyst
+// role is for and says it is for. A viewer reads the work and pulls evidence
+// and changes nothing, which includes this.
+//
+// Audited by name. Everything else in this product audits the actor as an id,
+// because everything else is somebody changing their own account or their own
+// organisation. This is somebody saying an address that matched a sanctions
+// list may go through, and the question asked about it a year from now is who
+// said so.
+app.post('/v1/orgs/:id/checks/:check/decision', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const mine = await orgs.membership(me.userId, req.params.id);
+    if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
+    if (!orgs.roleAtLeast(mine.role, 'analyst')) {
+        return res.status(403).json({ error: 'Only an analyst, an admin or the owner can work an alert.' });
+    }
+    const body = req.body || {};
+    const out = await screening.decide(mine.id, req.params.check,
+        { id: me.userId, name: me.name || '' },
+        String(body.state || ''), body.note);
+    if (!out.ok) {
+        if (out.reason === 'bad-state') {
+            return res.status(400).json({ error: 'That is not one of the things a check can be.' });
+        }
+        if (out.reason === 'needs-why') {
+            return res.status(400).json({ error: 'Say why. A decision without a reason cannot be defended later.' });
+        }
+        if (out.reason === 'not-an-alert') {
+            return res.status(400).json({ error: 'That check came back clear, so there is nothing to decide.' });
+        }
+        if (out.reason === 'gone') return res.status(404).json({ error: 'No such check.' });
+        return res.status(503).json({ error: 'Not available right now. Please try again shortly.' });
+    }
+    await accounts.audit('check-decided', {
+        actor: String(me.userId), subject: String(req.params.check), ip: req.realIp,
+        detail: out.state + ' by ' + (me.name || me.userId),
+    });
+    await tellOrg(mine.id, { topic: 'checks', id: String(req.params.check) });
+    res.set('Cache-Control', 'no-store, private');
+    res.json({ ok: true, decision: out });
 });
 
 // asked what was screened in March and has to hand over something that can be
