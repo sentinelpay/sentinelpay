@@ -2226,6 +2226,14 @@ async function usageFor(req, mine) {
     });
 }
 
+// Which plan's vocabulary to answer in. A subscription is the truth where
+// there is one; a trial carries the base tier and nothing else; an
+// organisation with neither carries nothing.
+function planKeyFor(sub, plan) {
+    if (sub && sub.plan) return sub.plan;
+    return plan && plan.state && plan.state !== 'none' ? 'trial' : '';
+}
+
 app.get('/v1/orgs/:id/usage', async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
@@ -2242,12 +2250,18 @@ app.get('/v1/orgs/:id/usage', async (req, res) => {
         ...out,
         plan: { ...plan, historyLeft: plan.historyLeft === Infinity ? null : plan.historyLeft },
         subscription: sub,
-        // The half of a plan that is not a number. Only what we ship: a
-        // pricing page argues for a sale, but this sits beside the meter of
-        // what somebody is already using, where the same sentence stops being
-        // a pitch and becomes a description of what they have.
-        includes: plans.shipped(sub && sub.plan ? sub.plan
-            : (plan.state && plan.state !== 'none' ? 'trial' : '')),
+        // The half of a plan that is not a number.
+        //
+        // Everything the plan carries, built or not, and everything the tiers
+        // above it carry. It used to be only what we ship, on the reasoning
+        // that "coming soon" beside a paid feature reads as an excuse. That
+        // was the wrong half of the choice: a customer paying for the EU, UK
+        // and UN lists today is not helped by the line being left out, and the
+        // one person who most needs to see the gap is the one who bought it.
+        // The screen says which is which, so what is here is a disclosure
+        // rather than a pitch.
+        includes: plans.carries(planKeyFor(sub, plan)),
+        beyond: plans.beyond(planKeyFor(sub, plan)),
         coverage: {
             source: 'OFAC SDN',
             listDate: listed.listDate || '',

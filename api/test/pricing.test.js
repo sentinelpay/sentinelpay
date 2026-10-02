@@ -164,3 +164,67 @@ test('a list we do not load is not marked as shipped', () => {
     assert.strictEqual(eu.built, false,
         'sanctions.js loads only the OFAC SDN list, so this cannot be marked as built');
 });
+
+// What the product says it has, and what it says it owes.
+//
+// The dashboard used to render only what we ship, on the reasoning that
+// "coming soon" beside a paid feature reads as an excuse. That is the wrong
+// half of the choice: a customer on Growth is paying for the EU, UK and UN
+// lists today, and leaving the line out does not make the gap smaller -- it
+// makes it invisible to the one person who most needs to see it. Said with the
+// word that is true, it is a disclosure; said nowhere, the pricing page
+// quietly disagrees with the product and nobody can see where.
+test('a plan carries everything it is sold as carrying, marked for what it is', () => {
+    const all = plans.carries('growth');
+    assert.ok(all.length > plans.shipped('growth').length,
+        'the dashboard is being sent only what we ship again');
+    for (const f of all) {
+        assert.strictEqual(typeof f.built, 'boolean',
+            f.key + ' does not say whether it is built');
+    }
+    // the one that matters most
+    const lists = all.find((f) => f.key === 'lists-eu-uk-un');
+    assert.ok(lists, 'the EU, UK and UN lists are not in what Growth carries');
+    assert.strictEqual(lists.built, false,
+        'the lists are marked built -- if that is true, sanctions.js should load them');
+});
+
+test('what a plan does not carry is the tiers above it, and nothing else', () => {
+    const beyond = plans.beyond('growth');
+    assert.deepStrictEqual(beyond.map((f) => f.tier), ['enterprise', 'enterprise'],
+        'a plan is shown things it already has, or things that belong to nobody');
+
+    // every line has to say which plan it is in: "it is in Growth" is the whole
+    // of the answer to "why do I not have it"
+    for (const f of plans.beyond('trial')) {
+        assert.ok(f.tier, f.key + ' belongs to no plan');
+        assert.strictEqual(typeof f.built, 'boolean',
+            f.key + ' does not say whether it is built');
+    }
+
+    // and the top of the ladder is owed nothing by anybody above it
+    assert.deepStrictEqual(plans.beyond('enterprise'), []);
+
+    // nothing is in both lists
+    const mine = new Set(plans.carries('starter').map((f) => f.key));
+    for (const f of plans.beyond('starter')) {
+        assert.ok(!mine.has(f.key), f.key + ' is both carried and not carried');
+    }
+});
+
+test('the dashboard draws the difference rather than hiding it', () => {
+    const src = require('node:fs').readFileSync(
+        require('node:path').join(__dirname, '..', 'public', 'dash-app.js'), 'utf8');
+    assert.match(src, /plans\.carries|out\.includes/, 'the plan list is gone');
+    assert.match(src, /r\.built \? '' : ' is-soon'/,
+        'an unbuilt feature is drawn the same as a built one');
+    assert.match(src, /t\('Coming'\)/, 'nothing says a feature is not here yet');
+    assert.match(src, /t\('Not in this plan'\)/, 'nothing lists what the plan does not carry');
+
+    const css = require('node:fs').readFileSync(
+        require('node:path').join(__dirname, '..', 'public', 'dash.css'), 'utf8');
+    // a tick is a thing that is here; drawing one beside a thing that is not
+    // would be the lie the word next to it exists to prevent
+    assert.match(css, /\.use-carry\.is-soon::before\s*\{[^}]*border-radius:\s*50%/,
+        'a feature that is not built still gets a tick');
+});

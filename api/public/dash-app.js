@@ -6454,20 +6454,53 @@
     // the plan or they do not -- so they are a list rather than a table with an
     // empty half.
     //
-    // The server sends only what we ship, so nothing here has to be hedged.
-    // Anything sold and not built is left out rather than dressed up as
-    // "coming soon", which on a screen somebody is paying to look at reads as
-    // an excuse rather than a feature.
-    function useCarries(rows) {
+    // Everything the plan carries, and what state each one is in.
+    //
+    // This used to render only what we ship, on the reasoning that "coming
+    // soon" beside a paid feature reads as an excuse. That is the wrong half
+    // of the choice. A customer on Growth is paying for the EU, UK and UN
+    // lists today: leaving the line out does not make the gap smaller, it
+    // makes it invisible, and the person who most needs to see it is the one
+    // who bought it. Left out, the pricing page quietly disagrees with the
+    // product and nobody can see where. Said, with the word that is true, it
+    // is a disclosure.
+    //
+    // So every line says which it is. A tick means it is here. "Coming" means
+    // it is in the plan and not built yet -- it is not a feature, it is a
+    // debt, and it is drawn as the quietest thing on the page rather than as a
+    // badge competing for attention.
+    function useCarries(rows, opts) {
+        var o = opts || {};
         var box = document.createElement('ul');
-        box.className = 'use-carries';
+        box.className = 'use-carries' + (o.muted ? ' is-beyond' : '');
         rows.forEach(function (r) {
             var li = document.createElement('li');
-            li.className = 'use-carry';
-            li.textContent = t(r.text);
+            li.className = 'use-carry' + (r.built ? '' : ' is-soon');
+            li.appendChild(document.createTextNode(t(r.text)));
+            if (!r.built) {
+                var mark = document.createElement('span');
+                mark.className = 'use-carry-soon';
+                mark.textContent = t('Coming');
+                li.appendChild(mark);
+            }
+            // which plan it belongs to, where the list is of things this one
+            // does not have: "it is in Growth" is the whole of the answer to
+            // "why do I not have it"
+            if (o.tier && r.tier) {
+                var where = document.createElement('span');
+                where.className = 'use-carry-tier';
+                where.textContent = planName(r.tier);
+                li.appendChild(where);
+            }
             box.appendChild(li);
         });
         return box;
+    }
+
+    // A plan's name, as the pricing page writes it.
+    function planName(key) {
+        var said = { trial: 'Free trial', starter: 'Starter', growth: 'Growth', enterprise: 'Enterprise' };
+        return t(said[key] || key);
     }
 
     function viewUsage(me) {
@@ -7014,6 +7047,24 @@
                     ch.textContent = t('Also included');
                     pmain.appendChild(ch);
                     pmain.appendChild(useCarries(carries));
+                }
+
+                // And what this plan does not carry. Not a pitch: the lines
+                // say which plan each one is in and whether it exists yet, and
+                // a reader can see at a glance that most of what is above them
+                // is a debt rather than a shelf.
+                var further = out.beyond || [];
+                if (further.length) {
+                    var bh = document.createElement('h3');
+                    bh.className = 'use-carries-t';
+                    bh.textContent = t('Not in this plan');
+                    pmain.appendChild(bh);
+                    pmain.appendChild(useCarries(further, { muted: true, tier: true }));
+                    var seePlans = document.createElement('a');
+                    seePlans.className = 'chip use-open';
+                    seePlans.href = '/pricing';
+                    seePlans.textContent = t('See the plans');
+                    pmain.appendChild(seePlans);
                 }
                 pl.body.appendChild(pmain);
                 body.appendChild(pl);

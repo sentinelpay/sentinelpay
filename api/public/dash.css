@@ -4067,6 +4067,45 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     transform: rotate(-45deg);
 }
 
+/* A line that is in the plan and not built yet.
+   The tick becomes a ring: a tick is a thing that is here, and drawing one
+   beside a thing that is not would be the lie the word next to it is there to
+   prevent. The word is the quietest text on the page, because it is a debt and
+   not a feature, and a debt announced in a badge is a boast about a plan. */
+.use-carry.is-soon { color: var(--ink-4); }
+.use-carry.is-soon::before {
+    top: 0.62rem;
+    left: 0.2rem;
+    width: 0.36rem;
+    height: 0.36rem;
+    border: 1.5px solid var(--line);
+    border-radius: 50%;
+    transform: none;
+}
+.use-carry-soon {
+    margin-left: 0.45rem;
+    padding: 0.03rem 0.34rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--ink-4);
+    white-space: nowrap;
+}
+/* which plan it is in, where the list is of things this one has not got */
+.use-carry-tier {
+    margin-left: 0.45rem;
+    font-size: 0.72rem;
+    color: var(--ink-4);
+    opacity: 0.8;
+}
+/* the whole of that list sits back from the one above it: these are not things
+   you have, and a reader scanning for what they have should pass over them */
+.use-carries.is-beyond .use-carry { opacity: 0.72; }
+.use-carries.is-beyond + .use-open { margin-top: 0.2rem; }
+
 /* The chart, with an axis on both sides. Gridlines are drawn by the container
    rather than inside the svg: the plot is stretched to the width of its card,
    and anything inside a stretched svg is stretched with it -- a hairline

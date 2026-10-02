@@ -161,10 +161,35 @@ function shipped(planKey) {
     return carries(planKey).filter((f) => f.built);
 }
 
-// What a plan is sold as carrying and we do not ship yet. Nothing renders this;
-// it is here so the gap can be listed, counted and tested rather than felt.
+// What a plan is sold as carrying and we do not ship yet.
+//
+// This used to be rendered by nothing: the dashboard showed only what we ship,
+// on the reasoning that "coming soon" beside a paid feature reads as an excuse.
+// That was the wrong half of the choice. A customer on Growth is paying for
+// the EU, UK and UN lists today -- leaving the line out does not make the gap
+// smaller, it makes it invisible, and the one person who most needs to see it
+// is the one who bought it. Said plainly, with the word that is true, it is a
+// disclosure; said nowhere, it is the pricing page quietly disagreeing with
+// the product.
 function promised(planKey) {
     return carries(planKey).filter((f) => !f.built);
+}
+
+// What a plan does not carry: everything in the tiers above it.
+//
+// The order is the order the pricing page introduces things, and the tier each
+// one belongs to rides along, because "this is in Growth" is the whole of the
+// answer to "why do I not have it".
+function beyond(planKey) {
+    const want = String(planKey || '').toLowerCase();
+    const mine = new Set(carries(want).map((f) => f.key));
+    const out = [];
+    for (const tier of TIERS) {
+        for (const f of tier.adds) {
+            if (!mine.has(f.key)) out.push({ ...f, tier: tier.key });
+        }
+    }
+    return out;
 }
 
 function plan(key) {
@@ -229,5 +254,5 @@ function catalogue() {
 module.exports = {
     CURRENCY, PLANS, TERMS, TIERS, QUOTA_FEATURES,
     plan, term, included, listPrice, isPlan, isTerm, catalogue,
-    carries, shipped, promised,
+    carries, shipped, promised, beyond,
 };
