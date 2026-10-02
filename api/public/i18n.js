@@ -53,6 +53,8 @@
             "Every project": "Svi projekti",
             "Show more": "Prikaži još",
             "See these checks": "Pogledaj ove provjere",
+            "Coming": "Uskoro",
+            "Not in this plan": "Nije u ovom planu",
             "{cleared} not a match, {confirmed} confirmed": "{cleared} nije podudaranje, {confirmed} potvrđeno",
             "By project": "Po projektu",
             "By chain": "Po lancu",
