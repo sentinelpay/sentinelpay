@@ -186,3 +186,31 @@ test('a share says what it is a share of', () => {
     assert.match(SRC, /share\.className = 'use-split-s'/, 'the split has no shares');
     assert.match(SRC, /share\.className = 'use-share-s'/, 'the lists have no shares');
 });
+
+// The split is built out of the allowance meter's parts, and one of them fights
+// back: `.use-meter-t` sets `display: block`, because an allowance meter holds
+// one fill. A divided track holds several. Written as one class the two tie on
+// specificity and the one further down the file wins -- which it was -- so the
+// parts stacked, the second fell outside a seven point track with overflow
+// hidden on it, and the bar painted as a red sliver with nothing after it. It
+// measured correctly the whole time, which is why this is a test.
+test('the divided track wins on specificity, not on where it sits', () => {
+    assert.match(CSS, /\.use-meter-t\.use-split-bar\s*\{[^}]*display:\s*flex/,
+        'the divided track is declared with one class and can lose to the meter it borrows');
+    assert.doesNotMatch(CSS, /\n\.use-split-bar\s*\{[^}]*display:\s*flex/,
+        'there is a single-class rule for it again');
+});
+
+// Nothing on this page is a shape of its own. The row above the track is the
+// allowance meter's row, the track is the allowance meter's track, and the key
+// under it is the column of facts the Plan section is made of.
+test('what came back is written in the page\'s own parts', () => {
+    const fn = body('function useSplit(', 4600);
+    assert.match(fn, /'use-meter-r use-split-r'/, 'the head is not the meter\'s row');
+    assert.match(fn, /'use-meter-t use-split-bar'/, 'the track is not the meter\'s track');
+    assert.match(fn, /'use-facts use-split-facts'/, 'the key is not the page\'s facts');
+    assert.match(fn, /'use-fact use-split-l'/, 'a line in the key is not one of this page\'s facts');
+    // and the bespoke headline that existed nowhere else on the page is gone
+    assert.doesNotMatch(fn, /use-split-big/,
+        'the split has a headline number in a size this page uses nowhere else');
+});

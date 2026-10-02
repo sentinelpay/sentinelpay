@@ -4986,59 +4986,57 @@
     // One period, split into what it was made of.
     //
     // This is for a set of parts that are one whole: every check came back
-    // exactly one of clear, worth a look or sanctioned, and the three add up to
-    // the period. Drawn as a row of separate bars that was never visible --
-    // three tracks, each filled against the total, which is three pictures of
-    // one fact. Worse, the only row that matters was always a stub at the
-    // bottom of a screen whose top was a long green bar meaning nothing
+    // exactly one of clear, worth a look or sanctioned, and the three add up
+    // to the period. It was a row of separate tracks, each filled against the
+    // total, which is three pictures of one fact -- and the only row that
+    // mattered was always a stub under a long green bar meaning nothing
     // happened.
     //
-    // So: one bar, divided. The eye reads the division in a glance and does
-    // not have to hold three percentages to get there. The share worth saying
-    // out loud is said above it in words -- how much of the period needs a
-    // person -- because that is the sentence this section exists to produce
-    // and nobody should have to do the division to hear it.
+    // Built out of what this page is already made of rather than out of
+    // anything new. The allowance meter on the card above is a number out of a
+    // number, right-aligned, over a track running the full width; the Plan
+    // section below is a column of facts, a key and a value with a hairline
+    // between them. This is both of those, in that order, and the only thing
+    // it adds is that the track is divided instead of filled -- because the
+    // question here is not how much of an allowance is gone, it is what the
+    // period was made of.
     //
-    // A part under a point of the whole still gets a sliver, because zero
-    // width is the one thing it must not read as: one sanctioned address in
-    // three thousand is the most important thing on this screen.
+    // It has to hold more than two rows. The engine has one list today and
+    // every number between nothing and a hundred is still the fixture's; when
+    // the other lists land and a score has a middle, this grows to five or six
+    // parts. A column of facts takes that without being redesigned, which is
+    // most of why it is a column of facts.
     function useSplit(rows, total, kindOf, linkOf) {
         var box = document.createElement('div');
         box.className = 'use-split';
         var sum = rows.reduce(function (n, r) { return n + (Number(r.n) || 0); }, 0);
         var whole = Math.max(Number(total) || 0, sum);
-
-        // How much of it needed a person. Said in words, and only where there
-        // is something to say: on a period where nothing was flagged the
-        // sentence is "none of it", which is the good news and is said as such
-        // rather than as "0.0%".
         var flagged = rows.reduce(function (n, r) {
             return r.key === 'clear' ? n : n + (Number(r.n) || 0);
         }, 0);
-        var head = document.createElement('div');
-        head.className = 'use-split-h';
-        if (whole > 0 && flagged > 0) {
-            var big = document.createElement('span');
-            big.className = 'use-split-big';
-            big.textContent = pct(flagged, whole);
-            head.appendChild(big);
-            var what = document.createElement('span');
-            what.className = 'use-split-k';
-            what.textContent = t('of checks need a person');
-            head.appendChild(what);
-        } else {
-            var none = document.createElement('span');
-            none.className = 'use-split-k is-none';
-            none.textContent = t('Nothing in this period needs a person.');
-            head.appendChild(none);
-        }
-        box.appendChild(head);
 
-        // The bar. One track, every part in it, in the order the rows are in --
-        // which is the order of what needs doing, so the part that matters is
-        // at the end a reader starts from.
+        // How much of the period needs a person, in the shape the allowance
+        // above says how much of an allowance is gone: the two numbers, the
+        // quieter word that says what they are, right-aligned over the track.
+        // Nobody should have to divide 46 by 872 to hear the sentence this
+        // section exists to produce.
+        var line = document.createElement('div');
+        line.className = 'use-meter-r use-split-r';
+        var fig = document.createElement('span');
+        fig.className = 'use-meter-v';
+        fig.textContent = useNum(flagged) + ' / ' + useNum(whole);
+        var what = document.createElement('span');
+        what.className = 'use-meter-p';
+        what.textContent = t('need a person');
+        fig.appendChild(what);
+        line.appendChild(fig);
+        box.appendChild(line);
+
+        // The track, divided, in the order the rows are in -- which is the
+        // order of what needs doing, so the part that matters starts at the end
+        // a reader starts from.
         var bar = document.createElement('div');
-        bar.className = 'use-split-bar';
+        bar.className = 'use-meter-t use-split-bar';
         bar.setAttribute('role', 'img');
         bar.setAttribute('aria-label', rows.map(function (r) {
             return r.label + ': ' + useNum(r.n) + ', ' + pct(r.n, whole);
@@ -5046,41 +5044,47 @@
         rows.forEach(function (r) {
             var part = document.createElement('span');
             part.className = 'use-split-p' + (kindOf && kindOf(r) ? ' is-' + kindOf(r) : '');
-            // a part that exists is never nothing wide, and a part that is
-            // everything does not leave a hairline of track showing
+            // a part that exists is never nothing wide: one sanctioned address
+            // in three thousand is the most important thing on this screen
             var share = whole > 0 ? (r.n / whole) * 100 : 0;
             part.style.width = r.n > 0 ? 'max(3px, ' + share + '%)' : '0';
             bar.appendChild(part);
         });
         box.appendChild(bar);
 
-        // and the key under it, which is where the numbers live
+        // and the key under it, written as the facts this page writes
+        // everywhere else: a name on the left, the figures on the right, a
+        // hairline between.
+        var facts = document.createElement('div');
+        facts.className = 'use-facts use-split-facts';
         rows.forEach(function (r) {
             var href = linkOf ? linkOf(r) : '';
-            var line = document.createElement(href ? 'a' : 'div');
-            line.className = 'use-split-l' + (href ? ' is-open' : '');
+            var row = document.createElement(href ? 'a' : 'div');
+            row.className = 'use-fact use-split-l' + (href ? ' is-open' : '');
             if (href) {
-                line.href = href;
-                line.setAttribute('aria-label',
+                row.href = href;
+                row.setAttribute('aria-label',
                     r.label + ', ' + useNum(r.n) + ', ' + pct(r.n, whole) + '. ' + t('See these checks'));
             }
+            var left = document.createElement('span');
+            left.className = 'use-split-n';
             var dot = document.createElement('i');
             dot.className = 'use-split-d' + (kindOf && kindOf(r) ? ' is-' + kindOf(r) : '');
-            line.appendChild(dot);
-            var name = document.createElement('span');
-            name.className = 'use-split-n';
-            name.textContent = r.label;
-            line.appendChild(name);
-            var n = document.createElement('span');
-            n.className = 'use-split-v';
-            n.textContent = useNum(r.n);
-            line.appendChild(n);
+            left.appendChild(dot);
+            left.appendChild(document.createTextNode(r.label));
+            row.appendChild(left);
+
+            var right = document.createElement('span');
+            right.className = 'use-fact-v use-split-v';
+            right.textContent = useNum(r.n);
             var share = document.createElement('span');
             share.className = 'use-split-s';
             share.textContent = pct(r.n, whole);
-            line.appendChild(share);
-            box.appendChild(line);
+            right.appendChild(share);
+            row.appendChild(right);
+            facts.appendChild(row);
         });
+        box.appendChild(facts);
         return box;
     }
 

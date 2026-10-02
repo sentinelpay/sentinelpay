@@ -4143,62 +4143,46 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 .use-plot-x span:last-child { transform: translateX(-100%); }
 
 /* One period, divided.
-   A set of parts that are one whole gets one bar, not a bar each: every check
-   came back exactly one of clear, worth a look or sanctioned, and three tracks
-   each filled against the same total is three pictures of one fact. The
-   division is read at a glance; the numbers live in the key underneath, which
-   is what a key is for. */
+   Nothing here is a new shape. The row above the track is the allowance
+   meter's row -- two numbers and a quiet word, right-aligned -- and the track
+   is the allowance meter's track; the key under it is the column of facts this
+   page writes everywhere else. The one thing that is new is that the track is
+   divided rather than filled, because the question is not how much of an
+   allowance is gone but what the period was made of. */
 .use-split { min-width: 0; }
-.use-split-h {
-    display: flex;
-    align-items: baseline;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-bottom: 0.7rem;
-}
-/* the share worth saying out loud, in the face the page uses for a number that
-   is the answer rather than one of several */
-.use-split-big {
-    font-family: var(--sp-display);
-    font-size: 1.45rem;
-    line-height: 1;
-    color: var(--ink);
-    font-variant-numeric: tabular-nums;
-}
-.use-split-k { font-size: 0.82rem; color: var(--ink-4); }
-.use-split-k.is-none { color: var(--risk-low); }
-
-.use-split-bar {
-    display: flex;
-    height: 10px;
-    border-radius: 999px;
-    /* the track shows only where the parts do not add up, which on a whole
-       cut into its own pieces is nowhere -- so it is the faintest thing on the
-       card rather than a third colour between two meaningful ones */
-    background: var(--line-2);
-    overflow: hidden;
-}
+.use-split-r { margin-bottom: 0.55rem; }
+/* Two class names, not one, and the reason is worth keeping.
+   The track this borrows is `.use-meter-t`, which sets `display: block`
+   because an allowance meter holds one fill. A divided track holds several and
+   has to be a flex row -- but `.use-split-bar` alone is the same specificity as
+   `.use-meter-t`, and `.use-meter-t` is further down this file, so it won. The
+   parts stacked instead of sitting side by side, the second one fell outside a
+   seven point track with `overflow: hidden` on it, and the bar painted as a
+   red sliver with nothing after it. Both classes, so it wins on specificity
+   and not on where it happens to sit. */
+.use-meter-t.use-split-bar { display: flex; }
 .use-split-p { display: block; height: 100%; background: var(--link); }
 .use-split-p.is-ok { background: var(--risk-low); }
 .use-split-p.is-mid { background: var(--risk-mid); }
 .use-split-p.is-bad { background: var(--risk-high); }
-/* a hairline between parts, so two colours of similar weight do not read as
-   one shape with a gradient in it */
+/* a hairline of the card between parts, so two colours of similar weight do
+   not read as one shape with a gradient in it */
 .use-split-p + .use-split-p { box-shadow: inset 1px 0 0 var(--surface); }
 
-.use-split-l {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto auto;
+.use-split-facts { margin-top: 0.75rem; margin-bottom: 0; }
+/* the name, with the colour that names it in the bar above */
+.use-split-n {
+    display: flex;
     align-items: baseline;
-    gap: 0.6rem;
-    margin-top: 0.1rem;
-    padding: 0.42rem 0;
-    border-bottom: 1px solid var(--line-2);
-    font-size: 0.82rem;
+    gap: 0.5rem;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--ink-3);
 }
-.use-split-l:last-child { border-bottom: 0; }
-.use-split > .use-split-l:first-of-type { margin-top: 0.55rem; }
 .use-split-d {
+    flex: none;
     width: 9px;
     height: 9px;
     border-radius: 3px;
@@ -4208,22 +4192,20 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 .use-split-d.is-ok { background: var(--risk-low); }
 .use-split-d.is-mid { background: var(--risk-mid); }
 .use-split-d.is-bad { background: var(--risk-high); }
-.use-split-n {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: var(--ink-2);
-}
-.use-split-v { color: var(--ink); font-weight: 650; font-variant-numeric: tabular-nums; }
-/* the share, held to a width so a column of them is a column: "5%" and "94.7%"
-   are four characters apart and a right edge that moves is a right edge
-   nobody can scan */
-.use-split-s {
-    min-width: 3.4rem;
-    text-align: right;
-    color: var(--ink-4);
+.use-split-v {
+    display: flex;
+    align-items: baseline;
+    gap: 0.9rem;
+    flex: none;
     font-variant-numeric: tabular-nums;
+}
+/* the share, held to a width so a column of them is a column: "5%" and "95%"
+   are two characters apart and a right edge that moves is one nobody can scan */
+.use-split-s {
+    min-width: 3.1rem;
+    text-align: right;
+    font-weight: 500;
+    color: var(--ink-4);
 }
 
 /* a line that opens the checks it counted takes the same tint as every other
@@ -4231,12 +4213,13 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 .use-split-l.is-open {
     margin-inline: -0.5rem;
     padding-inline: 0.5rem;
-    color: inherit;
+    color: var(--ink-4);
     text-decoration: none;
     cursor: pointer;
     transition: background 0.14s ease;
 }
 .use-split-l.is-open:hover { background: var(--hover); }
+.use-split-l.is-open:hover .use-split-n { color: var(--ink-2); }
 .use-split-l.is-open:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
 
 .use-share-l {
@@ -4331,9 +4314,8 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     .use-foot .btn { justify-content: center; }
     .use-share-l { grid-template-columns: minmax(0, 5.5rem) minmax(0, 1fr) auto auto; gap: 0.5rem; }
     .use-share-s { min-width: 2.7rem; }
-    /* the headline share and its sentence stack rather than wrap mid-phrase */
-    .use-split-h { gap: 0.3rem 0.5rem; }
-    .use-split-s { min-width: 3rem; }
+    .use-split-s { min-width: 2.8rem; }
+    .use-split-v { gap: 0.7rem; }
 }
 
 /* What the plan allows, above what happened under it. A short block rather
