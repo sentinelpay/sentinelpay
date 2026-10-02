@@ -95,15 +95,12 @@
         warn: '<path d="M12 8.5v5M12 16.9v.1"/><path d="M10.3 4.3 2.8 18a1.8 1.8 0 0 0 1.6 2.7h15.2A1.8 1.8 0 0 0 21.2 18L13.7 4.3a1.9 1.9 0 0 0-3.4 0Z"/>',
         // a check that came back as something other than clear. a marker put in
         // by a person, not a warning sign: it says look here, not stop.
-        flag: '<path d="M6 21V4.6a.6.6 0 0 1 .35-.55C7.6 3.5 9 3.2 10.4 3.2c2.9 0 4.3 1.6 7.2 1.6.9 0 1.7-.1 2.4-.3v8.6c-.7.2-1.5.3-2.4.3-2.9 0-4.3-1.6-7.2-1.6-1.4 0-2.8.3-4.4.9"/>',
         // a scale cut into three, which is the whole of what the bands are.
         // not the flag: that already means what came back, and a mark that
         // means two things teaches the reader one of them wrongly.
         bands: '<path d="M3.4 12h17.2"/><path d="M9.6 8.4v7.2"/><path d="M15.4 8.4v7.2"/>',
         // a chain: the thing an address is on. two links of one, rather than a
         // coin, because what is counted is the network and not the money.
-        coin: '<rect x="2.6" y="8.8" width="10.2" height="6.4" rx="3.2"/>' +
-            '<rect x="11.2" y="8.8" width="10.2" height="6.4" rx="3.2"/>',
         // an invitation that has gone out and not been answered. deliberately
         // not the person mark: nobody is there yet, an envelope is.
         mail: '<rect x="3" y="5.5" width="18" height="13" rx="2.2"/><path d="m3.8 7 7.1 5.3a1.8 1.8 0 0 0 2.2 0L20.2 7"/>',
@@ -2879,6 +2876,22 @@
                 count.textContent = useNum(n);
                 all.appendChild(count);
             }
+            // What has been dealt with, beside the way to what has not.
+            //
+            // The count above says what is left; this says what the team got
+            // through. A queue screen that only ever counts down is a screen
+            // that never shows anybody their own work, and these two numbers
+            // are the only place in the product where that work is visible at
+            // all.
+            var done = (out.cleared || 0) + (out.confirmed || 0);
+            if (done > 0) {
+                var said = document.createElement('span');
+                said.className = 'ovw-done';
+                said.textContent = fill('{cleared} not a match, {confirmed} confirmed',
+                    { cleared: useNum(out.cleared || 0), confirmed: useNum(out.confirmed || 0) });
+                foot.insertBefore(said, foot.firstChild);
+            }
+
             foot.appendChild(all);
             card.appendChild(foot);
             trimToScreen(card, first);
@@ -5696,6 +5709,20 @@
                 cell.appendChild(sparkline(r.spark,
                     r.move ? (r.move.up ? 'up' : (r.move.down ? 'down' : '')) : '',
                     r.before));
+            } else if (r.of) {
+                // An allowance gets a meter where a measure gets a shape. How
+                // fast it was spent yesterday is the chart's question; this one
+                // is how close the line is, and a line you are walking towards
+                // is drawn as a line.
+                var track = document.createElement('span');
+                track.className = 'orgh-track';
+                var fill = document.createElement('span');
+                fill.className = 'orgh-fill';
+                var share = Math.min(100, Math.round((r.used / r.of) * 100));
+                fill.style.width = r.used > 0 ? 'max(3px, ' + share + '%)' : '0';
+                if (share >= 100) fill.classList.add('is-full');
+                track.appendChild(fill);
+                cell.appendChild(track);
             }
             strip.appendChild(cell);
         });
@@ -6716,6 +6743,27 @@
             };
 
             var runs = pick('Screenings') || pick('Live checks');
+
+            // The answer, in a sentence, before any of the drawing.
+            //
+            // Everything under this says how much has been used in some shape:
+            // a figure, a meter, a chart, four tiles. None of them says whether
+            // that is fine, which is the only thing most people open this page
+            // to find out. One line, in words, at the top -- and where it is
+            // not fine it says what happens, because "out of screenings" means
+            // checks are being refused right now and that is not a thing to
+            // leave somebody to work out from a full bar.
+            if (!fresh && runs && !runs.unmetered && runs.of) {
+                var left = Math.max(0, runs.of - runs.used);
+                var said = document.createElement('p');
+                said.className = 'use-verdict' + (left > 0 ? '' : ' is-out');
+                said.textContent = left > 0
+                    ? fill('{used} of {of} screenings used in this period. {left} left.',
+                        { used: useNum(runs.used), of: useNum(runs.of), left: useNum(left) })
+                    : t('Every screening in this period is used. Further checks are refused until the next one begins.');
+                body.appendChild(said);
+            }
+
             body.appendChild(useHeadline(s, out.previous, out.period, cmp, fresh,
                 runs ? {
                     label: runs.label,
@@ -6748,70 +6796,44 @@
             // These four are all counted over the window, all comparable with
             // the window before, and all about the work rather than about the
             // account.
-            var severe = (s.verdicts && s.verdicts.severe) || 0;
-            // The same days of the window before, wherever there is one. The
-            // server sends them for the chart's own ghost line, and they carry
-            // every measure, so each card can lay its own earlier self under
-            // itself rather than under a copy of the total.
-            var older = (was && was.days) || [];
-            var earlier = function (key) {
-                return older.length ? older.map(function (d) { return d[key]; }) : null;
-            };
-            var strip = [
-                {
-                    label: 'Flagged', value: useNum(s.flagged), to: 'use-flagged',
-                    // a share with no noun beside it is a number the reader
-                    // has to guess the denominator of, and the two candidates
-                    // here -- of the checks, of the addresses -- are both
-                    // plausible and give different answers
-                    sub: s.total
-                        ? fill('{n}% of checks', { n: Math.round((s.flagged / s.total) * 100) })
-                        : '',
-                    move: moved(s.flagged, was && was.flagged),
-                    spark: (s.days || []).map(function (d) { return d.flagged; }),
-                    before: earlier('flagged')
-                },
-                {
-                    // Not the same question as flagged. Flagged is everything
-                    // worth a second look; this is the part a compliance
-                    // officer has to act on, and on a busy account it is the
-                    // only one of the two that can be read at a glance.
-                    // "Severe" alone is a verdict, and the dictionary already
-                    // owns that word as one: in croatian it is "kritican",
-                    // a masculine adjective agreeing with a noun that is not
-                    // here. A label over a count needs the noun.
-                    label: 'Severe findings', value: useNum(severe), to: 'use-flagged',
-                    sub: s.flagged
-                        ? fill('{n}% of flagged', { n: Math.round((severe / s.flagged) * 100) })
-                        : '',
-                    move: moved(severe, was && was.severe),
-                    spark: (s.days || []).map(function (d) { return d.severe; }),
-                    before: earlier('severe')
-                },
-                {
-                    label: 'Addresses', value: useNum(s.addresses), to: 'use-assets',
-                    // how hard the same address is being asked about. one is a
-                    // list being walked once; ten is a book of customers being
-                    // rechecked, which is a different product being bought.
-                    sub: s.addresses
-                        ? fill('{n} checks each', { n: (s.total / s.addresses).toFixed(1) })
-                        : '',
-                    move: moved(s.addresses, was && was.addresses),
-                    // the distinct addresses of each day, which do not add up
-                    // to the distinct addresses of the window and are not
-                    // meant to: one address asked about on two days is one
-                    // address that week and one on each of the two
-                    spark: (s.days || []).map(function (d) { return d.addresses; }),
-                    before: earlier('addresses')
-                },
-                {
-                    label: 'Chains', value: useNum(s.assetCount), to: 'use-assets',
-                    move: moved(s.assetCount, was && was.assetCount),
-                    spark: (s.days || []).map(function (d) { return d.assets; }),
-                    before: earlier('assets')
-                }
-            ];
-            if (!fresh) body.appendChild(useStrip(strip));
+            // The tiles are the quota, not the analysis.
+            //
+            // They were Flagged / Severe findings / Addresses / Chains: four
+            // facts about what the work found, at the top of a page about what
+            // the work cost. This page answers one question -- how much of what
+            // I am allowed is gone -- and the four boxes under its headline are
+            // the first place a reader looks for the answer. So they carry the
+            // allowances, one tile each, every one a way down to the section
+            // that explains it.
+            //
+            // What the work found has not been thrown away: it is below, inside
+            // Screenings, as what the allowance was spent on.
+            var strip = allow.rows.map(function (r) {
+                var label = r.label;
+                var value = r.unmetered
+                    ? t('Unmetered')
+                    : useNum(r.used) + ' / ' + useNum(r.of);
+                return {
+                    label: label,
+                    value: value,
+                    // each tile is a way down to the section that explains it,
+                    // and a seat is explained where the seats are
+                    to: label === 'Seats' ? 'use-team' : 'use-screenings',
+                    sub: r.unmetered || !r.of
+                        ? (r.per ? t(r.per) : '')
+                        : fill('{n}% used', { n: Math.min(100, Math.round((r.used / r.of) * 100)) }),
+                    // the meter rather than a shape over time: an allowance is
+                    // a line you are walking towards, and how fast you walked
+                    // yesterday is the chart's question, not this one
+                    of: r.unmetered ? 0 : r.of,
+                    used: r.used
+                };
+            });
+            // Two or more, or none at all. One allowance is not a row of
+            // cards: the meter inside the card above already says it, and a
+            // single tile beside an empty three quarters of a row reads as
+            // something that failed to load.
+            if (!fresh && strip.length > 1) body.appendChild(useStrip(strip));
 
             // and whatever is left of the first screen, so the next section
             // begins below it rather than half in view
@@ -6820,46 +6842,80 @@
             fold.setAttribute('aria-hidden', 'true');
             body.appendChild(fold);
 
-            // The checks themselves are not here any more.
+            // ---- screenings
             //
-            // They were: the last few of the window, flagged first, with a way
-            // into the log. It was the right list on the wrong screen. This
-            // page answers how much was screened and against what allowance;
-            // which checks need a person is the first question of the working
-            // day and now has a screen of its own, where the alerts can also
-            // be worked rather than only looked at. A list that appears on two
-            // screens is a list that drifts on one of them.
-
-            // ---- what came back
+            // One section per metered thing, each built the same way: what it
+            // is and what happens when it runs out on the left, what is
+            // included and what is left on the right, and under that what the
+            // allowance was actually spent on.
             //
-            // This section kept being redrawn and kept feeling wrong, and the
-            // reason was not the drawing. It said 46 came back flagged, on a
-            // page whose second card already says "Flagged 46" and whose third
-            // already says "Severe findings 46". The same number three times in
-            // one screen, twice with a shape around it. No arrangement saves a
-            // section that repeats the one above it.
-            //
-            // So it answers the half of the question nothing else on this page
-            // can: what a person made of them. The engine's answer is a count
-            // and the tiles have it; the work is what happened next, and until
-            // a check could carry a decision there was nothing here to put.
-            //
-            // Written as facts, not as bars. A bar is for comparing many
-            // things of one kind -- which is what Chains is and why Chains
-            // keeps its bars. Two outcomes and four states are not a
-            // distribution to compare, they are a short list of amounts, and
-            // this page already writes a short list of amounts the same way in
-            // Plan, in Coverage and in Team.
-            var flag = useSection('use-flagged', 'What came back', 'flag',
-                'How the checks answered, and what has been done about them.');
-            flag.body.appendChild(useSide([
-                'Anything other than clear is worth a person looking at it.',
-                'A flag is not a verdict about the customer: it is the list saying it knows the address.'
+            // Everything that used to be a section of its own down here --
+            // which projects did the checking, which chains, what the checks
+            // answered -- is that last part. None of them was a section: each
+            // was a slice of one number, and three slices of one number laid
+            // out as three sections is a page that looks longer than it is.
+            var scr = useSection('use-screenings', 'Screenings', 'screening',
+                'What a check costs you, and what this period went on.');
+            scr.body.appendChild(useSide(sub ? [
+                'A check is one address, asked once. The allowance is per period and starts again when the next one does.',
+                'Running out stops further checks rather than adding to a bill: nothing here can charge you by surprise.'
+            ] : [
+                'A check is one address, asked once.',
+                'Running out stops further checks rather than adding to a bill: nothing here can charge you by surprise.'
             ]));
-            var fmain = useMain();
+            var smain = useMain();
+
+            // Included, used, left. The three lines every metered thing on this
+            // page answers with, in the same order every time.
+            var meter = allow.rows.length ? allow.rows[0] : null;
+            if (meter && !meter.unmetered && meter.of) {
+                smain.appendChild(useFacts([
+                    ['Included', useNum(meter.of) + (meter.per ? '  ·  ' + t(meter.per) : '')],
+                    ['Used', useNum(meter.used)],
+                    ['Left', useNum(Math.max(0, meter.of - meter.used))]
+                ]));
+            } else if (meter && meter.unmetered) {
+                smain.appendChild(useFacts([
+                    ['Included', t('Unmetered')],
+                    ['Used', useNum(meter.used)]
+                ]));
+            }
+
+            // What this period went on.
+            //
+            // Three cuts of the same number, so three sub-headings rather than
+            // three sections: who spent it, on which chains, and what came
+            // back. A reader asking why the allowance is going down wants all
+            // three in one place and none of them a scroll apart.
+            var spent = [];
+            var work = (s.projects || []).filter(function (r) { return r.n > 0; });
+            if (work.length > 1) {
+                spent.push({
+                    title: 'By project',
+                    node: useShare(work.map(function (r) {
+                        return {
+                            label: r.id ? (r.name || t('Unnamed project')) : t('No project'),
+                            n: r.n,
+                            // the log files a check with no project under
+                            // 'none', which is a filter and not the absence of
+                            // one
+                            key: r.id ? String(r.id) : 'none'
+                        };
+                    }), s.total, null, function (r) {
+                        return logHref(org, out, { project: r.key });
+                    })
+                });
+            }
+            if (s.assets && s.assets.length) {
+                spent.push({
+                    title: 'By chain',
+                    node: useShare(s.assets.map(function (a) {
+                        return { label: a.asset === 'other' ? t('Not recognised') : chainText(a.asset), n: a.n };
+                    }), s.total)
+                });
+            }
 
             // In the order the work is in, not the order the numbers are in.
-            //
             // Sorted by count, clear is always first, because clear is always
             // most -- so the top line of a sanctions screen was for ever the
             // one nobody has to do anything about.
@@ -6876,98 +6932,36 @@
                     if (y === -1) y = VERDICT_ORDER.length;
                     return x === y ? b.n - a.n : x - y;
                 });
-
-            if (!vrows.length) {
-                fmain.appendChild(emptyState('Nothing to show yet', ''));
-            } else {
-                fmain.appendChild(useAmounts(vrows.map(function (r) {
-                    return {
-                        label: r.label,
-                        n: r.n,
-                        of: s.total,
-                        mark: r.key === 'clear' ? 'ok' : (r.key === 'severe' ? 'bad' : 'mid'),
-                        href: logHref(org, out, { verdict: r.key })
-                    };
-                })));
-
-                // And what was done about the ones that were not clear.
-                //
-                // Only where there are any: an organisation with nothing
-                // flagged does not need a heading over four zeroes telling it
-                // there is no work. The counts come from the same window as
-                // everything else on this page, so "this period" means the same
-                // thing here as it does in the chart.
-                var dec = s.decisions || {};
-                var drows = [
-                    { key: 'open', label: 'Open', mark: '' },
-                    { key: 'holding', label: 'In review', mark: 'mid' },
-                    { key: 'cleared', label: 'Not a match', mark: 'ok' },
-                    { key: 'confirmed', label: 'Confirmed', mark: 'bad' }
-                ].map(function (d) {
-                    return {
-                        label: t(d.label),
-                        n: Number(dec[d.key]) || 0,
-                        of: s.flagged,
-                        mark: d.mark,
-                        href: logHref(org, out, { state: d.key })
-                    };
+            if (vrows.length) {
+                spent.push({
+                    title: 'What came back',
+                    node: useAmounts(vrows.map(function (r) {
+                        return {
+                            label: r.label,
+                            n: r.n,
+                            of: s.total,
+                            mark: r.key === 'clear' ? 'ok' : (r.key === 'severe' ? 'bad' : 'mid'),
+                            href: logHref(org, out, { verdict: r.key })
+                        };
+                    }))
                 });
-                if (s.flagged > 0) {
-                    var dt = document.createElement('div');
-                    dt.className = 'use-carries-t';
-                    dt.textContent = t('What was done about them');
-                    fmain.appendChild(dt);
-                    fmain.appendChild(useAmounts(drows));
-                }
-            }
-            flag.body.appendChild(fmain);
-            if (!fresh) body.appendChild(flag);
-
-            // ---- who did the work
-            //
-            // Only where there is something to divide. One project, or none at
-            // all, and this is a section telling you that all of your work was
-            // done by you.
-            var work = (s.projects || []).filter(function (r) { return r.n > 0; });
-            if (!fresh && work.length > 1) {
-                var who = useSection('use-projects', 'Projects', 'projects',
-                    'Which part of the business did the checking.');
-                who.body.appendChild(useSide([
-                    'A check is filed under a project when the token that made it belongs to that project.',
-                    'Checks made from this dashboard belong to the organisation rather than to one project.'
-                ]));
-                var wmain = useMain();
-                wmain.appendChild(useShare(work.map(function (r) {
-                    return {
-                        label: r.id ? (r.name || t('Unnamed project')) : t('No project'),
-                        n: r.n,
-                        // the log files a check with no project under 'none',
-                        // which is a filter and not the absence of one
-                        key: r.id ? String(r.id) : 'none'
-                    };
-                }), s.total, null, function (r) {
-                    return logHref(org, out, { project: r.key });
-                }));
-                who.body.appendChild(wmain);
-                body.appendChild(who);
             }
 
-            // ---- chains
-            var ass = useSection('use-assets', 'Chains', 'coin',
-                'Which chains the addresses were on.');
-            ass.body.appendChild(useSide([
-                'Addresses are recognised by their shape, so this is what was asked about rather than what was declared.'
-            ]));
-            var amain = useMain();
-            if (s.assets && s.assets.length) {
-                amain.appendChild(useShare(s.assets.map(function (a) {
-                    return { label: a.asset === 'other' ? t('Not recognised') : chainText(a.asset), n: a.n };
-                }), s.total));
-            } else {
-                amain.appendChild(emptyState('Nothing to show yet', ''));
+            if (spent.length) {
+                var spentTop = document.createElement('div');
+                spentTop.className = 'use-carries-t';
+                spentTop.textContent = t('What this period went on');
+                smain.appendChild(spentTop);
+                spent.forEach(function (part) {
+                    var h = document.createElement('div');
+                    h.className = 'use-spent-t';
+                    h.textContent = t(part.title);
+                    smain.appendChild(h);
+                    smain.appendChild(part.node);
+                });
             }
-            ass.body.appendChild(amain);
-            if (!fresh) body.appendChild(ass);
+            scr.body.appendChild(smain);
+            if (!fresh) body.appendChild(scr);
 
             // ---- plan
             if (!sandbox) {
