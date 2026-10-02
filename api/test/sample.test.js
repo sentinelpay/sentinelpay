@@ -164,11 +164,11 @@ test('a share says what it is a share of', () => {
     assert.match(SRC, /share\.className = 'use-share-s'/, 'the lists have no shares');
 });
 
-// Two sections of the same kind of content, one above the other, in two
-// different shapes, read as two screens built by two people. What came back was
-// a divided bar with a key for a while; Chains sits directly under it as a four
-// column grid, and the page's own rhythm beats the better picture.
-test('there is one share list on this page, not two', () => {
+// Bars are for comparing many things of one kind, which is what Chains is. Two
+// outcomes and four states are a short list of amounts, and a track drawn
+// across half the page for each of them says less than the number already does
+// while taking four times the room.
+test('there is one kind of bar list on this page, not two', () => {
     assert.doesNotMatch(SRC, /function useSplit\(/,
         'there is a second kind of share list again');
     assert.doesNotMatch(CSS, /\.use-split/,
@@ -176,6 +176,31 @@ test('there is one share list on this page, not two', () => {
     const at = SRC.indexOf('function viewUsage(');
     const usage = SRC.slice(at, SRC.indexOf('\n    function ', at + 40));
     const uses = usage.match(/useShare\(/g) || [];
-    assert.strictEqual(uses.length, 3,
-        'the verdicts, the projects and the chains are not all drawn the same way');
+    assert.strictEqual(uses.length, 2,
+        'the projects and the chains are no longer the only lists drawn with bars');
+    assert.match(usage, /useAmounts\(/,
+        'what came back is not written as a short list of amounts');
+});
+
+// It said 46 came back flagged, on a page whose second card already says
+// "Flagged 46" and whose third already says "Severe findings 46". The same
+// number three times in one screen. No arrangement saves a section that repeats
+// the one above it, so it answers the half nothing else on this page can.
+test('what came back says what nothing else on the page says', () => {
+    const at = SRC.indexOf('function viewUsage(');
+    const usage = SRC.slice(at, SRC.indexOf('\n    function ', at + 40));
+    assert.match(usage, /s\.decisions \|\| \{\}/,
+        'the section never reads what was decided about the flagged checks');
+    for (const state of ['open', 'holding', 'cleared', 'confirmed']) {
+        assert.ok(usage.indexOf("key: '" + state + "'") !== -1,
+            'the ' + state + ' checks are not counted on this page');
+    }
+    assert.match(usage, /logHref\(org, out, \{ state: d\.key \}\)/,
+        'a state does not open the checks in it');
+
+    // and the server has to send them
+    const usageSrc = fs.readFileSync(path.join(__dirname, '..', 'usage.js'), 'utf8');
+    assert.match(usageSrc, /decisions: byDecision/, 'the window does not count decisions');
+    assert.match(usageSrc, /AS state, count\(\*\)::int AS n[\s\S]{0,260}verdict <> 'clear'/,
+        'the decision tally counts checks that were never anybody\'s to decide');
 });

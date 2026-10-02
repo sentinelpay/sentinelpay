@@ -3932,6 +3932,66 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     overflow-wrap: anywhere;
 }
 
+/* A short list of amounts: a name, how many, and what that is of the whole.
+   The page's own fact line -- key left, value hard right, hairline between --
+   with a dot in front, because these amounts have meanings and the meanings
+   already have colours everywhere else on this screen. */
+.use-amts { margin-bottom: 0; }
+.use-amt-n {
+    display: flex;
+    align-items: baseline;
+    gap: 0.55rem;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.use-amt-d {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 2.5px;
+    /* no meaning of its own is a hairline ring rather than a filled dot: a
+       grey disc beside a red one reads as a colour, and "open" is not one */
+    border: 1.5px solid var(--ink-4);
+    transform: translateY(-1px);
+}
+.use-amt-d.is-ok { border-color: var(--risk-low); background: var(--risk-low); }
+.use-amt-d.is-mid { border-color: var(--risk-mid); background: var(--risk-mid); }
+.use-amt-d.is-bad { border-color: var(--risk-high); background: var(--risk-high); }
+.use-amt-v {
+    display: flex;
+    align-items: baseline;
+    gap: 0.55rem;
+    flex: none;
+    font-variant-numeric: tabular-nums;
+}
+/* the share, in the quieter half of the same value and held to a width, so a
+   column of them has one right edge whatever the numbers are */
+.use-amt-s {
+    min-width: 3.2rem;
+    text-align: right;
+    font-weight: 400;
+    color: var(--ink-4);
+}
+/* an amount of nothing is still worth a line -- "nothing is open" is the best
+   news on this page -- but it does not need the weight of one that is not */
+.use-amt.is-none .use-amt-v { color: var(--ink-4); font-weight: 500; }
+.use-amt.is-none .use-amt-d { opacity: 0.45; }
+
+/* a line that opens the checks it counted takes the same tint as every other
+   row in this product, spread into the gutters so the whole line lights */
+.use-amt.is-open {
+    margin-inline: -0.5rem;
+    padding-inline: 0.5rem;
+    color: var(--ink-4);
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.14s ease;
+}
+.use-amt.is-open:hover { background: var(--hover); }
+.use-amt.is-open:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
+
 /* What the plan carries that is not a number. Same type size and same rhythm
    as the facts above it, because it is the same kind of statement: one line,
    one thing you have. The rule between rows is dropped -- these have no second
