@@ -31,7 +31,7 @@ const CSS = fs.readFileSync(
 function body(sig, span) {
     const at = SRC.indexOf(sig);
     assert.notStrictEqual(at, -1, sig + ' is gone');
-    return SRC.slice(at, at + (span || 5200));
+    return SRC.slice(at, at + (span || 7000));
 }
 
 test('the first screen asks for the queue, not for the newest', () => {
@@ -53,7 +53,7 @@ test('the usage screen does not carry the checks list any more', () => {
     const at = SRC.indexOf('function viewUsage(');
     assert.notStrictEqual(at, -1);
     const usage = SRC.slice(at, SRC.indexOf('\n    function ', at + 40));
-    assert.doesNotMatch(usage, /use-screening/,
+    assert.doesNotMatch(usage, /'use-screening',/,
         'the checks section is back on the usage screen');
     assert.doesNotMatch(usage, /lastChecks\(/,
         'the usage screen fetches rows of checks again');
@@ -182,25 +182,43 @@ test('there is one kind of bar list on this page, not two', () => {
         'what came back is not written as a short list of amounts');
 });
 
-// It said 46 came back flagged, on a page whose second card already says
-// "Flagged 46" and whose third already says "Severe findings 46". The same
-// number three times in one screen. No arrangement saves a section that repeats
-// the one above it, so it answers the half nothing else on this page can.
-test('what came back says what nothing else on the page says', () => {
+// The decision counts belong where the work is, not in a billing window. The
+// queue endpoint already had them; the overview already calls it.
+test('the work done is visible somewhere', () => {
+    const fn = body('function viewOverview(');
+    assert.match(fn, /out\.cleared/, 'nothing says how many alerts were cleared');
+    assert.match(fn, /out\.confirmed/, 'nothing says how many were confirmed');
+    const usageSrc = fs.readFileSync(path.join(__dirname, '..', 'usage.js'), 'utf8');
+    assert.doesNotMatch(usageSrc, /decisions: byDecision/,
+        'a billing window counts decisions, which are not consumption');
+});
+
+// Usage is a billing page: every section on it answers how much of what I am
+// allowed is gone. The four tiles under the headline used to be Flagged /
+// Severe findings / Addresses / Chains -- four facts about what the work found,
+// at the top of a page about what the work cost.
+test('the tiles under the headline are the allowances', () => {
     const at = SRC.indexOf('function viewUsage(');
     const usage = SRC.slice(at, SRC.indexOf('\n    function ', at + 40));
-    assert.match(usage, /s\.decisions \|\| \{\}/,
-        'the section never reads what was decided about the flagged checks');
-    for (const state of ['open', 'holding', 'cleared', 'confirmed']) {
-        assert.ok(usage.indexOf("key: '" + state + "'") !== -1,
-            'the ' + state + ' checks are not counted on this page');
-    }
-    assert.match(usage, /logHref\(org, out, \{ state: d\.key \}\)/,
-        'a state does not open the checks in it');
+    assert.match(usage, /var strip = allow\.rows\.map\(/,
+        'the tiles are not built from what the plan allows');
+    assert.doesNotMatch(usage, /label: 'Severe findings'/,
+        'the analysis tiles are back above the allowances');
+    assert.match(usage, /use-verdict/,
+        'the page never says in words whether the allowance is fine');
+});
 
-    // and the server has to send them
-    const usageSrc = fs.readFileSync(path.join(__dirname, '..', 'usage.js'), 'utf8');
-    assert.match(usageSrc, /decisions: byDecision/, 'the window does not count decisions');
-    assert.match(usageSrc, /AS state, count\(\*\)::int AS n[\s\S]{0,260}verdict <> 'clear'/,
-        'the decision tally counts checks that were never anybody\'s to decide');
+// Three cuts of one number laid out as three sections made the page look longer
+// than it is and left a reader wondering what the difference between them was.
+test('what the allowance went on is one place, not three sections', () => {
+    const at = SRC.indexOf('function viewUsage(');
+    const usage = SRC.slice(at, SRC.indexOf('\n    function ', at + 40));
+    for (const gone of ["'use-flagged'", "'use-assets'", "'use-projects'"]) {
+        assert.ok(usage.indexOf('useSection(' + gone) === -1,
+            gone + ' is a section of its own again');
+    }
+    assert.match(usage, /useSection\('use-screenings'/,
+        'there is no section for the thing this page meters');
+    assert.match(usage, /'What this period went on'/,
+        'the cuts of the number have no heading over them');
 });

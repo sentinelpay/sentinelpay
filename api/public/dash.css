@@ -3857,6 +3857,10 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     border-top: 1px solid var(--line-2);
 }
 .ovw-foot .use-open { margin-top: 0; }
+/* what the team got through, beside the way to what is left. The count above
+   the rows says what remains; a queue screen that only ever counts down never
+   shows anybody their own work. */
+.ovw-done { margin-right: auto; font-size: 0.78rem; color: var(--ink-4); }
 .ovw .empty { padding: 2.2rem 1.15rem; }
 
 .use-last-foot {
@@ -3931,6 +3935,35 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     text-align: right;
     overflow-wrap: anywhere;
 }
+
+/* The answer, in a sentence, before any of the drawing.
+   Everything under it says how much has been used in some shape -- a figure, a
+   meter, a chart, four tiles -- and none of them says whether that is fine,
+   which is the only thing most people open this page to find out. Set at the
+   size of the hint under a section heading, because it is the same kind of
+   statement: one line that tells you whether to read on. */
+.use-verdict {
+    margin: 0 0 1.1rem;
+    font-size: 0.88rem;
+    line-height: 1.5;
+    color: var(--ink-3);
+}
+/* and where it is not fine, in the colour this product uses for a line that
+   has been crossed. Checks are being refused as it is read. */
+.use-verdict.is-out { color: var(--risk-high); font-weight: 600; }
+
+/* What the allowance went on: three cuts of one number under one heading.
+   Each cut gets a quiet line of its own rather than a section, because a slice
+   of a number is not a subject -- laid out as three sections it made the page
+   look longer than it is and left a reader wondering what the difference
+   between them was. */
+.use-spent-t {
+    margin: 1rem 0 0.3rem;
+    font-size: 0.78rem;
+    font-weight: 650;
+    color: var(--ink-3);
+}
+.use-spent-t:first-child { margin-top: 0; }
 
 /* A short list of amounts: a name, how many, and what that is of the whole.
    The page's own fact line -- key left, value hard right, hairline between --
@@ -4595,9 +4628,14 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
    fell under the fold on a laptop, so somebody opening this page saw a chart
    and half a row and had to be told the rest was there. Two across where four
    would leave a number no room to be read. */
+/* As many columns as there are things, not four whatever happens.
+   This held four measures of the work and was always four. It holds the
+   allowances now, and an organisation has as many of those as its plan meters
+   -- one on a trial, two on most plans. Fixed at four, a single allowance sat
+   in a quarter of the row with three quarters of nothing beside it. */
 .use-strip {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), 1fr));
     gap: 0.7rem;
     margin-bottom: 2.2rem;
 }

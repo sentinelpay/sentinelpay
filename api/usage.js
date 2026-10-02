@@ -358,7 +358,7 @@ async function screeningsIn(orgId, from, to, sandbox, zone, grain) {
     to = until(to);
     const g = grain || GRAIN.day;
     const args = [Number(orgId), from, to, Boolean(sandbox), zone];
-    const [sum, days, verdicts, decisions, assets, byProject] = await Promise.all([
+    const [sum, days, verdicts, assets, byProject] = await Promise.all([
         db.query(
             `SELECT count(*)::int AS n,
                     count(*) FILTER (WHERE verdict <> 'clear')::int AS flagged,
@@ -392,18 +392,6 @@ async function screeningsIn(orgId, from, to, sandbox, zone, grain) {
            GROUP BY 1`,
             args.slice(0, 4)
         ),
-        // And what a person made of them, which is the half of this the engine
-        // cannot answer. Only the flagged rows: a check that came back clear
-        // was never anybody's to decide, and counting ten thousand of them as
-        // "open" would bury the twelve that are.
-        db.query(
-            `SELECT COALESCE(NULLIF(decision, ''), 'open') AS state, count(*)::int AS n
-               FROM screenings
-              WHERE org_id = $1 AND at >= $2 AND at < $3 AND sandbox = $4
-                AND verdict <> 'clear'
-           GROUP BY 1`,
-            args.slice(0, 4)
-        ),
         db.query(
             `SELECT COALESCE(NULLIF(asset, ''), 'other') AS asset, count(*)::int AS n
                FROM screenings
@@ -429,8 +417,6 @@ async function screeningsIn(orgId, from, to, sandbox, zone, grain) {
     const head = sum.rows[0] || { n: 0, flagged: 0, addresses: 0, assets: 0 };
     const byVerdict = {};
     verdicts.rows.forEach((r) => { byVerdict[r.verdict] = r.n; });
-    const byDecision = {};
-    decisions.rows.forEach((r) => { byDecision[r.state] = r.n; });
     return {
         total: head.n,
         flagged: head.flagged,
@@ -439,7 +425,6 @@ async function screeningsIn(orgId, from, to, sandbox, zone, grain) {
         assetCount: head.assets,
         days: fillDays(days.rows, from, to, zone, grain),
         verdicts: byVerdict,
-        decisions: byDecision,
         assets: assets.rows.map((r) => ({ asset: r.asset, n: r.n })),
         projects: byProject.rows.map((r) => ({
             id: r.id ? String(r.id) : '',
