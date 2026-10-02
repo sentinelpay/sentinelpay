@@ -136,3 +136,53 @@ test('a share line looks like a line first and a link second', () => {
     assert.match(CSS, /\.use-share-l\.is-open:hover/, 'nothing answers the pointer');
     assert.match(CSS, /\.use-share-l\.is-open:focus-visible/, 'nothing answers the keyboard');
 });
+
+// What came back, read as one period rather than as a row of unrelated bars.
+//
+// It was a track per verdict, each filled against the same total: three
+// pictures of one fact, where the parts are one whole. And sorted by count,
+// which on a sanctions screen means clear is always the top row -- the one
+// nobody has to do anything about -- with the one that matters underneath it
+// looking like an afterthought.
+test('what came back is one bar, divided', () => {
+    const fn = body('function useSplit(', 4200);
+    assert.match(fn, /use-split-bar/, 'there is no single bar');
+    assert.match(fn, /use-split-p/, 'the bar has no parts');
+    assert.match(fn, /max\(3px, /,
+        'a part that exists can be drawn as nothing, which is the one thing it must not be');
+    assert.match(fn, /role', 'img'[\s\S]{0,200}aria-label/,
+        'the division is drawn and never said');
+
+    // the usage screen builds it, and no longer builds three tracks for it
+    const at = SRC.indexOf('function viewUsage(');
+    const usage = SRC.slice(at, SRC.indexOf('\n    function ', at + 40));
+    assert.match(usage, /useSplit\(vrows/, 'the verdicts are not drawn as one period');
+});
+
+test('the verdicts are in the order the work is in, not the order the numbers are', () => {
+    const at = SRC.indexOf("var VERDICT_ORDER");
+    assert.notStrictEqual(at, -1, 'nothing fixes the order of the verdicts');
+    const where = SRC.slice(at, at + 900);
+    assert.match(where, /\['severe', 'review', 'clear'\]/,
+        'the order is not by what needs a person');
+    assert.doesNotMatch(where, /sort\(function \(a, b\) \{ return b\.n - a\.n; \}\)/,
+        'the verdicts are sorted by count again, which puts clear on top for ever');
+    assert.match(where, /indexOf\(a\.key\)/, 'the order is not applied');
+    // a verdict the dictionary does not know must not quietly sort to the top
+    assert.match(where, /=== -1\) x = VERDICT_ORDER\.length/,
+        'an unknown verdict sorts above sanctioned');
+});
+
+// 46 of 872 is a different fact from 46, and the reader was being left to do
+// the division.
+test('a share says what it is a share of', () => {
+    const fn = body('function pct(', 900);
+    assert.match(fn, /toLocaleString\(navLang\(\)\)/,
+        'the decimal mark is not the reader\'s');
+    assert.match(fn, /share < 1 \? share\.toFixed\(1\)/,
+        'a share under one percent is rounded away');
+    assert.match(fn, /< 0\.1\) return '<'/,
+        'a part that exists can print as 0%');
+    assert.match(SRC, /share\.className = 'use-split-s'/, 'the split has no shares');
+    assert.match(SRC, /share\.className = 'use-share-s'/, 'the lists have no shares');
+});

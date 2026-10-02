@@ -4983,9 +4983,126 @@
         }
     }
 
-    // A list where the length of each line is its share. Used for what came
-    // back, for which projects did the work, and for which chains were asked
-    // about.
+    // One period, split into what it was made of.
+    //
+    // This is for a set of parts that are one whole: every check came back
+    // exactly one of clear, worth a look or sanctioned, and the three add up to
+    // the period. Drawn as a row of separate bars that was never visible --
+    // three tracks, each filled against the total, which is three pictures of
+    // one fact. Worse, the only row that matters was always a stub at the
+    // bottom of a screen whose top was a long green bar meaning nothing
+    // happened.
+    //
+    // So: one bar, divided. The eye reads the division in a glance and does
+    // not have to hold three percentages to get there. The share worth saying
+    // out loud is said above it in words -- how much of the period needs a
+    // person -- because that is the sentence this section exists to produce
+    // and nobody should have to do the division to hear it.
+    //
+    // A part under a point of the whole still gets a sliver, because zero
+    // width is the one thing it must not read as: one sanctioned address in
+    // three thousand is the most important thing on this screen.
+    function useSplit(rows, total, kindOf, linkOf) {
+        var box = document.createElement('div');
+        box.className = 'use-split';
+        var sum = rows.reduce(function (n, r) { return n + (Number(r.n) || 0); }, 0);
+        var whole = Math.max(Number(total) || 0, sum);
+
+        // How much of it needed a person. Said in words, and only where there
+        // is something to say: on a period where nothing was flagged the
+        // sentence is "none of it", which is the good news and is said as such
+        // rather than as "0.0%".
+        var flagged = rows.reduce(function (n, r) {
+            return r.key === 'clear' ? n : n + (Number(r.n) || 0);
+        }, 0);
+        var head = document.createElement('div');
+        head.className = 'use-split-h';
+        if (whole > 0 && flagged > 0) {
+            var big = document.createElement('span');
+            big.className = 'use-split-big';
+            big.textContent = pct(flagged, whole);
+            head.appendChild(big);
+            var what = document.createElement('span');
+            what.className = 'use-split-k';
+            what.textContent = t('of checks need a person');
+            head.appendChild(what);
+        } else {
+            var none = document.createElement('span');
+            none.className = 'use-split-k is-none';
+            none.textContent = t('Nothing in this period needs a person.');
+            head.appendChild(none);
+        }
+        box.appendChild(head);
+
+        // The bar. One track, every part in it, in the order the rows are in --
+        // which is the order of what needs doing, so the part that matters is
+        // at the end a reader starts from.
+        var bar = document.createElement('div');
+        bar.className = 'use-split-bar';
+        bar.setAttribute('role', 'img');
+        bar.setAttribute('aria-label', rows.map(function (r) {
+            return r.label + ': ' + useNum(r.n) + ', ' + pct(r.n, whole);
+        }).join('. '));
+        rows.forEach(function (r) {
+            var part = document.createElement('span');
+            part.className = 'use-split-p' + (kindOf && kindOf(r) ? ' is-' + kindOf(r) : '');
+            // a part that exists is never nothing wide, and a part that is
+            // everything does not leave a hairline of track showing
+            var share = whole > 0 ? (r.n / whole) * 100 : 0;
+            part.style.width = r.n > 0 ? 'max(3px, ' + share + '%)' : '0';
+            bar.appendChild(part);
+        });
+        box.appendChild(bar);
+
+        // and the key under it, which is where the numbers live
+        rows.forEach(function (r) {
+            var href = linkOf ? linkOf(r) : '';
+            var line = document.createElement(href ? 'a' : 'div');
+            line.className = 'use-split-l' + (href ? ' is-open' : '');
+            if (href) {
+                line.href = href;
+                line.setAttribute('aria-label',
+                    r.label + ', ' + useNum(r.n) + ', ' + pct(r.n, whole) + '. ' + t('See these checks'));
+            }
+            var dot = document.createElement('i');
+            dot.className = 'use-split-d' + (kindOf && kindOf(r) ? ' is-' + kindOf(r) : '');
+            line.appendChild(dot);
+            var name = document.createElement('span');
+            name.className = 'use-split-n';
+            name.textContent = r.label;
+            line.appendChild(name);
+            var n = document.createElement('span');
+            n.className = 'use-split-v';
+            n.textContent = useNum(r.n);
+            line.appendChild(n);
+            var share = document.createElement('span');
+            share.className = 'use-split-s';
+            share.textContent = pct(r.n, whole);
+            line.appendChild(share);
+            box.appendChild(line);
+        });
+        return box;
+    }
+
+    // A share, written the way a share is read.
+    //
+    // Whole numbers once it is past one, because a tenth of a percent of a
+    // month is noise and four characters of it in a column is worse. Under one
+    // it keeps a decimal, because that is exactly where the difference between
+    // "a few" and "none" lives -- and never rounds a part that exists down to
+    // nothing, which would print 0% beside a count of six.
+    function pct(n, of) {
+        if (!of) return '0%';
+        var share = (Number(n) || 0) / of * 100;
+        // the decimal mark is the reader's, here as everywhere else: a column
+        // reading "0,2%" and then "<0.1%" has changed language halfway down
+        if (share > 0 && share < 0.1) return '<' + (0.1).toLocaleString(navLang()) + '%';
+        var shown = share < 1 ? share.toFixed(1) : String(Math.round(share));
+        return Number(shown).toLocaleString(navLang()) + '%';
+    }
+
+    // A list where the length of each line is its share. Used for which
+    // projects did the work and for which chains were asked about.
     //
     // A line is a link wherever the log can be asked the question the line
     // answers. This screen could say that forty-seven checks came back flagged
@@ -5014,18 +5131,33 @@
             var name = document.createElement('span');
             name.className = 'use-share-n';
             name.textContent = r.label;
+            // the full name where the column had to cut it, which on a list of
+            // projects is most of them
+            name.title = r.label;
             line.appendChild(name);
             var track = document.createElement('span');
             track.className = 'use-share-t';
             var fill = document.createElement('span');
             fill.className = 'use-share-f' + (kindOf && kindOf(r) ? ' is-' + kindOf(r) : '');
-            fill.style.width = (total > 0 ? Math.max(2, Math.round((r.n / total) * 100)) : 0) + '%';
-            track.appendChild(fill);
+            // in points rather than whole percents: a chain that is a third of
+            // a percent of the month rounded to zero and drew nothing, and the
+            // floor below it was two percent of the track, which drew the same
+            // stub for one check as for twenty
+            fill.style.width = r.n > 0
+                ? 'max(3px, ' + (total > 0 ? (r.n / total) * 100 : 0) + '%)'
+                : '0';
             line.appendChild(track);
+            track.appendChild(fill);
             var fig = document.createElement('span');
             fig.className = 'use-share-v';
             fig.textContent = useNum(r.n);
             line.appendChild(fig);
+            // and what that is of the whole, which is the division the reader
+            // was being left to do: 46 of 872 is a different fact from 46
+            var share = document.createElement('span');
+            share.className = 'use-share-s';
+            share.textContent = pct(r.n, total);
+            line.appendChild(share);
             list.appendChild(line);
         });
         return list;
@@ -6738,14 +6870,30 @@
                 'A flag is not a verdict about the customer: it is the list saying it knows the address.'
             ]));
             var fmain = useMain();
-            // no summary above the list: the list already says clear and what
-            // was not, and a total repeated two inches above itself is one more
-            // number to keep in agreement with the other one
+            // In the order the work is in, not the order the numbers are in.
+            //
+            // Sorted by count, clear is always first, because clear is always
+            // most -- so the row at the top of a sanctions screen was for ever
+            // the one nobody has to do anything about, and the one that
+            // matters sat underneath it looking like an afterthought. Sorted
+            // by what needs a person, the reader meets the alerts first and the
+            // quiet majority last, which is also the order the section's own
+            // first sentence puts them in.
+            var VERDICT_ORDER = ['severe', 'review', 'clear'];
             var vrows = Object.keys(s.verdicts || {}).map(function (k) {
                 return { label: verdictWord(k), n: s.verdicts[k], key: k };
-            }).sort(function (a, b) { return b.n - a.n; });
+            }).filter(function (r) { return r.n > 0; })
+                .sort(function (a, b) {
+                    var x = VERDICT_ORDER.indexOf(a.key);
+                    var y = VERDICT_ORDER.indexOf(b.key);
+                    // anything the dictionary does not know goes last, in its
+                    // own order, rather than silently to the top
+                    if (x === -1) x = VERDICT_ORDER.length;
+                    if (y === -1) y = VERDICT_ORDER.length;
+                    return x === y ? b.n - a.n : x - y;
+                });
             if (vrows.length) {
-                fmain.appendChild(useShare(vrows, s.total, function (r) {
+                fmain.appendChild(useSplit(vrows, s.total, function (r) {
                     return r.key === 'clear' ? 'ok' : (r.key === 'severe' ? 'bad' : 'mid');
                 }, function (r) {
                     // the log's filter takes the same words this list is made
