@@ -34,29 +34,29 @@ function body(sig, span) {
     return SRC.slice(at, at + (span || 5200));
 }
 
-test('the sample asks for what needs a person, not only for what is newest', () => {
-    const fn = body('function lastChecks(');
-    assert.match(fn, /verdict=flagged/,
-        'the flagged checks of the window are never asked for');
-    assert.match(fn, /Promise\.all/,
-        'the two lists are fetched one after the other, so the reader waits twice');
-    assert.doesNotMatch(fn, /limit=6\b/,
-        'the sample is a fixed six again');
+test('the first screen asks for the queue, not for the newest', () => {
+    const fn = body('function viewOverview(');
+    assert.match(fn, /\/queue\?limit=/,
+        'the first screen does not ask what is waiting');
+    assert.match(fn, /out\.open/, 'the first screen never says how many are open');
+    assert.match(fn, /out\.holding/,
+        'an alert somebody is already on is counted as nobody\'s');
+    assert.match(fn, /lastRow\(r, true\)/,
+        'a queue row does not say what state it is in');
 });
 
-test('a check is never shown twice when it is both flagged and recent', () => {
-    const fn = body('function lastChecks(');
-    assert.match(fn, /seen\[/, 'nothing keeps the two lists from overlapping');
-});
-
-test('the groups are named only where there are two of them', () => {
-    const fn = body('function lastChecks(');
-    assert.match(fn, /var split = shown\.length > 0 && rest\.length > 0/,
-        'the labels do not depend on there being two groups');
-    assert.match(fn, /sampleLabel\('Needs your attention'/,
-        'the flagged group is not named');
-    assert.match(fn, /sampleLabel\('Latest'/,
-        'the rest of the sample is not named');
+// The list of checks used to sit on the usage screen, ordered by what needed a
+// person. It was the right list on the wrong screen: that page answers how much
+// was screened and against what allowance. A list on two screens drifts on one
+// of them.
+test('the usage screen does not carry the checks list any more', () => {
+    const at = SRC.indexOf('function viewUsage(');
+    assert.notStrictEqual(at, -1);
+    const usage = SRC.slice(at, SRC.indexOf('\n    function ', at + 40));
+    assert.doesNotMatch(usage, /use-screening/,
+        'the checks section is back on the usage screen');
+    assert.doesNotMatch(usage, /lastChecks\(/,
+        'the usage screen fetches rows of checks again');
 });
 
 // The count is measured, the way everything else on this screen is measured.
@@ -77,12 +77,12 @@ test('how many rows is measured, not guessed', () => {
     assert.match(fn, /visibility/, 'the probe is visible to a reader');
 });
 
-test('a row given up to make the page fit is never a flagged one', () => {
+test('a card trimmed to fit keeps a floor, and gives up the oldest', () => {
     const fn = body('function trimToScreen(');
     assert.match(fn, /rows\.length <= SAMPLE_MIN/, 'the list can be trimmed away to nothing');
     assert.match(fn, /rows\[rows\.length - 1\]/,
-        'rows are given up from the front, which is where the flagged ones are');
-    assert.match(fn, /guard/, 'the loop has no way to stop if the section never fits');
+        'rows are given up from the front, and in a queue the front is what nobody has seen yet');
+    assert.match(fn, /guard/, 'the loop has no way to stop if the card never fits');
 });
 
 // Every number that can be opened, opens.
@@ -116,8 +116,11 @@ test('the log takes the filter it is handed', () => {
 });
 
 test('the door says how many it is a door to', () => {
-    assert.match(SRC, /howMany\.className = 'use-open-n'/,
-        'the way into the log never says how many checks are in there');
+    const fn = body('function viewOverview(');
+    assert.match(fn, /count\.className = 'use-open-n'/,
+        'the way into the alerts never says how many there are');
+    assert.match(fn, /state=waiting/,
+        'the door opens every check rather than the ones still waiting');
     assert.match(CSS, /\.use-open-n\s*\{[^}]*tabular-nums/,
         'the count is not set in tabular figures');
 });
@@ -132,31 +135,4 @@ test('a share line looks like a line first and a link second', () => {
         'a share line that is a link is underlined at rest');
     assert.match(CSS, /\.use-share-l\.is-open:hover/, 'nothing answers the pointer');
     assert.match(CSS, /\.use-share-l\.is-open:focus-visible/, 'nothing answers the keyboard');
-});
-
-// A month with forty-four hits used to fill every row with hits: the card
-// stopped being a sample of the period -- nothing on the screen said what an
-// ordinary check looks like any more -- and it showed eleven of forty-four
-// while saying nothing about the other thirty-three.
-test('the flagged group never takes the whole card', () => {
-    const fn = body('function lastChecks(');
-    assert.match(fn, /var most = Math\.max\(1, Math\.floor\(want \/ 2\)\)/,
-        'the flagged group has no ceiling of its own');
-    assert.match(fn, /flagged\.slice\(0, most\)/,
-        'the flagged group is still taking the whole sample');
-});
-
-test('a group that shows some of its rows says how many there are', () => {
-    const fn = body('function lastChecks(');
-    assert.match(fn, /flaggedAll/, 'nothing counts the flagged checks of the window');
-    assert.match(fn, /flaggedAll > shown\.length \? flaggedAll : 0/,
-        'the count is printed even when the group is all of itself, which is noise');
-    assert.match(fn, /logHref\(org, out, \{ verdict: 'flagged' \}\)/,
-        'the band does not open the checks it names');
-
-    const label = body('function sampleLabel(');
-    assert.match(label, /createElement\(href \? 'a' : 'div'\)/,
-        'the band cannot be a way through to the rest of its rows');
-    assert.match(CSS, /\.use-last-gn\s*\{[^}]*tabular-nums/,
-        'the count on a band is not set in tabular figures');
 });
