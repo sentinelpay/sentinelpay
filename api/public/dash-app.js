@@ -5003,6 +5003,55 @@
     // line says its share as well as its count, and every line opens the
     // checks it counted.
 
+    // A short list of amounts: a name, how many, and what that is of the whole.
+    //
+    // The same line this page writes in Plan, in Coverage and in Team -- a key
+    // on the left, its value hard against the right, a hairline between -- with
+    // two things added that those do not need. A dot, because these amounts
+    // have meanings and the meanings already have colours everywhere else on
+    // this screen. And a share, because 46 of 872 is a different fact from 46,
+    // and the reader was being left to do the division.
+    //
+    // Not bars. A bar is for comparing many things of one kind, which is what
+    // Chains is; two outcomes and four states are a short list of amounts, and
+    // drawing a track across half the page for each of them says less than the
+    // number already does while taking four times the room.
+    function useAmounts(rows) {
+        var box = document.createElement('div');
+        box.className = 'use-facts use-amts';
+        rows.forEach(function (r) {
+            var line = document.createElement(r.href ? 'a' : 'div');
+            line.className = 'use-fact use-amt' + (r.href ? ' is-open' : '') +
+                (r.n > 0 ? '' : ' is-none');
+            if (r.href) {
+                line.href = r.href;
+                line.setAttribute('aria-label',
+                    r.label + ', ' + useNum(r.n) + ', ' + pct(r.n, r.of) + '. ' + t('See these checks'));
+            }
+
+            var name = document.createElement('span');
+            name.className = 'use-amt-n';
+            var dot = document.createElement('i');
+            dot.className = 'use-amt-d' + (r.mark ? ' is-' + r.mark : '');
+            name.appendChild(dot);
+            name.appendChild(document.createTextNode(r.label));
+            line.appendChild(name);
+
+            var v = document.createElement('span');
+            v.className = 'use-fact-v use-amt-v';
+            v.textContent = useNum(r.n);
+            // the share in the quieter half of the same value, the way the
+            // allowance writes how often it comes back beside the allowance
+            var share = document.createElement('span');
+            share.className = 'use-amt-s';
+            share.textContent = pct(r.n, r.of);
+            v.appendChild(share);
+            line.appendChild(v);
+            box.appendChild(line);
+        });
+        return box;
+    }
+
     // A share, written the way a share is read.
     //
     // Whole numbers once it is past one, because a tenth of a percent of a
@@ -6782,22 +6831,38 @@
             // screens is a list that drifts on one of them.
 
             // ---- what came back
+            //
+            // This section kept being redrawn and kept feeling wrong, and the
+            // reason was not the drawing. It said 46 came back flagged, on a
+            // page whose second card already says "Flagged 46" and whose third
+            // already says "Severe findings 46". The same number three times in
+            // one screen, twice with a shape around it. No arrangement saves a
+            // section that repeats the one above it.
+            //
+            // So it answers the half of the question nothing else on this page
+            // can: what a person made of them. The engine's answer is a count
+            // and the tiles have it; the work is what happened next, and until
+            // a check could carry a decision there was nothing here to put.
+            //
+            // Written as facts, not as bars. A bar is for comparing many
+            // things of one kind -- which is what Chains is and why Chains
+            // keeps its bars. Two outcomes and four states are not a
+            // distribution to compare, they are a short list of amounts, and
+            // this page already writes a short list of amounts the same way in
+            // Plan, in Coverage and in Team.
             var flag = useSection('use-flagged', 'What came back', 'flag',
-                'How the checks answered.');
+                'How the checks answered, and what has been done about them.');
             flag.body.appendChild(useSide([
                 'Anything other than clear is worth a person looking at it.',
                 'A flag is not a verdict about the customer: it is the list saying it knows the address.'
             ]));
             var fmain = useMain();
+
             // In the order the work is in, not the order the numbers are in.
             //
             // Sorted by count, clear is always first, because clear is always
-            // most -- so the row at the top of a sanctions screen was for ever
-            // the one nobody has to do anything about, and the one that
-            // matters sat underneath it looking like an afterthought. Sorted
-            // by what needs a person, the reader meets the alerts first and the
-            // quiet majority last, which is also the order the section's own
-            // first sentence puts them in.
+            // most -- so the top line of a sanctions screen was for ever the
+            // one nobody has to do anything about.
             var VERDICT_ORDER = ['severe', 'review', 'clear'];
             var vrows = Object.keys(s.verdicts || {}).map(function (k) {
                 return { label: verdictWord(k), n: s.verdicts[k], key: k };
@@ -6811,16 +6876,49 @@
                     if (y === -1) y = VERDICT_ORDER.length;
                     return x === y ? b.n - a.n : x - y;
                 });
-            if (vrows.length) {
-                fmain.appendChild(useShare(vrows, s.total, function (r) {
-                    return r.key === 'clear' ? 'ok' : (r.key === 'severe' ? 'bad' : 'mid');
-                }, function (r) {
-                    // the log's filter takes the same words this list is made
-                    // of, so each line opens exactly the checks it counted
-                    return logHref(org, out, { verdict: r.key });
-                }));
-            } else {
+
+            if (!vrows.length) {
                 fmain.appendChild(emptyState('Nothing to show yet', ''));
+            } else {
+                fmain.appendChild(useAmounts(vrows.map(function (r) {
+                    return {
+                        label: r.label,
+                        n: r.n,
+                        of: s.total,
+                        mark: r.key === 'clear' ? 'ok' : (r.key === 'severe' ? 'bad' : 'mid'),
+                        href: logHref(org, out, { verdict: r.key })
+                    };
+                })));
+
+                // And what was done about the ones that were not clear.
+                //
+                // Only where there are any: an organisation with nothing
+                // flagged does not need a heading over four zeroes telling it
+                // there is no work. The counts come from the same window as
+                // everything else on this page, so "this period" means the same
+                // thing here as it does in the chart.
+                var dec = s.decisions || {};
+                var drows = [
+                    { key: 'open', label: 'Open', mark: '' },
+                    { key: 'holding', label: 'In review', mark: 'mid' },
+                    { key: 'cleared', label: 'Not a match', mark: 'ok' },
+                    { key: 'confirmed', label: 'Confirmed', mark: 'bad' }
+                ].map(function (d) {
+                    return {
+                        label: t(d.label),
+                        n: Number(dec[d.key]) || 0,
+                        of: s.flagged,
+                        mark: d.mark,
+                        href: logHref(org, out, { state: d.key })
+                    };
+                });
+                if (s.flagged > 0) {
+                    var dt = document.createElement('div');
+                    dt.className = 'use-carries-t';
+                    dt.textContent = t('What was done about them');
+                    fmain.appendChild(dt);
+                    fmain.appendChild(useAmounts(drows));
+                }
             }
             flag.body.appendChild(fmain);
             if (!fresh) body.appendChild(flag);
