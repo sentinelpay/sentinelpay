@@ -32,6 +32,12 @@
     // fails the build if an icon is ever given a second meaning.
     var ICONS = {
         // the organisation's rail
+        // The place you start. A roof over a room, which is the one mark nobody
+        // mistakes for a chart, a list or a setting -- and not a gauge, which
+        // would say this screen is about how much.
+        overview: '<path d="M3.4 10.6 12 3.8l8.6 6.8"/>' +
+            '<path d="M5.8 9.4V19.4a.8.8 0 0 0 .8.8h10.8a.8.8 0 0 0 .8-.8V9.4"/>' +
+            '<path d="M9.8 20.2v-5.4h4.4v5.4"/>',
         projects: '<path d="M4 8.4 12 4.2l8 4.2-8 4.2Z"/><path d="m4 13.2 8 4.2 8-4.2"/>' +
             '<path d="m4 17.2 8 4.2 8-4.2" opacity="0.55"/>',
         team: '<circle cx="9.2" cy="8.4" r="3"/><path d="M3.6 19.2c0-2.9 2.5-4.8 5.6-4.8s5.6 1.9 5.6 4.8"/>' +
@@ -204,8 +210,13 @@
 
     var NAV = [
         { group: 'Work', items: [
-            { key: 'projects', label: 'Projects', icon: 'projects', org: '' },
-            { key: 'checks', label: 'Checks', icon: 'screening', org: 'checks' }
+            // What is waiting, first, because that is what somebody opens this
+            // for. Projects used to be here and used to be the landing page --
+            // a screen about how the account is arranged, met every morning by
+            // somebody whose job is to work alerts.
+            { key: 'overview', label: 'Overview', icon: 'overview', org: '' },
+            { key: 'checks', label: 'Checks', icon: 'screening', org: 'checks' },
+            { key: 'projects', label: 'Projects', icon: 'projects', org: 'projects' }
         ] },
         { group: 'Organisation', items: [
             { key: 'team', label: 'Team', icon: 'team', org: 'team' },
@@ -2760,6 +2771,165 @@
         if (!btn) return;
         btn.setAttribute('aria-label', t(label));
         btn.title = t(label);
+    }
+
+    // The first screen, and the one question it exists to answer: what is
+    // waiting for you.
+    //
+    // This used to be the projects list -- a page about how the account is
+    // arranged, met every morning by somebody whose job is to work alerts. The
+    // product could not have put the alerts here before now, because it had
+    // nowhere to record that one had been dealt with: a queue that never
+    // empties is a worse first screen than no queue at all. It can now.
+    //
+    // Deliberately short. One card, and under it the last few checks for
+    // context. Everything else about a period -- how much, against what
+    // allowance, broken down how -- is a different question asked on a
+    // different screen, and answering it twice is how two screens drift.
+    function viewOverview(me) {
+        var page = document.createElement('div');
+        page.className = 'pg';
+        var org = me.org || {};
+        // The heading and the queue in one box, because the queue is measured
+        // against the screen and what sits above it is part of what it has to
+        // fit inside. Everything below -- the latest checks -- is past the fold
+        // by design and is not in that sum.
+        var first = document.createElement('div');
+        first.className = 'ovw-first';
+        first.appendChild(pageHead('Overview', 'What is waiting for a person, and the last work done.'));
+
+        var card = document.createElement('div');
+        card.className = 'card';
+        card.classList.add('ovw');
+        first.appendChild(card);
+        card.appendChild(waiting());
+        page.appendChild(first);
+
+        var lastSec = useSection('ovw-last', 'Latest checks',
+            'screening', 'The newest checks on this account, whatever they came back as.');
+        lastSec.body.classList.add('is-wide');
+        var lastList = document.createElement('div');
+        lastList.className = 'card use-last';
+        lastSec.body.appendChild(lastList);
+        page.appendChild(lastSec);
+
+        function draw(out) {
+            card.textContent = '';
+            // as many as this screen has room for, measured rather than
+            // guessed, the way everything else in here is measured
+            var want = sampleSize(card, first);
+
+            // The count first and the rows under it, because the count is the
+            // answer and the rows are the evidence for it. A morning with
+            // nothing waiting should be readable without reading a list.
+            var top = document.createElement('div');
+            top.className = 'ovw-top';
+
+            var open = document.createElement('div');
+            open.className = 'ovw-n' + (out.open > 0 ? ' is-live' : '');
+            var big = document.createElement('span');
+            big.className = 'ovw-big';
+            big.textContent = useNum(out.open);
+            open.appendChild(big);
+            var what = document.createElement('span');
+            what.className = 'ovw-k';
+            what.textContent = t('Open alerts');
+            open.appendChild(what);
+            top.appendChild(open);
+
+            // on hold is not the same as nobody's, and a team that cannot tell
+            // those apart works the same alert twice
+            if (out.holding > 0) {
+                var held = document.createElement('div');
+                held.className = 'ovw-n is-held';
+                var hb = document.createElement('span');
+                hb.className = 'ovw-big';
+                hb.textContent = useNum(out.holding);
+                held.appendChild(hb);
+                var hk = document.createElement('span');
+                hk.className = 'ovw-k';
+                hk.textContent = t('In review');
+                held.appendChild(hk);
+                top.appendChild(held);
+            }
+            card.appendChild(top);
+
+            if (!out.rows.length) {
+                // The best sentence this screen can say, so it is said plainly
+                // rather than as a blank space somebody has to interpret.
+                card.appendChild(emptyState('Nothing is waiting',
+                    'Every alert on this account has been dealt with.'));
+                return;
+            }
+
+            out.rows.slice(0, want).forEach(function (r) { card.appendChild(lastRow(r, true)); });
+
+            var foot = document.createElement('div');
+            foot.className = 'ovw-foot';
+            var all = document.createElement('a');
+            all.className = 'chip use-open';
+            all.href = orgHome(org.slug) + '/checks?state=waiting' +
+                (me.sandbox ? '&scope=sandbox' : '');
+            all.innerHTML = icon('screening');
+            all.appendChild(document.createTextNode(t('All alerts')));
+            var n = out.open + out.holding;
+            if (n > out.rows.length) {
+                var count = document.createElement('span');
+                count.className = 'use-open-n';
+                count.textContent = useNum(n);
+                all.appendChild(count);
+            }
+            foot.appendChild(all);
+            card.appendChild(foot);
+            trimToScreen(card, first);
+        }
+
+        function load() {
+            if (!org.id) return;
+            fetch('/v1/orgs/' + encodeURIComponent(org.id) + '/queue?limit=' + SAMPLE_MAX +
+                (me.sandbox ? '&scope=sandbox' : ''), { credentials: 'same-origin' })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (out) {
+                    if (!out || !out.ok) throw new Error('not-ok');
+                    draw(out);
+                })
+                .catch(function (err) {
+                    console.error('[overview] ' + err.message);
+                    card.textContent = '';
+                    card.appendChild(emptyState('That did not load.', ''));
+                });
+
+            lastList.textContent = '';
+            lastList.classList.add('is-waiting');
+            fetch('/v1/orgs/' + encodeURIComponent(org.id) + '/checks?limit=6' +
+                (me.sandbox ? '&scope=sandbox' : ''), { credentials: 'same-origin' })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (body) {
+                    lastList.classList.remove('is-waiting');
+                    var rows = (body && body.rows) || [];
+                    if (!rows.length) {
+                        lastList.appendChild(emptyState('Nothing to show yet', ''));
+                        return;
+                    }
+                    rows.forEach(function (r) { lastList.appendChild(lastRow(r)); });
+                })
+                .catch(function (err) {
+                    lastList.classList.remove('is-waiting');
+                    console.error('[overview] ' + err.message);
+                    lastList.appendChild(emptyState('That did not load.', ''));
+                });
+        }
+
+        // A check made or decided anywhere in this organisation changes what is
+        // waiting, so this screen follows them rather than going stale behind
+        // somebody's back while they look at it.
+        ownsLive = true;
+        onLive(function (e) {
+            if (!e) return;
+            if ((e.topic === 'org' || e.topic === 'checks') && org.id) load();
+        });
+        load();
+        return page;
     }
 
     function viewProjects(me) {
@@ -5697,135 +5867,21 @@
         return Math.max(SAMPLE_MIN, Math.min(SAMPLE_MAX, fits));
     }
 
-    // The checks of a window worth putting on a page about how much was
-    // screened, fetched after the page is drawn.
-    //
-    // Its own request, because it is rows and everything else on this screen is
-    // counts, and because a period swapped is a new window to ask about. The
-    // answer to an older question is thrown away rather than drawn: switching
-    // twice quickly used to be a race everywhere on this page, and this is one
-    // more place to lose it.
-    //
-    // Two requests, not one, and this is the whole point of the section.
-    //
-    // It used to ask for the newest six and print them. On an account running
-    // three thousand checks a month the newest six are six clear checks,
-    // forever, while the hundred that scored sit where nobody on this screen
-    // will ever meet them. A page for a compliance team that orders its only
-    // list of work by when it happened is a page that shows the quiet part of
-    // the job. So the flagged ones come first and the newest fill what is left
-    // -- ordered by whether somebody has to do something about them, which is
-    // the order the work is actually in.
-    var lastAsked = 0;
-    function lastChecks(into, org, out, section) {
-        var mine = ++lastAsked;
-        into.textContent = '';
-        into.classList.add('is-waiting');
-
-        var want = sampleSize(into, section);
-        var base = '/v1/orgs/' + encodeURIComponent(org.id) + '/checks' +
-            '?scope=' + encodeURIComponent(out.scope) +
-            '&from=' + encodeURIComponent(out.period.from) +
-            '&to=' + encodeURIComponent(out.period.to);
-        var ask = function (extra) {
-            return fetch(base + '&limit=' + want + (extra || ''), { credentials: 'same-origin' })
-                .then(function (r) { return r.ok ? r.json() : null; })
-                .then(function (body) { return (body && body.rows) || []; });
-        };
-
-        // Side by side rather than one after the other: they do not depend on
-        // each other and a reader waiting for rows should wait once.
-        Promise.all([ask('&verdict=flagged'), ask('')])
-            .then(function (both) {
-                if (mine !== lastAsked) return;
-                into.classList.remove('is-waiting');
-                var flagged = both[0];
-                var latest = both[1];
-
-                if (!flagged.length && !latest.length) {
-                    into.appendChild(emptyState('Nothing to show yet', ''));
-                    return;
-                }
-
-                // The flagged group takes half the card at most.
-                //
-                // Letting it take whatever it wanted was wrong twice over on
-                // an account with real work in it. A month with forty-four
-                // hits filled every row with hits, so the card stopped being a
-                // sample of the period -- there was no longer anything on this
-                // screen saying what an ordinary check looks like -- and it
-                // showed eleven of forty-four while saying nothing about the
-                // other thirty-three. A truncated list that does not admit it
-                // is truncated is the one thing a compliance screen may not be.
-                //
-                // Half, and never less than one: this is a page about a period
-                // and both halves of it are the period.
-                var most = Math.max(1, Math.floor(want / 2));
-                // A flagged check is already in the newest rows often enough
-                // that printing both lists would show it twice, which reads as
-                // the same address checked twice rather than as one row in two
-                // groups.
-                var seen = {};
-                var shown = flagged.slice(0, most);
-                shown.forEach(function (r) { seen[r.id] = true; });
-                var rest = [];
-                for (var i = 0; i < latest.length && shown.length + rest.length < want; i++) {
-                    if (!seen[latest[i].id]) rest.push(latest[i]);
-                }
-
-                // How many there are altogether, which is not how many are
-                // shown. The counts are already on this page -- the section
-                // below breaks the period down by what came back -- so this
-                // takes them from there rather than asking again.
-                var answers = (out.screenings && out.screenings.verdicts) || {};
-                var flaggedAll = Object.keys(answers).reduce(function (n, k) {
-                    return k === 'clear' ? n : n + (Number(answers[k]) || 0);
-                }, 0);
-
-                // The labels only where there are two groups to tell apart. One
-                // group needs no heading saying which of one it is, and an
-                // account with nothing flagged -- which is most accounts, most
-                // months -- sees exactly the card it saw before.
-                var split = shown.length > 0 && rest.length > 0;
-                if (shown.length && split) {
-                    // named, counted, and a way through to all of them: five
-                    // rows out of forty-four is a sample of the flagged, and a
-                    // sample has to say what it is a sample of
-                    into.appendChild(sampleLabel('Needs your attention',
-                        flaggedAll > shown.length ? flaggedAll : 0,
-                        logHref(org, out, { verdict: 'flagged' })));
-                }
-                shown.forEach(function (r) { into.appendChild(lastRow(r)); });
-                if (rest.length && split) into.appendChild(sampleLabel('Latest', 0, ''));
-                rest.forEach(function (r) { into.appendChild(lastRow(r)); });
-                trimToScreen(into, section);
-            })
-            .catch(function (err) {
-                if (mine !== lastAsked) return;
-                into.classList.remove('is-waiting');
-                // Said, rather than left blank. An empty box where rows were
-                // promised reads as an account with no work in it.
-                console.error('[usage] last checks: ' + err.message);
-                into.appendChild(emptyState('That did not load.', ''));
-            });
-    }
-
     // And the same measurement once more, now that the rows are really there.
     //
     // How many rows fit has to be decided before they are asked for, and at
-    // that moment two things about them are not known: whether there will be a
-    // group label over them at all, and whether any address will wrap. Both
-    // cost height, and the section ran a dozen points past the bottom of the
-    // screen -- which put the door to the log, the one thing somebody came
-    // down here to click, just under the fold.
+    // that moment one thing about them is not known: whether an address will
+    // wrap to a second line. That costs height, and a card a dozen points past
+    // the bottom of the screen puts the door under it just under the fold.
     //
-    // Rather than reserving room for labels that usually are not there, the
-    // rows are counted back down until the section fits. It runs in the same
-    // turn as the render, before any of it has been painted, so nothing is
-    // ever seen to be removed.
+    // So the rows are counted back down until the card fits. It runs in the
+    // same turn as the render, before any of it has been painted, so nothing
+    // is ever seen to be removed -- and never below the floor, because a card
+    // trimmed to two rows has stopped being the thing it was put there to be.
     //
-    // From the end, which is the newest of the quiet ones. A check somebody has
-    // to act on is never the row given up to make the page tidy.
+    // From the end, which is the oldest of what is shown. In a queue the end
+    // is the alert that has waited longest, and that is the one to drop from a
+    // short list: the newest are the ones somebody has not seen yet.
     function trimToScreen(into, section) {
         var scroller = into.closest('.canvas') || document.scrollingElement;
         if (!scroller || !scroller.clientHeight || !section) return;
@@ -5833,40 +5889,8 @@
         while (section.offsetHeight > scroller.clientHeight && guard--) {
             var rows = into.querySelectorAll('.tr.is-last');
             if (rows.length <= SAMPLE_MIN) return;
-            var last = rows[rows.length - 1];
-            var before = last.previousElementSibling;
-            into.removeChild(last);
-            // a label with nothing left under it is a heading for an empty
-            // column, so it goes with the last of its rows
-            if (before && before.classList.contains('use-last-g')) into.removeChild(before);
+            into.removeChild(rows[rows.length - 1]);
         }
-    }
-
-    // What the rows under it have in common. Built like the heading row the
-    // checks screen puts over its table, because that is what it is.
-    //
-    // With a count where the rows under it are only some of what it names, and
-    // a way to all of them where there is one. A band reading "needs your
-    // attention" over five rows, on a month that had forty-four, is a band
-    // that has told the reader the wrong number by not telling them one.
-    function sampleLabel(text, count, href) {
-        var row = document.createElement(href ? 'a' : 'div');
-        row.className = 'use-last-g' + (href ? ' is-open' : '');
-        if (href) row.href = href;
-        var name = document.createElement('span');
-        name.textContent = t(text);
-        row.appendChild(name);
-        if (count > 0) {
-            var n = document.createElement('span');
-            n.className = 'use-last-gn';
-            n.textContent = useNum(count);
-            row.appendChild(n);
-            if (href) {
-                row.setAttribute('aria-label',
-                    t(text) + ', ' + useNum(count) + '. ' + t('See these checks'));
-            }
-        }
-        return row;
     }
 
     // Where the bands sit.
@@ -6154,10 +6178,13 @@
     // checks screen gives: it is the one thing on the row nobody reads as a
     // word, and a column of them only lines up in a face where the characters
     // are one width.
-    function lastRow(r) {
+    // `showState` puts what a person made of it on the row, which only the
+    // queue wants: on a list of the latest checks almost every row is open and
+    // a column of the same word down the page says nothing.
+    function lastRow(r, showState) {
         var row = document.createElement('button');
         row.type = 'button';
-        row.className = 'tr is-last chk-row';
+        row.className = 'tr is-last chk-row' + (showState ? ' has-state' : '');
 
         var who = document.createElement('div');
         who.className = 'chk-addr';
@@ -6198,6 +6225,13 @@
         }
         chain.appendChild(mark);
         row.appendChild(chain);
+
+        if (showState) {
+            var st = document.createElement('div');
+            st.className = 'tr-dim use-last-s';
+            st.appendChild(stateTag(r.state || 'open'));
+            row.appendChild(st);
+        }
 
         var when = document.createElement('div');
         when.className = 'tr-dim use-last-w';
@@ -6655,7 +6689,7 @@
                     before: earlier('severe')
                 },
                 {
-                    label: 'Addresses', value: useNum(s.addresses), to: 'use-screening',
+                    label: 'Addresses', value: useNum(s.addresses), to: 'use-assets',
                     // how hard the same address is being asked about. one is a
                     // list being walked once; ten is a book of customers being
                     // rechecked, which is a different product being bought.
@@ -6686,79 +6720,15 @@
             fold.setAttribute('aria-hidden', 'true');
             body.appendChild(fold);
 
-            // ---- screening
-            // ---- screening
+            // The checks themselves are not here any more.
             //
-            // This section used to say: screenings, addresses, busiest day.
-            // Two of those three are the headline of this page and a card
-            // under it, said there with a comparison and a shape, and said
-            // here again with neither. A section whose job is to repeat the
-            // section above it is a section a reader learns to skip.
-            //
-            // What the rest of the page cannot do is show a single check.
-            // Everything above is a count, and the code that wrote those
-            // counts said it plainly: a number on a compliance screen that
-            // cannot be opened is a number somebody is asked to stand behind
-            // without being shown what it is made of. It then offered a link
-            // and no rows.
-            //
-            // So: the last checks of this window, as rows, each one opening
-            // the evidence it was sealed with. The counts stay upstairs where
-            // they are already explained.
-            // The scale said once, at the top of the column, rather than
-            // stamped onto every row as "/100" six times over.
-            var sec = useSection('use-screening', 'Screening',
-                'screening', 'What needs a person first, then the latest. Scored out of a hundred.');
-            // no side column here: the rows are the content, and a column of
-            // prose beside them would take a third of the width to explain
-            // what the rows are already showing
-            sec.body.classList.add('is-wide');
-            // In a card, because every other list in this product is in one.
-            // Six rows loose on the canvas is a table somebody dropped on the
-            // page; the same six inside the same border as the rest of the
-            // dashboard are part of it.
-            var list = document.createElement('div');
-            list.className = 'card use-last';
-            sec.body.appendChild(list);
-
-            // The way into the log, and nothing beside it.
-            //
-            // There was a "busiest day" here. It is a superlative with nothing
-            // to do attached to it, about a peak the chart above already draws
-            // and points at, and it sat in a footer whose one job is the door
-            // to the rows.
-            var foot = document.createElement('div');
-            foot.className = 'use-last-foot';
-            var open = document.createElement('a');
-            open.className = 'chip use-open';
-            open.href = logHref(org, out, null);
-            open.innerHTML = icon('screening');
-            open.appendChild(document.createTextNode(t('All checks')));
-            // How many it is all of.
-            //
-            // The rows above are a handful out of a period that may hold three
-            // thousand, and the door said "see these checks" without ever
-            // saying how many these were. A reader who does four hundred a day
-            // and counts six rows is not reassured by that door, they are
-            // worried by it. The number turns the handful from "is that all?"
-            // into "these are the newest of 3,124".
-            //
-            // Set off by a middle dot rather than written into the label,
-            // which keeps the sentence out of the way of grammar: croatian
-            // counts in three plural forms and "see all 3 checks" is not the
-            // same word as "see all 5 checks".
-            if (s.total > 0) {
-                var howMany = document.createElement('span');
-                howMany.className = 'use-open-n';
-                howMany.textContent = useNum(s.total);
-                open.appendChild(howMany);
-            }
-            foot.appendChild(open);
-            sec.body.appendChild(foot);
-            if (!fresh) {
-                body.appendChild(sec);
-                lastChecks(list, org, out, sec);
-            }
+            // They were: the last few of the window, flagged first, with a way
+            // into the log. It was the right list on the wrong screen. This
+            // page answers how much was screened and against what allowance;
+            // which checks need a person is the first question of the working
+            // day and now has a screen of its own, where the alerts can also
+            // be worked rather than only looked at. A list that appears on two
+            // screens is a list that drifts on one of them.
 
             // ---- what came back
             var flag = useSection('use-flagged', 'What came back', 'flag',
@@ -9748,7 +9718,8 @@
             else if (tail === 'checks') canvas.appendChild(viewChecks(lastMe));
             else if (tail === 'billing') canvas.appendChild(viewBilling(lastMe));
             else if (tail === 'settings') canvas.appendChild(viewOrgSettings(lastMe));
-            else if (!tail) canvas.appendChild(viewProjects(lastMe));
+            else if (tail === 'projects') canvas.appendChild(viewProjects(lastMe));
+            else if (!tail) canvas.appendChild(viewOverview(lastMe));
         }
     }
 

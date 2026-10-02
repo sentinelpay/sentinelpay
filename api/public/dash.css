@@ -3578,51 +3578,6 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 .use-last.is-waiting { min-height: 8rem; opacity: 0.55; }
 .use-last > .tr:last-child { border-bottom: 0; }
 
-/* What the rows under it have in common.
-   The same band the checks screen puts over its own table -- the tinted strip,
-   the small caps, the wide letters -- because it is the same thing: a line
-   naming the column of rows below it. It appears only where there are two
-   groups to tell apart, so most months this card looks exactly as it did.
-   It is a label and not a heading: the section above already has one, and a
-   second h2 inside a card puts a rung in the outline of the page that leads
-   nowhere. */
-.use-last-g {
-    display: flex;
-    align-items: center;
-    gap: 0.55rem;
-    padding: 0.5rem 1.15rem;
-    border-bottom: 1px solid var(--line-2);
-    background: var(--hover);
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--ink-4);
-}
-/* How many the rows under it are some of. Pushed to the far end, in figures
-   that do not shout: it is the scale of the group, not a reading. */
-.use-last-gn {
-    margin-left: auto;
-    letter-spacing: 0;
-    font-variant-numeric: tabular-nums;
-    color: var(--ink-4);
-}
-/* and where all of them can be reached, the band is the way there. It is a
-   band before it is a link, like the share lines above it: nothing changes
-   until the pointer is on it. */
-.use-last-g.is-open {
-    color: var(--ink-4);
-    text-decoration: none;
-    cursor: pointer;
-    transition: background 0.14s ease, color 0.14s ease;
-}
-.use-last-g.is-open:hover { background: var(--canvas); color: var(--ink-3); }
-.use-last-g.is-open:hover .use-last-gn { color: var(--ink-3); }
-.use-last-g.is-open:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
-/* the first one sits against the top of the card, where the card's own corner
-   is already rounded */
-.use-last > .use-last-g:first-child { border-radius: 13px 13px 0 0; }
-
 /* Four columns: the address takes what is left, the rest take what they need.
    Narrower than the checks table's because there is no filter bar above it and
    no project column to keep room for. */
@@ -3637,6 +3592,14 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     grid-template-columns: minmax(0, 1fr) max-content 3.5rem max-content;
     padding: 0.7rem 1.15rem;
 }
+/* A queue row carries one more thing: what a person has made of it. Given a
+   width of its own for the reason the chain column has one -- every row here
+   is its own grid, so a column only lines up if its width does not depend on
+   what is in it, and "In review" is twice the width of "Open". */
+.tr.is-last.has-state {
+    grid-template-columns: minmax(0, 1fr) max-content 5.6rem 3.5rem max-content;
+}
+.use-last-s { justify-content: flex-start; }
 
 /* The two quiet columns at the end of the row: which chain, and when.
    They sit next to each other with only the grid gap between them, and in one
@@ -3858,6 +3821,44 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     .risk-tip { display: none; }
 }
 
+/* The first screen: what is waiting.
+   One card, built like every other list in this product -- the same border, the
+   same corner, the same rows -- with the count above the rows rather than
+   beside them. The count is the answer and the rows are the evidence for it, so
+   a morning with nothing waiting can be read without reading a list. */
+.ovw-first { display: block; }
+.ovw { padding: 0; overflow: hidden; }
+.ovw-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 1.6rem;
+    padding: 1.15rem 1.15rem 1rem;
+    border-bottom: 1px solid var(--line-2);
+}
+.ovw-n { display: flex; align-items: baseline; gap: 0.5rem; min-width: 0; }
+.ovw-big {
+    font-size: 1.9rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: var(--ink-4);
+    font-variant-numeric: tabular-nums;
+}
+/* a number that is not zero is the whole reason somebody opened this, so it
+   takes the ink; a zero is the good news and does not need to shout it */
+.ovw-n.is-live .ovw-big { color: var(--ink); }
+.ovw-n.is-held .ovw-big { font-size: 1.25rem; color: var(--risk-mid); }
+.ovw-k { font-size: 0.8rem; color: var(--ink-4); }
+.ovw-foot {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0.85rem 1.15rem;
+    border-top: 1px solid var(--line-2);
+}
+.ovw-foot .use-open { margin-top: 0; }
+.ovw .empty { padding: 2.2rem 1.15rem; }
+
 .use-last-foot {
     display: flex;
     align-items: center;
@@ -3882,6 +3883,17 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
     /* on two lines the chain sits under the address and lines up with it, so
        the centring it is given in its own narrow column upstairs comes off */
     .tr.is-last .tr-dim:not(.use-last-w) { grid-column: 1; grid-row: 2; justify-content: flex-start; }
+
+    /* A queue row has one more fact than there are places to put it.
+       Two lines hold four things; a queue row has five, and the two that want
+       the same place -- what state it is in, and which chain -- are not worth
+       the same. The state is the whole reason this list is a queue, and the
+       chain is the one fact on the row the address itself already hints at and
+       the panel behind it spells out. So on a phone the ticker goes and the
+       state takes its place. A third line would push the next alert off the
+       screen, which costs more than a ticker does. */
+    .tr.is-last.has-state { grid-template-columns: minmax(0, 1fr) max-content; }
+    .tr.is-last.has-state .use-last-c { display: none; }
     /* justify-content, not text-align: .tr-dim is a flex row and text-align
        has never had anything to say about where a flex item is put. It was
        written when this cell held a bare string, and a bare string in a flex
