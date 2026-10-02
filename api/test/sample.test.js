@@ -137,28 +137,6 @@ test('a share line looks like a line first and a link second', () => {
     assert.match(CSS, /\.use-share-l\.is-open:focus-visible/, 'nothing answers the keyboard');
 });
 
-// What came back, read as one period rather than as a row of unrelated bars.
-//
-// It was a track per verdict, each filled against the same total: three
-// pictures of one fact, where the parts are one whole. And sorted by count,
-// which on a sanctions screen means clear is always the top row -- the one
-// nobody has to do anything about -- with the one that matters underneath it
-// looking like an afterthought.
-test('what came back is one bar, divided', () => {
-    const fn = body('function useSplit(', 4200);
-    assert.match(fn, /use-split-bar/, 'there is no single bar');
-    assert.match(fn, /use-split-p/, 'the bar has no parts');
-    assert.match(fn, /max\(3px, /,
-        'a part that exists can be drawn as nothing, which is the one thing it must not be');
-    assert.match(fn, /role', 'img'[\s\S]{0,200}aria-label/,
-        'the division is drawn and never said');
-
-    // the usage screen builds it, and no longer builds three tracks for it
-    const at = SRC.indexOf('function viewUsage(');
-    const usage = SRC.slice(at, SRC.indexOf('\n    function ', at + 40));
-    assert.match(usage, /useSplit\(vrows/, 'the verdicts are not drawn as one period');
-});
-
 test('the verdicts are in the order the work is in, not the order the numbers are', () => {
     const at = SRC.indexOf("var VERDICT_ORDER");
     assert.notStrictEqual(at, -1, 'nothing fixes the order of the verdicts');
@@ -183,34 +161,21 @@ test('a share says what it is a share of', () => {
         'a share under one percent is rounded away');
     assert.match(fn, /< 0\.1\) return '<'/,
         'a part that exists can print as 0%');
-    assert.match(SRC, /share\.className = 'use-split-s'/, 'the split has no shares');
     assert.match(SRC, /share\.className = 'use-share-s'/, 'the lists have no shares');
 });
 
-// The split is built out of the allowance meter's parts, and one of them fights
-// back: `.use-meter-t` sets `display: block`, because an allowance meter holds
-// one fill. A divided track holds several. Written as one class the two tie on
-// specificity and the one further down the file wins -- which it was -- so the
-// parts stacked, the second fell outside a seven point track with overflow
-// hidden on it, and the bar painted as a red sliver with nothing after it. It
-// measured correctly the whole time, which is why this is a test.
-test('the divided track wins on specificity, not on where it sits', () => {
-    assert.match(CSS, /\.use-meter-t\.use-split-bar\s*\{[^}]*display:\s*flex/,
-        'the divided track is declared with one class and can lose to the meter it borrows');
-    assert.doesNotMatch(CSS, /\n\.use-split-bar\s*\{[^}]*display:\s*flex/,
-        'there is a single-class rule for it again');
-});
-
-// Nothing on this page is a shape of its own. The row above the track is the
-// allowance meter's row, the track is the allowance meter's track, and the key
-// under it is the column of facts the Plan section is made of.
-test('what came back is written in the page\'s own parts', () => {
-    const fn = body('function useSplit(', 4600);
-    assert.match(fn, /'use-meter-r use-split-r'/, 'the head is not the meter\'s row');
-    assert.match(fn, /'use-meter-t use-split-bar'/, 'the track is not the meter\'s track');
-    assert.match(fn, /'use-facts use-split-facts'/, 'the key is not the page\'s facts');
-    assert.match(fn, /'use-fact use-split-l'/, 'a line in the key is not one of this page\'s facts');
-    // and the bespoke headline that existed nowhere else on the page is gone
-    assert.doesNotMatch(fn, /use-split-big/,
-        'the split has a headline number in a size this page uses nowhere else');
+// Two sections of the same kind of content, one above the other, in two
+// different shapes, read as two screens built by two people. What came back was
+// a divided bar with a key for a while; Chains sits directly under it as a four
+// column grid, and the page's own rhythm beats the better picture.
+test('there is one share list on this page, not two', () => {
+    assert.doesNotMatch(SRC, /function useSplit\(/,
+        'there is a second kind of share list again');
+    assert.doesNotMatch(CSS, /\.use-split/,
+        'the second share list still has styles waiting for it');
+    const at = SRC.indexOf('function viewUsage(');
+    const usage = SRC.slice(at, SRC.indexOf('\n    function ', at + 40));
+    const uses = usage.match(/useShare\(/g) || [];
+    assert.strictEqual(uses.length, 3,
+        'the verdicts, the projects and the chains are not all drawn the same way');
 });
