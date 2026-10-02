@@ -4983,110 +4983,25 @@
         }
     }
 
-    // One period, split into what it was made of.
+    // There is no second kind of share list on this page, and there was.
     //
-    // This is for a set of parts that are one whole: every check came back
-    // exactly one of clear, worth a look or sanctioned, and the three add up
-    // to the period. It was a row of separate tracks, each filled against the
-    // total, which is three pictures of one fact -- and the only row that
-    // mattered was always a stub under a long green bar meaning nothing
-    // happened.
+    // What came back was drawn for a while as one bar divided into its parts,
+    // with the numbers in a key underneath. As an idea it is right -- every
+    // check came back exactly one of clear, worth a look or sanctioned, and
+    // the three are one period -- and on this page it was wrong, which is a
+    // different question and the one that matters.
     //
-    // Built out of what this page is already made of rather than out of
-    // anything new. The allowance meter on the card above is a number out of a
-    // number, right-aligned, over a track running the full width; the Plan
-    // section below is a column of facts, a key and a value with a hairline
-    // between them. This is both of those, in that order, and the only thing
-    // it adds is that the track is divided instead of filled -- because the
-    // question here is not how much of an allowance is gone, it is what the
-    // period was made of.
+    // Chains sits directly under it and is a four column grid: a name, a bar,
+    // a count, a share, the same on every row. Two sections of the same kind
+    // of content, one above the other, in two different shapes, read as two
+    // screens built by two people. The page's own rhythm beats the better
+    // picture, because consistency is the thing a reader is actually using
+    // when they stop having to look twice.
     //
-    // It has to hold more than two rows. The engine has one list today and
-    // every number between nothing and a hundred is still the fixture's; when
-    // the other lists land and a score has a middle, this grows to five or six
-    // parts. A column of facts takes that without being redesigned, which is
-    // most of why it is a column of facts.
-    function useSplit(rows, total, kindOf, linkOf) {
-        var box = document.createElement('div');
-        box.className = 'use-split';
-        var sum = rows.reduce(function (n, r) { return n + (Number(r.n) || 0); }, 0);
-        var whole = Math.max(Number(total) || 0, sum);
-        var flagged = rows.reduce(function (n, r) {
-            return r.key === 'clear' ? n : n + (Number(r.n) || 0);
-        }, 0);
-
-        // How much of the period needs a person, in the shape the allowance
-        // above says how much of an allowance is gone: the two numbers, the
-        // quieter word that says what they are, right-aligned over the track.
-        // Nobody should have to divide 46 by 872 to hear the sentence this
-        // section exists to produce.
-        var line = document.createElement('div');
-        line.className = 'use-meter-r use-split-r';
-        var fig = document.createElement('span');
-        fig.className = 'use-meter-v';
-        fig.textContent = useNum(flagged) + ' / ' + useNum(whole);
-        var what = document.createElement('span');
-        what.className = 'use-meter-p';
-        what.textContent = t('need a person');
-        fig.appendChild(what);
-        line.appendChild(fig);
-        box.appendChild(line);
-
-        // The track, divided, in the order the rows are in -- which is the
-        // order of what needs doing, so the part that matters starts at the end
-        // a reader starts from.
-        var bar = document.createElement('div');
-        bar.className = 'use-meter-t use-split-bar';
-        bar.setAttribute('role', 'img');
-        bar.setAttribute('aria-label', rows.map(function (r) {
-            return r.label + ': ' + useNum(r.n) + ', ' + pct(r.n, whole);
-        }).join('. '));
-        rows.forEach(function (r) {
-            var part = document.createElement('span');
-            part.className = 'use-split-p' + (kindOf && kindOf(r) ? ' is-' + kindOf(r) : '');
-            // a part that exists is never nothing wide: one sanctioned address
-            // in three thousand is the most important thing on this screen
-            var share = whole > 0 ? (r.n / whole) * 100 : 0;
-            part.style.width = r.n > 0 ? 'max(3px, ' + share + '%)' : '0';
-            bar.appendChild(part);
-        });
-        box.appendChild(bar);
-
-        // and the key under it, written as the facts this page writes
-        // everywhere else: a name on the left, the figures on the right, a
-        // hairline between.
-        var facts = document.createElement('div');
-        facts.className = 'use-facts use-split-facts';
-        rows.forEach(function (r) {
-            var href = linkOf ? linkOf(r) : '';
-            var row = document.createElement(href ? 'a' : 'div');
-            row.className = 'use-fact use-split-l' + (href ? ' is-open' : '');
-            if (href) {
-                row.href = href;
-                row.setAttribute('aria-label',
-                    r.label + ', ' + useNum(r.n) + ', ' + pct(r.n, whole) + '. ' + t('See these checks'));
-            }
-            var left = document.createElement('span');
-            left.className = 'use-split-n';
-            var dot = document.createElement('i');
-            dot.className = 'use-split-d' + (kindOf && kindOf(r) ? ' is-' + kindOf(r) : '');
-            left.appendChild(dot);
-            left.appendChild(document.createTextNode(r.label));
-            row.appendChild(left);
-
-            var right = document.createElement('span');
-            right.className = 'use-fact-v use-split-v';
-            right.textContent = useNum(r.n);
-            var share = document.createElement('span');
-            share.className = 'use-split-s';
-            share.textContent = pct(r.n, whole);
-            right.appendChild(share);
-            row.appendChild(right);
-            facts.appendChild(row);
-        });
-        box.appendChild(facts);
-        return box;
-    }
+    // What was worth keeping from it is kept, and none of it was the bar: the
+    // verdicts are ordered by what needs a person rather than by count, every
+    // line says its share as well as its count, and every line opens the
+    // checks it counted.
 
     // A share, written the way a share is read.
     //
@@ -6897,7 +6812,7 @@
                     return x === y ? b.n - a.n : x - y;
                 });
             if (vrows.length) {
-                fmain.appendChild(useSplit(vrows, s.total, function (r) {
+                fmain.appendChild(useShare(vrows, s.total, function (r) {
                     return r.key === 'clear' ? 'ok' : (r.key === 'severe' ? 'bad' : 'mid');
                 }, function (r) {
                     // the log's filter takes the same words this list is made
