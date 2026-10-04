@@ -32,12 +32,6 @@
     // fails the build if an icon is ever given a second meaning.
     var ICONS = {
         // the organisation's rail
-        // The place you start. A roof over a room, which is the one mark nobody
-        // mistakes for a chart, a list or a setting -- and not a gauge, which
-        // would say this screen is about how much.
-        overview: '<path d="M3.4 10.6 12 3.8l8.6 6.8"/>' +
-            '<path d="M5.8 9.4V19.4a.8.8 0 0 0 .8.8h10.8a.8.8 0 0 0 .8-.8V9.4"/>' +
-            '<path d="M9.8 20.2v-5.4h4.4v5.4"/>',
         projects: '<path d="M4 8.4 12 4.2l8 4.2-8 4.2Z"/><path d="m4 13.2 8 4.2 8-4.2"/>' +
             '<path d="m4 17.2 8 4.2 8-4.2" opacity="0.55"/>',
         team: '<circle cx="9.2" cy="8.4" r="3"/><path d="M3.6 19.2c0-2.9 2.5-4.8 5.6-4.8s5.6 1.9 5.6 4.8"/>' +
@@ -207,12 +201,6 @@
 
     var NAV = [
         { group: 'Work', items: [
-            // What is waiting, first, because that is what somebody opens this
-            // for. Projects used to be here and used to be the landing page --
-            // a screen about how the account is arranged, met every morning by
-            // somebody whose job is to work alerts.
-            { key: 'overview', label: 'Overview', icon: 'overview', org: '' },
-            { key: 'checks', label: 'Checks', icon: 'screening', org: 'checks' },
             { key: 'projects', label: 'Projects', icon: 'projects', org: 'projects' }
         ] },
         { group: 'Organisation', items: [
