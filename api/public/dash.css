@@ -3915,6 +3915,94 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 .use-side p:last-child { margin-bottom: 0; }
 .use-main { min-width: 0; }
 
+/* ---- the metric grid
+   Two columns of cells sharing one set of hairlines. The gap is 1px of the
+   line colour showing through, so no cell carries a border of its own and no
+   two borders ever land on top of each other and read as double. The outer
+   edge is clipped off by the radius, which is why there is no border on the
+   container either. */
+.use-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1px;
+    border-radius: 12px;
+    background: var(--line-2);
+    overflow: hidden;
+}
+.use-cell {
+    min-width: 0;
+    padding: 0.85rem 1rem 0.9rem;
+    background: var(--panel);
+    text-decoration: none;
+    color: inherit;
+}
+/* An odd number of metrics leaves one cell's worth of nothing, and without
+   this it is a hole in the grid rather than the end of it. */
+.use-grid > .use-cell:last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+.use-cell-h {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-bottom: 0.35rem;
+}
+.use-cell-n { font-size: 0.8rem; color: var(--ink-3); }
+.use-cell-go {
+    display: inline-flex;
+    color: var(--ink-4);
+    opacity: 0;
+    transform: translateX(-2px);
+    transition: opacity 0.14s ease, transform 0.14s ease;
+}
+.use-cell-go .nav-i { width: 13px; height: 13px; margin-right: 0; }
+/* The mark arrives on approach rather than sitting on every linked cell: a
+   column of permanent arrows is a column of furniture, and the one under the
+   cursor is the only one being asked about. Focus brings it too, or the
+   keyboard gets a quieter page than the mouse. */
+.use-cell.is-link:hover .use-cell-go,
+.use-cell.is-link:focus-visible .use-cell-go { opacity: 1; transform: none; }
+.use-cell.is-link:hover { background: var(--hover); }
+.use-cell.is-link:hover .use-cell-n { color: var(--link); }
+
+/* The ring is taller than the line of text beside it, so a cell without one
+   is a shorter cell, and in a grid of sixteen that is four row heights for no
+   reason the reader can see. The row keeps the ring's height either way. */
+.use-cell-r {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.7rem;
+    min-height: 18px;
+}
+.use-cell-v {
+    min-width: 0;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+}
+/* How far along, next to how much. Set back because it is the one part of the
+   line that can be worked out from the rest of it. */
+.use-cell-p { margin-left: 0.4rem; font-size: 0.78rem; font-weight: 400; color: var(--ink-4); }
+
+.use-ring { flex: none; display: block; width: 18px; height: 18px; }
+.use-ring svg { display: block; width: 18px; height: 18px; transform: rotate(-90deg); }
+.use-ring circle { fill: none; stroke-width: 2.6; }
+/* The track is the one on the meters, a shade up: at 2.6px bent round a circle
+   of radius 7 the same colour that reads as a line across a card all but
+   disappears. */
+.use-ring-t { stroke: var(--line); }
+.use-ring-f { stroke: var(--link); stroke-linecap: round; }
+.use-ring.is-near .use-ring-f { stroke: var(--risk-mid); }
+.use-ring.is-full .use-ring-f { stroke: var(--risk-high); }
+
+/* One column under the width where a label and its number stop fitting side
+   by side in half a panel. */
+@media (max-width: 720px) {
+    .use-grid { grid-template-columns: minmax(0, 1fr); }
+    .use-grid > .use-cell:last-child:nth-child(odd) { grid-column: auto; }
+}
+
 .use-facts { margin-bottom: 1rem; }
 .use-fact {
     display: flex;

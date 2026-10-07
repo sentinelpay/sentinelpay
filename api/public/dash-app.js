@@ -42,6 +42,10 @@
         // same screen.
         gauge: '<path d="M4.2 17.4a9 9 0 1 1 15.6 0"/>' +
             '<path d="m12 13.6 4.2-4.4"/><circle cx="12" cy="14.6" r="1.5"/>',
+        // A metric cell that leads somewhere says so with this and nothing
+        // else: a whole cell is already the target, so the mark is a direction
+        // rather than a button.
+        chev: '<path d="m9.5 5.5 6.5 6.5-6.5 6.5"/>',
         usage: '<path d="M4 20V4"/><path d="M4 20h16"/><rect x="7.4" y="12.6" width="2.9" height="4.6" rx="0.6"/>' +
             '<rect x="12" y="9" width="2.9" height="8.2" rx="0.6"/><rect x="16.6" y="5.6" width="2.9" height="11.6" rx="0.6"/>',
         billing: '<rect x="2.8" y="6" width="18.4" height="12" rx="2.2"/><path d="M2.8 10.4h18.4"/>' +
@@ -6417,6 +6421,106 @@
         return main;
     }
 
+    // Everything this organisation is allowed, on one screen, one metric to a
+    // cell.
+    //
+    // The page below says a great deal about four of them and nothing about the
+    // rest, which left somebody wanting to know whether they are near a limit
+    // reading four sections to find out about four things and guessing about
+    // the others. This is the index: every metric, what is spent of it, and a
+    // way into the section that explains it where one exists.
+    //
+    // Two columns, because a metric is a short label and a short number and a
+    // single column of them would run the length of the page with half of it
+    // empty. The cells share one set of hairlines rather than each carrying a
+    // border, so the grid reads as a table and not as a wall of boxes.
+    function useGrid(cells) {
+        var grid = document.createElement('div');
+        grid.className = 'use-grid';
+        cells.forEach(function (c) {
+            if (c) grid.appendChild(useCell(c));
+        });
+        return grid;
+    }
+
+    function useCell(c) {
+        var cell = document.createElement(c.to ? 'a' : 'div');
+        cell.className = 'use-cell';
+        if (c.to) {
+            cell.className += ' is-link';
+            cell.href = c.to;
+        }
+
+        var head = document.createElement('div');
+        head.className = 'use-cell-h';
+        var name = document.createElement('span');
+        name.className = 'use-cell-n';
+        name.textContent = t(c.label);
+        head.appendChild(name);
+        if (c.to) {
+            var go = document.createElement('span');
+            go.className = 'use-cell-go';
+            go.innerHTML = icon('chev');
+            head.appendChild(go);
+        }
+        cell.appendChild(head);
+
+        var row = document.createElement('div');
+        row.className = 'use-cell-r';
+
+        var val = document.createElement('span');
+        val.className = 'use-cell-v';
+        // A limit, or no limit. With one, the cell reads the way the meters on
+        // this page already do -- spent of allowed, and how far along that is.
+        // Without one there is nothing to be a fraction of, and a bare count is
+        // the whole truth rather than a number missing its denominator.
+        var pct = null;
+        if (c.of) {
+            pct = Math.min(100, Math.round((c.used / c.of) * 100));
+            val.textContent = useNum(c.used) + ' / ' + useNum(c.of) + (c.unit ? ' ' + t(c.unit) : '');
+            // A share of nothing spent is nought per cent, which the two
+            // numbers beside it already said and the ring said again. On a
+            // grid where most cells start empty that is sixteen sets of
+            // brackets saying zero, so it is printed once there is something
+            // to print.
+            if (pct > 0) {
+                var p = document.createElement('span');
+                p.className = 'use-cell-p';
+                p.textContent = '(' + pct + '%)';
+                val.appendChild(p);
+            }
+        } else {
+            val.textContent = useNum(c.used) + (c.unit ? ' ' + t(c.unit) : '');
+        }
+        row.appendChild(val);
+
+        // The ring is the same fraction the text already gives, which is the
+        // point: a column of them is read at a glance and the number is read
+        // when one of them looks wrong. It is drawn even at nothing, because a
+        // cell that loses its ring at zero makes an empty row a different shape
+        // from a full one.
+        if (pct !== null) row.appendChild(useRing(pct));
+        cell.appendChild(row);
+
+        return cell;
+    }
+
+    // 44 is the circumference of a circle of radius 7, near enough that the
+    // dash never reaches the join and shows it.
+    function useRing(pct) {
+        var wrap = document.createElement('span');
+        wrap.className = 'use-ring';
+        if (pct >= 100) wrap.classList.add('is-full');
+        else if (pct >= 80) wrap.classList.add('is-near');
+        wrap.innerHTML =
+            '<svg viewBox="0 0 18 18" aria-hidden="true">' +
+            '<circle class="use-ring-t" cx="9" cy="9" r="7"/>' +
+            '<circle class="use-ring-f" cx="9" cy="9" r="7" ' +
+            'stroke-dasharray="' + ((pct / 100) * 44).toFixed(2) + ' 44"/>' +
+            '</svg>';
+        return wrap;
+    }
+
     // Included / used / left, as three lines rather than a sentence: a number
     // with a name beside it can be read off, and a sentence has to be unpicked.
     function useFacts(rows) {
@@ -6790,6 +6894,38 @@
             // Screenings. It is not a fact about screenings, it is the rule
             // the whole page runs on, and it was being said halfway down.
             var sum = useSection('use-summary', 'Usage summary', 'gauge');
+            // The grid runs the full width. There is no column of prose beside
+            // it because the cells are the explanation: a label and a number
+            // each, read in any order.
+            sum.body.className += ' is-wide';
+
+            // What the plan allows. A subscription carries its own figures --
+            // an agreed one can differ from the catalogue -- so they are taken
+            // from there when there is one, and left null when there is not,
+            // which turns every cell into a plain count instead of a fraction
+            // of a limit nobody has agreed to.
+            var inc = (sub && sub.included) || {};
+            var runUsed = out.cycle ? out.cycle.used : s.total;
+            var chains = (s.assets || []).length;
+
+            sum.body.appendChild(useGrid([
+                { label: 'Screenings', used: runUsed, of: inc.screenings, to: '#use-screenings' },
+                { label: 'Addresses screened', used: s.addresses || 0, of: inc.addresses },
+                { label: 'Re-screens', used: 0, of: inc.screenings },
+                { label: 'Transaction screens', used: 0, of: inc.screenings },
+                { label: 'History sweeps', used: 0, of: inc.screenings },
+                { label: 'Bulk screens', used: 0, of: inc.screenings },
+                { label: 'Addresses monitored', used: 0, of: inc.addresses },
+                { label: 'Alerts raised', used: 0 },
+                { label: 'Findings to review', used: s.flagged || 0, to: '#use-coverage' },
+                { label: 'Chains covered', used: chains, to: '#use-coverage' },
+                { label: 'Seats', used: shape.members || 0, of: inc.seats, to: '#use-team' },
+                { label: 'Projects', used: shape.projects || 0 },
+                { label: 'API tokens', used: shape.tokens || 0, to: '#use-team' },
+                { label: 'Tokens used', used: shape.tokensUsed || 0 },
+                { label: 'Webhook deliveries', used: 0 },
+                { label: 'Sandbox screens', used: 0 }
+            ]));
             body.appendChild(sum);
 
             // and whatever is left of the first screen, so the next section
