@@ -36,6 +36,12 @@
             '<path d="m4 17.2 8 4.2 8-4.2" opacity="0.55"/>',
         team: '<circle cx="9.2" cy="8.4" r="3"/><path d="M3.6 19.2c0-2.9 2.5-4.8 5.6-4.8s5.6 1.9 5.6 4.8"/>' +
             '<path d="M16.4 6.6a2.9 2.9 0 0 1 0 5.7"/><path d="M20.4 19.2c0-2.1-1.2-3.5-3-4.2"/>',
+        // How full something is. Not the bar chart the rail uses for this page:
+        // that mark means "the usage screen", and this one means "how much of
+        // an allowance is gone", which is a different thing standing on the
+        // same screen.
+        gauge: '<path d="M4.2 17.4a9 9 0 1 1 15.6 0"/>' +
+            '<path d="m12 13.6 4.2-4.4"/><circle cx="12" cy="14.6" r="1.5"/>',
         usage: '<path d="M4 20V4"/><path d="M4 20h16"/><rect x="7.4" y="12.6" width="2.9" height="4.6" rx="0.6"/>' +
             '<rect x="12" y="9" width="2.9" height="8.2" rx="0.6"/><rect x="16.6" y="5.6" width="2.9" height="11.6" rx="0.6"/>',
         billing: '<rect x="2.8" y="6" width="18.4" height="12" rx="2.2"/><path d="M2.8 10.4h18.4"/>' +
@@ -6768,6 +6774,28 @@
             // What replaces it is the metric grid, which is a different thing
             // and not a tidier version of this one.
 
+            // ---- usage summary
+            //
+            // What this page is, before any of its numbers. The band above
+            // says which period and which scope; this says what is being
+            // counted and what happens at the end of it, which is the one
+            // thing about an allowance nobody should have to find out by
+            // reaching it.
+            //
+            // The sentence about running out lives here now rather than in
+            // Screenings. It is not a fact about screenings, it is the rule
+            // the whole page runs on, and it was being said halfway down.
+            var sum = useSection('use-summary', 'Usage summary', 'gauge',
+                'What this organisation has used, and what it is allowed.');
+            // Not the wide layout: the prose keeps the narrow left column every
+            // other section's prose keeps, and the right stays empty because
+            // that is where the grid of allowances goes.
+            sum.body.appendChild(useSide([
+                'Everything here is counted over the period chosen above, against what the plan allows.',
+                'Running out stops further checks rather than adding to a bill: nothing here can charge you by surprise.'
+            ]));
+            body.appendChild(sum);
+
             // and whatever is left of the first screen, so the next section
             // begins below it rather than half in view
             var fold = document.createElement('div');
@@ -6790,11 +6818,9 @@
             var scr = useSection('use-screenings', 'Screenings', 'screening',
                 'What a check costs you, and what this period went on.');
             scr.body.appendChild(useSide(sub ? [
-                'A check is one address, asked once. The allowance is per period and starts again when the next one does.',
-                'Running out stops further checks rather than adding to a bill: nothing here can charge you by surprise.'
+                'A check is one address, asked once. The allowance is per period and starts again when the next one does.'
             ] : [
-                'A check is one address, asked once.',
-                'Running out stops further checks rather than adding to a bill: nothing here can charge you by surprise.'
+                'A check is one address, asked once.'
             ]));
             var smain = useMain();
 
