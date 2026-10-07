@@ -5747,16 +5747,6 @@
     // being the point.
     var PLOT_ROOF = 280;
 
-    // How much of the next section has to fit before it is allowed to show.
-    //
-    // The overview owns the first screen so that a heading does not peek over
-    // the bottom edge looking like the page failed to finish. That is a rule
-    // about slivers, and on a tall screen it was being applied to a gap big
-    // enough to hold the whole section -- so the page ended two thirds of the
-    // way down and the rest was dark. Past this much room the section arrives
-    // as a section, which is not a sliver and does not need hiding.
-    var PEEK_MIN = 180;
-
     // how many things there are to give up, in dash.css under [data-fit]
     var FIT_LEVELS = 4;
 
@@ -5895,14 +5885,15 @@
             }
         }
 
-        // Room enough for the next section to be itself: let the page run.
-        if (missing <= -PEEK_MIN) {
-            gap.style.height = '0px';
-            return;
-        }
-
-        // Otherwise whatever is left of the screen goes under the overview, so
-        // the next section begins below it rather than half in view. A
+        // Whatever is left of the screen goes under the band, so the first
+        // section begins below the fold rather than half in view.
+        //
+        // There used to be a rule above this: past a certain amount of room
+        // the spacer was dropped and the page allowed to run, because holding
+        // a screen open under a card that had already answered the question
+        // was holding a void. The card is gone and the question is not
+        // answered up there any more, so the first screen is kept clear for
+        // what goes in its place. A
         // correction to what the spacer already is: an empty block has no
         // height, so the margins above and below it collapse through it and
         // stop collapsing the moment it is given one -- which moved everything
