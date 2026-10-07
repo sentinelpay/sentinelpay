@@ -6765,96 +6765,17 @@
 
             var runs = pick('Screenings') || pick('Live checks');
 
-            // The answer, in a sentence, before any of the drawing.
+            // The top of this page is gone: the sentence, the headline card
+            // with its chart, and the row of allowance tiles under it.
             //
-            // Everything under this says how much has been used in some shape:
-            // a figure, a meter, a chart, four tiles. None of them says whether
-            // that is fine, which is the only thing most people open this page
-            // to find out. One line, in words, at the top -- and where it is
-            // not fine it says what happens, because "out of screenings" means
-            // checks are being refused right now and that is not a thing to
-            // leave somebody to work out from a full bar.
-            if (!fresh && runs && !runs.unmetered && runs.of) {
-                var left = Math.max(0, runs.of - runs.used);
-                var said = document.createElement('p');
-                said.className = 'use-verdict' + (left > 0 ? '' : ' is-out');
-                said.textContent = left > 0
-                    ? fill('{used} of {of} screenings used in this period. {left} left.',
-                        { used: useNum(runs.used), of: useNum(runs.of), left: useNum(left) })
-                    : t('Every screening in this period is used. Further checks are refused until the next one begins.');
-                body.appendChild(said);
-            }
-
-            body.appendChild(useHeadline(s, out.previous, out.period, cmp, fresh,
-                runs ? {
-                    label: runs.label,
-                    per: runs.per,
-                    used: runs.used,
-                    of: runs.of
-                } : null));
-
-            // What a plan carries beyond the meters used to be a bare link here
-            // to /pricing. It floated between two cards belonging to neither,
-            // and it sent somebody who had already bought Growth to a page
-            // selling three plans to find their own. The answer belongs on this
-            // page, in the section that is already about the plan.
-
-            // the window before this one, which the tiles read to say whether
-            // each of them is up or down
-            var was = out.previous;
-            // What this period did, and nothing else.
+            // All three said the same number. "872 of 30,000 used", then
+            // "872 / 30,000" on a meter inside the card, then "872 / 30,000"
+            // again on a tile a hundred points below it. Three readings of one
+            // fact in the space of one screen, each one asking to be kept in
+            // agreement with the other two.
             //
-            // This used to carry six things, three of which were members,
-            // projects and tokens used -- none of them a measure of the
-            // period, and all three already sitting in the Team section
-            // below, there with the halves that matter: who joined during the
-            // window, and how many tokens exist as against how many were used.
-            // So the row repeated what was under it, less well, and did it in
-            // three boxes that read 0, 1, 0 for almost every customer. A row
-            // of measures where half the numbers are zero looks broken however
-            // it is styled, and the fault was the choice of numbers.
-            //
-            // These four are all counted over the window, all comparable with
-            // the window before, and all about the work rather than about the
-            // account.
-            // The tiles are the quota, not the analysis.
-            //
-            // They were Flagged / Severe findings / Addresses / Chains: four
-            // facts about what the work found, at the top of a page about what
-            // the work cost. This page answers one question -- how much of what
-            // I am allowed is gone -- and the four boxes under its headline are
-            // the first place a reader looks for the answer. So they carry the
-            // allowances, one tile each, every one a way down to the section
-            // that explains it.
-            //
-            // What the work found has not been thrown away: it is below, inside
-            // Screenings, as what the allowance was spent on.
-            var strip = allow.rows.map(function (r) {
-                var label = r.label;
-                var value = r.unmetered
-                    ? t('Unmetered')
-                    : useNum(r.used) + ' / ' + useNum(r.of);
-                return {
-                    label: label,
-                    value: value,
-                    // each tile is a way down to the section that explains it,
-                    // and a seat is explained where the seats are
-                    to: label === 'Seats' ? 'use-team' : 'use-screenings',
-                    sub: r.unmetered || !r.of
-                        ? (r.per ? t(r.per) : '')
-                        : fill('{n}% used', { n: Math.min(100, Math.round((r.used / r.of) * 100)) }),
-                    // the meter rather than a shape over time: an allowance is
-                    // a line you are walking towards, and how fast you walked
-                    // yesterday is the chart's question, not this one
-                    of: r.unmetered ? 0 : r.of,
-                    used: r.used
-                };
-            });
-            // Two or more, or none at all. One allowance is not a row of
-            // cards: the meter inside the card above already says it, and a
-            // single tile beside an empty three quarters of a row reads as
-            // something that failed to load.
-            if (!fresh && strip.length > 1) body.appendChild(useStrip(strip));
+            // What replaces it is the metric grid, which is a different thing
+            // and not a tidier version of this one.
 
             // and whatever is left of the first screen, so the next section
             // begins below it rather than half in view

@@ -193,19 +193,19 @@ test('the work done is visible somewhere', () => {
         'a billing window counts decisions, which are not consumption');
 });
 
-// Usage is a billing page: every section on it answers how much of what I am
-// allowed is gone. The four tiles under the headline used to be Flagged /
-// Severe findings / Addresses / Chains -- four facts about what the work found,
-// at the top of a page about what the work cost.
-test('the tiles under the headline are the allowances', () => {
+// The top of the page is gone: the verdict sentence, the headline card with
+// its chart, and the row of allowance tiles. All three printed the same
+// number within one screen, each one needing to be kept in agreement with
+// the other two.
+test('the page does not say the same number three times', () => {
     const at = SRC.indexOf('function viewUsage(');
     const usage = SRC.slice(at, SRC.indexOf('\n    function ', at + 40));
-    assert.match(usage, /var strip = allow\.rows\.map\(/,
-        'the tiles are not built from what the plan allows');
-    assert.doesNotMatch(usage, /label: 'Severe findings'/,
-        'the analysis tiles are back above the allowances');
-    assert.match(usage, /use-verdict/,
-        'the page never says in words whether the allowance is fine');
+    assert.doesNotMatch(usage, /use-verdict/,
+        'the verdict sentence is back');
+    assert.doesNotMatch(usage, /appendChild\(useHeadline\(/,
+        'the headline card is back');
+    assert.doesNotMatch(usage, /appendChild\(useStrip\(/,
+        'the allowance tiles are back');
 });
 
 // Three cuts of one number laid out as three sections made the page look longer
