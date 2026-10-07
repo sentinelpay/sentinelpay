@@ -53,8 +53,6 @@
             "Every project": "Svi projekti",
             "Show more": "Prikaži još",
             "See these checks": "Pogledaj ove provjere",
-            "Your plan comes with a set number of checks per period. When they run out, screening stops until the next period starts. Nothing here turns into a bill you did not agree to.": "Vaš plan dolazi s određenim brojem provjera po razdoblju. Kad se potroše, provjera staje do početka sljedećeg razdoblja. Ništa se ovdje ne pretvara u račun na koji niste pristali.",
-            "These numbers are live. No nightly job, no hour of delay.": "Ovi brojevi su uživo. Bez noćnog posla, bez sata kašnjenja.",
             "Usage summary": "Sažetak potrošnje",
             "Coming": "Uskoro",
             "Not in this plan": "Nije u ovom planu",
