@@ -6371,7 +6371,11 @@
         sec.className = 'use-sec';
         sec.id = id;
         var head = document.createElement('div');
-        head.className = 'use-sec-h';
+        // With a hint, the title and the hint are a block and the badge lines
+        // up with the top of it. With no hint there is one line, and lining a
+        // single line up with the top of a badge taller than it leaves the
+        // word sitting high in its own row.
+        head.className = 'use-sec-h' + (hint ? '' : ' is-bare');
         var mark = document.createElement('span');
         mark.className = 'orgh-ico';
         mark.innerHTML = icon(ico);
@@ -6785,15 +6789,7 @@
             // The sentence about running out lives here now rather than in
             // Screenings. It is not a fact about screenings, it is the rule
             // the whole page runs on, and it was being said halfway down.
-            var sum = useSection('use-summary', 'Usage summary', 'gauge',
-                'What this organisation has used, and what it is allowed.');
-            // Not the wide layout: the prose keeps the narrow left column every
-            // other section's prose keeps, and the right stays empty because
-            // that is where the grid of allowances goes.
-            sum.body.appendChild(useSide([
-                'Everything here is counted over the period chosen above, against what the plan allows.',
-                'Running out stops further checks rather than adding to a bill: nothing here can charge you by surprise.'
-            ]));
+            var sum = useSection('use-summary', 'Usage summary', 'gauge');
             body.appendChild(sum);
 
             // and whatever is left of the first screen, so the next section

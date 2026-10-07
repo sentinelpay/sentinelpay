@@ -54,8 +54,6 @@
             "Show more": "Prikaži još",
             "See these checks": "Pogledaj ove provjere",
             "Usage summary": "Sažetak potrošnje",
-            "What this organisation has used, and what it is allowed.": "Što je ova organizacija potrošila i što joj je dopušteno.",
-            "Everything here is counted over the period chosen above, against what the plan allows.": "Sve se ovdje broji kroz razdoblje odabrano iznad, naspram onoga što plan dopušta.",
             "Coming": "Uskoro",
             "Not in this plan": "Nije u ovom planu",
             "{cleared} not a match, {confirmed} confirmed": "{cleared} nije podudaranje, {confirmed} potvrđeno",

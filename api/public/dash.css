@@ -3557,6 +3557,10 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 .use-sec { padding-top: 1.6rem; border-top: 1px solid var(--line-2); scroll-margin-top: 8.5rem; }
 .use-sec + .use-sec { margin-top: 1.6rem; }
 .use-sec-h { display: flex; align-items: flex-start; gap: 0.6rem; margin-bottom: 1rem; }
+/* A heading with nothing under it is one line, and one line against the top of
+   a badge taller than it reads as having slipped upward. On its own it centres
+   on the badge instead. */
+.use-sec-h.is-bare { align-items: center; }
 .use-sec-t { margin: 0; font-family: var(--sp-display); font-size: 1rem; color: var(--ink); }
 .use-sec-p { margin: 0.15rem 0 0; font-size: 0.82rem; color: var(--ink-4); }
 /* the explanation on the left, the numbers on the right: the words are read
