@@ -6790,13 +6790,6 @@
             // Screenings. It is not a fact about screenings, it is the rule
             // the whole page runs on, and it was being said halfway down.
             var sum = useSection('use-summary', 'Usage summary', 'gauge');
-            // Under the heading, in the narrow column every other section's
-            // prose sits in. The right half stays empty because the grid of
-            // allowances goes there.
-            sum.body.appendChild(useSide([
-                'Your plan comes with a set number of checks per period. When they run out, screening stops until the next period starts. Nothing here turns into a bill you did not agree to.',
-                'These numbers are live. No nightly job, no hour of delay.'
-            ]));
             body.appendChild(sum);
 
             // and whatever is left of the first screen, so the next section
