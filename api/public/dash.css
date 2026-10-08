@@ -4013,6 +4013,11 @@ html.is-theming .btn {
 /* A line the plan does not carry. Set at the weight of a label rather than a
    figure, because it is not one: a number here would be read as a quantity. */
 .use-mc-v.is-none { font-size: 0.85rem; font-weight: 500; color: var(--ink-4); }
+/* How the same length of time before this one came to. Quiet, because it is a
+   second reading of the number it sits beside: green and red on eighteen cells
+   would turn a summary into a scoreboard, and more findings than last week is
+   not a defeat. */
+.use-mc-d { margin-left: 0.45rem; font-size: 0.78rem; font-weight: 500; color: var(--ink-4); }
 .use-mc-p { margin-left: 0.4rem; font-size: 0.78rem; font-weight: 400; color: var(--ink-4); }
 
 .use-ring { flex: none; display: block; width: 18px; height: 18px; }

@@ -577,9 +577,14 @@ async function forOrg(orgId, opts) {
         const cycle = list.find((p) => p.current) || null;
         const sameWindow = cycle && cycle.key === period.key;
 
-        const [work, shape, past, marks, ghost, spent] = await Promise.all([
+        const [work, shape, shapeBefore, past, marks, ghost, spent] = await Promise.all([
             screeningsIn(orgId, period.from, period.to, sandbox, zone, grain),
             shapeOf(orgId, period.from, period.to),
+            // The same shape over the window before this one. Only the counted
+            // part of it means anything there -- how many people are in the
+            // organisation is not a fact about last week -- but it is one query
+            // either way and the counted part is what a comparison needs.
+            shapeOf(orgId, before.from, before.to),
             comparable
                 ? db.query(
                     // the same counts the tiles show, so each of them can say
@@ -629,6 +634,10 @@ async function forOrg(orgId, opts) {
                 from: before.from, to: before.to,
                 total: head.n, flagged: head.flagged, severe: head.severe,
                 addresses: head.addresses, assetCount: head.assets,
+                // Counted the same way as this window's, so the two can be
+                // subtracted. A number beside a number from a different kind
+                // of question is not a comparison.
+                decisions: shapeBefore ? shapeBefore.decisions : 0,
                 // the same stretch of it, not all of it, while this one runs
                 partial: Boolean(before.partial),
                 days: ghost,
