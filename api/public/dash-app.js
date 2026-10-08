@@ -6505,10 +6505,70 @@
         // when one of them looks wrong. It is drawn even at nothing, because a
         // cell that loses its ring at zero makes an empty row a different shape
         // from a full one.
-        if (pct !== null) row.appendChild(useRing(pct));
+        if (pct !== null) {
+            row.appendChild(useRing(pct));
+        } else if (c.series) {
+            var spark = useSpark(c.series, c.ghost);
+            if (spark) row.appendChild(spark);
+        }
         cell.appendChild(row);
 
         return cell;
+    }
+
+    // The shape of a window, in the space a ring would have taken.
+    //
+    // A cell with no ceiling has nothing to put a ring around, so that half of
+    // the grid sat with an empty right edge while the metered half had a mark
+    // in it. The empty half is the half that moves when the period changes,
+    // and the one thing a count with no ceiling cannot say on its own is
+    // whether it arrived steadily or in one afternoon.
+    //
+    // The window before this one is drawn underneath in the line colour of
+    // something set aside. That is the comparison view, at the size it is
+    // actually worth: the two shapes on top of each other, in a cell, with no
+    // control to find and nothing to switch on.
+    function useSpark(now, before) {
+        var W = 64, H = 20, PAD = 1.5;
+        if (!now || now.length < 2) return null;
+
+        // Both lines against one scale, or the earlier one is drawn to its own
+        // height and a quiet month looks exactly like a busy one.
+        var top = 0;
+        var seen = function (list) {
+            for (var i = 0; list && i < list.length; i++) if (list[i] > top) top = list[i];
+        };
+        seen(now);
+        seen(before);
+        if (top <= 0) top = 1;
+
+        var path = function (list) {
+            if (!list || list.length < 2) return '';
+            var step = (W - PAD * 2) / (list.length - 1);
+            var out = [];
+            for (var i = 0; i < list.length; i++) {
+                var x = PAD + i * step;
+                var y = H - PAD - (list[i] / top) * (H - PAD * 2);
+                out.push((i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1));
+            }
+            return out.join(' ');
+        };
+
+        var wrap = document.createElement('span');
+        wrap.className = 'use-mc-spark';
+        var ghost = path(before);
+        wrap.innerHTML =
+            '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true">' +
+            (ghost ? '<path class="use-spark-was" d="' + ghost + '"/>' : '') +
+            '<path class="use-spark-now" d="' + path(now) + '"/>' +
+            '</svg>';
+        return wrap;
+    }
+
+    // One measure out of the day rows, which carry all five.
+    function useSeries(days, key) {
+        if (!days || !days.length) return null;
+        return days.map(function (d) { return d[key] || 0; });
     }
 
     // 44 is the circumference of a circle of radius 7, near enough that the
@@ -6957,15 +7017,23 @@
             // pretending to be the other.
             sum.body.appendChild(useGrid([
                 // ---- this window, and the same length of time before it
+                // The four that carry a day-by-day. Decisions and alerts are
+                // counted but not bucketed, so they get the figure and the
+                // change and no shape; drawing a flat line for them would say
+                // the work came in evenly, which is a claim and not a gap.
                 { label: 'Screenings', used: s.total || 0,
-                  was: older ? out.previous.total : null },
+                  was: older ? out.previous.total : null,
+                  series: useSeries(s.days, 'n'), ghost: useSeries(older, 'n') },
                 { label: 'Addresses screened', used: s.addresses || 0,
-                  was: older ? out.previous.addresses : null },
+                  was: older ? out.previous.addresses : null,
+                  series: useSeries(s.days, 'addresses'), ghost: useSeries(older, 'addresses') },
                 { label: 'Chains screened', used: chains,
-                  was: older ? out.previous.assetCount : null },
+                  was: older ? out.previous.assetCount : null,
+                  series: useSeries(s.days, 'assets'), ghost: useSeries(older, 'assets') },
 
                 { label: 'Findings to review', used: s.flagged || 0,
-                  was: older ? out.previous.flagged : null },
+                  was: older ? out.previous.flagged : null,
+                  series: useSeries(s.days, 'flagged'), ghost: useSeries(older, 'flagged') },
                 { label: 'Decisions recorded', used: shape.decisions || 0,
                   was: older ? out.previous.decisions : null },
                 { label: 'Alerts raised', used: 0 },
