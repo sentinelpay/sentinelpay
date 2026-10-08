@@ -16,11 +16,13 @@
 //
 //   DATABASE_URL=... node tools/seed-usage.js <org-slug> [--days 45] [--busy 10] [--yes]
 //                        [--review]   also write the verdict the engine cannot reach yet
+//                        [--decided 0.6]  how much of the flagged work a person signed off
 //   DATABASE_URL=... node tools/seed-usage.js <org-slug> --from 2026-06-20 [--yes]
 //   DATABASE_URL=... node tools/seed-usage.js <org-slug> --clear [--yes]
 //   DATABASE_URL=... node tools/seed-usage.js <org-slug> --show
 
 const db = require('../api/db.js');
+const crypto = require('crypto');
 
 // the marker lives in a column the product already has and never sets itself,
 // so finding these rows later is a plain equality rather than a guess
@@ -32,7 +34,7 @@ const value = (name) => {
     const at = args.indexOf('--' + name);
     return at === -1 ? '' : (args[at + 1] || '');
 };
-const TAKES_VALUE = ['--days', '--from', '--busy'];
+const TAKES_VALUE = ['--days', '--from', '--busy', '--decided'];
 const plain = args.filter((a, i) => !a.startsWith('--') && !(i > 0 && TAKES_VALUE.indexOf(args[i - 1]) !== -1));
 const slug = plain[0];
 
@@ -227,6 +229,7 @@ async function main() {
     // since June, not for ninety-five days.
     let days = Math.min(Math.max(Number(value('days')) || 45, 1), 365);
     const fromDay = String(value('from') || '').trim();
+    let startsAt = new Date(Date.now() - (days - 1) * 86400000);
     if (fromDay) {
         const when = new Date(fromDay + 'T00:00:00Z');
         if (isNaN(when.getTime()) || when.getTime() > Date.now()) {
@@ -234,22 +237,30 @@ async function main() {
             process.exit(1);
         }
         days = Math.min(Math.ceil((Date.now() - when.getTime()) / 86400000) + 1, 400);
+        startsAt = when;
+    }
 
-        // An organisation cannot have been working before it existed, and the
-        // usage screen knows it: a rolling window is cut at the day the
-        // organisation was created, so traffic written before that would be
-        // written and then hidden. The fixture is made whole instead.
-        const born = await db.query('SELECT created_at FROM organisations WHERE id = $1', [org.id]);
-        const existed = born.rows[0] && new Date(born.rows[0].created_at).getTime();
-        if (existed && existed > when.getTime()) {
-            console.log('');
-            console.log('this organisation was created on ' + new Date(existed).toISOString().slice(0, 10) +
-                ', after the date asked for.');
-            console.log('it will be moved back to ' + fromDay + ' so the traffic is not hidden.');
-            if (flag('yes')) {
-                await db.query('UPDATE organisations SET created_at = $2 WHERE id = $1',
-                    [org.id, when.toISOString()]);
-            }
+    // An organisation cannot have been working before it existed, and the usage
+    // screen knows it: a rolling window is cut at the day the organisation was
+    // created, so traffic written before that is written and then hidden.
+    //
+    // This ran for --from only, which left --days with a fixture that looks
+    // right in the table and wrong on the screen. A hundred and twenty days of
+    // traffic under a day-old organisation collapses every rolling window onto
+    // yesterday, so the last week, the last month and the last quarter all
+    // report the same figure -- and the period picker, which is the thing a
+    // fixture this size is usually built to try, appears to be broken.
+    const born = await db.query('SELECT created_at FROM organisations WHERE id = $1', [org.id]);
+    const existed = born.rows[0] && new Date(born.rows[0].created_at).getTime();
+    if (existed && existed > startsAt.getTime()) {
+        const day = startsAt.toISOString().slice(0, 10);
+        console.log('');
+        console.log('this organisation was created on ' + new Date(existed).toISOString().slice(0, 10) +
+            ', after the traffic starts.');
+        console.log('it will be moved back to ' + day + ', or every window would be cut to its first day.');
+        if (flag('yes')) {
+            await db.query('UPDATE organisations SET created_at = $2 WHERE id = $1',
+                [org.id, startsAt.toISOString()]);
         }
     }
     console.log('');
@@ -345,6 +356,62 @@ async function main() {
     }
     await flush();
     console.log('added ' + wrote + '.');
+
+    // And the half of the work a machine does not do.
+    //
+    // Screenings alone leave the summary's decision count at nought on every
+    // window, which reads as a broken counter rather than as a fixture that
+    // was never asked for people. A decision is also the only number on that
+    // page that moves because somebody sat down and moved it.
+    //
+    // Each one is stamped shortly after the check it concludes, not at the
+    // moment the fixture runs. Dated today, ninety days of decisions would all
+    // fall inside the last seven, and every window would report the same
+    // total -- which is precisely the thing the period picker is meant to show
+    // is not true.
+    //
+    // No marker is needed on these. They hang off sample screenings by a
+    // foreign key that deletes on cascade, so --clear already takes them.
+    const share = Math.max(0, Math.min(1, Number(value('decided') || 0.6)));
+    let signed = 0;
+    if (share > 0) {
+        const open = await db.query(
+            `SELECT id, at FROM screenings
+              WHERE org_id = $1 AND sources = $2 AND verdict <> 'clear' AND decision = ''
+              ORDER BY at`,
+            [org.id, MARK]);
+        for (const row of open.rows) {
+            if (Math.random() >= share) continue;
+            // cleared more often than confirmed, because most alerts are not
+            // the person the list is about
+            const state = Math.random() < 0.78 ? 'cleared' : 'confirmed';
+            const why = state === 'cleared'
+                ? 'Same name, different person. Date of birth does not match.'
+                : 'Matches the listed entity. Funds held and reported.';
+            // somewhere between twenty minutes and two days after the check,
+            // and never after this moment
+            const when = new Date(Math.min(
+                NOW, new Date(row.at).getTime() + (20 + Math.random() * 2860) * 60000));
+            const sealed = { check: String(row.id), state, note: why, by: 'sample', at: when.toISOString() };
+            const stamp = 'sha256:' + crypto.createHash('sha256')
+                .update(JSON.stringify(sealed), 'utf8').digest('hex');
+            const put = await db.query(
+                `INSERT INTO check_decisions (screening_id, org_id, actor_id, at, decision, digest)
+                 VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+                [row.id, org.id, userId, when.toISOString(), state, stamp]);
+            const made = put.rows[0].id;
+            await db.query(
+                'UPDATE check_decisions SET actor_enc = $1, note_enc = $2 WHERE id = $3',
+                [db.seal('decided-by:' + made, 'Sample analyst'), db.seal('decision:' + made, why), made]);
+            await db.query(
+                `UPDATE screenings SET decision = $1, decided_at = $2, decided_by = $3
+                  WHERE id = $4 AND org_id = $5`,
+                [state, when.toISOString(), userId, row.id, org.id]);
+            signed += 1;
+        }
+        console.log('signed off ' + signed + ' of them, dated to just after each check.');
+    }
+
     console.log('take them out again with:  node tools/seed-usage.js ' + slug + ' --clear --yes');
     process.exit(0);
 }
