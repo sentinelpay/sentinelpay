@@ -6435,7 +6435,13 @@
         // Without one there is nothing to be a fraction of, and a bare count is
         // the whole truth rather than a number missing its denominator.
         var pct = null;
-        if (c.of) {
+        // A limit of nothing is not a limit of nothing used. It is a line the
+        // plan does not carry at all, and printing "0 / 0" against it says the
+        // allowance is full when there is no allowance.
+        if (c.of === 0) {
+            val.textContent = t('Not in this plan');
+            val.className += ' is-none';
+        } else if (c.of) {
             pct = Math.min(100, Math.round((c.used / c.of) * 100));
             val.textContent = useNum(c.used) + ' / ' + useNum(c.of) + (c.unit ? ' ' + t(c.unit) : '');
             // A share of nothing spent is nought per cent, which the two
@@ -6876,40 +6882,50 @@
 
             // Eighteen, six rows of three.
             //
-            // The ones with a ceiling come first, because those are the ones
-            // that can stop work: everything under them is a count, and a
-            // count is here to be seen rather than to be worried about.
+            // Nearly every cell carries a limit, because nearly everything a
+            // plan sells has one and the catalogue now says what they are.
+            // Three groups, and the difference between them is the point:
             //
-            // What is deliberately not here is the five ways a screening can
-            // be spent. Re-screens, transaction screens, history sweeps, bulk
-            // and sandbox all come out of the same allowance, so beside the
-            // total they are four numbers that cannot move independently of
-            // the fifth. One cell for the allowance; the split is under
-            // Screenings, below the figure it adds up to.
+            //   spent against an allowance -- screenings, monitoring, seats,
+            //   projects, keys, calls, deliveries, watchlist, exports. These
+            //   run out, and running out stops work.
+            //
+            //   covered of what the plan carries -- chains and lists. Nothing
+            //   is spent; the fraction says how much of what was bought is
+            //   live, which on a staging product is the more useful number.
+            //
+            //   counted, with no ceiling at all -- findings, decisions,
+            //   alerts, addresses screened, members joined. Capping any of
+            //   these would mean refusing to tell somebody about risk, or
+            //   refusing a person already paid for. They are counts and they
+            //   stay counts; a denominator here would be invented.
+            //
+            // Left out on purpose: the five ways a screening is spent, which
+            // come out of one allowance and sit under Screenings.
             sum.body.appendChild(useGrid([
                 { label: 'Screenings', used: runUsed, of: inc.screenings },
-                { label: 'Addresses', used: s.addresses || 0, of: inc.addresses },
+                { label: 'Addresses monitored', used: 0, of: inc.addresses },
                 { label: 'Seats', used: shape.members || 0, of: inc.seats },
 
                 { label: 'Findings to review', used: s.flagged || 0 },
                 { label: 'Decisions recorded', used: shape.decisions || 0 },
                 { label: 'Alerts raised', used: 0 },
 
-                { label: 'Chains covered', used: chains },
-                { label: 'Sanctions lists', used: 1 },
-                { label: 'Projects', used: shape.projects || 0 },
+                { label: 'Chains covered', used: chains, of: inc.chains },
+                { label: 'Sanctions lists', used: 1, of: inc.lists },
+                { label: 'Custom watchlist', used: 0, of: inc.watchlist },
 
-                { label: 'API tokens', used: shape.tokens || 0 },
-                { label: 'API calls', used: 0 },
-                { label: 'Webhook deliveries', used: 0 },
+                { label: 'Projects', used: shape.projects || 0, of: inc.projects },
+                { label: 'API tokens', used: shape.tokens || 0, of: inc.tokens },
+                { label: 'API calls', used: 0, of: inc.apiCalls },
 
-                { label: 'Addresses monitored', used: 0, of: inc.addresses },
-                { label: 'Custom watchlist', used: 0 },
-                { label: 'Evidence exports', used: 0 },
+                { label: 'Webhook deliveries', used: 0, of: inc.webhooks },
+                { label: 'Evidence exports', used: 0, of: inc.exports },
+                { label: 'SSO users', used: 0, of: inc.ssoSeats },
 
+                { label: 'Addresses screened', used: s.addresses || 0 },
                 { label: 'Members joined', used: shape.joined || 0 },
-                { label: 'Tokens used', used: shape.tokensUsed || 0 },
-                { label: 'SSO users', used: 0, of: inc.seats }
+                { label: 'Tokens used', used: shape.tokensUsed || 0 }
             ], 'is-lead'));
             body.appendChild(sum);
 

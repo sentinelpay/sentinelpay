@@ -3989,6 +3989,9 @@ html.is-theming .btn {
 
 /* How far along, next to how much. Set back because it is the one part of the
    line that can be worked out from the rest of it. */
+/* A line the plan does not carry. Set at the weight of a label rather than a
+   figure, because it is not one: a number here would be read as a quantity. */
+.use-mc-v.is-none { font-size: 0.85rem; font-weight: 500; color: var(--ink-4); }
 .use-mc-p { margin-left: 0.4rem; font-size: 0.78rem; font-weight: 400; color: var(--ink-4); }
 
 .use-ring { flex: none; display: block; width: 18px; height: 18px; }

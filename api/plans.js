@@ -35,6 +35,15 @@ const PLANS = {
         screeningsPerMonth: 1000,
         addresses: 100,
         seats: 3,
+        projects: 3,
+        tokens: 3,
+        watchlist: 100,
+        ssoSeats: 0,
+        chains: 3,
+        lists: 4,
+        apiCallsPerMonth: 25000,
+        webhooksPerMonth: 10000,
+        exportsPerMonth: 50,
         // what the term costs in total, not per month: it is what leaves the
         // bank account, and per month is arithmetic we can do for display
         price: { quarterly: 29700, yearly: 98400 },
@@ -46,6 +55,15 @@ const PLANS = {
         screeningsPerMonth: 10000,
         addresses: 2500,
         seats: 10,
+        projects: 15,
+        tokens: 15,
+        watchlist: 2500,
+        ssoSeats: 0,
+        chains: 10,
+        lists: 4,
+        apiCallsPerMonth: 250000,
+        webhooksPerMonth: 100000,
+        exportsPerMonth: 500,
         price: { quarterly: 119700, yearly: 398400 },
         perScan: 15,
     },
@@ -55,6 +73,15 @@ const PLANS = {
         screeningsPerMonth: 50000,
         addresses: 25000,
         seats: 25,
+        projects: 100,
+        tokens: 100,
+        watchlist: 25000,
+        ssoSeats: 25,
+        chains: 10,
+        lists: 4,
+        apiCallsPerMonth: 2500000,
+        webhooksPerMonth: 1000000,
+        exportsPerMonth: 5000,
         price: { quarterly: 447000, yearly: 1488000 },
         perScan: 8,
         // the page says "from", and it means it: this one is agreed, so a
@@ -216,10 +243,27 @@ function included(planKey, termKey) {
     if (!p) return null;
     const t = term(termKey);
     const span = t && t.termMonths ? t.termMonths : 1;
+    const perPeriod = (rate) => (t && t.metered ? null : rate * span);
     return {
-        screenings: t && t.metered ? null : p.screeningsPerMonth * span,
+        screenings: perPeriod(p.screeningsPerMonth),
+        // The pricing page calls this one "addresses monitored", and it means
+        // it: an address watched from now on is a standing commitment, where
+        // an address screened once costs a screening and nothing more. They
+        // are not two readings of one quota and must not be shown as one.
         addresses: p.addresses,
         seats: p.seats,
+        projects: p.projects,
+        tokens: p.tokens,
+        watchlist: p.watchlist,
+        ssoSeats: p.ssoSeats,
+        // What we cover, rather than what is spent. A plan carries so many
+        // chains and so many lists, and a customer is as entitled to see how
+        // much of that is live as to see how much of an allowance is gone.
+        chains: p.chains,
+        lists: p.lists,
+        apiCalls: perPeriod(p.apiCallsPerMonth),
+        webhooks: perPeriod(p.webhooksPerMonth),
+        exports: perPeriod(p.exportsPerMonth),
     };
 }
 
