@@ -4020,6 +4020,18 @@ html.is-theming .btn {
 .use-mc-d { margin-left: 0.45rem; font-size: 0.78rem; font-weight: 500; color: var(--ink-4); }
 .use-mc-p { margin-left: 0.4rem; font-size: 0.78rem; font-weight: 400; color: var(--ink-4); }
 
+/* The shape of the window, where a metered cell has its ring. Stretched to the
+   box rather than drawn to scale: the horizontal is days and nobody reads a
+   day off a line this size, so the only thing worth keeping true is the
+   height, which is what the two lines share. */
+.use-mc-spark { flex: none; display: block; width: 64px; height: 20px; }
+.use-mc-spark svg { display: block; width: 64px; height: 20px; overflow: visible; }
+.use-mc-spark path { fill: none; stroke-width: 1.4; stroke-linejoin: round; stroke-linecap: round; }
+/* vector-effect, or a path stretched four times wider than its box comes out
+   with a stroke four times thinner across than it is down */
+.use-spark-now { stroke: var(--link); vector-effect: non-scaling-stroke; }
+.use-spark-was { stroke: var(--line); vector-effect: non-scaling-stroke; }
+
 .use-ring { flex: none; display: block; width: 18px; height: 18px; }
 .use-ring svg { display: block; width: 18px; height: 18px; transform: rotate(-90deg); }
 .use-ring circle { fill: none; stroke-width: 2.6; }
