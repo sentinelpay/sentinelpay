@@ -6874,21 +6874,34 @@
             var runUsed = out.cycle ? out.cycle.used : s.total;
             var chains = (s.assets || []).length;
 
-            // Three cells, because the plan has three ceilings and a summary of
-            // usage is a summary of what can run out. A count with no limit --
-            // how many chains, how many tokens, how many calls -- can never
-            // say you are near anything, so it answers no question this block
-            // is asking and belongs in the section about that thing.
+            // Twelve, four rows of three.
             //
-            // Re-screens, transaction screens, history sweeps, bulk and
-            // sandbox are not five metrics either. They are one allowance
-            // spent five ways, and showing the ways here left the one number
-            // that matters sharing a screen with four zeroes that cannot move
-            // independently of it. The split is under Screenings.
+            // The ones with a ceiling come first, because those are the ones
+            // that can stop work: everything under them is a count, and a
+            // count is here to be seen rather than to be worried about.
+            //
+            // What is deliberately not here is the five ways a screening can
+            // be spent. Re-screens, transaction screens, history sweeps, bulk
+            // and sandbox all come out of the same allowance, so beside the
+            // total they are four numbers that cannot move independently of
+            // the fifth. One cell for the allowance; the split is under
+            // Screenings, below the figure it adds up to.
             sum.body.appendChild(useGrid([
                 { label: 'Screenings', used: runUsed, of: inc.screenings },
                 { label: 'Addresses', used: s.addresses || 0, of: inc.addresses },
-                { label: 'Seats', used: shape.members || 0, of: inc.seats }
+                { label: 'Seats', used: shape.members || 0, of: inc.seats },
+
+                { label: 'Findings to review', used: s.flagged || 0 },
+                { label: 'Decisions recorded', used: shape.decisions || 0 },
+                { label: 'Alerts raised', used: 0 },
+
+                { label: 'Chains covered', used: chains },
+                { label: 'Sanctions lists', used: 1 },
+                { label: 'Projects', used: shape.projects || 0 },
+
+                { label: 'API tokens', used: shape.tokens || 0 },
+                { label: 'API calls', used: 0 },
+                { label: 'Webhook deliveries', used: 0 }
             ], 'is-lead'));
             body.appendChild(sum);
 
@@ -7014,16 +7027,6 @@
                 { label: 'History sweeps', used: 0 },
                 { label: 'Bulk screens', used: 0 },
                 { label: 'Sandbox screens', used: 0 }
-            ]));
-
-            // And what the spending turned up. Not an allowance -- none of
-            // these has a ceiling -- which is the reason they are here and not
-            // in the summary.
-            smain.appendChild(useGridTitle('What it turned up'));
-            smain.appendChild(useGrid([
-                { label: 'Findings to review', used: s.flagged || 0 },
-                { label: 'Decisions recorded', used: shape.decisions || 0 },
-                { label: 'Alerts raised', used: 0 }
             ]));
 
             if (spent.length) {
