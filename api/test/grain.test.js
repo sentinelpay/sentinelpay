@@ -188,11 +188,18 @@ test('the query and the walk agree on the shape of a key', () => {
 test('every measure under the chart has a series to draw', () => {
     const src = require('node:fs').readFileSync(
         require('node:path').join(__dirname, '..', 'usage.js'), 'utf8');
-    const at = src.indexOf('const [sum, days, verdicts, assets, byProject]');
+    const at = src.indexOf('const [sum, days, verdicts, assets, byProject, signed]');
     assert.notStrictEqual(at, -1, 'screeningsIn no longer reads its windows in one go');
-    const query = src.slice(at, at + 2600);
+    const query = src.slice(at, at + 3600);
     for (const column of ['AS n', 'AS flagged', 'AS severe', 'AS addresses', 'AS assets']) {
         assert.ok(query.includes(column),
             'the bucket query no longer returns ' + column.replace('AS ', ''));
     }
+    // Decisions are bucketed by their own time, not the screening's. A check
+    // made in June and signed off in October is October's work, and joining on
+    // the screening to get the scope makes it easy to bucket the wrong column.
+    assert.ok(/FROM check_decisions d/.test(query), 'decisions are no longer bucketed');
+    assert.ok(/d\.at >= \$2 AND d\.at < \$3/.test(query),
+        'the decision bucket is cut on the screening date rather than the decision date');
+    assert.ok(src.includes('decisionDays:'), 'the decision series never reaches the payload');
 });

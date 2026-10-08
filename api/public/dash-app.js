@@ -6505,12 +6505,15 @@
         // when one of them looks wrong. It is drawn even at nothing, because a
         // cell that loses its ring at zero makes an empty row a different shape
         // from a full one.
-        if (pct !== null) {
-            row.appendChild(useRing(pct));
-        } else if (c.series) {
+        // Both, where there is both to say: the line is how it was spent and
+        // the ring is how much is left, and a metered flow has an answer to
+        // each. The line goes first because it is read left to right and ends
+        // where the ring begins.
+        if (c.series) {
             var spark = useSpark(c.series, c.ghost);
             if (spark) row.appendChild(spark);
         }
+        if (pct !== null) row.appendChild(useRing(pct));
         cell.appendChild(row);
 
         return cell;
@@ -6554,8 +6557,15 @@
             return out.join(' ');
         };
 
+        // A line along the floor is a line of nothing, and drawn at the weight
+        // of a line of something it shouts from the emptiest cell on the grid.
+        // It stays, because the shape of the grid should not change when a
+        // counter lands, and it is set back until it has something to say.
+        var moved = false;
+        for (var k = 0; k < now.length; k++) { if (now[k] > 0) { moved = true; break; } }
+
         var wrap = document.createElement('span');
-        wrap.className = 'use-mc-spark';
+        wrap.className = 'use-mc-spark' + (moved ? '' : ' is-quiet');
         var ghost = path(before);
         wrap.innerHTML =
             '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true">' +
@@ -6563,6 +6573,17 @@
             '<path class="use-spark-now" d="' + path(now) + '"/>' +
             '</svg>';
         return wrap;
+    }
+
+    // A line along the floor, as long as the window.
+    //
+    // A metric whose counter is not written yet is nought on every day of the
+    // window, and that is a fact rather than a gap: nothing was re-screened
+    // because nothing re-screens. Drawing it keeps the grid one shape instead
+    // of two, and the day the counter lands the line starts moving on its own.
+    function useFlat(days) {
+        if (!days || !days.length) return null;
+        return days.map(function () { return 0; });
     }
 
     // One measure out of the day rows, which carry all five.
@@ -7035,8 +7056,9 @@
                   was: older ? out.previous.flagged : null,
                   series: useSeries(s.days, 'flagged'), ghost: useSeries(older, 'flagged') },
                 { label: 'Decisions recorded', used: shape.decisions || 0,
-                  was: older ? out.previous.decisions : null },
-                { label: 'Alerts raised', used: 0 },
+                  was: older ? out.previous.decisions : null,
+                  series: useSeries(s.decisionDays, 'n') },
+                { label: 'Alerts raised', used: 0, series: useFlat(s.days) },
 
                 // ---- the allowance, which is the cycle's however the window
                 // above is cut
@@ -7045,11 +7067,11 @@
                 // one address, so it is allowed separately. Out of the
                 // screening allowance, one sweep could eat a month of ordinary
                 // work without anybody choosing that.
-                { label: 'History sweeps', used: 0, of: inc.sweeps },
+                { label: 'History sweeps', used: 0, of: inc.sweeps, series: useFlat(s.days) },
                 { label: 'Addresses monitored', used: 0, of: inc.addresses },
 
                 { label: 'Custom watchlist', used: 0, of: inc.watchlist },
-                { label: 'Evidence exports', used: 0, of: inc.exports },
+                { label: 'Evidence exports', used: 0, of: inc.exports, series: useFlat(s.days) },
                 // The one promise we sell with a number in it. Nothing is
                 // spent; the fraction is how much of the second we said we
                 // would answer in was actually used, at the slowest one in
@@ -7064,8 +7086,8 @@
 
                 // ---- and what their systems did
                 { label: 'API tokens', used: shape.tokens || 0, of: inc.tokens },
-                { label: 'API calls', used: 0, of: inc.apiCalls },
-                { label: 'Webhook deliveries', used: 0, of: inc.webhooks }
+                { label: 'API calls', used: 0, of: inc.apiCalls, series: useFlat(s.days) },
+                { label: 'Webhook deliveries', used: 0, of: inc.webhooks, series: useFlat(s.days) }
             ], 'is-lead'));
             body.appendChild(sum);
 

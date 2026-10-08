@@ -358,7 +358,7 @@ async function screeningsIn(orgId, from, to, sandbox, zone, grain) {
     to = until(to);
     const g = grain || GRAIN.day;
     const args = [Number(orgId), from, to, Boolean(sandbox), zone];
-    const [sum, days, verdicts, assets, byProject] = await Promise.all([
+    const [sum, days, verdicts, assets, byProject, signed] = await Promise.all([
         db.query(
             `SELECT count(*)::int AS n,
                     count(*) FILTER (WHERE verdict <> 'clear')::int AS flagged,
@@ -412,6 +412,24 @@ async function screeningsIn(orgId, from, to, sandbox, zone, grain) {
            GROUP BY 1, 2 ORDER BY n DESC LIMIT 12`,
             args.slice(0, 4)
         ),
+        // Decisions, bucketed the same way as the screenings they conclude.
+        //
+        // The grid draws a shape beside every count that has one, and a count
+        // with no shape next to five that have is read as nothing happening
+        // rather than as nothing measured. Decisions are the half of this
+        // product a machine does not do, so they are the last number on that
+        // page that should be the one without a line.
+        //
+        // No sandbox column on this table: a decision belongs to the check it
+        // concludes, so the join carries the scope.
+        db.query(
+            `SELECT ${g.column.replace(/\bat\b/g, 'd.at')} AS d, count(*)::int AS n
+               FROM check_decisions d
+               JOIN screenings s ON s.id = d.screening_id
+              WHERE d.org_id = $1 AND d.at >= $2 AND d.at < $3 AND s.sandbox = $4
+           GROUP BY 1 ORDER BY 1`,
+            args
+        ),
     ]);
 
     const head = sum.rows[0] || { n: 0, flagged: 0, addresses: 0, assets: 0 };
@@ -424,6 +442,7 @@ async function screeningsIn(orgId, from, to, sandbox, zone, grain) {
         addresses: head.addresses,
         assetCount: head.assets,
         days: fillDays(days.rows, from, to, zone, grain),
+        decisionDays: fillDays(signed.rows, from, to, zone, grain),
         verdicts: byVerdict,
         assets: assets.rows.map((r) => ({ asset: r.asset, n: r.n })),
         projects: byProject.rows.map((r) => ({
