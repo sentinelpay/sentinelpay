@@ -3897,7 +3897,11 @@ html.is-theming .btn {
 .use-mc {
     position: relative;
     min-width: 0;
-    padding: 1rem 1.1rem 1.05rem;
+    /* Tight enough that all sixteen are one screen. A metric is a short
+       label over a short number: at the padding a card wants, the grid ran a
+       screen and a half and the only way to see the last of it was to scroll
+       past the first. */
+    padding: 0.62rem 1.05rem 0.66rem;
     border-bottom: 1px solid var(--line-2);
     text-decoration: none;
     color: inherit;
@@ -3919,7 +3923,7 @@ html.is-theming .btn {
     display: flex;
     align-items: center;
     gap: 0.3rem;
-    margin-bottom: 0.45rem;
+    margin-bottom: 0.2rem;
 }
 .use-mc-n { font-size: 0.8rem; color: var(--ink-3); }
 .use-mc-go {
@@ -3947,12 +3951,17 @@ html.is-theming .btn {
     align-items: center;
     justify-content: space-between;
     gap: 0.7rem;
-    min-height: 20px;
+    min-height: 18px;
 }
+/* The body face at 600, which is what every other number on this page is set
+   in -- the meters, the facts beside them, the figures in the cards. The
+   display face was tried here and is wrong for this: it is cut for headings,
+   a few words at a time, and sixteen numbers in it read as sixteen small
+   titles rather than as a table of figures. */
 .use-mc-v {
     min-width: 0;
-    font-family: var(--sp-display);
-    font-size: 1.02rem;
+    font-size: 0.95rem;
+    font-weight: 600;
     color: var(--ink);
     font-variant-numeric: tabular-nums;
 }
@@ -3960,8 +3969,8 @@ html.is-theming .btn {
    line that can be worked out from the rest of it. */
 .use-mc-p { margin-left: 0.4rem; font-size: 0.78rem; font-weight: 400; color: var(--ink-4); }
 
-.use-ring { flex: none; display: block; width: 20px; height: 20px; }
-.use-ring svg { display: block; width: 20px; height: 20px; transform: rotate(-90deg); }
+.use-ring { flex: none; display: block; width: 18px; height: 18px; }
+.use-ring svg { display: block; width: 18px; height: 18px; transform: rotate(-90deg); }
 .use-ring circle { fill: none; stroke-width: 2.6; }
 /* The track is the one on the meters, a shade up: at 2.6px bent round a circle
    of radius 7 the same colour that reads as a line across a card all but
