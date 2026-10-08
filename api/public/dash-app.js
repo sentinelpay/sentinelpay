@@ -6478,6 +6478,23 @@
             }
         } else {
             val.textContent = useNum(c.used) + (c.unit ? ' ' + t(c.unit) : '');
+            // What the same length of time before this one came to.
+            //
+            // A count with no ceiling cannot say whether it is a lot, which is
+            // the question somebody switching the window is actually asking.
+            // The server cuts the earlier window to the part of this one that
+            // has elapsed, so a quarter two days old is compared against two
+            // days and not against three whole months.
+            if (c.was !== null && c.was !== undefined) {
+                var d = c.used - c.was;
+                var move = document.createElement('span');
+                move.className = 'use-mc-d' + (d > 0 ? ' is-up' : (d < 0 ? ' is-down' : ''));
+                move.textContent = d === 0
+                    ? t('level')
+                    : (d > 0 ? '+' : '\u2212') + useNum(Math.abs(d));
+                move.title = fill('{n} in the window before', { n: useNum(c.was) });
+                val.appendChild(move);
+            }
         }
         row.appendChild(val);
 
@@ -6895,7 +6912,22 @@
             // The sentence about running out lives here now rather than in
             // Screenings. It is not a fact about screenings, it is the rule
             // the whole page runs on, and it was being said halfway down.
-            var sum = useSection('use-summary', 'Usage summary', 'gauge');
+            // Switching the period has to do something here, and for half of
+            // this grid the honest answer is that it does not: an allowance
+            // belongs to the billing cycle, so asking about the last seven days
+            // cannot change how much of the quarter is gone. That was true
+            // before and the page simply did not say it, which left somebody
+            // switching windows watching most of the numbers sit still with no
+            // reason given.
+            //
+            // So the heading names the window, and when the window is not the
+            // cycle it says which half of the grid is counted over it.
+            var onCycle = Boolean(out.cycle) && out.period && out.period.current;
+            var sum = useSection('use-summary', 'Usage summary', 'gauge',
+                onCycle
+                    ? 'Counted over the current billing cycle.'
+                    : fill('Counted over {window}. Allowances still belong to the billing cycle.',
+                        { window: usePeriodLabel(out.period).toLowerCase() }));
             // The grid runs the full width. There is no column of prose beside
             // it because the cells are the explanation: a label and a number
             // each, read in any order.
@@ -6937,8 +6969,10 @@
                 { label: 'Alerts raised', used: 0 },
 
                 // ---- what is waiting for a person
-                { label: 'Findings to review', used: s.flagged || 0 },
-                { label: 'Decisions recorded', used: shape.decisions || 0 },
+                { label: 'Findings to review', used: s.flagged || 0,
+                  was: older ? out.previous.flagged : null },
+                { label: 'Decisions recorded', used: shape.decisions || 0,
+                  was: older ? out.previous.decisions : null },
                 { label: 'Awaiting a second pair of eyes', used: 0 },
 
                 // ---- the rest of the allowances
