@@ -6449,7 +6449,6 @@
         // this page already do -- spent of allowed, and how far along that is.
         // Without one there is nothing to be a fraction of, and a bare count is
         // the whole truth rather than a number missing its denominator.
-        var pct = null;
         // A limit of nothing is not a limit of nothing used. It is a line the
         // plan does not carry at all, and printing "0 / 0" against it says the
         // allowance is full when there is no allowance.
@@ -6463,19 +6462,7 @@
             val.textContent = t('Nothing measured yet');
             val.className += ' is-none';
         } else if (c.of) {
-            pct = Math.min(100, Math.round((c.used / c.of) * 100));
             val.textContent = useNum(c.used) + ' / ' + useNum(c.of) + (c.unit ? ' ' + t(c.unit) : '');
-            // A share of nothing spent is nought per cent, which the two
-            // numbers beside it already said and the ring said again. On a
-            // grid where most cells start empty that is sixteen sets of
-            // brackets saying zero, so it is printed once there is something
-            // to print.
-            if (pct > 0) {
-                var p = document.createElement('span');
-                p.className = 'use-mc-p';
-                p.textContent = '(' + pct + '%)';
-                val.appendChild(p);
-            }
         } else {
             val.textContent = useNum(c.used) + (c.unit ? ' ' + t(c.unit) : '');
             // What the same length of time before this one came to.
@@ -6505,15 +6492,14 @@
         // when one of them looks wrong. It is drawn even at nothing, because a
         // cell that loses its ring at zero makes an empty row a different shape
         // from a full one.
-        // Both, where there is both to say: the line is how it was spent and
-        // the ring is how much is left, and a metered flow has an answer to
-        // each. The line goes first because it is read left to right and ends
-        // where the ring begins.
+        // Every cell that has a window behind it draws it. The ring that used
+        // to sit here said the same fraction the two numbers beside it already
+        // said, in a shape nobody reads to better than a quarter, and it took
+        // the space the only thing the figures cannot say was waiting for.
         if (c.series) {
             var spark = useSpark(c.series, c.ghost);
             if (spark) row.appendChild(spark);
         }
-        if (pct !== null) row.appendChild(useRing(pct));
         cell.appendChild(row);
 
         return cell;
@@ -6590,28 +6576,6 @@
     function useSeries(days, key) {
         if (!days || !days.length) return null;
         return days.map(function (d) { return d[key] || 0; });
-    }
-
-    // 44 is the circumference of a circle of radius 7, near enough that the
-    // dash never reaches the join and shows it.
-    function useRing(pct) {
-        var wrap = document.createElement('span');
-        wrap.className = 'use-ring';
-        if (pct >= 100) wrap.classList.add('is-full');
-        else if (pct >= 80) wrap.classList.add('is-near');
-        // Nothing spent draws no arc at all. A dash of length zero with a round
-        // cap is not nothing: the cap is drawn anyway, so the ring came out
-        // with a small bead sitting at twelve o'clock on every untouched
-        // allowance, which reads as a sliver used rather than as none.
-        wrap.innerHTML =
-            '<svg viewBox="0 0 18 18" aria-hidden="true">' +
-            '<circle class="use-ring-t" cx="9" cy="9" r="7"/>' +
-            (pct > 0
-                ? '<circle class="use-ring-f" cx="9" cy="9" r="7" ' +
-                  'stroke-dasharray="' + ((pct / 100) * 44).toFixed(2) + ' 44"/>'
-                : '') +
-            '</svg>';
-        return wrap;
     }
 
     // Included / used / left, as three lines rather than a sentence: a number
@@ -7023,27 +6987,17 @@
             var runUsed = out.cycle ? out.cycle.used : s.total;
             var chains = (s.assets || []).length;
 
-            // Eighteen, six rows of three, and the first two rows move when
-            // the window does.
+            // Eighteen, six rows of three, and every one of them draws the
+            // window it is counted over.
             //
-            // Screenings used to read the cycle here, on the grounds that the
-            // allowance belongs to the cycle. True, and it made the headline
-            // number of this page the one number a period picker could not
-            // touch: switching to the last day left sixteen of eighteen cells
-            // sitting still, which reads as a broken control no matter what
-            // sentence is printed above it.
-            //
-            // So the count follows the window and the allowance gets a cell of
-            // its own that says so. Both facts are on the screen, neither is
-            // pretending to be the other.
+            // Screenings carries its limit again and the separate allowance
+            // cell is gone: on the cycle the two printed the same figure twice
+            // a finger's width apart, which is the duplication this grid was
+            // built to get rid of. The figure is the cycle's, because that is
+            // what the limit belongs to; the line under it is the window's, so
+            // the picker still changes the cell even when the number holds.
             sum.body.appendChild(useGrid([
-                // ---- this window, and the same length of time before it
-                // The four that carry a day-by-day. Decisions and alerts are
-                // counted but not bucketed, so they get the figure and the
-                // change and no shape; drawing a flat line for them would say
-                // the work came in evenly, which is a claim and not a gap.
-                { label: 'Screenings', used: s.total || 0,
-                  was: older ? out.previous.total : null,
+                { label: 'Screenings', used: runUsed, of: inc.screenings,
                   series: useSeries(s.days, 'n'), ghost: useSeries(older, 'n') },
                 { label: 'Addresses screened', used: s.addresses || 0,
                   was: older ? out.previous.addresses : null,
@@ -7060,32 +7014,23 @@
                   series: useSeries(s.decisionDays, 'n') },
                 { label: 'Alerts raised', used: 0, series: useFlat(s.days) },
 
-                // ---- the allowance, which is the cycle's however the window
-                // above is cut
-                { label: 'Allowance this cycle', used: runUsed, of: inc.screenings },
+                { label: 'Re-screens triggered', used: 0, series: useFlat(s.days) },
+                { label: 'List updates applied', used: 0, series: useFlat(s.days) },
                 // A sweep walks a key's whole history rather than asking about
                 // one address, so it is allowed separately. Out of the
                 // screening allowance, one sweep could eat a month of ordinary
                 // work without anybody choosing that.
                 { label: 'History sweeps', used: 0, of: inc.sweeps, series: useFlat(s.days) },
-                { label: 'Addresses monitored', used: 0, of: inc.addresses },
 
-                { label: 'Custom watchlist', used: 0, of: inc.watchlist },
+                { label: 'Addresses monitored', used: 0, of: inc.addresses, series: useFlat(s.days) },
+                { label: 'Custom watchlist', used: 0, of: inc.watchlist, series: useFlat(s.days) },
                 { label: 'Evidence exports', used: 0, of: inc.exports, series: useFlat(s.days) },
-                // The one promise we sell with a number in it. Nothing is
-                // spent; the fraction is how much of the second we said we
-                // would answer in was actually used, at the slowest one in
-                // twenty. Until there is a measurement it says so rather than
-                // reporting nought milliseconds, which would read as instant.
-                { label: 'Answer time, slowest in 20', used: null, of: inc.answerMs, unit: 'ms' },
 
-                // ---- who can reach it
-                { label: 'Seats', used: shape.members || 0, of: inc.seats },
-                { label: 'Projects', used: shape.projects || 0, of: inc.projects },
-                { label: 'SSO users', used: 0, of: inc.ssoSeats },
+                { label: 'Seats', used: shape.members || 0, of: inc.seats, series: useFlat(s.days) },
+                { label: 'Projects', used: shape.projects || 0, of: inc.projects, series: useFlat(s.days) },
+                { label: 'SSO users', used: 0, of: inc.ssoSeats, series: useFlat(s.days) },
 
-                // ---- and what their systems did
-                { label: 'API tokens', used: shape.tokens || 0, of: inc.tokens },
+                { label: 'API tokens', used: shape.tokens || 0, of: inc.tokens, series: useFlat(s.days) },
                 { label: 'API calls', used: 0, of: inc.apiCalls, series: useFlat(s.days) },
                 { label: 'Webhook deliveries', used: 0, of: inc.webhooks, series: useFlat(s.days) }
             ], 'is-lead'));
