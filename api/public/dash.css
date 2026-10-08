@@ -4076,6 +4076,11 @@ html.is-theming .btn {
     color: var(--ink-4);
 }
 .use-fact:last-child { border-bottom: 0; }
+/* A row worked out from the rows above it rather than counted alongside them.
+   No rule between the two, and a little air instead, so it reads as the
+   conclusion of the list and not as a fourth entry in it. */
+.use-fact.is-joined { border-bottom: 0; }
+.use-fact.is-apart { padding-top: 0.75rem; }
 /* A value that cannot be broken anywhere -- an address -- still has to fit the
    panel it is in. A bitcoin address reaches the edge of the drawer with nothing
    to spare and a monero one is twice as long again, so the break is allowed
