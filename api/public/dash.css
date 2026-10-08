@@ -3508,44 +3508,6 @@ html.is-theming .btn {
 .use-verdict.is-over { color: var(--risk-high); font-weight: 600; }
 .use-verdict.is-near { color: var(--risk-mid); font-weight: 600; }
 
-/* Tiles are a summary, so they are small and there are several. Two across:
-   three would make each one narrower than the numbers it has to hold once a
-   figure runs into five digits. */
-.use-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.6rem;
-    margin-bottom: 2.2rem;
-}
-.use-tile {
-    display: block;
-    padding: 0.85rem 0.95rem;
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    background: var(--surface);
-    text-decoration: none;
-    color: inherit;
-    transition: border-color 0.18s ease, background 0.18s ease;
-}
-a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover); }
-.use-tile-h {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    font-size: 0.78rem;
-    color: var(--ink-4);
-}
-.use-tile-go { display: inline-flex; width: 13px; height: 13px; }
-.use-tile-go svg { width: 100%; height: 100%; }
-.use-tile-v {
-    margin-top: 0.25rem;
-    font-family: var(--sp-display);
-    font-size: 1.35rem;
-    color: var(--ink);
-}
-.use-tile-s { margin-top: 0.15rem; font-size: 0.76rem; color: var(--ink-4); }
-.use-tile .orgh-track { margin-top: 0.55rem; }
-
 /* a tile jumps to its section, so the section needs room above it or the
    heading lands flush against the top of the window */
 /* Scrolled to from the cards above. The band at the top does not move out of
@@ -3921,72 +3883,85 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
    two borders ever land on top of each other and read as double. The outer
    edge is clipped off by the radius, which is why there is no border on the
    container either. */
-.use-grid {
+/* Flat on the page, ruled like a table.
+   This was sixteen panels floating a hairline apart, which at a glance was
+   sixteen cards and not one list: every cell carried an edge all the way
+   round, so the eye counted boxes before it read a single number. What
+   separates two metrics is a line, and a line is all it takes -- one under
+   each row, one down the middle, and nothing round the outside. */
+.use-mg {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1px;
-    border-radius: 12px;
-    background: var(--line-2);
-    overflow: hidden;
+    border-top: 1px solid var(--line-2);
 }
-.use-cell {
+.use-mc {
+    position: relative;
     min-width: 0;
-    padding: 0.85rem 1rem 0.9rem;
-    background: var(--panel);
+    padding: 1rem 1.1rem 1.05rem;
+    border-bottom: 1px solid var(--line-2);
     text-decoration: none;
     color: inherit;
 }
+/* Down the middle, and only there: the right-hand column's cells have the
+   page beside them, not another metric. */
+.use-mc:nth-child(odd) { border-right: 1px solid var(--line-2); }
+/* The section below draws its own rule across the top. Without this the grid
+   closes with one line and the next section opens with another a few points
+   under it, which is a double rule and reads as a mistake. */
+.use-mg > .use-mc:nth-last-child(-n+2):nth-child(odd),
+.use-mg > .use-mc:nth-last-child(-n+2):nth-child(odd) ~ .use-mc { border-bottom: 0; }
 /* An odd number of metrics leaves one cell's worth of nothing, and without
-   this it is a hole in the grid rather than the end of it. */
-.use-grid > .use-cell:last-child:nth-child(odd) { grid-column: 1 / -1; }
+   this it is a hole in the grid rather than the end of it. Across both
+   columns there is no middle for a rule to go down. */
+.use-mg > .use-mc:last-child:nth-child(odd) { grid-column: 1 / -1; border-right: 0; }
 
-.use-cell-h {
+.use-mc-h {
     display: flex;
     align-items: center;
     gap: 0.3rem;
-    margin-bottom: 0.35rem;
+    margin-bottom: 0.45rem;
 }
-.use-cell-n { font-size: 0.8rem; color: var(--ink-3); }
-.use-cell-go {
+.use-mc-n { font-size: 0.8rem; color: var(--ink-3); }
+.use-mc-go {
     display: inline-flex;
     color: var(--ink-4);
     opacity: 0;
     transform: translateX(-2px);
     transition: opacity 0.14s ease, transform 0.14s ease;
 }
-.use-cell-go .nav-i { width: 13px; height: 13px; margin-right: 0; }
+.use-mc-go .nav-i { width: 13px; height: 13px; margin-right: 0; }
 /* The mark arrives on approach rather than sitting on every linked cell: a
    column of permanent arrows is a column of furniture, and the one under the
    cursor is the only one being asked about. Focus brings it too, or the
    keyboard gets a quieter page than the mouse. */
-.use-cell.is-link:hover .use-cell-go,
-.use-cell.is-link:focus-visible .use-cell-go { opacity: 1; transform: none; }
-.use-cell.is-link:hover { background: var(--hover); }
-.use-cell.is-link:hover .use-cell-n { color: var(--link); }
+.use-mc.is-link:hover .use-mc-go,
+.use-mc.is-link:focus-visible .use-mc-go { opacity: 1; transform: none; }
+.use-mc.is-link:hover { background: var(--hover); }
+.use-mc.is-link:hover .use-mc-n { color: var(--link); }
 
 /* The ring is taller than the line of text beside it, so a cell without one
    is a shorter cell, and in a grid of sixteen that is four row heights for no
    reason the reader can see. The row keeps the ring's height either way. */
-.use-cell-r {
+.use-mc-r {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 0.7rem;
-    min-height: 18px;
+    min-height: 20px;
 }
-.use-cell-v {
+.use-mc-v {
     min-width: 0;
-    font-size: 0.92rem;
-    font-weight: 600;
+    font-family: var(--sp-display);
+    font-size: 1.02rem;
     color: var(--ink);
     font-variant-numeric: tabular-nums;
 }
 /* How far along, next to how much. Set back because it is the one part of the
    line that can be worked out from the rest of it. */
-.use-cell-p { margin-left: 0.4rem; font-size: 0.78rem; font-weight: 400; color: var(--ink-4); }
+.use-mc-p { margin-left: 0.4rem; font-size: 0.78rem; font-weight: 400; color: var(--ink-4); }
 
-.use-ring { flex: none; display: block; width: 18px; height: 18px; }
-.use-ring svg { display: block; width: 18px; height: 18px; transform: rotate(-90deg); }
+.use-ring { flex: none; display: block; width: 20px; height: 20px; }
+.use-ring svg { display: block; width: 20px; height: 20px; transform: rotate(-90deg); }
 .use-ring circle { fill: none; stroke-width: 2.6; }
 /* The track is the one on the meters, a shade up: at 2.6px bent round a circle
    of radius 7 the same colour that reads as a line across a card all but
@@ -3999,8 +3974,8 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
 /* One column under the width where a label and its number stop fitting side
    by side in half a panel. */
 @media (max-width: 720px) {
-    .use-grid { grid-template-columns: minmax(0, 1fr); }
-    .use-grid > .use-cell:last-child:nth-child(odd) { grid-column: auto; }
+    .use-mg { grid-template-columns: minmax(0, 1fr); }
+    .use-mg > .use-mc:last-child:nth-child(odd) { grid-column: auto; }
 }
 
 .use-facts { margin-bottom: 1rem; }
@@ -4435,10 +4410,6 @@ a.use-tile:hover { border-color: var(--pill-line-hover); background: var(--hover
        half of scrolling, and none of these numbers is long enough to need the
        width. They lose some padding and a little type instead. */
     .use-sec-b { grid-template-columns: minmax(0, 1fr); gap: 0.9rem; }
-    .use-tile { padding: 0.7rem 0.75rem; }
-    .use-tile-v { font-size: 1.1rem; }
-    .use-tile-h { font-size: 0.74rem; }
-    .use-tile-s { font-size: 0.72rem; }
     /* the band is not sticky on a phone: it would eat a third of a short
        screen, and there is no long sideways scan to keep your place in */
     .use-top { position: static; top: auto; padding-bottom: 0.9rem; }
