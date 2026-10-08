@@ -5321,37 +5321,6 @@
         return box;
     }
 
-    // Whether the allowance lasts the cycle, at the rate it is going.
-    //
-    // Read off the cycle rather than off the window on screen: the allowance
-    // is the cycle's, so the pace that matters is the pace against it. A
-    // window of the last seven days on a quarterly plan says nothing about
-    // whether the quarter holds.
-    //
-    // Nothing is said in the first day of a cycle. One day of work projected
-    // over three months is a number with a fortnight of error in it, printed
-    // to the day.
-    function usePace(cycle, meter) {
-        if (!cycle || !meter || !meter.of) return '';
-        var from = new Date(cycle.from).getTime();
-        var to = new Date(cycle.to).getTime();
-        var now = Date.now();
-        if (!from || !to || now <= from) return '';
-        var gone = (Math.min(now, to) - from) / 86400000;
-        if (gone < 1) return '';
-        var rate = (cycle.used || 0) / gone;
-        if (rate <= 0) return t('Nothing used yet');
-        var left = meter.of - (cycle.used || 0);
-        if (left <= 0) return t('Already spent');
-        var daysLeft = left / rate;
-        var runsOut = now + daysLeft * 86400000;
-        // Lasting the cycle is the answer most of the time, and a date past
-        // the end of it is not an answer anybody asked for: the allowance
-        // starts again before it could be reached.
-        if (runsOut >= to) return t('Lasts the cycle');
-        return fill('Runs out {when}', { when: whenText(runsOut) });
-    }
-
     // How often an allowance comes back, in the words of the term that buys it.
     function termWord(term) {
         if (term === 'yearly') return 'a year';
@@ -6654,14 +6623,9 @@
     function useFacts(rows) {
         var box = document.createElement('div');
         box.className = 'use-facts';
-        rows.forEach(function (r, i) {
+        rows.forEach(function (r) {
             var line = document.createElement('div');
-            line.className = 'use-fact' + (r[2] === 'apart' ? ' is-apart' : '');
-            // The rule between two rows belongs to the one above, and css
-            // cannot reach backwards to take it off, so it is taken off here.
-            if (r[2] === 'apart' && box.lastElementChild) {
-                box.lastElementChild.classList.add('is-joined');
-            }
+            line.className = 'use-fact';
             var k = document.createElement('span');
             k.textContent = t(r[0]);
             line.appendChild(k);
@@ -7153,17 +7117,11 @@
             // end of it.
             var meter = allow.rows.length ? allow.rows[0] : null;
             if (meter && !meter.unmetered && meter.of) {
-                var facts = [
+                smain.appendChild(useFacts([
                     ['Included', useNum(meter.of)],
                     ['Used', useNum(meter.used)],
                     ['Left', useNum(Math.max(0, meter.of - meter.used))]
-                ];
-                // Not another fact in the list. The three above it are counted
-                // and this one is worked out from them, so it is not ruled off
-                // from them as though it were a fourth measurement.
-                var pace = usePace(out.cycle, meter);
-                if (pace) facts.push(['At this rate', pace, 'apart']);
-                smain.appendChild(useFacts(facts));
+                ]));
             } else if (meter && meter.unmetered) {
                 smain.appendChild(useFacts([
                     ['Included', t('Unmetered')],
