@@ -6380,13 +6380,22 @@
     // single column of them would run the length of the page with half of it
     // empty. The cells share one set of hairlines rather than each carrying a
     // border, so the grid reads as a table and not as a wall of boxes.
-    function useGrid(cells) {
+    function useGrid(cells, mod) {
         var grid = document.createElement('div');
-        grid.className = 'use-mg';
+        grid.className = 'use-mg' + (mod ? ' ' + mod : '');
         cells.forEach(function (c) {
             if (c) grid.appendChild(useCell(c));
         });
         return grid;
+    }
+
+    // A heading over a grid that sits inside a section, so the cells under it
+    // are read as an answer to it rather than as more of whatever came before.
+    function useGridTitle(text) {
+        var h = document.createElement('h3');
+        h.className = 'use-spent-t';
+        h.textContent = t(text);
+        return h;
     }
 
     // Every cell opens, so every cell says so.
@@ -6865,42 +6874,22 @@
             var runUsed = out.cycle ? out.cycle.used : s.total;
             var chains = (s.assets || []).length;
 
+            // Three cells, because the plan has three ceilings and a summary of
+            // usage is a summary of what can run out. A count with no limit --
+            // how many chains, how many tokens, how many calls -- can never
+            // say you are near anything, so it answers no question this block
+            // is asking and belongs in the section about that thing.
+            //
+            // Re-screens, transaction screens, history sweeps, bulk and
+            // sandbox are not five metrics either. They are one allowance
+            // spent five ways, and showing the ways here left the one number
+            // that matters sharing a screen with four zeroes that cannot move
+            // independently of it. The split is under Screenings.
             sum.body.appendChild(useGrid([
-                // Three to a row, grouped by the question they answer: how much
-                // screening, what it turned up, what we cover and what we can
-                // hand over, who is here, and what the API did.
                 { label: 'Screenings', used: runUsed, of: inc.screenings },
-                { label: 'Addresses screened', used: s.addresses || 0, of: inc.addresses },
-                { label: 'Re-screens', used: 0, of: inc.screenings },
-
-                { label: 'Transaction screens', used: 0, of: inc.screenings },
-                { label: 'History sweeps', used: 0, of: inc.screenings },
-                { label: 'Bulk screens', used: 0, of: inc.screenings },
-
-                { label: 'Addresses monitored', used: 0, of: inc.addresses },
-                { label: 'Alerts raised', used: 0 },
-                { label: 'Findings to review', used: s.flagged || 0 },
-
-                { label: 'Decisions recorded', used: shape.decisions || 0 },
-                { label: 'Chains covered', used: chains },
-                { label: 'Sanctions lists', used: 1 },
-
-                { label: 'Custom watchlist', used: 0 },
-                { label: 'Evidence exports', used: 0 },
-                { label: 'Evidence stored', used: 0, unit: 'MB' },
-
-                { label: 'Seats', used: shape.members || 0, of: inc.seats },
-                { label: 'Members joined', used: shape.joined || 0 },
-                { label: 'SSO users', used: 0, of: inc.seats },
-
-                { label: 'Projects', used: shape.projects || 0 },
-                { label: 'API tokens', used: shape.tokens || 0 },
-                { label: 'API calls', used: 0 },
-
-                { label: 'Tokens used', used: shape.tokensUsed || 0 },
-                { label: 'Webhook deliveries', used: 0 },
-                { label: 'Sandbox screens', used: 0 }
-            ]));
+                { label: 'Addresses', used: s.addresses || 0, of: inc.addresses },
+                { label: 'Seats', used: shape.members || 0, of: inc.seats }
+            ], 'is-lead'));
             body.appendChild(sum);
 
             // and whatever is left of the first screen, so the next section
@@ -7013,6 +7002,30 @@
                 });
             }
 
+            // The one allowance, by the kind of work that spent it. This is
+            // what the summary above deliberately does not show: five numbers
+            // that all come out of the same thirty thousand, which belong
+            // beside each other and nowhere near the figure they add up to.
+            smain.appendChild(useGridTitle('How the allowance was spent'));
+            smain.appendChild(useGrid([
+                { label: 'Live checks', used: runUsed },
+                { label: 'Re-screens', used: 0 },
+                { label: 'Transaction screens', used: 0 },
+                { label: 'History sweeps', used: 0 },
+                { label: 'Bulk screens', used: 0 },
+                { label: 'Sandbox screens', used: 0 }
+            ]));
+
+            // And what the spending turned up. Not an allowance -- none of
+            // these has a ceiling -- which is the reason they are here and not
+            // in the summary.
+            smain.appendChild(useGridTitle('What it turned up'));
+            smain.appendChild(useGrid([
+                { label: 'Findings to review', used: s.flagged || 0 },
+                { label: 'Decisions recorded', used: shape.decisions || 0 },
+                { label: 'Alerts raised', used: 0 }
+            ]));
+
             if (spent.length) {
                 var spentTop = document.createElement('div');
                 spentTop.className = 'use-carries-t';
@@ -7119,6 +7132,14 @@
                 ['List dated', c.listDate ? (whenText(listDay(c.listDate)) || c.listDate) : '—'],
                 ['Last refreshed', c.refreshedAt ? whenText(c.refreshedAt, true) : '—']
             ]));
+            // The breadth of what we screen against, which is a different
+            // question from the state of the one list above.
+            cmain.appendChild(useGridTitle('What we screen against'));
+            cmain.appendChild(useGrid([
+                { label: 'Sanctions lists', used: 1 },
+                { label: 'Chains covered', used: chains },
+                { label: 'Custom watchlist', used: 0 }
+            ]));
             cov.body.appendChild(cmain);
             body.appendChild(cov);
 
@@ -7129,12 +7150,19 @@
                 'A token that has not been used in a long time is worth withdrawing: it can still screen until it is.'
             ]));
             var tmain = useMain();
-            tmain.appendChild(useFacts([
-                ['Members', useNum(shape.members)],
-                ['Joined in this period', useNum(shape.joined)],
-                ['Projects', useNum(shape.projects)],
-                ['Tokens that can be used', useNum(shape.tokens)],
-                ['Tokens used in this period', useNum(shape.tokensUsed)]
+            // These were five rows of a facts list saying the same five things.
+            // One shape for a metric across the page beats two, and the grid is
+            // the one the rest of it uses.
+            tmain.appendChild(useGrid([
+                { label: 'Members', used: shape.members || 0, of: inc.seats },
+                { label: 'Members joined', used: shape.joined || 0 },
+                { label: 'SSO users', used: 0 },
+                { label: 'Projects', used: shape.projects || 0 },
+                { label: 'API tokens', used: shape.tokens || 0 },
+                { label: 'Tokens used', used: shape.tokensUsed || 0 },
+                { label: 'API calls', used: 0 },
+                { label: 'Webhook deliveries', used: 0 },
+                { label: 'Evidence exports', used: 0 }
             ]));
             team.body.appendChild(tmain);
             body.appendChild(team);
