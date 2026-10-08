@@ -5321,6 +5321,37 @@
         return box;
     }
 
+    // Whether the allowance lasts the cycle, at the rate it is going.
+    //
+    // Read off the cycle rather than off the window on screen: the allowance
+    // is the cycle's, so the pace that matters is the pace against it. A
+    // window of the last seven days on a quarterly plan says nothing about
+    // whether the quarter holds.
+    //
+    // Nothing is said in the first day of a cycle. One day of work projected
+    // over three months is a number with a fortnight of error in it, printed
+    // to the day.
+    function usePace(cycle, meter) {
+        if (!cycle || !meter || !meter.of) return '';
+        var from = new Date(cycle.from).getTime();
+        var to = new Date(cycle.to).getTime();
+        var now = Date.now();
+        if (!from || !to || now <= from) return '';
+        var gone = (Math.min(now, to) - from) / 86400000;
+        if (gone < 1) return '';
+        var rate = (cycle.used || 0) / gone;
+        if (rate <= 0) return t('Nothing used yet');
+        var left = meter.of - (cycle.used || 0);
+        if (left <= 0) return t('Already spent');
+        var daysLeft = left / rate;
+        var runsOut = now + daysLeft * 86400000;
+        // Lasting the cycle is the answer most of the time, and a date past
+        // the end of it is not an answer anybody asked for: the allowance
+        // starts again before it could be reached.
+        if (runsOut >= to) return t('Lasts the cycle');
+        return fill('Runs out {when}', { when: whenText(runsOut) });
+    }
+
     // How often an allowance comes back, in the words of the term that buys it.
     function termWord(term) {
         if (term === 'yearly') return 'a year';
@@ -5751,7 +5782,17 @@
         // stylesheet said, and the chart changed size the moment somebody asked
         // to compare. They are one chart as far as this is concerned and they
         // are sized together.
-        var plots = body.querySelectorAll('.use-plot');
+        // Only the charts on the first screen. This fitter exists to make what
+        // is above the fold fit above the fold, and it does that by taking
+        // height off a chart. A chart in a section further down is not in its
+        // way and must not pay for it: the screenings chart would be squeezed
+        // to buy room for a grid it sits a whole screen below.
+        var plots = [];
+        for (var node = body.firstElementChild; node && node !== gap; node = node.nextElementSibling) {
+            if (node.classList && node.classList.contains('use-plot')) plots.push(node);
+            var inner = node.querySelectorAll ? node.querySelectorAll('.use-plot') : [];
+            for (var pi = 0; pi < inner.length; pi++) plots.push(inner[pi]);
+        }
         var setPlotH = function (px) {
             for (var i = 0; i < plots.length; i++) {
                 plots[i].style.setProperty('--use-plot-h', Math.round(px) + 'px');
@@ -5812,7 +5853,11 @@
         // that is not laid out measures zero, and zero told everything after
         // this that there was no room to give up and none to take -- so on a
         // screen that opened already comparing, the fitting did nothing at all.
-        var areas = body.querySelectorAll('.use-plot-a');
+        var areas = [];
+        for (var qi = 0; qi < plots.length; qi++) {
+            var found = plots[qi].querySelectorAll('.use-plot-a');
+            for (var fi = 0; fi < found.length; fi++) areas.push(found[fi]);
+        }
         var area = null;
         for (var ai = 0; ai < areas.length; ai++) {
             if (areas[ai].offsetHeight) { area = areas[ai]; break; }
@@ -6428,16 +6473,42 @@
         var cell = document.createElement('div');
         cell.className = 'use-mc';
 
+        // A cell that has a section below it takes you there.
+        //
+        // Not an anchor, and nothing written to the address bar. A fragment
+        // would not move this page anyway -- it scrolls inside a box, not as a
+        // document -- and it would leave a #use-screenings behind that comes
+        // back on every reload and on every link anybody copies, pinning the
+        // page somewhere halfway down for a reason the next reader cannot see.
+        if (c.go) {
+            cell.className += ' is-open';
+            cell.setAttribute('role', 'button');
+            cell.setAttribute('tabindex', '0');
+            var jump = function () {
+                var target = document.getElementById(c.go);
+                if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            };
+            cell.addEventListener('click', jump);
+            cell.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+                    e.preventDefault();
+                    jump();
+                }
+            });
+        }
+
         var head = document.createElement('div');
         head.className = 'use-mc-h';
         var name = document.createElement('span');
         name.className = 'use-mc-n';
         name.textContent = t(c.label);
         head.appendChild(name);
-        var go = document.createElement('span');
-        go.className = 'use-mc-go';
-        go.innerHTML = icon('chev');
-        head.appendChild(go);
+        if (c.go) {
+            var mark = document.createElement('span');
+            mark.className = 'use-mc-go';
+            mark.innerHTML = icon('chev');
+            head.appendChild(mark);
+        }
         cell.appendChild(head);
 
         var row = document.createElement('div');
@@ -6998,17 +7069,17 @@
             // the picker still changes the cell even when the number holds.
             sum.body.appendChild(useGrid([
                 { label: 'Screenings', used: runUsed, of: inc.screenings,
-                  series: useSeries(s.days, 'n'), ghost: useSeries(older, 'n') },
+                  series: useSeries(s.days, 'n'), ghost: useSeries(older, 'n') , go: 'use-screenings' },
                 { label: 'Addresses screened', used: s.addresses || 0,
                   was: older ? out.previous.addresses : null,
-                  series: useSeries(s.days, 'addresses'), ghost: useSeries(older, 'addresses') },
+                  series: useSeries(s.days, 'addresses'), ghost: useSeries(older, 'addresses') , go: 'use-screenings' },
                 { label: 'Chains screened', used: chains,
                   was: older ? out.previous.assetCount : null,
-                  series: useSeries(s.days, 'assets'), ghost: useSeries(older, 'assets') },
+                  series: useSeries(s.days, 'assets'), ghost: useSeries(older, 'assets') , go: 'use-screenings' },
 
                 { label: 'Findings to review', used: s.flagged || 0,
                   was: older ? out.previous.flagged : null,
-                  series: useSeries(s.days, 'flagged'), ghost: useSeries(older, 'flagged') },
+                  series: useSeries(s.days, 'flagged'), ghost: useSeries(older, 'flagged') , go: 'use-screenings' },
                 { label: 'Decisions recorded', used: shape.decisions || 0,
                   was: older ? out.previous.decisions : null,
                   series: useSeries(s.decisionDays, 'n') },
@@ -7064,20 +7135,45 @@
             ]));
             var smain = useMain();
 
-            // Included, used, left. The three lines every metered thing on this
-            // page answers with, in the same order every time.
+            // Included, used, left, and the one a table of three cannot
+            // answer: whether it lasts.
+            //
+            // Included and used against each other say where you are. They do
+            // not say where you are going, which is the question somebody
+            // opens this page with in the second half of a period. The pace is
+            // read off the days already spent of the cycle and carried to the
+            // end of it.
             var meter = allow.rows.length ? allow.rows[0] : null;
             if (meter && !meter.unmetered && meter.of) {
-                smain.appendChild(useFacts([
+                var facts = [
                     ['Included', useNum(meter.of) + (meter.per ? '  ·  ' + t(meter.per) : '')],
                     ['Used', useNum(meter.used)],
                     ['Left', useNum(Math.max(0, meter.of - meter.used))]
-                ]));
+                ];
+                var pace = usePace(out.cycle, meter);
+                if (pace) facts.push(['At this rate', pace]);
+                smain.appendChild(useFacts(facts));
             } else if (meter && meter.unmetered) {
                 smain.appendChild(useFacts([
                     ['Included', t('Unmetered')],
                     ['Used', useNum(meter.used)]
                 ]));
+            }
+
+            // The window, day by day, with the one before it underneath.
+            //
+            // This chart was built, then stranded: it lived in the card at the
+            // top of the page and went out with it, so the page counting
+            // screenings had no picture of them. It belongs here, in the
+            // section about them, where the figures above it are the same
+            // figures.
+            if (!fresh && (s.days || []).length > 1) {
+                smain.appendChild(useGridTitle('Screenings per day'));
+                var plotBox = document.createElement('div');
+                plotBox.className = 'use-plotwrap';
+                plotBox.appendChild(useChart(s.days || [], older || null));
+                plotBox.appendChild(useLegend(Boolean(older)));
+                smain.appendChild(plotBox);
             }
 
             // What this period went on.

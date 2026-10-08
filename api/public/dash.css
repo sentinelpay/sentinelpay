@@ -3969,9 +3969,16 @@ html.is-theming .btn {
    the only one being asked about. It can hide now precisely because every cell
    behaves the same -- there is nothing to learn by scanning, so nothing the
    grid has to declare while the mouse is elsewhere. */
-.use-mc:hover .use-mc-go { opacity: 1; transform: none; }
-.use-mc:hover { background: var(--hover); cursor: pointer; }
-.use-mc:hover .use-mc-n { color: var(--link); }
+.use-mc.is-open:hover .use-mc-go,
+.use-mc.is-open:focus-visible .use-mc-go { opacity: 1; transform: none; }
+.use-mc.is-open:hover { background: var(--hover); cursor: pointer; }
+.use-mc.is-open:hover .use-mc-n { color: var(--link); }
+/* It answers the keyboard, so the keyboard has to be able to see where it is. */
+.use-mc.is-open:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
+
+/* The chart in the screenings section, which has a heading above it rather
+   than a card around it. */
+.use-plotwrap { margin-bottom: 1.2rem; }
 
 /* The ring is taller than the line of text beside it, so a cell without one
    is a shorter cell, and in a grid of sixteen that is four row heights for no

@@ -219,6 +219,14 @@ test('every chart on the screen is sized, not the first one', () => {
         'the height is still read off one chart');
     assert.match(body, /offsetHeight\)\s*\{[\s\S]{0,80}break;/,
         'a chart that is not laid out can still be the one measured');
+
+    // And only the charts above the fold. This fitter buys room for the first
+    // screen by taking height off a chart, and the screenings chart sits a
+    // whole screen below the grid it would be paying for.
+    assert.doesNotMatch(body, /body\.querySelectorAll\('\.use-plot'\)/,
+        'every chart on the page is sized, including the ones below the fold');
+    assert.match(body, /node !== gap/,
+        'the gathering no longer stops at the fold');
 });
 
 // And the two of them sit in one cell, so the card cannot change height when
