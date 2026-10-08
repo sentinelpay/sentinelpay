@@ -6456,6 +6456,12 @@
         if (c.of === 0) {
             val.textContent = t('Not in this plan');
             val.className += ' is-none';
+        } else if (c.used === null) {
+            // Nought is a reading. A metric nothing has measured yet does not
+            // have one, and printing zero milliseconds would say we answered
+            // instantly rather than that we have not looked.
+            val.textContent = t('Nothing measured yet');
+            val.className += ' is-none';
         } else if (c.of) {
             pct = Math.min(100, Math.round((c.used / c.of) * 100));
             val.textContent = useNum(c.used) + ' / ' + useNum(c.of) + (c.unit ? ' ' + t(c.unit) : '');
@@ -6904,52 +6910,56 @@
             var runUsed = out.cycle ? out.cycle.used : s.total;
             var chains = (s.assets || []).length;
 
-            // Eighteen, six rows of three.
+            // Eighteen, six rows of three, and each row answers one question.
             //
-            // Nearly every cell carries a limit, because nearly everything a
-            // plan sells has one and the catalogue now says what they are.
-            // Three groups, and the difference between them is the point:
-            //
-            //   spent against an allowance -- screenings, monitoring, seats,
-            //   projects, keys, calls, deliveries, watchlist, exports. These
-            //   run out, and running out stops work.
-            //
-            //   covered of what the plan carries -- chains and lists. Nothing
-            //   is spent; the fraction says how much of what was bought is
-            //   live, which on a staging product is the more useful number.
-            //
-            //   counted, with no ceiling at all -- findings, decisions,
-            //   alerts, addresses screened, members joined. Capping any of
-            //   these would mean refusing to tell somebody about risk, or
-            //   refusing a person already paid for. They are counts and they
-            //   stay counts; a denominator here would be invented.
-            //
-            // Left out on purpose: the five ways a screening is spent, which
-            // come out of one allowance and sit under Screenings.
+            // A denominator here is an entitlement and nothing else. Chains and
+            // sanctions lists were shown as 5/10 and 1/4 and both were wrong:
+            // we do not sell chains by the chain, and nobody buys a fourth
+            // list. Those are things we built, and what we built belongs under
+            // Plan and Coverage. A fraction against them invites somebody to
+            // ask what the eleventh chain costs.
             sum.body.appendChild(useGrid([
+                // ---- what runs out, and stops work when it does
                 { label: 'Screenings', used: runUsed, of: inc.screenings },
+                // A sweep walks a key's whole history rather than asking about
+                // one address, so it is allowed separately. Out of the
+                // screening allowance, one sweep could eat a month of ordinary
+                // work without anybody choosing that.
+                { label: 'History sweeps', used: 0, of: inc.sweeps },
                 { label: 'Addresses monitored', used: 0, of: inc.addresses },
-                { label: 'Seats', used: shape.members || 0, of: inc.seats },
 
-                { label: 'Findings to review', used: s.flagged || 0 },
-                { label: 'Decisions recorded', used: shape.decisions || 0 },
+                // ---- what the engine did without being asked. Our work, not
+                // theirs, which is why none of it is capped: charging for a
+                // re-screen would be charging somebody because a government
+                // published a list.
+                { label: 'Re-screens triggered', used: 0 },
+                { label: 'List updates applied', used: 0 },
                 { label: 'Alerts raised', used: 0 },
 
-                { label: 'Chains covered', used: chains, of: inc.chains },
-                { label: 'Sanctions lists', used: 1, of: inc.lists },
+                // ---- what is waiting for a person
+                { label: 'Findings to review', used: s.flagged || 0 },
+                { label: 'Decisions recorded', used: shape.decisions || 0 },
+                { label: 'Awaiting a second pair of eyes', used: 0 },
+
+                // ---- the rest of the allowances
                 { label: 'Custom watchlist', used: 0, of: inc.watchlist },
-
-                { label: 'Projects', used: shape.projects || 0, of: inc.projects },
-                { label: 'API tokens', used: shape.tokens || 0, of: inc.tokens },
-                { label: 'API calls', used: 0, of: inc.apiCalls },
-
-                { label: 'Webhook deliveries', used: 0, of: inc.webhooks },
                 { label: 'Evidence exports', used: 0, of: inc.exports },
+                // The one promise we sell with a number in it. Nothing is
+                // spent; the fraction is how much of the second we said we
+                // would answer in was actually used, at the slowest one in
+                // twenty. Until there is a measurement it says so rather than
+                // reporting nought milliseconds, which would read as instant.
+                { label: 'Answer time, slowest in 20', used: null, of: inc.answerMs, unit: 'ms' },
+
+                // ---- who can reach it
+                { label: 'Seats', used: shape.members || 0, of: inc.seats },
+                { label: 'Projects', used: shape.projects || 0, of: inc.projects },
                 { label: 'SSO users', used: 0, of: inc.ssoSeats },
 
-                { label: 'Addresses screened', used: s.addresses || 0 },
-                { label: 'Members joined', used: shape.joined || 0 },
-                { label: 'Tokens used', used: shape.tokensUsed || 0 }
+                // ---- and what their systems did
+                { label: 'API tokens', used: shape.tokens || 0, of: inc.tokens },
+                { label: 'API calls', used: 0, of: inc.apiCalls },
+                { label: 'Webhook deliveries', used: 0, of: inc.webhooks }
             ], 'is-lead'));
             body.appendChild(sum);
 

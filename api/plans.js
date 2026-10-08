@@ -39,8 +39,8 @@ const PLANS = {
         tokens: 3,
         watchlist: 100,
         ssoSeats: 0,
-        chains: 3,
-        lists: 4,
+        answerMs: 1000,
+        sweepsPerMonth: 5,
         apiCallsPerMonth: 25000,
         webhooksPerMonth: 10000,
         exportsPerMonth: 50,
@@ -59,8 +59,8 @@ const PLANS = {
         tokens: 15,
         watchlist: 2500,
         ssoSeats: 0,
-        chains: 10,
-        lists: 4,
+        answerMs: 1000,
+        sweepsPerMonth: 50,
         apiCallsPerMonth: 250000,
         webhooksPerMonth: 100000,
         exportsPerMonth: 500,
@@ -77,8 +77,8 @@ const PLANS = {
         tokens: 100,
         watchlist: 25000,
         ssoSeats: 25,
-        chains: 10,
-        lists: 4,
+        answerMs: 1000,
+        sweepsPerMonth: 500,
         apiCallsPerMonth: 2500000,
         webhooksPerMonth: 1000000,
         exportsPerMonth: 5000,
@@ -256,11 +256,16 @@ function included(planKey, termKey) {
         tokens: p.tokens,
         watchlist: p.watchlist,
         ssoSeats: p.ssoSeats,
-        // What we cover, rather than what is spent. A plan carries so many
-        // chains and so many lists, and a customer is as entitled to see how
-        // much of that is live as to see how much of an allowance is gone.
-        chains: p.chains,
-        lists: p.lists,
+        // A sweep walks a key's whole history rather than asking about one
+        // address, so it costs what hundreds of screenings cost and is allowed
+        // separately. Taking it out of the screening allowance would let one
+        // sweep eat a month of ordinary work without anybody choosing that.
+        sweeps: perPeriod(p.sweepsPerMonth),
+        // Not an allowance. It is the one promise on the pricing page with a
+        // number in it -- an answer in under a second -- and a product that
+        // sells a number should be willing to show itself against it. Same on
+        // every tier, because we did not sell a slower second to anybody.
+        answerMs: p.answerMs,
         apiCalls: perPeriod(p.apiCallsPerMonth),
         webhooks: perPeriod(p.webhooksPerMonth),
         exports: perPeriod(p.exportsPerMonth),
