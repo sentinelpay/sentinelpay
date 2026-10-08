@@ -449,7 +449,12 @@ button { font: inherit; color: inherit; }
 .app[data-side="collapsed"] .side { z-index: 15; }
 .app[data-side="hover"] .side { z-index: 30; }
 .app[data-side="collapsed"] .nav-t, .app[data-side="hover"] .nav-t { max-width: 0; opacity: 0; }
-.app[data-side="collapsed"] .nav-i, .app[data-side="hover"] .nav-i { margin-right: 0; }
+/* The rail's glyphs, and only the rail's. `.nav-i` is also the mark inside
+   a section badge, a project tile and an avatar, each of which centres it
+   and clears this margin -- and each of which loses, because a selector
+   carrying `.app[data-side]` outranks one carrying only the component. So
+   these say `.side`, which is where the rail is. */
+.app[data-side="collapsed"] .side .nav-i, .app[data-side="hover"] .side .nav-i { margin-right: 0; }
 .app[data-side="collapsed"] .nav-group, .app[data-side="hover"] .nav-group {
     height: 1px;
     margin: 0.6rem 0.45rem;
@@ -907,7 +912,7 @@ button { font: inherit; color: inherit; }
     .app[data-side="collapsed"],
     .app[data-side="hover"] { --side-w: 248px; }
     .app[data-side] .nav-t { max-width: 12rem; opacity: 1; }
-    .app[data-side] .nav-i { margin-right: 0.6rem; }
+    .app[data-side] .side .nav-i { margin-right: 0.6rem; }
     .app[data-side] .nav-btn { justify-content: flex-start; padding: 0.38rem 0.55rem; }
     .app[data-side] .nav-group {
         height: 1.05rem;

@@ -6463,11 +6463,17 @@
         wrap.className = 'use-ring';
         if (pct >= 100) wrap.classList.add('is-full');
         else if (pct >= 80) wrap.classList.add('is-near');
+        // Nothing spent draws no arc at all. A dash of length zero with a round
+        // cap is not nothing: the cap is drawn anyway, so the ring came out
+        // with a small bead sitting at twelve o'clock on every untouched
+        // allowance, which reads as a sliver used rather than as none.
         wrap.innerHTML =
             '<svg viewBox="0 0 18 18" aria-hidden="true">' +
             '<circle class="use-ring-t" cx="9" cy="9" r="7"/>' +
-            '<circle class="use-ring-f" cx="9" cy="9" r="7" ' +
-            'stroke-dasharray="' + ((pct / 100) * 44).toFixed(2) + ' 44"/>' +
+            (pct > 0
+                ? '<circle class="use-ring-f" cx="9" cy="9" r="7" ' +
+                  'stroke-dasharray="' + ((pct / 100) * 44).toFixed(2) + ' 44"/>'
+                : '') +
             '</svg>';
         return wrap;
     }
