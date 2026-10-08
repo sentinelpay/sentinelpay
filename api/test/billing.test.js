@@ -135,3 +135,48 @@ test('a period allows the term, not the month', () => {
     assert.equal(plans.included('growth', 'scan').screenings, null);
     assert.equal(plans.included('nope', 'quarterly'), null);
 });
+
+test('every quota the dashboard draws against exists on every plan', () => {
+    // The usage grid shows a limit beside nearly every metric, and it reads
+    // them from here. A key missing on one tier is not an error anywhere --
+    // `of` comes back undefined and the cell quietly turns into a bare count,
+    // which looks like a metric with no limit rather than like a mistake.
+    const WANTED = ['screenings', 'addresses', 'seats', 'projects', 'tokens',
+        'watchlist', 'ssoSeats', 'chains', 'lists', 'apiCalls', 'webhooks', 'exports'];
+    for (const key of ['starter', 'growth', 'enterprise']) {
+        const inc = plans.included(key, 'quarterly');
+        for (const q of WANTED) {
+            assert.ok(q in inc, key + ' has no ' + q);
+            assert.ok(typeof inc[q] === 'number', key + '.' + q + ' is not a number');
+        }
+    }
+});
+
+test('a dearer plan never allows less than a cheaper one', () => {
+    // Paying more and getting a smaller number is the one thing a quota table
+    // must never do, and it is exactly what a mistyped zero looks like.
+    const q = (k) => plans.included(k, 'quarterly');
+    const [a, b, c] = [q('starter'), q('growth'), q('enterprise')];
+    for (const key of Object.keys(a)) {
+        assert.ok(b[key] >= a[key], 'growth.' + key + ' is under starter');
+        assert.ok(c[key] >= b[key], 'enterprise.' + key + ' is under growth');
+    }
+});
+
+test('what is spent scales with the term, what is held does not', () => {
+    const qt = plans.included('growth', 'quarterly');
+    const yr = plans.included('growth', 'yearly');
+    // spent and refilled
+    for (const key of ['screenings', 'apiCalls', 'webhooks', 'exports']) {
+        assert.equal(yr[key], qt[key] * 4, key + ' does not scale with the term');
+    }
+    // standing
+    for (const key of ['seats', 'addresses', 'projects', 'tokens', 'watchlist', 'chains', 'lists']) {
+        assert.equal(yr[key], qt[key], key + ' should not scale with the term');
+    }
+    // per-scan buys no period, so nothing spent has an allowance
+    const scan = plans.included('growth', 'scan');
+    for (const key of ['screenings', 'apiCalls', 'webhooks', 'exports']) {
+        assert.equal(scan[key], null, key + ' should have no allowance on per-scan');
+    }
+});

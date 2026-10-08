@@ -166,7 +166,12 @@ function allowance(row, p) {
     // window this subscription is invoiced for. an agreed number on the row is
     // already a period's worth and is taken as written.
     const listed = p ? plans.included(row.plan, row.term) : null;
+    // Three of these can be agreed with one customer, because three of them
+    // have a column to hold that agreement. The rest come from the catalogue
+    // as listed: a quota nobody can negotiate is still a quota, and leaving it
+    // out of here only meant the dashboard had no limit to draw against.
     return {
+        ...(listed || {}),
         screenings: pick(row.included_screenings, listed && listed.screenings),
         addresses: pick(row.included_addresses, listed && listed.addresses),
         seats: pick(row.included_seats, listed && listed.seats),
