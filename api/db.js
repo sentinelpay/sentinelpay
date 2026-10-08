@@ -52,7 +52,10 @@ if (URL_RAW) {
             ssl: sslFor(URL_RAW),
             max: Number(process.env.DATABASE_POOL_MAX || 8),
             idleTimeoutMillis: 30000,
-            connectionTimeoutMillis: 8000,
+            // Eight seconds is plenty from a container sitting beside the
+            // database and is not always enough from a laptop on the other
+            // side of an ocean, which is exactly where a fixture gets run from.
+            connectionTimeoutMillis: Number(process.env.DATABASE_CONNECT_TIMEOUT_MS || 8000),
             statement_timeout: 10000,
             query_timeout: 10000,
             application_name: 'sentinelpay-web',
@@ -302,13 +305,41 @@ function status() {
     };
 }
 
+// Where we were trying to reach, for an error that otherwise does not say.
+//
+// "Connection terminated due to connection timeout" is the whole of what pg
+// offers, and from a laptop it is true of a dozen different mistakes: the
+// internal host that only resolves inside Railway, the public one with no TCP
+// proxy in front of it, the right host on the wrong port, a network that
+// blocks the high port a proxy listens on. The address is not a secret -- the
+// password in it is, and that is the one part left out.
+function reaching() {
+    try {
+        const u = new URL(URL_RAW);
+        return u.hostname + ':' + (u.port || '5432') +
+            (u.hostname.endsWith('.railway.internal')
+                ? ' (this host only resolves from inside Railway)'
+                : '');
+    } catch (err) {
+        return 'the address in DATABASE_URL';
+    }
+}
+
+function withWhere(err) {
+    if (!err || !/timeout|ECONNREFUSED|ENOTFOUND|EHOSTUNREACH|ETIMEDOUT/i.test(err.message || '')) {
+        return err;
+    }
+    err.message = err.message + ' -- trying ' + reaching();
+    return err;
+}
+
 function query(text, params) {
     if (!pool) return Promise.reject(new Error('no database configured'));
-    return pool.query(text, params);
+    return pool.query(text, params).catch((err) => { throw withWhere(err); });
 }
 function connect() {
     if (!pool) return Promise.reject(new Error('no database configured'));
-    return pool.connect();
+    return pool.connect().catch((err) => { throw withWhere(err); });
 }
 function seal(aad, plain) {
     return ENCRYPTED ? encrypt(String(plain == null ? '' : plain), aad) : String(plain == null ? '' : plain);
