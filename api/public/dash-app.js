@@ -6598,6 +6598,15 @@
         h1.textContent = t('Usage');
         inner.appendChild(h1);
 
+        // The one line under the title, the way every other page in the
+        // dashboard has one. It says the thing the numbers below cannot: that
+        // they are counted against the cycle rather than since the beginning,
+        // and what reaching a limit actually does.
+        var sub = document.createElement('p');
+        sub.className = 'pg-sub use-sub';
+        sub.textContent = t('Counted live against this cycle. Running out stops screening rather than adding to a bill.');
+        inner.appendChild(sub);
+
         var bar = document.createElement('div');
         bar.className = 'use-bar';
         inner.appendChild(bar);
