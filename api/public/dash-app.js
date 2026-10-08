@@ -6485,13 +6485,15 @@
             // The server cuts the earlier window to the part of this one that
             // has elapsed, so a quarter two days old is compared against two
             // days and not against three whole months.
-            if (c.was !== null && c.was !== undefined) {
-                var d = c.used - c.was;
+            // Nothing is printed when it did not move. A word for "the same"
+            // sits against the figure and reads as part of it, and a cell with
+            // no mark beside its number already says the only thing that word
+            // was there to say.
+            var d = (c.was === null || c.was === undefined) ? 0 : c.used - c.was;
+            if (d !== 0) {
                 var move = document.createElement('span');
-                move.className = 'use-mc-d' + (d > 0 ? ' is-up' : (d < 0 ? ' is-down' : ''));
-                move.textContent = d === 0
-                    ? t('level')
-                    : (d > 0 ? '+' : '\u2212') + useNum(Math.abs(d));
+                move.className = 'use-mc-d' + (d > 0 ? ' is-up' : ' is-down');
+                move.textContent = (d > 0 ? '+' : '\u2212') + useNum(Math.abs(d));
                 move.title = fill('{n} in the window before', { n: useNum(c.was) });
                 val.appendChild(move);
             }
@@ -6924,10 +6926,8 @@
             // cycle it says which half of the grid is counted over it.
             var onCycle = Boolean(out.cycle) && out.period && out.period.current;
             var sum = useSection('use-summary', 'Usage summary', 'gauge',
-                onCycle
-                    ? 'Counted over the current billing cycle.'
-                    : fill('Counted over {window}. Allowances still belong to the billing cycle.',
-                        { window: usePeriodLabel(out.period).toLowerCase() }));
+                fill('The first six count {window}, against the same length of time before it. The allowances below are the billing cycle\u2019s.',
+                    { window: onCycle ? t('this billing cycle') : usePeriodLabel(out.period).toLowerCase() }));
             // The grid runs the full width. There is no column of prose beside
             // it because the cells are the explanation: a label and a number
             // each, read in any order.
@@ -6942,17 +6942,37 @@
             var runUsed = out.cycle ? out.cycle.used : s.total;
             var chains = (s.assets || []).length;
 
-            // Eighteen, six rows of three, and each row answers one question.
+            // Eighteen, six rows of three, and the first two rows move when
+            // the window does.
             //
-            // A denominator here is an entitlement and nothing else. Chains and
-            // sanctions lists were shown as 5/10 and 1/4 and both were wrong:
-            // we do not sell chains by the chain, and nobody buys a fourth
-            // list. Those are things we built, and what we built belongs under
-            // Plan and Coverage. A fraction against them invites somebody to
-            // ask what the eleventh chain costs.
+            // Screenings used to read the cycle here, on the grounds that the
+            // allowance belongs to the cycle. True, and it made the headline
+            // number of this page the one number a period picker could not
+            // touch: switching to the last day left sixteen of eighteen cells
+            // sitting still, which reads as a broken control no matter what
+            // sentence is printed above it.
+            //
+            // So the count follows the window and the allowance gets a cell of
+            // its own that says so. Both facts are on the screen, neither is
+            // pretending to be the other.
             sum.body.appendChild(useGrid([
-                // ---- what runs out, and stops work when it does
-                { label: 'Screenings', used: runUsed, of: inc.screenings },
+                // ---- this window, and the same length of time before it
+                { label: 'Screenings', used: s.total || 0,
+                  was: older ? out.previous.total : null },
+                { label: 'Addresses screened', used: s.addresses || 0,
+                  was: older ? out.previous.addresses : null },
+                { label: 'Chains screened', used: chains,
+                  was: older ? out.previous.assetCount : null },
+
+                { label: 'Findings to review', used: s.flagged || 0,
+                  was: older ? out.previous.flagged : null },
+                { label: 'Decisions recorded', used: shape.decisions || 0,
+                  was: older ? out.previous.decisions : null },
+                { label: 'Alerts raised', used: 0 },
+
+                // ---- the allowance, which is the cycle's however the window
+                // above is cut
+                { label: 'Allowance this cycle', used: runUsed, of: inc.screenings },
                 // A sweep walks a key's whole history rather than asking about
                 // one address, so it is allowed separately. Out of the
                 // screening allowance, one sweep could eat a month of ordinary
@@ -6960,22 +6980,6 @@
                 { label: 'History sweeps', used: 0, of: inc.sweeps },
                 { label: 'Addresses monitored', used: 0, of: inc.addresses },
 
-                // ---- what the engine did without being asked. Our work, not
-                // theirs, which is why none of it is capped: charging for a
-                // re-screen would be charging somebody because a government
-                // published a list.
-                { label: 'Re-screens triggered', used: 0 },
-                { label: 'List updates applied', used: 0 },
-                { label: 'Alerts raised', used: 0 },
-
-                // ---- what is waiting for a person
-                { label: 'Findings to review', used: s.flagged || 0,
-                  was: older ? out.previous.flagged : null },
-                { label: 'Decisions recorded', used: shape.decisions || 0,
-                  was: older ? out.previous.decisions : null },
-                { label: 'Awaiting a second pair of eyes', used: 0 },
-
-                // ---- the rest of the allowances
                 { label: 'Custom watchlist', used: 0, of: inc.watchlist },
                 { label: 'Evidence exports', used: 0, of: inc.exports },
                 // The one promise we sell with a number in it. Nothing is
