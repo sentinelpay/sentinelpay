@@ -64,8 +64,6 @@
             "{used} of {of} screenings used in this period. {left} left.": "Iskorišteno {used} od {of} provjera u ovom razdoblju. Preostalo {left}.",
             "{n}% used": "{n}% iskorišteno",
             "What a check costs you, and what this period went on.": "Što vas provjera košta i na što je ovo razdoblje otišlo.",
-            "A check is one address, asked once. The allowance is per period and starts again when the next one does.": "Provjera je jedna adresa, pitana jednom. Dozvola je po razdoblju i počinje iznova kad počne sljedeće.",
-            "A check is one address, asked once.": "Provjera je jedna adresa, pitana jednom.",
             "Left": "Preostalo",
             "What was done about them": "Što je učinjeno s njima",
             "How the checks answered, and what has been done about them.": "Kako su provjere odgovorile i što je s njima učinjeno.",

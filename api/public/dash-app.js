@@ -7128,11 +7128,14 @@
             // out as three sections is a page that looks longer than it is.
             var scr = useSection('use-screenings', 'Screenings', 'screening',
                 'What a check costs you, and what this period went on.');
-            scr.body.appendChild(useSide(sub ? [
-                'A check is one address, asked once. The allowance is per period and starts again when the next one does.'
-            ] : [
-                'A check is one address, asked once.'
-            ]));
+            // Full width, with no column of prose beside it.
+            //
+            // The sentence that stood there said a check is one address asked
+            // once, which the heading above it already says in four words, and
+            // it bought that repetition with a third of the width -- so the
+            // table of four figures, the chart and the breakdown all ran in
+            // two thirds of the room they had.
+            scr.body.className += ' is-wide';
             var smain = useMain();
 
             // Included, used, left, and the one a table of three cannot
