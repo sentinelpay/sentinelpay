@@ -6389,23 +6389,20 @@
         return grid;
     }
 
+    // Every cell opens, so every cell says so.
+    //
+    // Five of the sixteen used to carry the mark and the rest were dead, which
+    // meant the grid could only be learned by running a mouse along it. The
+    // page each one opens is the next thing to build; the cell is drawn the
+    // way it will behave, which is how we decide what that page has to hold.
+    //
+    // A div rather than an anchor until there is somewhere to go: an <a> with
+    // nothing behind it is announced to a screen reader as a link and lands a
+    // keyboard on something that cannot be used. The mark and the tint are for
+    // the eye, and the eye is not misled by them.
     function useCell(c) {
-        var cell = document.createElement(c.to ? 'a' : 'div');
+        var cell = document.createElement('div');
         cell.className = 'use-mc';
-        if (c.to) {
-            cell.className += ' is-link';
-            // An anchor, so it can be tabbed to and its target is announced,
-            // but the scrolling is ours: this page scrolls inside a box rather
-            // than as a document, and a fragment jump does not move that box.
-            // Left to the browser the cell is a link that visibly does nothing.
-            cell.href = '#' + c.to;
-            cell.addEventListener('click', function (e) {
-                var target = document.getElementById(c.to);
-                if (!target) return;
-                e.preventDefault();
-                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            });
-        }
 
         var head = document.createElement('div');
         head.className = 'use-mc-h';
@@ -6413,12 +6410,10 @@
         name.className = 'use-mc-n';
         name.textContent = t(c.label);
         head.appendChild(name);
-        if (c.to) {
-            var go = document.createElement('span');
-            go.className = 'use-mc-go';
-            go.innerHTML = icon('chev');
-            head.appendChild(go);
-        }
+        var go = document.createElement('span');
+        go.className = 'use-mc-go';
+        go.innerHTML = icon('chev');
+        head.appendChild(go);
         cell.appendChild(head);
 
         var row = document.createElement('div');
@@ -6865,7 +6860,7 @@
             var chains = (s.assets || []).length;
 
             sum.body.appendChild(useGrid([
-                { label: 'Screenings', used: runUsed, of: inc.screenings, to: 'use-screenings' },
+                { label: 'Screenings', used: runUsed, of: inc.screenings },
                 { label: 'Addresses screened', used: s.addresses || 0, of: inc.addresses },
                 { label: 'Re-screens', used: 0, of: inc.screenings },
                 { label: 'Transaction screens', used: 0, of: inc.screenings },
@@ -6873,11 +6868,11 @@
                 { label: 'Bulk screens', used: 0, of: inc.screenings },
                 { label: 'Addresses monitored', used: 0, of: inc.addresses },
                 { label: 'Alerts raised', used: 0 },
-                { label: 'Findings to review', used: s.flagged || 0, to: 'use-coverage' },
-                { label: 'Chains covered', used: chains, to: 'use-coverage' },
-                { label: 'Seats', used: shape.members || 0, of: inc.seats, to: 'use-team' },
+                { label: 'Findings to review', used: s.flagged || 0 },
+                { label: 'Chains covered', used: chains },
+                { label: 'Seats', used: shape.members || 0, of: inc.seats },
                 { label: 'Projects', used: shape.projects || 0 },
-                { label: 'API tokens', used: shape.tokens || 0, to: 'use-team' },
+                { label: 'API tokens', used: shape.tokens || 0 },
                 { label: 'Tokens used', used: shape.tokensUsed || 0 },
                 { label: 'Webhook deliveries', used: 0 },
                 { label: 'Sandbox screens', used: 0 }

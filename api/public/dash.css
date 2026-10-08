@@ -3934,14 +3934,14 @@ html.is-theming .btn {
     transition: opacity 0.14s ease, transform 0.14s ease;
 }
 .use-mc-go .nav-i { width: 13px; height: 13px; margin-right: 0; }
-/* The mark arrives on approach rather than sitting on every linked cell: a
-   column of permanent arrows is a column of furniture, and the one under the
-   cursor is the only one being asked about. Focus brings it too, or the
-   keyboard gets a quieter page than the mouse. */
-.use-mc.is-link:hover .use-mc-go,
-.use-mc.is-link:focus-visible .use-mc-go { opacity: 1; transform: none; }
-.use-mc.is-link:hover { background: var(--hover); }
-.use-mc.is-link:hover .use-mc-n { color: var(--link); }
+/* The mark arrives on approach rather than sitting on all sixteen: a column of
+   permanent arrows is a column of furniture, and the one under the cursor is
+   the only one being asked about. It can hide now precisely because every cell
+   behaves the same -- there is nothing to learn by scanning, so nothing the
+   grid has to declare while the mouse is elsewhere. */
+.use-mc:hover .use-mc-go { opacity: 1; transform: none; }
+.use-mc:hover { background: var(--hover); cursor: pointer; }
+.use-mc:hover .use-mc-n { color: var(--link); }
 
 /* The ring is taller than the line of text beside it, so a cell without one
    is a shorter cell, and in a grid of sixteen that is four row heights for no
