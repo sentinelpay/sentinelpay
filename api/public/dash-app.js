@@ -6860,19 +6860,37 @@
             var chains = (s.assets || []).length;
 
             sum.body.appendChild(useGrid([
+                // Three to a row, grouped by the question they answer: how much
+                // screening, what it turned up, what we cover and what we can
+                // hand over, who is here, and what the API did.
                 { label: 'Screenings', used: runUsed, of: inc.screenings },
                 { label: 'Addresses screened', used: s.addresses || 0, of: inc.addresses },
                 { label: 'Re-screens', used: 0, of: inc.screenings },
+
                 { label: 'Transaction screens', used: 0, of: inc.screenings },
                 { label: 'History sweeps', used: 0, of: inc.screenings },
                 { label: 'Bulk screens', used: 0, of: inc.screenings },
+
                 { label: 'Addresses monitored', used: 0, of: inc.addresses },
                 { label: 'Alerts raised', used: 0 },
                 { label: 'Findings to review', used: s.flagged || 0 },
+
+                { label: 'Decisions recorded', used: shape.decisions || 0 },
                 { label: 'Chains covered', used: chains },
+                { label: 'Sanctions lists', used: 1 },
+
+                { label: 'Custom watchlist', used: 0 },
+                { label: 'Evidence exports', used: 0 },
+                { label: 'Evidence stored', used: 0, unit: 'MB' },
+
                 { label: 'Seats', used: shape.members || 0, of: inc.seats },
+                { label: 'Members joined', used: shape.joined || 0 },
+                { label: 'SSO users', used: 0, of: inc.seats },
+
                 { label: 'Projects', used: shape.projects || 0 },
                 { label: 'API tokens', used: shape.tokens || 0 },
+                { label: 'API calls', used: 0 },
+
                 { label: 'Tokens used', used: shape.tokensUsed || 0 },
                 { label: 'Webhook deliveries', used: 0 },
                 { label: 'Sandbox screens', used: 0 }

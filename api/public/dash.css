@@ -3889,10 +3889,17 @@ html.is-theming .btn {
    round, so the eye counted boxes before it read a single number. What
    separates two metrics is a line, and a line is all it takes -- one under
    each row, one down the middle, and nothing round the outside. */
+/* No rule across the top. The heading sits directly above the first row and
+   already separates it from the band; a line between the two drew a lid on
+   the grid and, with the section's own rule a little above it, put three
+   horizontals in the space of one. */
+/* Three across. Two was right at sixteen metrics and wrong at twenty-four:
+   eleven rows ran past the bottom of the screen, and the whole point of this
+   grid is that it is read at a glance rather than scrolled. A metric is a
+   short label over a short number and fits a third of this column. */
 .use-mg {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    border-top: 1px solid var(--line-2);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 .use-mc {
     position: relative;
@@ -3906,18 +3913,15 @@ html.is-theming .btn {
     text-decoration: none;
     color: inherit;
 }
-/* Down the middle, and only there: the right-hand column's cells have the
-   page beside them, not another metric. */
-.use-mc:nth-child(odd) { border-right: 1px solid var(--line-2); }
+/* Between columns, and only there: the last cell of a row has the page beside
+   it, not another metric. */
+.use-mc { border-right: 1px solid var(--line-2); }
+.use-mc:nth-child(3n) { border-right: 0; }
 /* The section below draws its own rule across the top. Without this the grid
    closes with one line and the next section opens with another a few points
-   under it, which is a double rule and reads as a mistake. */
-.use-mg > .use-mc:nth-last-child(-n+2):nth-child(odd),
-.use-mg > .use-mc:nth-last-child(-n+2):nth-child(odd) ~ .use-mc { border-bottom: 0; }
-/* An odd number of metrics leaves one cell's worth of nothing, and without
-   this it is a hole in the grid rather than the end of it. Across both
-   columns there is no middle for a rule to go down. */
-.use-mg > .use-mc:last-child:nth-child(odd) { grid-column: 1 / -1; border-right: 0; }
+   under it, which is a double rule and reads as a mistake. The count is a
+   multiple of three, so the last row is the last three cells. */
+.use-mg > .use-mc:nth-last-child(-n+3) { border-bottom: 0; }
 
 .use-mc-h {
     display: flex;
@@ -3982,9 +3986,21 @@ html.is-theming .btn {
 
 /* One column under the width where a label and its number stop fitting side
    by side in half a panel. */
+/* Three columns need the width for three. Below it the rules that pick out a
+   row have to be recut for the new count, or they strike down the middle of a
+   row and under the wrong cells. */
+@media (max-width: 1180px) {
+    .use-mg { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .use-mc:nth-child(3n) { border-right: 1px solid var(--line-2); }
+    .use-mc:nth-child(2n) { border-right: 0; }
+    .use-mg > .use-mc:nth-last-child(-n+3) { border-bottom: 1px solid var(--line-2); }
+    .use-mg > .use-mc:nth-last-child(-n+2) { border-bottom: 0; }
+}
 @media (max-width: 720px) {
     .use-mg { grid-template-columns: minmax(0, 1fr); }
-    .use-mg > .use-mc:last-child:nth-child(odd) { grid-column: auto; }
+    .use-mc, .use-mc:nth-child(3n) { border-right: 0; }
+    .use-mg > .use-mc:nth-last-child(-n+2) { border-bottom: 1px solid var(--line-2); }
+    .use-mg > .use-mc:last-child { border-bottom: 0; }
 }
 
 .use-facts { margin-bottom: 1rem; }
