@@ -435,9 +435,10 @@ async function screeningsIn(orgId, from, to, sandbox, zone, grain) {
 }
 
 // The organisation itself: things that are true now rather than counted over a
-// window, plus the two that are (a token used, a person let in).
+// window, plus the three that are (a token used, a person let in, a check
+// decided).
 async function shapeOf(orgId, from, to) {
-    const [members, projects, tokens, invited, ever] = await Promise.all([
+    const [members, projects, tokens, invited, ever, decided] = await Promise.all([
         db.query('SELECT count(*)::int AS n FROM memberships WHERE org_id = $1', [Number(orgId)]),
         db.query(
             `SELECT count(*)::int AS n,
@@ -463,6 +464,14 @@ async function shapeOf(orgId, from, to) {
         // page has no business showing the same empty columns for both.
         db.query('SELECT EXISTS (SELECT 1 FROM screenings WHERE org_id = $1) AS yes',
             [Number(orgId)]),
+        // Checks a person signed off in this window. Not how many are waiting
+        // -- that is a queue and it is counted elsewhere -- but how much of
+        // the work the product cannot do alone actually got done.
+        db.query(
+            `SELECT count(*)::int AS n FROM check_decisions
+              WHERE org_id = $1 AND at >= $2 AND at < $3`,
+            [Number(orgId), from, to]
+        ),
     ]);
     return {
         members: members.rows[0].n,
@@ -471,6 +480,7 @@ async function shapeOf(orgId, from, to) {
         tokens: tokens.rows[0].live,
         tokensUsed: tokens.rows[0].used,
         joined: invited.rows[0].n,
+        decisions: decided.rows[0].n,
         everScreened: Boolean(ever.rows[0].yes),
     };
 }
