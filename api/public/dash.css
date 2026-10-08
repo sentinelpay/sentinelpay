@@ -3989,6 +3989,9 @@ html.is-theming .btn {
    a few words at a time, and sixteen numbers in it read as sixteen small
    titles rather than as a table of figures. */
 .use-mc-v {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
     min-width: 0;
     font-size: 0.95rem;
     font-weight: 600;
@@ -4013,12 +4016,15 @@ html.is-theming .btn {
 /* A line the plan does not carry. Set at the weight of a label rather than a
    figure, because it is not one: a number here would be read as a quantity. */
 .use-mc-v.is-none { font-size: 0.85rem; font-weight: 500; color: var(--ink-4); }
-/* How the same length of time before this one came to. Quiet, because it is a
-   second reading of the number it sits beside: green and red on eighteen cells
-   would turn a summary into a scoreboard, and more findings than last week is
-   not a defeat. */
-.use-mc-d { margin-left: 0.45rem; font-size: 0.78rem; font-weight: 500; color: var(--ink-4); }
-.use-mc-p { margin-left: 0.4rem; font-size: 0.78rem; font-weight: 400; color: var(--ink-4); }
+/* How the same length of time before this one came to.
+   The two ends of the logo's gradient rather than green and red: more findings
+   than last week is not a defeat and should not be printed as one. Cyan for
+   less than before, violet for more. Nothing is drawn at no change, so there
+   is no third colour to pick. */
+.use-mc-d { font-size: 0.78rem; font-weight: 500; }
+.use-mc-d.is-down { color: var(--link); }
+.use-mc-d.is-up { color: var(--fall); }
+.use-mc-p { font-size: 0.78rem; font-weight: 400; color: var(--ink-4); }
 
 /* The shape of the window, where a metered cell has its ring. Stretched to the
    box rather than drawn to scale: the horizontal is days and nobody reads a
@@ -4031,6 +4037,7 @@ html.is-theming .btn {
    with a stroke four times thinner across than it is down */
 .use-spark-now { stroke: var(--link); vector-effect: non-scaling-stroke; }
 .use-spark-was { stroke: var(--line); vector-effect: non-scaling-stroke; }
+.use-mc-spark.is-quiet .use-spark-now { stroke: var(--line); }
 
 .use-ring { flex: none; display: block; width: 18px; height: 18px; }
 .use-ring svg { display: block; width: 18px; height: 18px; transform: rotate(-90deg); }
