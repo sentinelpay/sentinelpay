@@ -2791,7 +2791,7 @@
         // by design and is not in that sum.
         var first = document.createElement('div');
         first.className = 'ovw-first';
-        first.appendChild(pageHead('Overview', 'What is waiting for a person, and the last work done.'));
+        first.appendChild(pageHead('Overview', 'What needs a person today, and what the product did while you were away.'));
 
         var card = document.createElement('div');
         card.className = 'card';
@@ -2949,7 +2949,7 @@
         // things you pick one of, so they read at the same width.
         page.className = 'pg orgs-pg';
         var org = me.org || {};
-        page.appendChild(pageHead('Projects'));
+        page.appendChild(pageHead('Projects', 'Keep work apart. Each project has its own token, and every check records which one asked for it.'));
 
         var bar = document.createElement('div');
         bar.className = 'bar prj-bar';
@@ -3763,7 +3763,7 @@
         page.className = 'pg';
         var org = me.org || {};
         var may = roleAtLeastLocal(org.role, 'admin');
-        page.appendChild(pageHead('Team', 'Everyone here shares the same screenings, cases and tokens.'));
+        page.appendChild(pageHead('Team', 'Everyone here shares the same screenings and the same allowance. What each person may do about them is their role.'));
 
         var bar = document.createElement('div');
         bar.className = 'bar team-bar';
@@ -7367,7 +7367,7 @@
         var page = document.createElement('div');
         page.className = 'pg';
         var org = me.org || {};
-        page.appendChild(pageHead('Checks', 'Every address this organisation has checked, and what came back.'));
+        page.appendChild(pageHead('Checks', 'Every address ever checked, and the evidence behind each answer. Still readable a year later.'));
 
         // The usage screen links here with a window, a scope, and -- where the
         // number that was clicked was a number about one kind of answer or one
@@ -7917,7 +7917,7 @@
         var page = document.createElement('div');
         page.className = 'pg';
         var tr = me.trial || {};
-        page.appendChild(pageHead('Billing', 'The plan this organisation is on.'));
+        page.appendChild(pageHead('Billing', 'What this organisation pays, and when it pays it again.'));
 
         var card = orghCard('Plan', 'plan');
         card.appendChild(orghStat('Plan', orghPlan(tr.state)));
@@ -7950,7 +7950,7 @@
         var page = document.createElement('div');
         page.className = 'pg';
         var org = me.org || {};
-        page.appendChild(pageHead('Organization settings', 'What this organisation is called, and how to close it.'));
+        page.appendChild(pageHead('Organization settings', 'Its name, and the way out. Closing an organisation takes its screenings with it.'));
 
         var may = roleAtLeastLocal(org.role, 'admin');
 
@@ -8181,7 +8181,7 @@
         var page = document.createElement('div');
         page.className = 'pg';
         page.appendChild(pageHead('Security',
-            'How this account is protected and where it is signed in.'));
+            'Two factors, and every device and session that can reach this account. Sign one out from here if you do not know it.'));
 
         var two = orghCard('Two-factor', 'twofa');
         two.appendChild(orghStat('Second step',
@@ -8316,7 +8316,7 @@
         var page = document.createElement('div');
         page.className = 'pg';
         page.appendChild(pageHead('Audit logs',
-            'What this account has done, newest first.'));
+            'Who did what, and when. The record is written once and never edited.'));
 
         var card = document.createElement('div');
         card.className = 'card';
@@ -8387,7 +8387,7 @@
         var page = document.createElement('div');
         page.className = 'pg';
         page.appendChild(pageHead('Access tokens',
-            'Let your own systems call our API without a person signing in.'));
+            'Let your own systems call the API without a person signing in. A token can screen whatever its project can, so withdraw the ones you have stopped using.'));
 
         var note = document.createElement('div');
         note.className = 'notice';
@@ -9453,7 +9453,7 @@
         var page = document.createElement('div');
         page.className = 'pg orgs-pg';
         page.appendChild(pageHead('Your organisations',
-            'An organisation is your company. Its screenings, cases and tokens are shared by everyone in it.'));
+            'An organisation is your company. Its screenings and its allowance belong to everyone in it, and you can be in more than one.'));
 
         var bar = document.createElement('div');
         bar.className = 'bar';
@@ -9814,7 +9814,7 @@
         var page = document.createElement('div');
         page.className = 'pg';
         page.appendChild(pageHead('Preferences',
-            'Manage your account profile, connections, and dashboard experience.'));
+            'How this dashboard behaves for you, and what we call you. Nobody else in the organisation sees any of it.'));
 
         page.appendChild(sectionTitle('Profile information'));
 
