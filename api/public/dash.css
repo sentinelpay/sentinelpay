@@ -4003,7 +4003,6 @@ html.is-theming .btn {
    sub-grid has six or nine, so they are given the room that buys. */
 .use-mg.is-lead .use-mc { padding: 0.95rem 1.1rem 1rem; }
 .use-mg.is-lead .use-mc-v { font-size: 1.25rem; }
-.use-mg.is-lead .use-ring, .use-mg.is-lead .use-ring svg { width: 24px; height: 24px; }
 .use-mg.is-lead .use-mc-r { min-height: 24px; }
 
 /* A grid inside a section answers the heading above it, so it is closed off
@@ -4024,9 +4023,8 @@ html.is-theming .btn {
 .use-mc-d { font-size: 0.78rem; font-weight: 500; }
 .use-mc-d.is-down { color: var(--link); }
 .use-mc-d.is-up { color: var(--fall); }
-.use-mc-p { font-size: 0.78rem; font-weight: 400; color: var(--ink-4); }
 
-/* The shape of the window, where a metered cell has its ring. Stretched to the
+/* The shape of the window, in every cell. Stretched to the
    box rather than drawn to scale: the horizontal is days and nobody reads a
    day off a line this size, so the only thing worth keeping true is the
    height, which is what the two lines share. */
@@ -4039,16 +4037,6 @@ html.is-theming .btn {
 .use-spark-was { stroke: var(--line); vector-effect: non-scaling-stroke; }
 .use-mc-spark.is-quiet .use-spark-now { stroke: var(--line); }
 
-.use-ring { flex: none; display: block; width: 18px; height: 18px; }
-.use-ring svg { display: block; width: 18px; height: 18px; transform: rotate(-90deg); }
-.use-ring circle { fill: none; stroke-width: 2.6; }
-/* The track is the one on the meters, a shade up: at 2.6px bent round a circle
-   of radius 7 the same colour that reads as a line across a card all but
-   disappears. */
-.use-ring-t { stroke: var(--line); }
-.use-ring-f { stroke: var(--link); stroke-linecap: round; }
-.use-ring.is-near .use-ring-f { stroke: var(--risk-mid); }
-.use-ring.is-full .use-ring-f { stroke: var(--risk-high); }
 
 /* One column under the width where a label and its number stop fitting side
    by side in half a panel. */
