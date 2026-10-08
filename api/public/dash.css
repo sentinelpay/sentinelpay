@@ -3977,7 +3977,7 @@ html.is-theming .btn {
 /* The summary's own three. They carry the whole block rather than sitting
    under a heading inside a section, and there are three of them where a
    sub-grid has six or nine, so they are given the room that buys. */
-.use-mg.is-lead .use-mc { padding: 1.15rem 1.1rem 1.2rem; }
+.use-mg.is-lead .use-mc { padding: 1.05rem 1.1rem 1.1rem; }
 .use-mg.is-lead .use-mc-v { font-size: 1.25rem; }
 .use-mg.is-lead .use-ring, .use-mg.is-lead .use-ring svg { width: 24px; height: 24px; }
 .use-mg.is-lead .use-mc-r { min-height: 24px; }

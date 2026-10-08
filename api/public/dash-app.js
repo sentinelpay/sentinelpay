@@ -6874,7 +6874,7 @@
             var runUsed = out.cycle ? out.cycle.used : s.total;
             var chains = (s.assets || []).length;
 
-            // Twelve, four rows of three.
+            // Eighteen, six rows of three.
             //
             // The ones with a ceiling come first, because those are the ones
             // that can stop work: everything under them is a count, and a
@@ -6901,7 +6901,15 @@
 
                 { label: 'API tokens', used: shape.tokens || 0 },
                 { label: 'API calls', used: 0 },
-                { label: 'Webhook deliveries', used: 0 }
+                { label: 'Webhook deliveries', used: 0 },
+
+                { label: 'Addresses monitored', used: 0, of: inc.addresses },
+                { label: 'Custom watchlist', used: 0 },
+                { label: 'Evidence exports', used: 0 },
+
+                { label: 'Members joined', used: shape.joined || 0 },
+                { label: 'Tokens used', used: shape.tokensUsed || 0 },
+                { label: 'SSO users', used: 0, of: inc.seats }
             ], 'is-lead'));
             body.appendChild(sum);
 
