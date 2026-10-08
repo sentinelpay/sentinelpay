@@ -5162,60 +5162,6 @@
         return orgHome(org.slug) + '/checks?' + q.join('&');
     }
 
-    // One number with its name above it. `of` makes it a meter, `to` makes it
-    // a link down to the section that explains it.
-    function useTile(label, value, opts) {
-        var o = opts || {};
-        var tile = document.createElement(o.to ? 'a' : 'div');
-        tile.className = 'use-tile';
-        if (o.to) {
-            // an anchor, so it can be tabbed to and its target is announced,
-            // but the scrolling is ours: the page scrolls inside a box rather
-            // than as a document, and a fragment jump does not move that box.
-            tile.href = '#' + o.to;
-            tile.addEventListener('click', function (e) {
-                var target = document.getElementById(o.to);
-                if (!target) return;
-                e.preventDefault();
-                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            });
-        }
-        var head = document.createElement('div');
-        head.className = 'use-tile-h';
-        head.textContent = t(label);
-        if (o.to) {
-            var chev = document.createElement('span');
-            chev.className = 'use-tile-go';
-            chev.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
-                'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-                '<path d="m9 6 6 6-6 6"/></svg>';
-            head.appendChild(chev);
-        }
-        tile.appendChild(head);
-        var v = document.createElement('div');
-        v.className = 'use-tile-v';
-        v.textContent = value;
-        tile.appendChild(v);
-        if (o.sub) {
-            var s = document.createElement('div');
-            s.className = 'use-tile-s';
-            s.textContent = o.sub;
-            tile.appendChild(s);
-        }
-        if (o.of) {
-            var track = document.createElement('div');
-            track.className = 'orgh-track';
-            var fill = document.createElement('span');
-            fill.className = 'orgh-fill';
-            var pct = o.of > 0 ? Math.min(100, Math.round((o.used / o.of) * 100)) : 0;
-            fill.style.width = pct + '%';
-            if (pct >= 100) fill.classList.add('is-full');
-            track.appendChild(fill);
-            tile.appendChild(track);
-        }
-        return tile;
-    }
-
     // The number this page is about, the shape it made, and whether that is
     // more or less than last time.
     //
@@ -6436,7 +6382,7 @@
     // border, so the grid reads as a table and not as a wall of boxes.
     function useGrid(cells) {
         var grid = document.createElement('div');
-        grid.className = 'use-grid';
+        grid.className = 'use-mg';
         cells.forEach(function (c) {
             if (c) grid.appendChild(useCell(c));
         });
@@ -6445,31 +6391,41 @@
 
     function useCell(c) {
         var cell = document.createElement(c.to ? 'a' : 'div');
-        cell.className = 'use-cell';
+        cell.className = 'use-mc';
         if (c.to) {
             cell.className += ' is-link';
-            cell.href = c.to;
+            // An anchor, so it can be tabbed to and its target is announced,
+            // but the scrolling is ours: this page scrolls inside a box rather
+            // than as a document, and a fragment jump does not move that box.
+            // Left to the browser the cell is a link that visibly does nothing.
+            cell.href = '#' + c.to;
+            cell.addEventListener('click', function (e) {
+                var target = document.getElementById(c.to);
+                if (!target) return;
+                e.preventDefault();
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
         }
 
         var head = document.createElement('div');
-        head.className = 'use-cell-h';
+        head.className = 'use-mc-h';
         var name = document.createElement('span');
-        name.className = 'use-cell-n';
+        name.className = 'use-mc-n';
         name.textContent = t(c.label);
         head.appendChild(name);
         if (c.to) {
             var go = document.createElement('span');
-            go.className = 'use-cell-go';
+            go.className = 'use-mc-go';
             go.innerHTML = icon('chev');
             head.appendChild(go);
         }
         cell.appendChild(head);
 
         var row = document.createElement('div');
-        row.className = 'use-cell-r';
+        row.className = 'use-mc-r';
 
         var val = document.createElement('span');
-        val.className = 'use-cell-v';
+        val.className = 'use-mc-v';
         // A limit, or no limit. With one, the cell reads the way the meters on
         // this page already do -- spent of allowed, and how far along that is.
         // Without one there is nothing to be a fraction of, and a bare count is
@@ -6485,7 +6441,7 @@
             // to print.
             if (pct > 0) {
                 var p = document.createElement('span');
-                p.className = 'use-cell-p';
+                p.className = 'use-mc-p';
                 p.textContent = '(' + pct + '%)';
                 val.appendChild(p);
             }
@@ -6909,7 +6865,7 @@
             var chains = (s.assets || []).length;
 
             sum.body.appendChild(useGrid([
-                { label: 'Screenings', used: runUsed, of: inc.screenings, to: '#use-screenings' },
+                { label: 'Screenings', used: runUsed, of: inc.screenings, to: 'use-screenings' },
                 { label: 'Addresses screened', used: s.addresses || 0, of: inc.addresses },
                 { label: 'Re-screens', used: 0, of: inc.screenings },
                 { label: 'Transaction screens', used: 0, of: inc.screenings },
@@ -6917,11 +6873,11 @@
                 { label: 'Bulk screens', used: 0, of: inc.screenings },
                 { label: 'Addresses monitored', used: 0, of: inc.addresses },
                 { label: 'Alerts raised', used: 0 },
-                { label: 'Findings to review', used: s.flagged || 0, to: '#use-coverage' },
-                { label: 'Chains covered', used: chains, to: '#use-coverage' },
-                { label: 'Seats', used: shape.members || 0, of: inc.seats, to: '#use-team' },
+                { label: 'Findings to review', used: s.flagged || 0, to: 'use-coverage' },
+                { label: 'Chains covered', used: chains, to: 'use-coverage' },
+                { label: 'Seats', used: shape.members || 0, of: inc.seats, to: 'use-team' },
                 { label: 'Projects', used: shape.projects || 0 },
-                { label: 'API tokens', used: shape.tokens || 0, to: '#use-team' },
+                { label: 'API tokens', used: shape.tokens || 0, to: 'use-team' },
                 { label: 'Tokens used', used: shape.tokensUsed || 0 },
                 { label: 'Webhook deliveries', used: 0 },
                 { label: 'Sandbox screens', used: 0 }
