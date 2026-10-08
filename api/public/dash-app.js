@@ -5721,6 +5721,20 @@
     // is worth less than a number nobody can see. If it still does not fit
     // after that, it does not fit, and the page says so by being scrollable
     // rather than by pretending.
+    // How tall the band actually is, written where the stylesheet can read it.
+    //
+    // A section scrolled to has to land under the band rather than behind it,
+    // and the margin that ducks it was a number typed into the stylesheet. It
+    // has now been wrong three times -- a line of copy added here, a control
+    // wrapped there -- and each time the symptom was a heading half hidden
+    // behind the band with nothing to say why. The band knows its own height.
+    function fitBand() {
+        var top = document.querySelector('.use-top');
+        if (!top) return;
+        document.documentElement.style.setProperty(
+            '--use-band-h', Math.round(top.getBoundingClientRect().height) + 'px');
+    }
+
     function fitFold() {
         var body = document.querySelector('.use-body');
         var gap = document.querySelector('.use-fold-gap');
@@ -5865,6 +5879,7 @@
             foldWaiting = true;
             requestAnimationFrame(function () {
                 foldWaiting = false;
+                fitBand();
                 fitFold();
             });
         }

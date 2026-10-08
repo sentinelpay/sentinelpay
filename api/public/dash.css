@@ -931,9 +931,18 @@ button { font: inherit; color: inherit; }
 
 .pg { max-width: 46rem; margin-inline: auto; }
 
-.pg-head { margin-bottom: 2.1rem; }
+/* The two gaps every page header has: title to the line under it, and the
+   header block to whatever the page starts with. They are written once,
+   because they were written twice and the second copy drifted -- the usage
+   band ran 4.8 and 9.6 against everyone else's 6.4 and 33.6, which is a page
+   that looks subtly wrong and gives no clue why. */
+:root {
+    --pg-gap-sub: 0.4rem;
+    --pg-gap-head: 2.1rem;
+}
+.pg-head { margin-bottom: var(--pg-gap-head); }
 .pg-h1 {
-    margin: 0 0 0.4rem;
+    margin: 0 0 var(--pg-gap-sub);
     font-family: var(--sp-display);
     font-size: 1.5rem;
     font-weight: 700;
@@ -3472,14 +3481,12 @@ html.is-theming .btn {
 @media (min-width: 900px) {
     .use-top-in { max-width: 54rem; }
 }
-.use-h1 { margin-bottom: 0.3rem; }
-/* The line under the title lives in a sticky band, so every point it takes is
-   a point of the page it covers. Tighter than a page subtitle sitting still,
-   and tighter again once the band is squeezed for a short screen -- but never
-   hidden. It is what the page is; a short window is not a reason to stop
-   saying so. */
-.use-sub { margin: 0 0 0.6rem; }
-.use-h1.is-tight + .use-sub { margin-bottom: 0.4rem; font-size: 0.78rem; }
+.use-h1 { margin-bottom: var(--pg-gap-sub); }
+/* This page keeps its title in a sticky band rather than a .pg-head, so the
+   gap under the line belongs to the line itself. The numbers are the shared
+   ones: a band is still a page header, and a reader moving between Team and
+   Usage should not be able to see where one ends and the other begins. */
+.use-sub { margin: 0 0 var(--pg-gap-head); }
 .use-bar {
     display: flex;
     align-items: center;
@@ -3528,7 +3535,14 @@ html.is-theming .btn {
    underneath it. A little over the band, so it lands clear rather than
    touching. On a phone the band is static and covers nothing, and the rule
    below gives that room back. */
-.use-sec { padding-top: 1.6rem; border-top: 1px solid var(--line-2); scroll-margin-top: 10rem; }
+.use-sec {
+    padding-top: 1.6rem;
+    border-top: 1px solid var(--line-2);
+    /* Measured, not typed. The band writes its own height here on every build
+       and resize; the rem is only what is left while that is being worked out
+       and on the first paint. */
+    scroll-margin-top: calc(var(--use-band-h, 9rem) + 1rem);
+}
 .use-sec + .use-sec { margin-top: 1.6rem; }
 .use-sec-h { display: flex; align-items: flex-start; gap: 0.6rem; margin-bottom: 1rem; }
 /* A heading with nothing under it is one line, and one line against the top of
@@ -5024,8 +5038,7 @@ html.is-theming .btn {
        handsets the overview is a few points from fitting and every one of
        them is the difference between seeing the measures and being told
        they are there */
-    .use-h1 { margin-bottom: 0.25rem; }
-    .use-sub { margin-bottom: 0.45rem; }
+    .use-h1 { margin-bottom: var(--pg-gap-sub); }
     .use-top { margin-bottom: 0.85rem; padding-bottom: 0.55rem; }
     .use-head { margin-bottom: 0.6rem; }
 }
@@ -5148,7 +5161,7 @@ html.is-theming .btn {
 .use-body[data-fit="4"] .use-strip { gap: 0.4rem; }
 .use-body[data-fit="4"] .use-cell { padding: 0.5rem 0.7rem 0.55rem; }
 .use-body[data-fit="4"] .use-cell-v { font-size: 1.15rem; }
-.use-h1.is-tight { font-size: 1.35rem; margin-bottom: 0.4rem; }
+.use-h1.is-tight { font-size: 1.35rem; margin-bottom: var(--pg-gap-sub); }
 
 /* set on the element itself, because the band is a sibling above the body
    and css cannot reach backwards */
