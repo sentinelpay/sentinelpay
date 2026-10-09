@@ -7628,11 +7628,15 @@
                 }));
                 var why = mon.byReason || {};
                 var whyAll = (why.listing || 0) + (why.exposure || 0) + (why.watchlist || 0) + (why.score || 0);
+                // No marks. Red, amber and green on this page mean a level of
+                // risk, and a reason is not one: colouring these made the list
+                // look like the one under it, which is the list that does mean
+                // risk, and made the two say the same thing when they do not.
                 tallied(mmain, 'Alerts by reason', [
-                    { label: t('Newly on a sanctions list'), n: why.listing || 0, mark: 'bad' },
-                    { label: t('Paid by a flagged address'), n: why.exposure || 0, mark: 'mid' },
-                    { label: t('On your own watchlist'), n: why.watchlist || 0, mark: 'mid' },
-                    { label: t('Risk score went up'), n: why.score || 0, mark: 'mid' }
+                    { label: t('Newly on a sanctions list'), n: why.listing || 0 },
+                    { label: t('Paid by a flagged address'), n: why.exposure || 0 },
+                    { label: t('On your own watchlist'), n: why.watchlist || 0 },
+                    { label: t('Risk score went up'), n: why.score || 0 }
                 ], whyAll);
                 var risk = mon.byRisk || {};
                 tallied(mmain, 'Watched addresses, by risk', [
