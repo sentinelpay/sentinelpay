@@ -7293,11 +7293,14 @@
                 spent.push({
                     title: 'What came back',
                     node: useTally(vrows.map(function (r) {
+                        // Read, not followed: rows like the chains above them.
+                        // The way into the checks behind a verdict is the
+                        // Checks page and its own filter, not a row on a usage
+                        // summary that looks the same as one that goes nowhere.
                         return {
                             label: r.label,
                             n: r.n,
-                            mark: r.key === 'clear' ? 'ok' : (r.key === 'severe' ? 'bad' : 'mid'),
-                            href: logHref(org, out, { verdict: r.key })
+                            mark: r.key === 'clear' ? 'ok' : (r.key === 'severe' ? 'bad' : 'mid')
                         };
                     }), s.total)
                 });

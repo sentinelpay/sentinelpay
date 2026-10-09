@@ -86,12 +86,16 @@ test('a card trimmed to fit keeps a floor, and gives up the oldest', () => {
 });
 
 // Every number that can be opened, opens.
-test('what came back opens the checks it counted', () => {
+test('a project opens the checks it counted, a verdict reads like a chain', () => {
     const fn = body('function useTally(', 1800);
     assert.match(fn, /createElement\(r\.href \? 'a' : 'div'\)/,
         'a line with somewhere to go is not made a link');
-    assert.match(SRC, /logHref\(org, out, \{ verdict: r\.key \}\)/,
-        'the verdicts do not open the log filtered');
+    // What came back reads like the chain list above it and is not a link:
+    // asked for, so that two lists of the same shape in one block behave the
+    // same way. The log still takes a verdict in its address for anybody who
+    // links to it from elsewhere -- see the next test.
+    assert.doesNotMatch(SRC, /logHref\(org, out, \{ verdict: r\.key \}\)/,
+        'the verdicts are links again, unlike the chains beside them');
     // a check with no project is filed under 'none', which is a filter and
     // not the absence of one
     assert.match(SRC, /logHref\(org, out, \{ project: r\.id \? String\(r\.id\) : 'none' \}\)/,
