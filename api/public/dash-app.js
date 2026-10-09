@@ -4852,88 +4852,50 @@
         return 10 * size;
     }
 
-    // At most five dates along the bottom, evenly spaced.
+    // Five dates along the bottom, at exactly equal intervals, from the left
+    // edge of the line to the right.
     //
-    // Evenly spaced in the sense a reader checks, which is the dates and not
-    // the pixels. Cutting the window into four equal parts spaces the marks
-    // perfectly and lands them between days: eight days quartered falls on day
-    // 1.75, 3.5 and 5.25, and since a label has to name a real day it named
-    // the nearest -- so the axis read 20, 22, 24, 25, 27. Three steps of two
-    // days and one of one, drawn in four equal gaps. The marks were even and
-    // the dates were not, and the dates are what is being read.
+    // Equal on the screen is the rule, because that is the one a reader checks
+    // with their eyes before they read a single date. The marks sit at the
+    // exact quarters of the window and each names the day under it, so the
+    // first and last are always the first day and today, and the three between
+    // are whichever days those quarters fall on.
     //
-    // (A day of hours came out right by accident: twenty four divides by four.
-    // That is why this only ever looked broken on a billing cycle.)
+    // What this gives up: a window that does not divide by four cannot step
+    // the same number of days every time. Seven days of gaps is 1.75 a step,
+    // and a label has to name a whole day, so one step comes out a day short
+    // of the others. Every earlier version of this axis traded something else
+    // for that day -- a mark fewer, a last gap shorter than the rest, a run of
+    // marks bunched against one edge -- and each of those was visible from
+    // across the room. A date one off in a row of five is not.
     //
-    // So the step is chosen first, in whole buckets, from the intervals a
-    // calendar actually has -- days, weeks, quarter-days -- and the marks fall
-    // on multiples of it. The last bucket is then not always named, which is
-    // the price: an axis cannot both end on today and step evenly unless the
-    // window happens to divide. Between the two, the even step is the one that
-    // means something, and today is already named above the chart.
-    var MOST_TICKS = 5;
-    var NICE_DAYS = [1, 2, 3, 7, 14, 21, 28, 56, 91, 182, 364];
-    var NICE_HOURS = [1, 2, 3, 6, 12, 24, 48, 168];
+    // Fewer than five days and there are not five dates to name, so each day
+    // is named once: three days read as three dates, never a date twice.
+    var AXIS_TICKS = 5;
 
     function ticks(days) {
         var n = days.length;
         if (!n) return [];
-        if (n === 1) return [{ at: 0, label: shortDay(days[0].day) }];
-
+        if (n < AXIS_TICKS) {
+            return days.map(function (d, i) { return { at: i, label: shortDay(d.day) }; });
+        }
         var last = n - 1;
-        var nice = isHourBucket(days[0].day) ? NICE_HOURS : NICE_DAYS;
-
-        // A step that divides the window exactly, first.
-        //
-        // Then the marks are evenly spaced *and* the last one lands on the
-        // last bucket, so the axis begins where the line begins and ends where
-        // it ends. Without this the first mark sat against the left edge and
-        // the last stopped short of the right, which reads as an axis that ran
-        // out rather than one that was measured.
-        var step = 0;
-        for (var d = 1; d <= last; d++) {
-            if (last % d) continue;
-            if (Math.floor(last / d) > MOST_TICKS - 1) continue;
-            // two marks is the two ends and nothing in between, which is not
-            // an axis; fall through to the nice steps for a window whose only
-            // divisors are itself
-            if (last / d + 1 >= 3) { step = d; break; }
-        }
-
-        var ends = true;
-        if (!step) {
-            // Nothing divides it -- twelve days, say, whose only divisors are
-            // eleven and one. Take the smallest interval a calendar has that
-            // fits, and name the last bucket as well: the final gap is then
-            // shorter than the others, which at the end of a line reads as the
-            // line stopping, where an uneven gap in the middle would read as
-            // the axis lying.
-            ends = false;
-            // one fewer than the cap allows, because the last bucket is
-            // going to be named on top of these
-            for (var i = 0; i < nice.length; i++) {
-                if (Math.floor(last / nice[i]) <= MOST_TICKS - 2) { step = nice[i]; break; }
-            }
-            if (!step) step = Math.ceil(last / (MOST_TICKS - 2));
-        }
-
+        var gaps = AXIS_TICKS - 1;
+        // A window of hours names the hour, and the date only at midnight,
+        // where the day under the line changes. "Oct 8, 18:00" five times over
+        // is three times the width of the thing being said, and the ends,
+        // centred on their marks, no longer fit inside the card. The window's
+        // dates are written in full above the chart already.
+        var name = function (key) {
+            var k = String(key);
+            if (k.length <= 10) return shortDay(k);
+            var hm = k.slice(11, 16);
+            return hm === '00:00' ? shortDay(k.slice(0, 10)) : hm;
+        };
         var out = [];
-        for (var at = 0; at <= last; at += step) {
-            out.push({ at: at, label: shortDay(days[at].day) });
-        }
-        if (!ends && out[out.length - 1].at !== last) {
-            // How far the last mark fell short. A long way, and the end is a
-            // mark of its own; a short way, and it takes the place of the one
-            // before it rather than crowding against it -- two labels a day
-            // apart at the end of a year of work is a collision, not a
-            // reading.
-            // Whichever leaves the end nearer the rhythm: appending makes a
-            // last gap of the remainder, replacing makes one of the remainder
-            // plus a step. Half a step is where the two swap over.
-            var rest = last - out[out.length - 1].at;
-            var end = { at: last, label: shortDay(days[last].day) };
-            if (rest >= step * 0.5) out.push(end);
-            else out[out.length - 1] = end;
+        for (var q = 0; q <= gaps; q++) {
+            var at = (last * q) / gaps;
+            out.push({ at: at, label: name(days[Math.round(at)].day) });
         }
         return out;
     }

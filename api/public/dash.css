@@ -4428,9 +4428,13 @@ html.is-theming .btn {
     transform: translateX(-50%);
     white-space: nowrap;
 }
-/* the ends stay inside the plot instead of hanging off it */
-.use-plot-x span:first-child { transform: none; }
-.use-plot-x span:last-child { transform: translateX(-100%); }
+/* Every date centred on its own mark, the two ends included.
+   They used to be pinned inside the plot, the first left-aligned and the last
+   right-aligned, so the marks could sit at perfectly equal intervals and the
+   words still not: the outer two gaps measured from the middle of one label to
+   the middle of the next came out a label's half-width short. The ends now
+   hang half a word past the plot, into the card's own padding, which is wider
+   than that. */
 
 .use-share-l {
     display: grid;
