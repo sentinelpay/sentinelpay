@@ -678,7 +678,9 @@ async function forOrg(orgId, opts) {
             !cycle || sameWindow
                 ? Promise.resolve(null)
                 : db.query(
-                    `SELECT count(*)::int AS n
+                    // and the sweeps in it, which have an allowance of their own
+                    `SELECT count(*)::int AS n,
+                            count(*) FILTER (WHERE kind = 'history')::int AS sweeps
                        FROM screenings
                       WHERE org_id = $1 AND at >= $2 AND at < $3 AND sandbox = $4`,
                     [Number(orgId), cycle.from, until(cycle.to), Boolean(sandbox)]
@@ -701,6 +703,9 @@ async function forOrg(orgId, opts) {
                 from: cycle.from,
                 to: cycle.to,
                 used: sameWindow ? work.total : ((spent && spent.rows[0]) || { n: 0 }).n,
+                sweeps: sameWindow
+                    ? (kinds && kinds.history ? kinds.history.total : 0)
+                    : ((spent && spent.rows[0]) || { sweeps: 0 }).sweeps,
             } : null,
             previous: head ? {
                 from: before.from, to: before.to,

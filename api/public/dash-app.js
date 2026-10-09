@@ -7026,7 +7026,11 @@
                 // the cycle is gone has one answer whichever window is open.
                 // This said the first six all counted the window, which was
                 // true of five of them.
-                fill('Screenings and the allowances below are the billing cycle\u2019s. The next five count {window}, against the same length of time before it.',
+                // By what a cell shows rather than where it sits, so the
+                // sentence survives the grid being rearranged: a figure against
+                // a limit is measured against the plan whatever the window, and
+                // a plain count is the window's.
+                fill('A figure against a limit is measured against the plan, whatever the window. Plain counts cover {window}, against the same length of time before it.',
                     { window: onCycle ? t('this billing cycle') : usePeriodLabel(out.period).toLowerCase() }));
             // The grid runs the full width. There is no column of prose beside
             // it because the cells are the explanation: a label and a number
@@ -7051,43 +7055,61 @@
             // built to get rid of. The figure is the cycle's, because that is
             // what the limit belongs to; the line under it is the window's, so
             // the picker still changes the cell even when the number holds.
+            // In the order of the sections under it, so reading the grid and
+            // scrolling the page go the same way, and a cell opens the section
+            // it belongs to wherever that section has been built. The ones
+            // whose section is still to come are cells that do not open yet,
+            // in the place they will open from.
+            var sweepsKind = out.kinds && out.kinds.history;
+            var sweepsWas = out.previous && out.previous.kinds && out.previous.kinds.history;
             sum.body.appendChild(useGrid([
+                // ---- Screenings
                 { label: 'Screenings', used: runUsed, of: inc.screenings,
-                  series: useSeries(s.days, 'n'), ghost: useSeries(older, 'n') , go: 'use-screenings' },
+                  series: useSeries(s.days, 'n'), ghost: useSeries(older, 'n'), go: 'use-screenings' },
                 { label: 'Addresses screened', used: s.addresses || 0,
                   was: older ? out.previous.addresses : null,
-                  series: useSeries(s.days, 'addresses'), ghost: useSeries(older, 'addresses') , go: 'use-screenings' },
+                  series: useSeries(s.days, 'addresses'), ghost: useSeries(older, 'addresses'), go: 'use-screenings' },
                 { label: 'Chains screened', used: chains,
                   was: older ? out.previous.assetCount : null,
-                  series: useSeries(s.days, 'assets'), ghost: useSeries(older, 'assets') , go: 'use-screenings' },
+                  series: useSeries(s.days, 'assets'), ghost: useSeries(older, 'assets'), go: 'use-screenings' },
+                // A sweep walks a key's whole history rather than asking about
+                // one address, so it has an allowance of its own and is counted
+                // against the cycle like screenings are. The line under it is
+                // the window's, from the same kinds the screenings section
+                // splits the work by -- where it is also the cell to open.
+                { label: 'History sweeps', used: (out.cycle && out.cycle.sweeps) || 0, of: inc.sweeps,
+                  series: sweepsKind ? useSeries(sweepsKind.days, 'n') : useFlat(s.days),
+                  ghost: sweepsWas ? useSeries(sweepsWas.days, 'n') : null, go: 'use-screenings' },
 
+                // ---- Review: what came back opens under Screenings for now
                 { label: 'Findings to review', used: s.flagged || 0,
                   was: older ? out.previous.flagged : null,
-                  series: useSeries(s.days, 'flagged'), ghost: useSeries(older, 'flagged') , go: 'use-screenings' },
+                  series: useSeries(s.days, 'flagged'), ghost: useSeries(older, 'flagged'), go: 'use-screenings' },
                 { label: 'Decisions recorded', used: shape.decisions || 0,
                   was: older ? out.previous.decisions : null,
                   series: useSeries(s.decisionDays, 'n') },
-                { label: 'Alerts raised', used: 0, series: useFlat(s.days) },
 
-                { label: 'Re-screens triggered', used: 0, series: useFlat(s.days) },
-                { label: 'List updates applied', used: 0, series: useFlat(s.days) },
-                // A sweep walks a key's whole history rather than asking about
-                // one address, so it is allowed separately. Out of the
-                // screening allowance, one sweep could eat a month of ordinary
-                // work without anybody choosing that.
-                { label: 'History sweeps', used: 0, of: inc.sweeps, series: useFlat(s.days) },
-
+                // ---- Monitoring
                 { label: 'Addresses monitored', used: 0, of: inc.addresses, series: useFlat(s.days) },
+                { label: 'Alerts raised', used: 0, series: useFlat(s.days) },
                 { label: 'Custom watchlist', used: 0, of: inc.watchlist, series: useFlat(s.days) },
-                { label: 'Evidence exports', used: 0, of: inc.exports, series: useFlat(s.days) },
 
-                { label: 'Seats', used: shape.members || 0, of: inc.seats, series: useFlat(s.days) },
-                { label: 'Projects', used: shape.projects || 0, of: inc.projects, series: useFlat(s.days) },
-                { label: 'SSO users', used: 0, of: inc.ssoSeats, series: useFlat(s.days) },
+                // ---- Sanctions coverage
+                { label: 'Re-screens triggered', used: 0, series: useFlat(s.days), go: 'use-coverage' },
+                { label: 'List updates applied', used: 0, series: useFlat(s.days), go: 'use-coverage' },
 
+                // ---- API and webhooks
                 { label: 'API tokens', used: shape.tokens || 0, of: inc.tokens, series: useFlat(s.days) },
                 { label: 'API calls', used: 0, of: inc.apiCalls, series: useFlat(s.days) },
-                { label: 'Webhook deliveries', used: 0, of: inc.webhooks, series: useFlat(s.days) }
+                { label: 'Webhook deliveries', used: 0, of: inc.webhooks, series: useFlat(s.days) },
+
+                // ---- Team
+                { label: 'Seats', used: shape.members || 0, of: inc.seats, series: useFlat(s.days), go: 'use-team' },
+                { label: 'Projects', used: shape.projects || 0, of: inc.projects, series: useFlat(s.days), go: 'use-team' },
+                { label: 'SSO users', used: 0, of: inc.ssoSeats, series: useFlat(s.days), go: 'use-team' },
+
+                // ---- Evidence
+                { label: 'Evidence exports', used: 0, of: inc.exports, series: useFlat(s.days) }
             ], 'is-lead'));
             body.appendChild(sum);
 
