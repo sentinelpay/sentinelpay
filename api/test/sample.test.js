@@ -185,7 +185,8 @@ test('every breakdown in the section is one shape, the table above it', () => {
     assert.ok(uses.length >= 3,
         'by project, by chain and what came back are not all written as one table');
     assert.match(usage, /title: 'What came back',\s*node: useTally\(/, 'what came back is another shape');
-    assert.match(usage, /chainBox\.appendChild\(useTally\(/, 'by chain is another shape');
+    assert.match(usage, /var busy = useTally\(/, 'by chain is another shape');
+    assert.match(usage, /var rest = useTally\(/, 'the chains folded under by chain are another shape');
     assert.match(SRC, /box\.className = 'use-facts use-tally'/,
         'the breakdown does not use the facts table\'s rows');
 });
@@ -252,7 +253,7 @@ test('what the allowance went on is one place, not three sections', () => {
     assert.match(usage, /useSection\('use-screenings'/,
         'there is no section for the thing this page meters');
     // each cut carries its own heading, and nothing is stacked over them
-    assert.match(usage, /h\.className = 'use-spent-t';\s*h\.textContent = t\(part\.title\)/,
+    assert.match(usage, /h\.className = 'use-spent-t';[\s\S]{0,120}h\.textContent = part\.raw \? part\.title : t\(part\.title\)/,
         'the cuts of the number have no headings of their own');
     assert.doesNotMatch(usage, /'What this period went on'/,
         'the overline is back over headings that already say what it says');
