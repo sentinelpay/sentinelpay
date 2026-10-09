@@ -7200,12 +7200,22 @@
                     }), s.total);
                     rest.classList.add('use-tally-rest');
                     rest.hidden = true;
+                    // The same chip as the period and scope pickers at the top of
+                    // the page, with the same chevron, turned over while open.
                     var more = document.createElement('button');
                     more.type = 'button';
-                    more.className = 'use-more';
+                    more.className = 'chip use-more';
+                    var moreText = document.createElement('span');
+                    more.appendChild(moreText);
+                    var moreChev = document.createElement('span');
+                    moreChev.className = 'use-more-chev';
+                    moreChev.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                        'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                        '<path d="m6 9 6 6 6-6"/></svg>';
+                    more.appendChild(moreChev);
                     var says = function () {
-                        more.textContent = rest.hidden
-                            ? fill('{n} more chains covered, none screened in this period', { n: useNum(idle.length) })
+                        moreText.textContent = rest.hidden
+                            ? fill('{n} more chains', { n: useNum(idle.length) })
                             : t('Show fewer');
                         more.setAttribute('aria-expanded', rest.hidden ? 'false' : 'true');
                     };
@@ -7218,8 +7228,7 @@
                     chainBox.appendChild(more);
                 }
                 spent.push({
-                    title: fill('By chain \u00b7 {n} covered', { n: useNum(CHAINS.length) }),
-                    raw: true,
+                    title: 'By chain',
                     node: chainBox
                 });
             }

@@ -4097,25 +4097,15 @@ html.is-theming .btn {
    ends it instead */
 .use-chains { margin-bottom: 1rem; }
 .use-tally-rest .use-fact-v { color: var(--ink-4); font-weight: 500; }
-/* The row that opens it: written like a row of the table, in the link colour,
-   because it is a question somebody might ask of this list and not a control
-   the page wants noticed. */
-.use-more {
-    display: block;
-    width: 100%;
-    margin: 0;
-    padding: 0.55rem 0;
-    border: 0;
-    border-top: 1px solid var(--line-2);
-    background: none;
-    font: inherit;
-    font-size: 0.82rem;
-    text-align: left;
-    color: var(--link);
-    cursor: pointer;
+/* The chip that opens it, the same one the period and scope pickers are made
+   of, so the one control in this section looks like the controls above it. */
+.use-more { margin-top: 0.75rem; cursor: pointer; }
+.use-more-chev { display: inline-flex; color: var(--ink-4); }
+.use-more-chev svg { width: 13px; height: 13px; transition: transform 160ms ease; }
+.use-more[aria-expanded="true"] .use-more-chev svg { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) {
+    .use-more-chev svg { transition: none; }
 }
-.use-more:hover { text-decoration: underline; text-underline-offset: 3px; }
-.use-more:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; border-radius: 4px; }
 
 /* the share, set back: it is worked out from the figure beside it */
 .use-tally-s {
