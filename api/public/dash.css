@@ -4620,6 +4620,12 @@ html.is-theming .btn {
     border-radius: 14px;
     background: var(--surface);
 }
+/* Inside a section the card lies on the page, the way the grid's cells do.
+   The raised surface was what made it the card at the top of the screen; one
+   section down, under figures that sit flat, it read as a panel from a
+   different page. The outline stays so the chart still has an edge. */
+.use-sec .use-head { background: transparent; }
+
 .use-head-t {
     display: flex;
     align-items: baseline;
