@@ -5642,8 +5642,25 @@
     function fitBand() {
         var top = document.querySelector('.use-top');
         if (!top) return;
-        document.documentElement.style.setProperty(
-            '--use-band-h', Math.round(top.getBoundingClientRect().height) + 'px');
+        var root = document.documentElement.style;
+        var tall = Math.round(top.getBoundingClientRect().height);
+        root.setProperty('--use-band-h', tall + 'px');
+
+        // How much of the band is the title and the line under it.
+        //
+        // On a phone the whole band pinned would be a third of the screen, so
+        // only the period and scope pickers stay: the band is pinned that far
+        // above the top, and the title scrolls away under the edge while the
+        // pickers stop against it. Measured rather than written down, because
+        // the line under the title wraps differently on every width and in
+        // every language. A little of the band is left above the pickers so
+        // they do not sit against the edge of the screen.
+        var bar = top.querySelector('.use-bar');
+        var lift = bar
+            ? Math.max(0, Math.round(bar.getBoundingClientRect().top - top.getBoundingClientRect().top) - 12)
+            : 0;
+        root.setProperty('--use-band-lift', lift + 'px');
+        root.setProperty('--use-band-stuck', Math.max(0, tall - lift) + 'px');
     }
 
     function fitFold() {
@@ -5804,8 +5821,10 @@
             foldWaiting = true;
             requestAnimationFrame(function () {
                 foldWaiting = false;
-                fitBand();
+                // the fold first, because it can make the title smaller, and
+                // the band is measured with the title it ends up with
                 fitFold();
+                fitBand();
             });
         }
         // No second pass. There used to be one half a second later, because
