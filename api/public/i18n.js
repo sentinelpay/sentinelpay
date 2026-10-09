@@ -59,7 +59,6 @@
             "{cleared} not a match, {confirmed} confirmed": "{cleared} nije podudaranje, {confirmed} potvrđeno",
             "By project": "Po projektu",
             "By chain": "Po lancu",
-            "What this period went on": "Na što je ovo razdoblje otišlo",
             "Every screening in this period is used. Further checks are refused until the next one begins.": "Sve provjere u ovom razdoblju su potrošene. Daljnje provjere se odbijaju dok ne počne sljedeće.",
             "{used} of {of} screenings used in this period. {left} left.": "Iskorišteno {used} od {of} provjera u ovom razdoblju. Preostalo {left}.",
             "{n}% used": "{n}% iskorišteno",
