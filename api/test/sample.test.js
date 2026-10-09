@@ -194,7 +194,8 @@ test('the work done is visible somewhere', () => {
 });
 
 // The top of the page is gone: the verdict sentence, the headline card with
-// its chart, and the row of allowance tiles. All three printed the same
+// its chart, and the row of allowance tiles. The card has since come back,
+// one section down, where it is the picture of the figures beside it. All three printed the same
 // number within one screen, each one needing to be kept in agreement with
 // the other two.
 test('the page does not say the same number three times', () => {
@@ -202,8 +203,15 @@ test('the page does not say the same number three times', () => {
     const usage = SRC.slice(at, SRC.indexOf('\n    function ', at + 40));
     assert.doesNotMatch(usage, /use-verdict/,
         'the verdict sentence is back');
-    assert.doesNotMatch(usage, /appendChild\(useHeadline\(/,
-        'the headline card is back');
+    // The card itself came back, asked for, inside the screenings section --
+    // under the figures it draws and a screen below the grid. What must not
+    // come back is the card at the top, printing the grid's number beside it.
+    assert.doesNotMatch(usage, /body\.appendChild\(useHeadline\(/,
+        'the headline card is back at the top of the page');
+    assert.doesNotMatch(usage, /sum\.body\.appendChild\(useHeadline\(/,
+        'the headline card is inside the usage summary');
+    assert.match(usage, /smain\.appendChild\(useHeadline\(/,
+        'the screenings section has lost its chart');
     assert.doesNotMatch(usage, /appendChild\(useStrip\(/,
         'the allowance tiles are back');
 });

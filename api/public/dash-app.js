@@ -7129,21 +7129,16 @@
                 ]));
             }
 
-            // The window, day by day, with the one before it underneath.
+            // The card that used to open this page, back where its figures are.
             //
-            // This chart was built, then stranded: it lived in the card at the
-            // top of the page and went out with it, so the page counting
-            // screenings had no picture of them. It belongs here, in the
-            // section about them, where the figures above it are the same
-            // figures.
-            if (!fresh && (s.days || []).length > 1) {
-                smain.appendChild(useGridTitle('Screenings per day'));
-                var plotBox = document.createElement('div');
-                plotBox.className = 'use-plotwrap';
-                plotBox.appendChild(useChart(s.days || [], older || null));
-                plotBox.appendChild(useLegend(Boolean(older)));
-                smain.appendChild(plotBox);
-            }
+            // The chart put here first drew only the second of its two layers:
+            // running totals against the window before, always on. The card
+            // draws the days themselves -- screenings, and the flagged ones
+            // under them -- and keeps the comparison behind the sentence that
+            // describes it, shown while that sentence is pointed at and held
+            // when it is clicked. The meter at its foot is left off: the three
+            // rows directly above say included, used and left already.
+            smain.appendChild(useHeadline(s, out.previous || null, out.period, cmp, fresh, null));
 
             // What this period went on.
             //
