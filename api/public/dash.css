@@ -3973,13 +3973,12 @@ html.is-theming .btn {
 .use-mc.is-open:focus-visible .use-mc-go { opacity: 1; transform: none; }
 .use-mc.is-open:hover { background: var(--hover); cursor: pointer; }
 .use-mc.is-open:hover .use-mc-n { color: var(--link); }
-/* The kind the card above is drawing. Held in the hover tint with a rule of
-   the link colour along its top, so it reads as chosen rather than as the
-   cell the pointer happens to be over -- and stays readable once the pointer
-   has gone somewhere else. */
-.use-mc.is-picked { background: var(--hover); box-shadow: inset 0 2px 0 var(--link); }
+/* The kind the card above is drawing: its name in the link colour and nothing
+   more. The cells keep the plain look they had; which one is chosen is also
+   written on the card itself. */
 .use-mc.is-picked .use-mc-n { color: var(--link); }
-/* the breakdown sits under the card it switches, with room to read as its own row */
+/* No closing rule under the breakdown. The heading that follows it already
+   starts a new block, and a line between them read as the grid having a lid. */
 .use-mg.is-kinds { margin-top: 0.4rem; margin-bottom: 1.4rem; }
 
 /* It answers the keyboard, so the keyboard has to be able to see where it is. */
@@ -4021,7 +4020,7 @@ html.is-theming .btn {
 /* A grid inside a section answers the heading above it, so it is closed off
    underneath -- unlike the summary's, which has the section's own rule below
    it and would double up. */
-.use-sec .use-mg:not(.is-lead) { border-bottom: 1px solid var(--line-2); }
+.use-sec .use-mg:not(.is-lead):not(.is-kinds) { border-bottom: 1px solid var(--line-2); }
 
 /* How far along, next to how much. Set back because it is the one part of the
    line that can be worked out from the rest of it. */

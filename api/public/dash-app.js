@@ -7289,14 +7289,15 @@
                 };
                 var kindGrid = useGrid(KIND_CELLS.map(function (k) {
                     var now = kinds[k[0]];
-                    var was = kindsWas && kindsWas[k[0]];
+                    // A name and a number, as these cells were before they
+                    // counted the window. The line and the change belong to
+                    // the card above, which draws whichever of them is
+                    // picked; drawing them again in six small cells under it
+                    // said the same thing twice at two sizes.
                     return {
                         key: k[0],
                         label: k[1],
                         used: now.total,
-                        was: was ? was.total : null,
-                        series: useSeries(now.days, 'n'),
-                        ghost: was ? useSeries(was.days, 'n') : null,
                         picked: k[0] === pickedKind,
                         onPick: pickKind
                     };
