@@ -4332,7 +4332,13 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
        beside the axis they read the same; it is the chart that stops moving.
        Wide enough for 100,000, past which the column grows rather than
        clipping a number. */
-    grid-template-columns: minmax(2.8rem, max-content) minmax(0, 1fr);
+    /* And the same width again on the right, empty, so the plot sits in the
+       middle of the card rather than against its right edge: with the scale
+       only on the left, the first date stood 41 points in from the card's edge
+       and the last hung 14 points out past the other one. Mirrored, the two
+       outer dates are the same distance from their edges. */
+    --use-scale-w: 2.8rem;
+    grid-template-columns: minmax(var(--use-scale-w), max-content) minmax(0, 1fr) var(--use-scale-w);
     grid-template-rows: auto auto;
     column-gap: 0.6rem;
     row-gap: 0.35rem;
