@@ -5003,55 +5003,6 @@
     // line says its share as well as its count, and every line opens the
     // checks it counted.
 
-    // A short list of amounts: a name, how many, and what that is of the whole.
-    //
-    // The same line this page writes in Plan, in Coverage and in Team -- a key
-    // on the left, its value hard against the right, a hairline between -- with
-    // two things added that those do not need. A dot, because these amounts
-    // have meanings and the meanings already have colours everywhere else on
-    // this screen. And a share, because 46 of 872 is a different fact from 46,
-    // and the reader was being left to do the division.
-    //
-    // Not bars. A bar is for comparing many things of one kind, which is what
-    // Chains is; two outcomes and four states are a short list of amounts, and
-    // drawing a track across half the page for each of them says less than the
-    // number already does while taking four times the room.
-    function useAmounts(rows) {
-        var box = document.createElement('div');
-        box.className = 'use-facts use-amts';
-        rows.forEach(function (r) {
-            var line = document.createElement(r.href ? 'a' : 'div');
-            line.className = 'use-fact use-amt' + (r.href ? ' is-open' : '') +
-                (r.n > 0 ? '' : ' is-none');
-            if (r.href) {
-                line.href = r.href;
-                line.setAttribute('aria-label',
-                    r.label + ', ' + useNum(r.n) + ', ' + pct(r.n, r.of) + '. ' + t('See these checks'));
-            }
-
-            var name = document.createElement('span');
-            name.className = 'use-amt-n';
-            var dot = document.createElement('i');
-            dot.className = 'use-amt-d' + (r.mark ? ' is-' + r.mark : '');
-            name.appendChild(dot);
-            name.appendChild(document.createTextNode(r.label));
-            line.appendChild(name);
-
-            var v = document.createElement('span');
-            v.className = 'use-fact-v use-amt-v';
-            v.textContent = useNum(r.n);
-            // the share in the quieter half of the same value, the way the
-            // allowance writes how often it comes back beside the allowance
-            var share = document.createElement('span');
-            share.className = 'use-amt-s';
-            share.textContent = pct(r.n, r.of);
-            v.appendChild(share);
-            line.appendChild(v);
-            box.appendChild(line);
-        });
-        return box;
-    }
-
     // A share, written the way a share is read.
     //
     // Whole numbers once it is past one, because a tenth of a percent of a
@@ -5067,68 +5018,6 @@
         if (share > 0 && share < 0.1) return '<' + (0.1).toLocaleString(navLang()) + '%';
         var shown = share < 1 ? share.toFixed(1) : String(Math.round(share));
         return Number(shown).toLocaleString(navLang()) + '%';
-    }
-
-    // A list where the length of each line is its share. Used for which
-    // projects did the work and for which chains were asked about.
-    //
-    // A line is a link wherever the log can be asked the question the line
-    // answers. This screen could say that forty-seven checks came back flagged
-    // and then offer one door -- every check in the month, unfiltered -- which
-    // left the reader to find the forty-seven by hand on a screen that already
-    // knew how to filter for them. A number that can be opened should open.
-    //
-    // `linkOf` returns an address or nothing, per row, and nothing is the
-    // honest answer for the chains: the log has no filter for a chain, and a
-    // link that drops the filter on the way is worse than no link, because it
-    // looks like it worked.
-    function useShare(rows, total, kindOf, linkOf) {
-        var list = document.createElement('div');
-        list.className = 'use-share';
-        rows.forEach(function (r) {
-            var href = linkOf ? linkOf(r) : '';
-            var line = document.createElement(href ? 'a' : 'div');
-            line.className = 'use-share-l' + (href ? ' is-open' : '');
-            if (href) {
-                line.href = href;
-                // said, because the line reads "Sanctioned 47" and a link
-                // announced as "Sanctioned 47" does not say where it goes
-                line.setAttribute('aria-label',
-                    r.label + ', ' + useNum(r.n) + '. ' + t('See these checks'));
-            }
-            var name = document.createElement('span');
-            name.className = 'use-share-n';
-            name.textContent = r.label;
-            // the full name where the column had to cut it, which on a list of
-            // projects is most of them
-            name.title = r.label;
-            line.appendChild(name);
-            var track = document.createElement('span');
-            track.className = 'use-share-t';
-            var fill = document.createElement('span');
-            fill.className = 'use-share-f' + (kindOf && kindOf(r) ? ' is-' + kindOf(r) : '');
-            // in points rather than whole percents: a chain that is a third of
-            // a percent of the month rounded to zero and drew nothing, and the
-            // floor below it was two percent of the track, which drew the same
-            // stub for one check as for twenty
-            fill.style.width = r.n > 0
-                ? 'max(3px, ' + (total > 0 ? (r.n / total) * 100 : 0) + '%)'
-                : '0';
-            line.appendChild(track);
-            track.appendChild(fill);
-            var fig = document.createElement('span');
-            fig.className = 'use-share-v';
-            fig.textContent = useNum(r.n);
-            line.appendChild(fig);
-            // and what that is of the whole, which is the division the reader
-            // was being left to do: 46 of 872 is a different fact from 46
-            var share = document.createElement('span');
-            share.className = 'use-share-s';
-            share.textContent = pct(r.n, total);
-            line.appendChild(share);
-            list.appendChild(line);
-        });
-        return list;
     }
 
     // The way into the log, carrying what the reader was looking at when they
@@ -6645,6 +6534,48 @@
         return box;
     }
 
+    // A count broken down, in the shape of the facts table above it: a name
+    // on the left, the figure on the right, a hairline between rows.
+    //
+    // These were bars, and a block of verdicts under a block of bars under a
+    // table of figures was three shapes for one kind of statement. The share
+    // stays, set back beside the figure, because "654" says how many and only
+    // "38%" says whether that is most of it. A row that leads into the checks
+    // log is the link itself; a mark beside a verdict is its colour, because
+    // red beside "Sanctioned" is part of what the word means here.
+    function useTally(rows, total) {
+        var box = document.createElement('div');
+        box.className = 'use-facts use-tally';
+        rows.forEach(function (r) {
+            var line = document.createElement(r.href ? 'a' : 'div');
+            line.className = 'use-fact' + (r.href ? ' is-link' : '');
+            if (r.href) line.href = r.href;
+            var k = document.createElement('span');
+            k.className = 'use-tally-k';
+            if (r.mark) {
+                var dot = document.createElement('i');
+                dot.className = 'use-tally-m is-' + r.mark;
+                k.appendChild(dot);
+            }
+            k.appendChild(document.createTextNode(r.label));
+            line.appendChild(k);
+            var v = document.createElement('span');
+            v.className = 'use-fact-v';
+            v.textContent = useNum(r.n);
+            if (total > 0) {
+                var share = document.createElement('span');
+                share.className = 'use-tally-s';
+                // pct, not a rounding: a part that exists never prints as 0%,
+                // and the decimal mark is the reader's
+                share.textContent = pct(r.n, total);
+                v.appendChild(share);
+            }
+            line.appendChild(v);
+            box.appendChild(line);
+        });
+        return box;
+    }
+
     // The half of a plan that is not a number: which lists, what is kept, what
     // can be reached over the api. Facts above it are a key and a value, and
     // these have no value to put in a second column -- they either come with
@@ -7200,24 +7131,22 @@
             if (work.length > 1) {
                 spent.push({
                     title: 'By project',
-                    node: useShare(work.map(function (r) {
+                    node: useTally(work.map(function (r) {
                         return {
                             label: r.id ? (r.name || t('Unnamed project')) : t('No project'),
                             n: r.n,
                             // the log files a check with no project under
                             // 'none', which is a filter and not the absence of
                             // one
-                            key: r.id ? String(r.id) : 'none'
+                            href: logHref(org, out, { project: r.id ? String(r.id) : 'none' })
                         };
-                    }), s.total, null, function (r) {
-                        return logHref(org, out, { project: r.key });
-                    })
+                    }), s.total)
                 });
             }
             if (s.assets && s.assets.length) {
                 spent.push({
                     title: 'By chain',
-                    node: useShare(s.assets.map(function (a) {
+                    node: useTally(s.assets.map(function (a) {
                         return { label: a.asset === 'other' ? t('Not recognised') : chainText(a.asset), n: a.n };
                     }), s.total)
                 });
@@ -7243,15 +7172,14 @@
             if (vrows.length) {
                 spent.push({
                     title: 'What came back',
-                    node: useAmounts(vrows.map(function (r) {
+                    node: useTally(vrows.map(function (r) {
                         return {
                             label: r.label,
                             n: r.n,
-                            of: s.total,
                             mark: r.key === 'clear' ? 'ok' : (r.key === 'severe' ? 'bad' : 'mid'),
                             href: logHref(org, out, { verdict: r.key })
                         };
-                    }))
+                    }), s.total)
                 });
             }
 

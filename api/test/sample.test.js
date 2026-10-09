@@ -87,13 +87,14 @@ test('a card trimmed to fit keeps a floor, and gives up the oldest', () => {
 
 // Every number that can be opened, opens.
 test('what came back opens the checks it counted', () => {
-    const fn = body('function useShare(', 1800);
-    assert.match(fn, /linkOf/, 'a share line can never be a link');
-    assert.match(fn, /createElement\(href \? 'a' : 'div'\)/,
+    const fn = body('function useTally(', 1800);
+    assert.match(fn, /createElement\(r\.href \? 'a' : 'div'\)/,
         'a line with somewhere to go is not made a link');
     assert.match(SRC, /logHref\(org, out, \{ verdict: r\.key \}\)/,
         'the verdicts do not open the log filtered');
-    assert.match(SRC, /logHref\(org, out, \{ project: r\.key \}\)/,
+    // a check with no project is filed under 'none', which is a filter and
+    // not the absence of one
+    assert.match(SRC, /logHref\(org, out, \{ project: r\.id \? String\(r\.id\) : 'none' \}\)/,
         'the projects do not open the log filtered');
     // and the chains do not, because the log has no filter for a chain: a link
     // that drops the filter on the way is worse than no link
@@ -161,25 +162,28 @@ test('a share says what it is a share of', () => {
         'a share under one percent is rounded away');
     assert.match(fn, /< 0\.1\) return '<'/,
         'a part that exists can print as 0%');
-    assert.match(SRC, /share\.className = 'use-share-s'/, 'the lists have no shares');
+    assert.match(SRC, /share\.className = 'use-tally-s'/, 'the lists have no shares');
+    assert.match(body('function useTally(', 1800), /pct\(r\.n, total\)/,
+        'the lists work out their own shares and can print a part that exists as 0%');
 });
 
-// Bars are for comparing many things of one kind, which is what Chains is. Two
-// outcomes and four states are a short list of amounts, and a track drawn
-// across half the page for each of them says less than the number already does
-// while taking four times the room.
-test('there is one kind of bar list on this page, not two', () => {
-    assert.doesNotMatch(SRC, /function useSplit\(/,
-        'there is a second kind of share list again');
-    assert.doesNotMatch(CSS, /\.use-split/,
-        'the second share list still has styles waiting for it');
+// The breakdowns under the screenings card are written in the shape of the
+// facts table above them -- a name, a figure, a share, a hairline -- and not as
+// bars. A table of figures, then bars, then a short list of amounts was three
+// shapes for one kind of statement, and the reader was asked to switch between
+// them to read one section.
+test('every breakdown in the section is one shape, the table above it', () => {
+    assert.doesNotMatch(SRC, /function useSplit\(/, 'a second kind of share list is back');
+    assert.doesNotMatch(CSS, /\.use-split/, 'the old share list still has styles waiting for it');
+    assert.doesNotMatch(SRC, /function useShare\(/, 'the bar list is back');
+    assert.doesNotMatch(SRC, /function useAmounts\(/, 'the short list of amounts is back');
     const at = SRC.indexOf('function viewUsage(');
     const usage = SRC.slice(at, SRC.indexOf('\n    function ', at + 40));
-    const uses = usage.match(/useShare\(/g) || [];
-    assert.strictEqual(uses.length, 2,
-        'the projects and the chains are no longer the only lists drawn with bars');
-    assert.match(usage, /useAmounts\(/,
-        'what came back is not written as a short list of amounts');
+    const uses = usage.match(/useTally\(/g) || [];
+    assert.strictEqual(uses.length, 3,
+        'by project, by chain and what came back are not all written as one table');
+    assert.match(SRC, /box\.className = 'use-facts use-tally'/,
+        'the breakdown does not use the facts table\'s rows');
 });
 
 // The decision counts belong where the work is, not in a billing window. The
