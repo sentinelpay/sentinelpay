@@ -4556,11 +4556,18 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
        half of scrolling, and none of these numbers is long enough to need the
        width. They lose some padding and a little type instead. */
     .use-sec-b { grid-template-columns: minmax(0, 1fr); gap: 0.9rem; }
-    /* the band is not sticky on a phone: it would eat a third of a short
-       screen, and there is no long sideways scan to keep your place in */
-    .use-top { position: static; top: auto; padding-bottom: 0.9rem; }
-    /* nothing is covering the top here, so a section does not have to duck */
-    .use-sec { scroll-margin-top: 1rem; }
+    /* Pinned on a phone too, but only the row of pickers. The whole band would
+       be a third of a short screen, so it is pinned as far above the top as
+       the title and the line under it are tall -- measured by fitBand() -- and
+       those scroll away while the pickers stop against the edge. Changing the
+       period from halfway down the page is the same reach it is on a laptop. */
+    .use-top {
+        position: sticky;
+        top: calc(-1 * var(--gutter-y, 0px) - var(--use-band-lift, 0px));
+        padding-bottom: 0.9rem;
+    }
+    /* a section jumped to lands under the pickers, not behind them */
+    .use-sec { scroll-margin-top: calc(var(--use-band-stuck, 3.5rem) + 1rem); }
     .use-bar-l { flex: 1 1 100%; }
     /* the rule divides two things sitting side by side. once they are stacked
        it is a mark dangling at the end of a line, dividing nothing. */
