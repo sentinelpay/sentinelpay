@@ -7222,11 +7222,11 @@
                 smain.appendChild(kindGrid);
             }
 
+            // Each cut under its own heading and nothing over the lot. There
+            // was a capitalised overline above them -- the only one in this
+            // section -- naming what the section's own heading and the two
+            // under it already say, which made three headings in a stack.
             if (spent.length) {
-                var spentTop = document.createElement('div');
-                spentTop.className = 'use-carries-t';
-                spentTop.textContent = t('What this period went on');
-                smain.appendChild(spentTop);
                 spent.forEach(function (part) {
                     var h = document.createElement('div');
                     h.className = 'use-spent-t';

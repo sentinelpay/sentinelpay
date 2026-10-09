@@ -247,6 +247,9 @@ test('what the allowance went on is one place, not three sections', () => {
     }
     assert.match(usage, /useSection\('use-screenings'/,
         'there is no section for the thing this page meters');
-    assert.match(usage, /'What this period went on'/,
-        'the cuts of the number have no heading over them');
+    // each cut carries its own heading, and nothing is stacked over them
+    assert.match(usage, /h\.className = 'use-spent-t';\s*h\.textContent = t\(part\.title\)/,
+        'the cuts of the number have no headings of their own');
+    assert.doesNotMatch(usage, /'What this period went on'/,
+        'the overline is back over headings that already say what it says');
 });
