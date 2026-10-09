@@ -186,3 +186,16 @@ test('the two charts share a cell rather than taking turns in the flow', () => {
     assert.match(SRC, /stack\.className = 'use-plots'/,
         'nothing builds the stack the stylesheet lays out');
 });
+
+// Switching a card between metrics swaps its scale, and a column sized to its
+// widest number slid the whole plot sideways: 38 points in for a chart that
+// tops out at 4, 52 for one at 500. The scale's column is a set width.
+test('the plot starts in the same place whatever its scale', () => {
+    const CSS = fs.readFileSync(path.join(__dirname, '..', 'public', 'dash.css'), 'utf8');
+    const at = CSS.indexOf('.use-plot {');
+    const rule = CSS.slice(at, CSS.indexOf('}', at));
+    const cols = /grid-template-columns:\s*([^;]+);/.exec(rule);
+    assert.ok(cols, 'the plot has no columns of its own');
+    assert.doesNotMatch(cols[1], /^\s*auto\b/, 'the scale column is sized to its numbers again');
+    assert.match(cols[1], /minmax\(\s*[\d.]+rem/, 'the scale column has no set width');
+});

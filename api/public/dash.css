@@ -4325,7 +4325,14 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
        than the numbers beside them. */
     --use-plot-h: 148px;
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
+    /* The scale's column is a set width, not the width of its widest number.
+       Sized to its numbers, it was 7 points for a chart that tops out at 4 and
+       21 for one at 500, so switching the card between metrics slid the whole
+       plot sideways by up to 14 points. The numbers are set flush right, so
+       beside the axis they read the same; it is the chart that stops moving.
+       Wide enough for 100,000, past which the column grows rather than
+       clipping a number. */
+    grid-template-columns: minmax(2.8rem, max-content) minmax(0, 1fr);
     grid-template-rows: auto auto;
     column-gap: 0.6rem;
     row-gap: 0.35rem;
