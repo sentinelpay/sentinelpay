@@ -4656,7 +4656,11 @@
             // not while comparing: three lines on one plot, two of them about
             // this period and one about another, is a chart that has to be
             // decoded before it can be read
-            if (!past && days.some(function (d) { return d.flagged > 0; })) {
+            // Drawn even when it is nought all the way along. The legend under
+            // the chart names Flagged on every chart, and a key for a line
+            // that is not there is a key that lies; a line along the floor is
+            // the true answer.
+            if (!past) {
                 var bad = [];
                 days.forEach(function (d, i) {
                     var x = at(i);
@@ -4758,11 +4762,34 @@
                 if (then) tip.appendChild(tipLine('use-key-was', 'The period before', then.n));
             } else {
                 tip.appendChild(tipLine('use-key-run', name || 'Screenings', d.n));
-                if (d.flagged > 0) tip.appendChild(tipLine('use-key-flag', 'Flagged', d.flagged));
+                // Always, nought included. A day with no flagged checks is a
+                // day with nought flagged, and a reading that drops the row
+                // leaves the reader wondering whether it was zero or missing.
+                tip.appendChild(tipLine('use-key-flag', 'Flagged', d.flagged || 0));
             }
-            tip.style.left = x + '%';
-            // near the right edge it would hang off the card, so it flips
-            tip.classList.toggle('is-left', x > 65);
+            place(x);
+        };
+
+        // Where the reading goes, worked out in pixels against the plot it
+        // sits in.
+        //
+        // It used to flip to the left of the guide past 65% of the way across.
+        // A share of the width is right on a laptop, where 35% of the plot is
+        // wider than the reading, and wrong on a phone, where the plot is
+        // three hundred points and the reading half of that: at 60% it hung
+        // off the right edge of the screen. So: beside the guide on the right
+        // if it fits there, on the left if it fits there, and otherwise as
+        // near the guide as the plot allows. Never wider than the plot.
+        var GAP = 8;
+        var place = function (x) {
+            var w = plot.clientWidth;
+            tip.style.maxWidth = w + 'px';
+            var tw = tip.offsetWidth;
+            var px = (x / 100) * w;
+            var left = px + GAP;
+            if (left + tw > w) left = px - GAP - tw;
+            if (left < 0) left = Math.max(0, Math.min(w - tw, px - tw / 2));
+            tip.style.left = Math.round(left) + 'px';
         };
 
         plot.addEventListener('pointermove', read);
@@ -4796,7 +4823,7 @@
             // label then number, the way the tooltip beside it reads, because
             // "2 screenings" has three forms in croatian and this had one
             say.textContent = bucketText(d.day) + '. ' + t(name || 'Screenings') + ': ' + useNum(d.n) +
-                (d.flagged > 0 ? '. ' + t('Flagged') + ': ' + useNum(d.flagged) : '');
+                '. ' + t('Flagged') + ': ' + useNum(d.flagged || 0);
         };
 
         var say = document.createElement('span');
