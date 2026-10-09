@@ -287,3 +287,26 @@ test('review is the section under screenings, and the summary opens it', () => {
     assert.match(api, /review: Object\.assign\(\{\}, review, \{ queue: waiting \}\)/,
         'the queue does not reach the payload');
 });
+
+// Monitoring follows review, built ahead of the monitor: the server sends the
+// shape with every count at nought so the section is a true picture of an
+// organisation watching nothing. The plan moved to the end, so the sections run
+// in the order the summary's cells do.
+test('monitoring follows review, and the page runs in the summary\'s order', () => {
+    const at = SRC.indexOf('function viewUsage(');
+    const usage = SRC.slice(at, SRC.indexOf('\n    function ', at + 40));
+    const order = ["useSection('use-screenings'", "useSection('use-review'", "useSection('use-monitoring'",
+        "useSection('use-coverage'", "useSection('use-team'", "useSection('use-plan'"]
+        .map((x) => usage.indexOf(x));
+    assert.ok(order.every((x) => x !== -1), 'a section is missing');
+    for (let i = 1; i < order.length; i++) {
+        assert.ok(order[i] > order[i - 1], 'the sections no longer run in the summary\'s order');
+    }
+    for (const label of ['Addresses monitored', 'Alerts raised', 'Custom watchlist']) {
+        assert.match(usage, new RegExp("label: '" + label + "'[^}]*go: 'use-monitoring'"),
+            label + ' does not open monitoring');
+    }
+    const api = fs.readFileSync(path.join(__dirname, '..', 'usage.js'), 'utf8');
+    assert.match(api, /async function monitoringIn\(/, 'the server sends no shape for monitoring');
+    assert.match(api, /monitoring: watching,/, 'monitoring does not reach the payload');
+});
