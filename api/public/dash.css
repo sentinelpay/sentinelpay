@@ -4096,7 +4096,6 @@ html.is-theming .btn {
 /* and the space the table would have closed with goes under the row that
    ends it instead */
 .use-chains { margin-bottom: 1rem; }
-.use-tally-rest .use-fact-v { color: var(--ink-4); font-weight: 500; }
 /* The chip that opens it, the same one the period and scope pickers are made
    of, so the one control in this section looks like the controls above it. */
 /* Centred under the list it opens: it belongs to the whole table, not to the

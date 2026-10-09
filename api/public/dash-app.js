@@ -6987,7 +6987,12 @@
             // cycle it says which half of the grid is counted over it.
             var onCycle = Boolean(out.cycle) && out.period && out.period.current;
             var sum = useSection('use-summary', 'Usage summary', 'gauge',
-                fill('The first six count {window}, against the same length of time before it. The allowances below are the billing cycle\u2019s.',
+                // Screenings is the one cell up there that does not count the
+                // window: it is spent against the cycle's limit, and how much of
+                // the cycle is gone has one answer whichever window is open.
+                // This said the first six all counted the window, which was
+                // true of five of them.
+                fill('Screenings and the allowances below are the billing cycle\u2019s. The next five count {window}, against the same length of time before it.',
                     { window: onCycle ? t('this billing cycle') : usePeriodLabel(out.period).toLowerCase() }));
             // The grid runs the full width. There is no column of prose beside
             // it because the cells are the explanation: a label and a number
