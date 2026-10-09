@@ -506,6 +506,93 @@ async function kindsIn(orgId, from, to, sandbox, zone, grain) {
     return out;
 }
 
+// What people did with what the screenings found, over one window.
+//
+// Bucketed on the decision's own time, as the summary's count already is: a
+// check made in June and signed off in October is October's work. Every row a
+// person wrote is counted -- taking one up, putting it on hold, concluding it
+// -- and split by what it said, so the card can draw any of them and the line
+// under "Decisions" can carry the confirmed ones the way the screenings card
+// carries the flagged ones.
+//
+// How long a conclusion took is counted only for the two that close a finding.
+// Putting one on hold is not an answer, and timing it as one would make a team
+// that parks everything look fast.
+const REVIEW_STATES = ['cleared', 'confirmed', 'holding'];
+
+async function reviewIn(orgId, from, to, sandbox, zone, grain) {
+    to = until(to);
+    const g = grain || GRAIN.day;
+    const args = [Number(orgId), from, to, Boolean(sandbox), zone];
+    const [days, took] = await Promise.all([
+        db.query(
+            `SELECT ${g.column.replace(/\bat\b/g, 'd.at')} AS d, d.decision AS state, count(*)::int AS n
+               FROM check_decisions d
+               JOIN screenings s ON s.id = d.screening_id
+              WHERE d.org_id = $1 AND d.at >= $2 AND d.at < $3 AND s.sandbox = $4
+           GROUP BY 1, 2`,
+            args
+        ),
+        db.query(
+            `SELECT count(*) FILTER (WHERE d.at - s.at < interval '1 hour')::int AS hour,
+                    count(*) FILTER (WHERE d.at - s.at >= interval '1 hour'
+                                       AND d.at - s.at < interval '1 day')::int AS day,
+                    count(*) FILTER (WHERE d.at - s.at >= interval '1 day'
+                                       AND d.at - s.at < interval '7 days')::int AS week,
+                    count(*) FILTER (WHERE d.at - s.at >= interval '7 days')::int AS longer
+               FROM check_decisions d
+               JOIN screenings s ON s.id = d.screening_id
+              WHERE d.org_id = $1 AND d.at >= $2 AND d.at < $3 AND s.sandbox = $4
+                AND d.decision IN ('cleared', 'confirmed')`,
+            args.slice(0, 4)
+        ),
+    ]);
+
+    const series = (keep) => {
+        const byDay = new Map();
+        let total = 0;
+        days.rows.filter(keep).forEach((r) => {
+            const was = byDay.get(r.d) || { d: r.d, n: 0, flagged: 0 };
+            was.n += r.n;
+            if (r.state === 'confirmed') was.flagged += r.n;
+            byDay.set(r.d, was);
+            total += r.n;
+        });
+        return { total, days: fillDays([...byDay.values()], from, to, zone, grain) };
+    };
+    const out = { decisions: series(() => true) };
+    REVIEW_STATES.forEach((k) => { out[k] = series((r) => r.state === k); });
+    const t = took.rows[0] || {};
+    out.took = { hour: t.hour || 0, day: t.day || 0, week: t.week || 0, longer: t.longer || 0 };
+    return out;
+}
+
+// The queue as it stands, whatever window is open: a finding nobody has
+// concluded about is waiting now, not in a period.
+async function queueNow(orgId, sandbox) {
+    const r = await db.query(
+        `SELECT count(*) FILTER (WHERE decision = '')::int AS open,
+                count(*) FILTER (WHERE decision = 'holding')::int AS holding,
+                min(at) FILTER (WHERE decision IN ('', 'holding')) AS oldest,
+                count(*) FILTER (WHERE decision = '' AND at >= now() - interval '1 day')::int AS d1,
+                count(*) FILTER (WHERE decision = '' AND at < now() - interval '1 day'
+                                   AND at >= now() - interval '7 days')::int AS d7,
+                count(*) FILTER (WHERE decision = '' AND at < now() - interval '7 days'
+                                   AND at >= now() - interval '30 days')::int AS d30,
+                count(*) FILTER (WHERE decision = '' AND at < now() - interval '30 days')::int AS older
+           FROM screenings
+          WHERE org_id = $1 AND sandbox = $2 AND verdict <> 'clear'`,
+        [Number(orgId), Boolean(sandbox)]
+    );
+    const q = r.rows[0] || {};
+    return {
+        open: q.open || 0,
+        holding: q.holding || 0,
+        oldest: q.oldest || null,
+        age: { day: q.d1 || 0, week: q.d7 || 0, month: q.d30 || 0, older: q.older || 0 },
+    };
+}
+
 async function shapeOf(orgId, from, to) {
     const [members, projects, tokens, invited, ever, decided] = await Promise.all([
         db.query('SELECT count(*)::int AS n FROM memberships WHERE org_id = $1', [Number(orgId)]),
@@ -646,7 +733,7 @@ async function forOrg(orgId, opts) {
         const cycle = list.find((p) => p.current) || null;
         const sameWindow = cycle && cycle.key === period.key;
 
-        const [work, shape, shapeBefore, past, marks, ghost, spent, kinds, kindsBefore] = await Promise.all([
+        const [work, shape, shapeBefore, past, marks, ghost, spent, kinds, kindsBefore, review, reviewBefore, waiting] = await Promise.all([
             screeningsIn(orgId, period.from, period.to, sandbox, zone, grain),
             shapeOf(orgId, period.from, period.to),
             // The same shape over the window before this one. Only the counted
@@ -687,6 +774,9 @@ async function forOrg(orgId, opts) {
                 ),
             kindsIn(orgId, period.from, period.to, sandbox, zone, grain),
             kindsIn(orgId, before.from, before.to, sandbox, zone, grain),
+            reviewIn(orgId, period.from, period.to, sandbox, zone, grain),
+            reviewIn(orgId, before.from, before.to, sandbox, zone, grain),
+            queueNow(orgId, sandbox),
         ]);
         const head = past.rows[0] || null;
         return {
@@ -697,6 +787,7 @@ async function forOrg(orgId, opts) {
             zone,
             screenings: work,
             kinds,
+            review: Object.assign({}, review, { queue: waiting }),
             marks,
             // what the plan's allowance is measured against, always the cycle
             cycle: cycle ? {
@@ -716,6 +807,7 @@ async function forOrg(orgId, opts) {
                 // of question is not a comparison.
                 decisions: shapeBefore ? shapeBefore.decisions : 0,
                 kinds: kindsBefore,
+                review: reviewBefore,
                 // the same stretch of it, not all of it, while this one runs
                 partial: Boolean(before.partial),
                 days: ghost,
