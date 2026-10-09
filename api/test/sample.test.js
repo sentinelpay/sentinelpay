@@ -179,9 +179,13 @@ test('every breakdown in the section is one shape, the table above it', () => {
     assert.doesNotMatch(SRC, /function useAmounts\(/, 'the short list of amounts is back');
     const at = SRC.indexOf('function viewUsage(');
     const usage = SRC.slice(at, SRC.indexOf('\n    function ', at + 40));
+    // by project, by chain and what came back -- and the chains folded under
+    // by chain, which continue its table rather than starting another shape
     const uses = usage.match(/useTally\(/g) || [];
-    assert.strictEqual(uses.length, 3,
+    assert.ok(uses.length >= 3,
         'by project, by chain and what came back are not all written as one table');
+    assert.match(usage, /title: 'What came back',\s*node: useTally\(/, 'what came back is another shape');
+    assert.match(usage, /chainBox\.appendChild\(useTally\(/, 'by chain is another shape');
     assert.match(SRC, /box\.className = 'use-facts use-tally'/,
         'the breakdown does not use the facts table\'s rows');
 });

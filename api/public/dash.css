@@ -4088,6 +4088,35 @@ html.is-theming .btn {
 .use-tally-m.is-ok { background: var(--risk-low); }
 .use-tally-m.is-mid { background: var(--risk-mid); }
 .use-tally-m.is-bad { background: var(--risk-high); }
+/* The chains with nothing on them this period, folded under the ones that did.
+   It continues the same table, so it opens with the hairline the row above it
+   left off. */
+.use-tally-rest { border-top: 1px solid var(--line-2); }
+.use-tally.is-continued, .use-tally-rest { margin-bottom: 0; }
+/* and the space the table would have closed with goes under the row that
+   ends it instead */
+.use-chains { margin-bottom: 1rem; }
+.use-tally-rest .use-fact-v { color: var(--ink-4); font-weight: 500; }
+/* The row that opens it: written like a row of the table, in the link colour,
+   because it is a question somebody might ask of this list and not a control
+   the page wants noticed. */
+.use-more {
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 0.55rem 0;
+    border: 0;
+    border-top: 1px solid var(--line-2);
+    background: none;
+    font: inherit;
+    font-size: 0.82rem;
+    text-align: left;
+    color: var(--link);
+    cursor: pointer;
+}
+.use-more:hover { text-decoration: underline; text-underline-offset: 3px; }
+.use-more:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; border-radius: 4px; }
+
 /* the share, set back: it is worked out from the figure beside it */
 .use-tally-s {
     display: inline-block;

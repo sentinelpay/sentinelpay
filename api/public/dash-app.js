@@ -1889,6 +1889,39 @@
     // matches their vocabulary so the two can never drift. Nobody says XBT.
     // So the code stays in the data and the word changes on the way out.
     var CHAIN_SAID = { XBT: 'BTC' };
+
+    // Every chain screened, in the order a payments business meets them.
+    //
+    // Sixty-four. Elliptic publishes sixty with full coverage; Chainalysis
+    // counts four hundred "networks" for KYT but traces twenty-seven-odd in
+    // Reactor, and the two numbers are not the same kind of thing. The
+    // comparable figure is the sixty, and this list holds all of theirs plus
+    // the chains small and mid-sized crypto businesses actually take payment
+    // on now -- Base, TON, Sui, Hyperliquid -- which is where they lag.
+    //
+    // Keyed by the code a screening is stored under: OFAC's ticker where OFAC
+    // has one, so a hit and its chain can never be spelled two ways. Said as a
+    // person says it: the ticker for a chain with its own coin, the name for a
+    // rollup whose coin is somebody else's.
+    var CHAINS = [
+        ['XBT', 'BTC'], ['ETH', 'ETH'], ['TRX', 'TRX'], ['SOL', 'SOL'],
+        ['BSC', 'BNB'], ['LTC', 'LTC'], ['XRP', 'XRP'], ['BCH', 'BCH'],
+        ['DOGE', 'DOGE'], ['TON', 'TON'], ['MATIC', 'POL'], ['ARB', 'Arbitrum'],
+        ['BASE', 'Base'], ['OP', 'Optimism'], ['AVAX', 'AVAX'], ['ADA', 'ADA'],
+        ['DOT', 'DOT'], ['SUI', 'SUI'], ['APT', 'APT'], ['NEAR', 'NEAR'],
+        ['ATOM', 'ATOM'], ['XLM', 'XLM'], ['ALGO', 'ALGO'], ['XTZ', 'XTZ'],
+        ['XMR', 'XMR'], ['ZEC', 'ZEC'], ['DASH', 'DASH'], ['ETC', 'ETC'],
+        ['BSV', 'BSV'], ['HBAR', 'HBAR'], ['FIL', 'FIL'], ['ICP', 'ICP'],
+        ['KAS', 'KAS'], ['EOS', 'EOS'], ['VET', 'VET'], ['EGLD', 'EGLD'],
+        ['FLOW', 'FLOW'], ['CELO', 'CELO'], ['CRO', 'CRO'], ['S', 'Sonic'],
+        ['GNO', 'Gnosis'], ['KAVA', 'KAVA'], ['KAIA', 'KAIA'], ['ONE', 'ONE'],
+        ['ZKSYNC', 'zkSync'], ['LINEA', 'Linea'], ['SCROLL', 'Scroll'], ['BLAST', 'Blast'],
+        ['MNT', 'Mantle'], ['STRK', 'Starknet'], ['INJ', 'INJ'], ['OSMO', 'OSMO'],
+        ['TIA', 'TIA'], ['SEI', 'SEI'], ['TAO', 'TAO'], ['STX', 'STX'],
+        ['RBTC', 'Rootstock'], ['GLMR', 'GLMR'], ['METIS', 'Metis'], ['ZORA', 'Zora'],
+        ['HYPE', 'Hyperliquid'], ['BERA', 'BERA'], ['UNI', 'Unichain'], ['FLR', 'FLR']
+    ];
+    CHAINS.forEach(function (c) { if (!CHAIN_SAID[c[0]] && c[1] !== c[0]) CHAIN_SAID[c[0]] = c[1]; });
     function chainText(code) {
         var c = String(code || '');
         return CHAIN_SAID[c] || c;
@@ -7143,12 +7176,51 @@
                     }), s.total)
                 });
             }
+            // The chains this period's work ran on, and under them every other
+            // chain covered. A list of sixty-four rows with five of them
+            // carrying a number is a list of zeros with the answer hidden in
+            // it, so the rest are one row that opens -- there when somebody
+            // asks "do you cover Sui", out of the way when they ask where the
+            // allowance went.
             if (s.assets && s.assets.length) {
+                var worked = {};
+                s.assets.forEach(function (a) { worked[a.asset] = true; });
+                var idle = CHAINS.filter(function (c) { return !worked[c[0]]; });
+                var chainBox = document.createElement('div');
+                chainBox.className = 'use-chains';
+                var busy = useTally(s.assets.map(function (a) {
+                    return { label: a.asset === 'other' ? t('Not recognised') : chainText(a.asset), n: a.n };
+                }), s.total);
+                chainBox.appendChild(busy);
+                if (idle.length) {
+                    // one table that goes on, not two with a gap between them
+                    busy.classList.add('is-continued');
+                    var rest = useTally(idle.map(function (c) {
+                        return { label: c[1], n: 0 };
+                    }), s.total);
+                    rest.classList.add('use-tally-rest');
+                    rest.hidden = true;
+                    var more = document.createElement('button');
+                    more.type = 'button';
+                    more.className = 'use-more';
+                    var says = function () {
+                        more.textContent = rest.hidden
+                            ? fill('{n} more chains covered, none screened in this period', { n: useNum(idle.length) })
+                            : t('Show fewer');
+                        more.setAttribute('aria-expanded', rest.hidden ? 'false' : 'true');
+                    };
+                    more.addEventListener('click', function () {
+                        rest.hidden = !rest.hidden;
+                        says();
+                    });
+                    says();
+                    chainBox.appendChild(rest);
+                    chainBox.appendChild(more);
+                }
                 spent.push({
-                    title: 'By chain',
-                    node: useTally(s.assets.map(function (a) {
-                        return { label: a.asset === 'other' ? t('Not recognised') : chainText(a.asset), n: a.n };
-                    }), s.total)
+                    title: fill('By chain \u00b7 {n} covered', { n: useNum(CHAINS.length) }),
+                    raw: true,
+                    node: chainBox
                 });
             }
 
@@ -7230,7 +7302,8 @@
                 spent.forEach(function (part) {
                     var h = document.createElement('div');
                     h.className = 'use-spent-t';
-                    h.textContent = t(part.title);
+                    // a title already filled in is already translated
+                    h.textContent = part.raw ? part.title : t(part.title);
                     smain.appendChild(h);
                     smain.appendChild(part.node);
                 });
