@@ -4081,6 +4081,30 @@ html.is-theming .btn {
     color: var(--ink-4);
 }
 .use-fact:last-child { border-bottom: 0; }
+
+/* A breakdown in the same rows as the figures above it. */
+.use-tally-k { display: inline-flex; align-items: center; gap: 0.5rem; min-width: 0; }
+.use-tally-m { flex: none; width: 8px; height: 8px; border-radius: 3px; }
+.use-tally-m.is-ok { background: var(--risk-low); }
+.use-tally-m.is-mid { background: var(--risk-mid); }
+.use-tally-m.is-bad { background: var(--risk-high); }
+/* the share, set back: it is worked out from the figure beside it */
+.use-tally-s {
+    display: inline-block;
+    min-width: 2.6rem;
+    margin-left: 0.6rem;
+    text-align: right;
+    font-weight: 400;
+    color: var(--ink-4);
+}
+/* A row that opens the checks log behind it. Same row, the link colour on the
+   name when it is pointed at, nothing that makes it look like a button. */
+/* the row's own colour, not the parent's: an author rule outranks the browser's
+   link colour without any help, and `inherit` made these brighter than the
+   chain names in the block above them */
+a.use-fact { text-decoration: none; }
+a.use-fact:hover .use-tally-k { color: var(--link); }
+a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; border-radius: 4px; }
 /* A value that cannot be broken anywhere -- an address -- still has to fit the
    panel it is in. A bitcoin address reaches the edge of the drawer with nothing
    to spare and a monero one is twice as long again, so the break is allowed
