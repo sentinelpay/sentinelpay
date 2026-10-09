@@ -3973,6 +3973,15 @@ html.is-theming .btn {
 .use-mc.is-open:focus-visible .use-mc-go { opacity: 1; transform: none; }
 .use-mc.is-open:hover { background: var(--hover); cursor: pointer; }
 .use-mc.is-open:hover .use-mc-n { color: var(--link); }
+/* The kind the card above is drawing. Held in the hover tint with a rule of
+   the link colour along its top, so it reads as chosen rather than as the
+   cell the pointer happens to be over -- and stays readable once the pointer
+   has gone somewhere else. */
+.use-mc.is-picked { background: var(--hover); box-shadow: inset 0 2px 0 var(--link); }
+.use-mc.is-picked .use-mc-n { color: var(--link); }
+/* the breakdown sits under the card it switches, with room to read as its own row */
+.use-mg.is-kinds { margin-top: 0.4rem; margin-bottom: 1.4rem; }
+
 /* It answers the keyboard, so the keyboard has to be able to see where it is. */
 .use-mc.is-open:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
 

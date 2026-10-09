@@ -456,6 +456,56 @@ async function screeningsIn(orgId, from, to, sandbox, zone, grain) {
 // The organisation itself: things that are true now rather than counted over a
 // window, plus the three that are (a token used, a person let in, a check
 // decided).
+// The kinds of work one window's screenings were, day by day.
+//
+// A screening already says what it was: the kind column has held 'live' and
+// 'history' since the first sweep was written, and nothing read it. The
+// screenings section splits the allowance by it, and each part has to be a
+// line of its own the chart can switch to -- so it is counted per day, per
+// kind, and per scope in one pass, and cut up here.
+//
+// The kinds not written yet are asked for by name anyway. They come back
+// empty today, and the day a re-screen is recorded as 'rescreen' it is
+// counted here without anybody touching this.
+//
+// "Other" is the scope not being looked at. On the production view that is
+// sandbox work, which spends nothing and is shown so the reader can see it
+// spends nothing; on the sandbox view it is left out, because there is no
+// cell for it to go in.
+const KINDS = ['live', 'history', 'rescreen', 'transaction', 'bulk'];
+
+async function kindsIn(orgId, from, to, sandbox, zone, grain) {
+    to = until(to);
+    const g = grain || GRAIN.day;
+    const rows = await db.query(
+        `SELECT ${g.column.replace(/\$5/g, '$4')} AS d, kind, sandbox,
+                count(*)::int AS n,
+                count(*) FILTER (WHERE verdict <> 'clear')::int AS flagged
+           FROM screenings
+          WHERE org_id = $1 AND at >= $2 AND at < $3
+       GROUP BY 1, 2, 3 ORDER BY 1`,
+        [Number(orgId), from, to, zone]
+    );
+    const pick = (keep) => {
+        const byDay = new Map();
+        let total = 0;
+        rows.rows.filter(keep).forEach((r) => {
+            const was = byDay.get(r.d) || { d: r.d, n: 0, flagged: 0 };
+            was.n += r.n;
+            was.flagged += r.flagged;
+            byDay.set(r.d, was);
+            total += r.n;
+        });
+        return { total, days: fillDays([...byDay.values()], from, to, zone, grain) };
+    };
+    const out = {};
+    KINDS.forEach((k) => {
+        out[k] = pick((r) => r.kind === k && r.sandbox === Boolean(sandbox));
+    });
+    out.other = sandbox ? null : pick((r) => r.sandbox === true);
+    return out;
+}
+
 async function shapeOf(orgId, from, to) {
     const [members, projects, tokens, invited, ever, decided] = await Promise.all([
         db.query('SELECT count(*)::int AS n FROM memberships WHERE org_id = $1', [Number(orgId)]),
@@ -596,7 +646,7 @@ async function forOrg(orgId, opts) {
         const cycle = list.find((p) => p.current) || null;
         const sameWindow = cycle && cycle.key === period.key;
 
-        const [work, shape, shapeBefore, past, marks, ghost, spent] = await Promise.all([
+        const [work, shape, shapeBefore, past, marks, ghost, spent, kinds, kindsBefore] = await Promise.all([
             screeningsIn(orgId, period.from, period.to, sandbox, zone, grain),
             shapeOf(orgId, period.from, period.to),
             // The same shape over the window before this one. Only the counted
@@ -633,6 +683,8 @@ async function forOrg(orgId, opts) {
                       WHERE org_id = $1 AND at >= $2 AND at < $3 AND sandbox = $4`,
                     [Number(orgId), cycle.from, until(cycle.to), Boolean(sandbox)]
                 ),
+            kindsIn(orgId, period.from, period.to, sandbox, zone, grain),
+            kindsIn(orgId, before.from, before.to, sandbox, zone, grain),
         ]);
         const head = past.rows[0] || null;
         return {
@@ -642,6 +694,7 @@ async function forOrg(orgId, opts) {
             scope: sandbox ? 'sandbox' : 'live',
             zone,
             screenings: work,
+            kinds,
             marks,
             // what the plan's allowance is measured against, always the cycle
             cycle: cycle ? {
@@ -657,6 +710,7 @@ async function forOrg(orgId, opts) {
                 // subtracted. A number beside a number from a different kind
                 // of question is not a comparison.
                 decisions: shapeBefore ? shapeBefore.decisions : 0,
+                kinds: kindsBefore,
                 // the same stretch of it, not all of it, while this one runs
                 partial: Boolean(before.partial),
                 days: ghost,
