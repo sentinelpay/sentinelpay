@@ -6882,6 +6882,21 @@
         }
 
         function draw(out) {
+            // Where the reader is, kept through the redraw.
+            //
+            // Clearing the body and then reading a layout property -- which the
+            // line below has to do for the swap animation to run -- lays the
+            // page out with nothing in it. A page shorter than the screen has
+            // nowhere to be scrolled to, so the browser put the reader back at
+            // the top, and changing the period from the chains list halfway
+            // down landed them on the title. The body keeps its height while it
+            // is empty and gives it back once the new content has been built
+            // and fitted; the scroll position is put back on top of that in
+            // case the new content is a different length.
+            var scroller = body.closest('.canvas') || document.scrollingElement;
+            var keepAt = scroller ? scroller.scrollTop : 0;
+            if (body.offsetHeight) body.style.minHeight = body.offsetHeight + 'px';
+
             // A period is swapped, not navigated to: the same numbers about a
             // different window. So the page does not flash white and rebuild --
             // what is redrawn settles in, which also covers the moment where
@@ -7467,6 +7482,15 @@
 
             // the page is built; now it can be measured
             queueFold();
+            // and once it has been, the height it was held at goes back and the
+            // reader is where they were -- a frame after the fit, which runs in
+            // the next one
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    body.style.minHeight = '';
+                    if (scroller && keepAt) scroller.scrollTop = keepAt;
+                });
+            });
         }
 
         // Which rows belong in the allowance block, and what the heading beside
