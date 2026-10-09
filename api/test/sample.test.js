@@ -262,3 +262,28 @@ test('what the allowance went on is one place, not three sections', () => {
     assert.doesNotMatch(usage, /'What this period went on'/,
         'the overline is back over headings that already say what it says');
 });
+
+// Review sits directly under Screenings and is built the same way: the queue
+// as it stands in a table, the window on a card, a row of cells that switch the
+// card, and breakdowns in the table's rows. The two summary cells about review
+// open it, and the decisions count is the one the section uses -- cut to the
+// scope on screen, where the organisation-wide count it read before came out
+// over the section on the production view.
+test('review is the section under screenings, and the summary opens it', () => {
+    const at = SRC.indexOf('function viewUsage(');
+    const usage = SRC.slice(at, SRC.indexOf('\n    function ', at + 40));
+    const scr = usage.indexOf('if (!fresh) body.appendChild(scr);');
+    const rev = usage.indexOf("useSection('use-review', 'Review'");
+    assert.ok(scr !== -1 && rev > scr, 'review is not built straight after screenings');
+    assert.ok(usage.indexOf("useSection('use-plan'") > rev, 'something is built between screenings and review');
+    assert.match(usage, /label: 'Findings to review'[\s\S]{0,260}go: 'use-review'/, 'findings do not open review');
+    assert.match(usage, /label: 'Decisions recorded'[\s\S]{0,900}go: 'use-review'/, 'decisions do not open review');
+    assert.match(usage, /out\.review \? out\.review\.decisions\.total/,
+        'the summary counts decisions from somewhere other than the section it opens');
+    assert.match(usage, /var pickedReview/, 'the review card forgets its line on every redraw');
+    const api = fs.readFileSync(path.join(__dirname, '..', 'usage.js'), 'utf8');
+    assert.match(api, /async function reviewIn\(/, 'the server does not count review work');
+    assert.match(api, /async function queueNow\(/, 'the server does not say what is waiting now');
+    assert.match(api, /review: Object\.assign\(\{\}, review, \{ queue: waiting \}\)/,
+        'the queue does not reach the payload');
+});

@@ -46,6 +46,10 @@
         // else: a whole cell is already the target, so the mark is a direction
         // rather than a button.
         chev: '<path d="m9.5 5.5 6.5 6.5-6.5 6.5"/>',
+        // A clipboard with a tick: work a person signed off, which is what
+        // the review section counts and nothing else on the page does.
+        review: '<rect x="5.5" y="4.2" width="13" height="16.8" rx="2.2"/>' +
+            '<path d="M9.2 4.2V3.5c0-.6.4-1 1-1h3.6c.6 0 1 .4 1 1v.7"/><path d="m9 12.9 2.2 2.2 4.3-4.4"/>',
         usage: '<path d="M4 20V4"/><path d="M4 20h16"/><rect x="7.4" y="12.6" width="2.9" height="4.6" rx="0.6"/>' +
             '<rect x="12" y="9" width="2.9" height="8.2" rx="0.6"/><rect x="16.6" y="5.6" width="2.9" height="11.6" rx="0.6"/>',
         billing: '<rect x="2.8" y="6" width="18.4" height="12" rx="2.2"/><path d="M2.8 10.4h18.4"/>' +
@@ -4536,7 +4540,7 @@
         });
     }
 
-    function useChart(source, ghost, name) {
+    function useChart(source, ghost, name, second) {
         var box = document.createElement('div');
         box.className = 'use-plot';
 
@@ -4693,7 +4697,7 @@
             // the chart names Flagged on every chart, and a key for a line
             // that is not there is a key that lies; a line along the floor is
             // the true answer.
-            if (!past) {
+            if (!past && second !== false) {
                 var bad = [];
                 days.forEach(function (d, i) {
                     var x = at(i);
@@ -4727,7 +4731,7 @@
             });
         }
 
-        if (days.length) plot.appendChild(useHover(plot, days, share, up, past, name));
+        if (days.length) plot.appendChild(useHover(plot, days, share, up, past, name, second));
         area.appendChild(plot);
         box.appendChild(area);
 
@@ -4747,7 +4751,7 @@
     // itself marked, and the numbers for that day beside it. The alternative is
     // a tooltip per bar, which cannot exist on a line, and a chart nobody can
     // read a single day off.
-    function useHover(plot, days, share, up, past, name) {
+    function useHover(plot, days, share, up, past, name, second) {
         var guide = document.createElement('span');
         guide.className = 'use-guide';
         plot.appendChild(guide);
@@ -4798,7 +4802,7 @@
                 // Always, nought included. A day with no flagged checks is a
                 // day with nought flagged, and a reading that drops the row
                 // leaves the reader wondering whether it was zero or missing.
-                tip.appendChild(tipLine('use-key-flag', 'Flagged', d.flagged || 0));
+                if (second !== false) tip.appendChild(tipLine('use-key-flag', second || 'Flagged', d.flagged || 0));
             }
             place(x);
         };
@@ -4856,7 +4860,7 @@
             // label then number, the way the tooltip beside it reads, because
             // "2 screenings" has three forms in croatian and this had one
             say.textContent = bucketText(d.day) + '. ' + t(name || 'Screenings') + ': ' + useNum(d.n) +
-                '. ' + t('Flagged') + ': ' + useNum(d.flagged || 0);
+                (second === false ? '' : '. ' + t(second || 'Flagged') + ': ' + useNum(d.flagged || 0));
         };
 
         var say = document.createElement('span');
@@ -5080,7 +5084,7 @@
     // identical cards leave the reader to decide which one matters, and the
     // answer is always the same one. So it is said once, large, with the chart
     // under it, and everything else is smaller than it.
-    function useHeadline(s, prev, period, cmp, fresh, meter, name) {
+    function useHeadline(s, prev, period, cmp, fresh, meter, name, second) {
         var box = document.createElement('section');
         box.className = 'use-head';
 
@@ -5167,14 +5171,14 @@
             // and swapping moves nothing.
             var stack = document.createElement('div');
             stack.className = 'use-plots';
-            stack.appendChild(useLayer('use-alone', useChart(s.days || [], null, name),
-                useLegend(false, name)));
-            stack.appendChild(useLayer('use-against', useChart(s.days || [], cmp.days, name),
-                useLegend(true, name)));
+            stack.appendChild(useLayer('use-alone', useChart(s.days || [], null, name, second),
+                useLegend(false, name, second)));
+            stack.appendChild(useLayer('use-against', useChart(s.days || [], cmp.days, name, second),
+                useLegend(true, name, second)));
             box.appendChild(stack);
         } else {
-            box.appendChild(useChart(s.days || [], null, name));
-            box.appendChild(useLegend(false, name));
+            box.appendChild(useChart(s.days || [], null, name, second));
+            box.appendChild(useLegend(false, name, second));
         }
 
         // What this metric is allowed, at the foot of the card that draws it.
@@ -5251,13 +5255,12 @@
     // spelled out here for a while: the window on the card above, the earlier
     // one beside it. Two ranges in a legend is more reading than a legend is
     // for, and the card already says which window is on screen.
-    function useLegend(against, name) {
+    function useLegend(against, name, second) {
         var legend = document.createElement('div');
         legend.className = 'use-legend';
         legend.appendChild(key('use-key-run', against ? 'This period' : (name || 'Screenings')));
-        legend.appendChild(against
-            ? key('use-key-was', 'The period before')
-            : key('use-key-flag', 'Flagged'));
+        if (against) legend.appendChild(key('use-key-was', 'The period before'));
+        else if (second !== false) legend.appendChild(key('use-key-flag', second || 'Flagged'));
         return legend;
     }
 
@@ -6702,6 +6705,8 @@
         // instead of falling back to live checks under somebody who had just
         // asked for sweeps.
         var pickedKind = 'live';
+        // and which line the review card is drawing, kept the same way
+        var pickedReview = 'decisions';
         var latest = null;
 
         // The title and the two controls are one band, and it stays at the top
@@ -7081,13 +7086,21 @@
                   series: sweepsKind ? useSeries(sweepsKind.days, 'n') : useFlat(s.days),
                   ghost: sweepsWas ? useSeries(sweepsWas.days, 'n') : null, go: 'use-screenings' },
 
-                // ---- Review: what came back opens under Screenings for now
+                // ---- Review
                 { label: 'Findings to review', used: s.flagged || 0,
                   was: older ? out.previous.flagged : null,
-                  series: useSeries(s.days, 'flagged'), ghost: useSeries(older, 'flagged'), go: 'use-screenings' },
-                { label: 'Decisions recorded', used: shape.decisions || 0,
-                  was: older ? out.previous.decisions : null,
-                  series: useSeries(s.decisionDays, 'n') },
+                  series: useSeries(s.days, 'flagged'), ghost: useSeries(older, 'flagged'), go: 'use-review' },
+                // From the review count, which is cut to the scope on screen. The
+                // count this read before was every decision in the organisation,
+                // sandbox included, and on the production view it came out two
+                // over the section it opens.
+                { label: 'Decisions recorded',
+                  used: out.review ? out.review.decisions.total : (shape.decisions || 0),
+                  was: out.previous && out.previous.review ? out.previous.review.decisions.total
+                      : (older ? out.previous.decisions : null),
+                  series: out.review ? useSeries(out.review.decisions.days, 'n') : useSeries(s.decisionDays, 'n'),
+                  ghost: out.previous && out.previous.review ? useSeries(out.previous.review.decisions.days, 'n') : null,
+                  go: 'use-review' },
 
                 // ---- Monitoring
                 { label: 'Addresses monitored', used: 0, of: inc.addresses, series: useFlat(s.days) },
@@ -7383,6 +7396,135 @@
             }
             scr.body.appendChild(smain);
             if (!fresh) body.appendChild(scr);
+
+            // ---- review
+            //
+            // What people did with what the screenings found, built the way
+            // the section above it is so the two read as a pair: the state of
+            // things in a table, the window on a card, a row of cells that
+            // switch the card, and two breakdowns in the table's rows.
+            //
+            // The table is the queue as it stands. A finding nobody has
+            // concluded about is waiting now, whatever window is open, the same
+            // way an allowance is the cycle's whatever window is open.
+            var rv = out.review || null;
+            var rvWas = (out.previous && out.previous.review) || null;
+            if (rv && !fresh) {
+                var rev = useSection('use-review', 'Review', 'review',
+                    'What a person did with what the screenings found.');
+                rev.body.className += ' is-wide';
+                var rmain = useMain();
+                var q = rv.queue || { open: 0, holding: 0, oldest: null, age: {} };
+                rmain.appendChild(useFacts([
+                    ['Open', useNum(q.open)],
+                    ['On hold', useNum(q.holding)],
+                    ['Oldest open', q.oldest ? whenText(q.oldest) : '—']
+                ]));
+
+                // Findings are the screenings that came back flagged, drawn with
+                // the sanctioned ones under them; every other line is a kind of
+                // decision, and only "Decisions" has a second line -- the
+                // confirmed ones, the way the screenings card carries the
+                // flagged. A line that could only ever read nought is left off.
+                var asFindings = function (days) {
+                    return (days || []).map(function (d) {
+                        return { day: d.day, n: d.flagged || 0, flagged: d.severe || 0 };
+                    });
+                };
+                var REVIEW_CELLS = [
+                    ['findings', 'Findings', 'Sanctioned'],
+                    ['decisions', 'Decisions', 'Confirmed'],
+                    ['cleared', 'Cleared', false],
+                    ['confirmed', 'Confirmed', false],
+                    ['holding', 'On hold', false],
+                    ['eyes', 'Second pair of eyes', false]
+                ];
+                var rvLine = function (key, which) {
+                    var src = which === 'was' ? rvWas : rv;
+                    if (key === 'findings') {
+                        var days = which === 'was' ? older : s.days;
+                        if (!days) return null;
+                        return { total: which === 'was' ? (out.previous ? out.previous.flagged : 0) : (s.flagged || 0),
+                                 days: asFindings(days) };
+                    }
+                    if (key === 'eyes') {
+                        var base = which === 'was' ? older : s.days;
+                        return base ? { total: 0, days: base.map(function (d) { return { day: d.day, n: 0, flagged: 0 }; }) } : null;
+                    }
+                    return src && src[key] ? src[key] : null;
+                };
+                var rvCell = function (key) {
+                    for (var i = 0; i < REVIEW_CELLS.length; i++) if (REVIEW_CELLS[i][0] === key) return REVIEW_CELLS[i];
+                    return REVIEW_CELLS[1];
+                };
+                var reviewCard = function () {
+                    var c = rvCell(pickedReview);
+                    var now = rvLine(c[0], 'now') || { total: 0, days: [] };
+                    var was = rvLine(c[0], 'was');
+                    var prevOf = was ? { total: was.total, partial: out.previous && out.previous.partial } : null;
+                    var cmpOf = cmp && was ? { on: alongside, days: was.days, toggle: cmp.toggle } : null;
+                    return useHeadline({ total: now.total, days: now.days }, prevOf, out.period,
+                        cmpOf, fresh, null, c[1], c[2]);
+                };
+                var rcard = reviewCard();
+                rmain.appendChild(rcard);
+
+                var rgrid = useGrid(REVIEW_CELLS.map(function (c) {
+                    var now = rvLine(c[0], 'now');
+                    return {
+                        key: c[0],
+                        label: c[1],
+                        used: now ? now.total : 0,
+                        picked: c[0] === pickedReview,
+                        onPick: function (key) {
+                            if (key === pickedReview) return;
+                            pickedReview = key;
+                            var next = reviewCard();
+                            rcard.parentNode.replaceChild(next, rcard);
+                            rcard = next;
+                            var cells = rgrid.querySelectorAll('.use-mc.is-pick');
+                            for (var i = 0; i < cells.length; i++) {
+                                var on = cells[i].getAttribute('data-kind') === key;
+                                cells[i].classList.toggle('is-picked', on);
+                                cells[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+                            }
+                        }
+                    };
+                }), 'is-kinds');
+                rmain.appendChild(rgrid);
+
+                // Two breakdowns in the rows of the table above, the way By chain
+                // and What came back sit under screenings: how long a conclusion
+                // took, over the window, and how long what is still open has
+                // been waiting, now.
+                var took = rv.took || {};
+                var tookAll = (took.hour || 0) + (took.day || 0) + (took.week || 0) + (took.longer || 0);
+                var age = q.age || {};
+                var parts = [
+                    ['Time to a decision', useTally([
+                        { label: t('Under an hour'), n: took.hour || 0 },
+                        { label: t('Within a day'), n: took.day || 0 },
+                        { label: t('Within a week'), n: took.week || 0 },
+                        { label: t('Longer than a week'), n: took.longer || 0 }
+                    ], tookAll)],
+                    ['Still open, by age', useTally([
+                        { label: t('Under a day'), n: age.day || 0, mark: 'ok' },
+                        { label: t('One to seven days'), n: age.week || 0, mark: 'mid' },
+                        { label: t('Seven to thirty days'), n: age.month || 0, mark: 'mid' },
+                        { label: t('Over thirty days'), n: age.older || 0, mark: 'bad' }
+                    ], q.open || 0)]
+                ];
+                parts.forEach(function (part) {
+                    var h = document.createElement('div');
+                    h.className = 'use-spent-t';
+                    h.textContent = t(part[0]);
+                    rmain.appendChild(h);
+                    rmain.appendChild(part[1]);
+                });
+
+                rev.body.appendChild(rmain);
+                body.appendChild(rev);
+            }
 
             // ---- plan
             if (!sandbox) {
