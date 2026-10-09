@@ -3976,9 +3976,6 @@ html.is-theming .btn {
 /* It answers the keyboard, so the keyboard has to be able to see where it is. */
 .use-mc.is-open:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
 
-/* The chart in the screenings section, which has a heading above it rather
-   than a card around it. */
-.use-plotwrap { margin-bottom: 1.2rem; }
 
 /* The ring is taller than the line of text beside it, so a cell without one
    is a shorter cell, and in a grid of sixteen that is four row heights for no
@@ -4999,6 +4996,18 @@ html.is-theming .btn {
    cards. In svh rather than vh: svh is the height with the browser's own bars
    showing, so it does not change as the address bar slides away, and the chart
    does not resize under the reader while they scroll past it. */
+/* The same card further down the page, where nothing above the fold is
+   competing for its height. At the top it was given whatever was left of the
+   first screen, which on a laptop came to the 280 it was allowed to grow to;
+   down here it has no fold to fit under, so it is given that height outright
+   rather than being left at the floor it shrank to when it had to share. */
+@media (min-width: 721px) {
+    .use-sec .use-head .use-plot { --use-plot-h: 280px; }
+}
+@media (max-width: 720px) {
+    .use-sec .use-head .use-plot { --use-plot-h: 180px; }
+}
+
 @media (max-width: 720px) {
     .use-plot { --use-plot-h: clamp(78px, 15svh, 148px); }
     .use-spark, .use-spark svg { height: 20px; }
