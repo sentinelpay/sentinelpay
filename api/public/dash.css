@@ -4376,7 +4376,7 @@ html.is-theming .btn {
 .use-tip {
     position: absolute;
     top: 0.2rem;
-    transform: translateX(0.5rem);
+    /* placed in pixels by the script, beside the guide on whichever side fits */
     /* Sized by its contents, not by the room left beside it.
        An absolutely positioned box with only `left` set shrinks to fit the gap
        between that edge and the end of its container, so at the last day of a
@@ -4398,7 +4398,6 @@ html.is-theming .btn {
     transition: opacity 0.12s ease;
     z-index: 2;
 }
-.use-tip.is-left { transform: translateX(calc(-100% - 0.5rem)); }
 .use-tip-d { margin-bottom: 0.3rem; color: var(--ink-4); }
 .use-tip-r {
     display: flex;
