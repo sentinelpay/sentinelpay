@@ -593,6 +593,27 @@ async function queueNow(orgId, sandbox) {
     };
 }
 
+// Addresses watched after their first check, and what changed about them.
+//
+// Nothing writes this yet: there is no table of watched addresses and no job
+// that re-checks them. It is the shape the screen is built against, with every
+// count at nought and every day of the window present, so the section draws a
+// true picture of an organisation that is watching nothing -- and the day the
+// monitor exists, this is the one function that changes.
+const ALERT_REASONS = ['listing', 'exposure', 'watchlist', 'score'];
+const MONITOR_LINES = ['alerts', 'added', 'removed', 'matches', 'rechecks', 'resolved'];
+
+async function monitoringIn(orgId, from, to, sandbox, zone, grain) {
+    to = until(to);
+    const empty = () => ({ total: 0, days: fillDays([], from, to, zone, grain) });
+    const out = { watched: 0, watchlist: 0, lastAlert: null };
+    MONITOR_LINES.forEach((k) => { out[k] = empty(); });
+    out.byReason = {};
+    ALERT_REASONS.forEach((k) => { out.byReason[k] = 0; });
+    out.byRisk = { clear: 0, review: 0, severe: 0 };
+    return out;
+}
+
 async function shapeOf(orgId, from, to) {
     const [members, projects, tokens, invited, ever, decided] = await Promise.all([
         db.query('SELECT count(*)::int AS n FROM memberships WHERE org_id = $1', [Number(orgId)]),
@@ -733,7 +754,7 @@ async function forOrg(orgId, opts) {
         const cycle = list.find((p) => p.current) || null;
         const sameWindow = cycle && cycle.key === period.key;
 
-        const [work, shape, shapeBefore, past, marks, ghost, spent, kinds, kindsBefore, review, reviewBefore, waiting] = await Promise.all([
+        const [work, shape, shapeBefore, past, marks, ghost, spent, kinds, kindsBefore, review, reviewBefore, waiting, watching, watchingBefore] = await Promise.all([
             screeningsIn(orgId, period.from, period.to, sandbox, zone, grain),
             shapeOf(orgId, period.from, period.to),
             // The same shape over the window before this one. Only the counted
@@ -777,6 +798,8 @@ async function forOrg(orgId, opts) {
             reviewIn(orgId, period.from, period.to, sandbox, zone, grain),
             reviewIn(orgId, before.from, before.to, sandbox, zone, grain),
             queueNow(orgId, sandbox),
+            monitoringIn(orgId, period.from, period.to, sandbox, zone, grain),
+            monitoringIn(orgId, before.from, before.to, sandbox, zone, grain),
         ]);
         const head = past.rows[0] || null;
         return {
@@ -788,6 +811,7 @@ async function forOrg(orgId, opts) {
             screenings: work,
             kinds,
             review: Object.assign({}, review, { queue: waiting }),
+            monitoring: watching,
             marks,
             // what the plan's allowance is measured against, always the cycle
             cycle: cycle ? {
@@ -808,6 +832,7 @@ async function forOrg(orgId, opts) {
                 decisions: shapeBefore ? shapeBefore.decisions : 0,
                 kinds: kindsBefore,
                 review: reviewBefore,
+                monitoring: watchingBefore,
                 // the same stretch of it, not all of it, while this one runs
                 partial: Boolean(before.partial),
                 days: ghost,

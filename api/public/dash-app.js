@@ -46,6 +46,9 @@
         // else: a whole cell is already the target, so the mark is a direction
         // rather than a button.
         chev: '<path d="m9.5 5.5 6.5 6.5-6.5 6.5"/>',
+        // An eye: an address being watched after its first check.
+        watch: '<path d="M2.6 12s3.4-6.4 9.4-6.4S21.4 12 21.4 12s-3.4 6.4-9.4 6.4S2.6 12 2.6 12Z"/>' +
+            '<circle cx="12" cy="12" r="2.7"/>',
         // A clipboard with a tick: work a person signed off, which is what
         // the review section counts and nothing else on the page does.
         review: '<rect x="5.5" y="4.2" width="13" height="16.8" rx="2.2"/>' +
@@ -6707,6 +6710,7 @@
         var pickedKind = 'live';
         // and which line the review card is drawing, kept the same way
         var pickedReview = 'decisions';
+        var pickedMonitor = 'alerts';
         var latest = null;
 
         // The title and the two controls are one band, and it stays at the top
@@ -7102,10 +7106,10 @@
                   ghost: out.previous && out.previous.review ? useSeries(out.previous.review.decisions.days, 'n') : null,
                   go: 'use-review' },
 
-                // ---- Monitoring
-                { label: 'Addresses monitored', used: 0, of: inc.addresses, series: useFlat(s.days) },
-                { label: 'Alerts raised', used: 0, series: useFlat(s.days) },
-                { label: 'Custom watchlist', used: 0, of: inc.watchlist, series: useFlat(s.days) },
+                // ---- Monitoring, built ahead of the monitor: every count nought
+                { label: 'Addresses monitored', used: 0, of: inc.addresses, series: useFlat(s.days) , go: 'use-monitoring' },
+                { label: 'Alerts raised', used: 0, series: useFlat(s.days) , go: 'use-monitoring' },
+                { label: 'Custom watchlist', used: 0, of: inc.watchlist, series: useFlat(s.days) , go: 'use-monitoring' },
 
                 // ---- Sanctions coverage
                 { label: 'Re-screens triggered', used: 0, series: useFlat(s.days), go: 'use-coverage' },
@@ -7526,7 +7530,179 @@
                 body.appendChild(rev);
             }
 
+            // A card, and a row of cells under it that decide what the card
+            // draws. Screenings and review were each built this way by hand;
+            // monitoring and what follows it use this, so the next section is
+            // the same shape without being sixty more lines of the same code.
+            //
+            //   cells    [key, label, second] -- second names the card's
+            //            second line, or is false for a card of one line
+            //   picked   { get, set } for the chosen key, kept outside draw()
+            //   lineFor  (key, 'now' | 'was') -> { total, days } or null
+            var switched = function (cells, picked, lineFor) {
+                var cellOf = function (key) {
+                    for (var i = 0; i < cells.length; i++) if (cells[i][0] === key) return cells[i];
+                    return cells[0];
+                };
+                if (!lineFor(picked.get(), 'now')) picked.set(cells[0][0]);
+                var draw_ = function () {
+                    var c = cellOf(picked.get());
+                    var now = lineFor(c[0], 'now') || { total: 0, days: [] };
+                    var was = lineFor(c[0], 'was');
+                    var prevOf = was ? { total: was.total, partial: out.previous && out.previous.partial } : null;
+                    var cmpOf = cmp && was ? { on: alongside, days: was.days, toggle: cmp.toggle } : null;
+                    return useHeadline({ total: now.total, days: now.days }, prevOf, out.period,
+                        cmpOf, fresh, null, c[1], c[2]);
+                };
+                var box = document.createElement('div');
+                var card = draw_();
+                box.appendChild(card);
+                var grid = useGrid(cells.map(function (c) {
+                    var now = lineFor(c[0], 'now');
+                    return {
+                        key: c[0],
+                        label: c[1],
+                        used: now ? now.total : 0,
+                        picked: c[0] === picked.get(),
+                        onPick: function (key) {
+                            if (key === picked.get()) return;
+                            picked.set(key);
+                            var next = draw_();
+                            card.parentNode.replaceChild(next, card);
+                            card = next;
+                            var all = grid.querySelectorAll('.use-mc.is-pick');
+                            for (var i = 0; i < all.length; i++) {
+                                var on = all[i].getAttribute('data-kind') === key;
+                                all[i].classList.toggle('is-picked', on);
+                                all[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+                            }
+                        }
+                    };
+                }), 'is-kinds');
+                box.appendChild(grid);
+                return box;
+            };
+
+            // A breakdown under its heading, in the rows of the table.
+            var tallied = function (into, title, rows, total) {
+                var h = document.createElement('div');
+                h.className = 'use-spent-t';
+                h.textContent = t(title);
+                into.appendChild(h);
+                into.appendChild(useTally(rows, total));
+            };
+
+            // ---- monitoring
+            //
+            // Addresses watched after their first check, and what changed about
+            // them. Built ahead of the monitor itself: the server sends the
+            // shape with every count at nought, so this is a true picture of an
+            // organisation watching nothing, and it fills in the day the monitor
+            // starts writing.
+            var mon = out.monitoring || null;
+            var monWas = (out.previous && out.previous.monitoring) || null;
+            if (mon && !fresh) {
+                var monSec = useSection('use-monitoring', 'Monitoring', 'watch',
+                    'Addresses watched after the first check, and what changed about them.');
+                monSec.body.className += ' is-wide';
+                var mmain = useMain();
+                var watchOf = function (n, of) { return of ? useNum(n) + ' / ' + useNum(of) : useNum(n); };
+                mmain.appendChild(useFacts([
+                    ['Addresses watched', watchOf(mon.watched || 0, inc.addresses)],
+                    ['Watchlist entries', watchOf(mon.watchlist || 0, inc.watchlist)],
+                    ['Last alert', mon.lastAlert ? whenText(mon.lastAlert) : '—']
+                ]));
+                mmain.appendChild(switched([
+                    ['alerts', 'Alerts raised', 'Sanctioned'],
+                    ['added', 'Addresses added', false],
+                    ['removed', 'Addresses removed', false],
+                    ['matches', 'Watchlist matches', false],
+                    ['rechecks', 'Re-checks run', false],
+                    ['resolved', 'Alerts resolved', false]
+                ], {
+                    get: function () { return pickedMonitor; },
+                    set: function (k) { pickedMonitor = k; }
+                }, function (key, which) {
+                    var src = which === 'was' ? monWas : mon;
+                    return src && src[key] ? src[key] : null;
+                }));
+                var why = mon.byReason || {};
+                var whyAll = (why.listing || 0) + (why.exposure || 0) + (why.watchlist || 0) + (why.score || 0);
+                tallied(mmain, 'Alerts by reason', [
+                    { label: t('Newly on a sanctions list'), n: why.listing || 0, mark: 'bad' },
+                    { label: t('Paid by a flagged address'), n: why.exposure || 0, mark: 'mid' },
+                    { label: t('On your own watchlist'), n: why.watchlist || 0, mark: 'mid' },
+                    { label: t('Risk score went up'), n: why.score || 0, mark: 'mid' }
+                ], whyAll);
+                var risk = mon.byRisk || {};
+                tallied(mmain, 'Watched addresses, by risk', [
+                    { label: t('Sanctioned'), n: risk.severe || 0, mark: 'bad' },
+                    { label: t('Worth a look'), n: risk.review || 0, mark: 'mid' },
+                    { label: t('Clear'), n: risk.clear || 0, mark: 'ok' }
+                ], mon.watched || 0);
+                monSec.body.appendChild(mmain);
+                body.appendChild(monSec);
+            }
+
+            // ---- coverage
+            var c = out.coverage || {};
+            var cov = useSection('use-coverage', 'Sanctions coverage', 'coverage',
+                'What the checks were run against.');
+            cov.body.appendChild(useSide([
+                'Every check in this period was run against this list, at the version it was on that day.'
+            ]));
+            var cmain = useMain();
+            cmain.appendChild(useFacts([
+                ['List', c.source || 'OFAC SDN'],
+                ['Addresses on it', c.addresses ? useNum(c.addresses) : '—'],
+                // the list publishes its own date in american order, which is
+                // not how it is read anywhere this is sold
+                ['List dated', c.listDate ? (whenText(listDay(c.listDate)) || c.listDate) : '—'],
+                ['Last refreshed', c.refreshedAt ? whenText(c.refreshedAt, true) : '—']
+            ]));
+            // The breadth of what we screen against, which is a different
+            // question from the state of the one list above.
+            cmain.appendChild(useGridTitle('What we screen against'));
+            cmain.appendChild(useGrid([
+                { label: 'Sanctions lists', used: 1 },
+                { label: 'Chains covered', used: chains },
+                { label: 'Custom watchlist', used: 0 }
+            ]));
+            cov.body.appendChild(cmain);
+            body.appendChild(cov);
+
+            // ---- team
+            var team = useSection('use-team', 'Team', 'team',
+                'Who and what can reach this organisation.');
+            team.body.appendChild(useSide([
+                'A token that has not been used in a long time is worth withdrawing: it can still screen until it is.'
+            ]));
+            var tmain = useMain();
+            // These were five rows of a facts list saying the same five things.
+            // One shape for a metric across the page beats two, and the grid is
+            // the one the rest of it uses.
+            tmain.appendChild(useGrid([
+                { label: 'Members', used: shape.members || 0, of: inc.seats },
+                { label: 'Members joined', used: shape.joined || 0 },
+                { label: 'SSO users', used: 0 },
+                { label: 'Projects', used: shape.projects || 0 },
+                { label: 'API tokens', used: shape.tokens || 0 },
+                { label: 'Tokens used', used: shape.tokensUsed || 0 },
+                { label: 'API calls', used: 0 },
+                { label: 'Webhook deliveries', used: 0 },
+                { label: 'Evidence exports', used: 0 }
+            ]));
+            team.body.appendChild(tmain);
+            body.appendChild(team);
+
             // ---- plan
+            //
+            // Last, where the summary's order puts nothing: the grid runs
+            // screenings, review, monitoring, coverage, the API, team and
+            // evidence, and the sections follow it, so clicking a cell and
+            // scrolling the page go the same way. What the plan allows is said
+            // cell by cell above; this is the plan itself, and most of it is
+            // also the billing page's.
             if (!sandbox) {
                 var pl = useSection('use-plan', 'Plan', 'plan',
                     'What this organisation is allowed, and how much of it is left.');
@@ -7599,57 +7775,6 @@
                 pl.body.appendChild(pmain);
                 body.appendChild(pl);
             }
-
-            // ---- coverage
-            var c = out.coverage || {};
-            var cov = useSection('use-coverage', 'Sanctions coverage', 'coverage',
-                'What the checks were run against.');
-            cov.body.appendChild(useSide([
-                'Every check in this period was run against this list, at the version it was on that day.'
-            ]));
-            var cmain = useMain();
-            cmain.appendChild(useFacts([
-                ['List', c.source || 'OFAC SDN'],
-                ['Addresses on it', c.addresses ? useNum(c.addresses) : '—'],
-                // the list publishes its own date in american order, which is
-                // not how it is read anywhere this is sold
-                ['List dated', c.listDate ? (whenText(listDay(c.listDate)) || c.listDate) : '—'],
-                ['Last refreshed', c.refreshedAt ? whenText(c.refreshedAt, true) : '—']
-            ]));
-            // The breadth of what we screen against, which is a different
-            // question from the state of the one list above.
-            cmain.appendChild(useGridTitle('What we screen against'));
-            cmain.appendChild(useGrid([
-                { label: 'Sanctions lists', used: 1 },
-                { label: 'Chains covered', used: chains },
-                { label: 'Custom watchlist', used: 0 }
-            ]));
-            cov.body.appendChild(cmain);
-            body.appendChild(cov);
-
-            // ---- team
-            var team = useSection('use-team', 'Team', 'team',
-                'Who and what can reach this organisation.');
-            team.body.appendChild(useSide([
-                'A token that has not been used in a long time is worth withdrawing: it can still screen until it is.'
-            ]));
-            var tmain = useMain();
-            // These were five rows of a facts list saying the same five things.
-            // One shape for a metric across the page beats two, and the grid is
-            // the one the rest of it uses.
-            tmain.appendChild(useGrid([
-                { label: 'Members', used: shape.members || 0, of: inc.seats },
-                { label: 'Members joined', used: shape.joined || 0 },
-                { label: 'SSO users', used: 0 },
-                { label: 'Projects', used: shape.projects || 0 },
-                { label: 'API tokens', used: shape.tokens || 0 },
-                { label: 'Tokens used', used: shape.tokensUsed || 0 },
-                { label: 'API calls', used: 0 },
-                { label: 'Webhook deliveries', used: 0 },
-                { label: 'Evidence exports', used: 0 }
-            ]));
-            team.body.appendChild(tmain);
-            body.appendChild(team);
 
             // ---- take it with you
             var foot = document.createElement('div');
