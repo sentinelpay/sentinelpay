@@ -4099,7 +4099,9 @@ html.is-theming .btn {
 .use-tally-rest .use-fact-v { color: var(--ink-4); font-weight: 500; }
 /* The chip that opens it, the same one the period and scope pickers are made
    of, so the one control in this section looks like the controls above it. */
-.use-more { margin-top: 0.75rem; cursor: pointer; }
+/* Centred under the list it opens: it belongs to the whole table, not to the
+   column of names it would otherwise sit under. */
+.use-more { display: flex; width: fit-content; margin: 0.75rem auto 0; cursor: pointer; }
 .use-more-chev { display: inline-flex; color: var(--ink-4); }
 .use-more-chev svg { width: 13px; height: 13px; transition: transform 160ms ease; }
 .use-more[aria-expanded="true"] .use-more-chev svg { transform: rotate(180deg); }
