@@ -197,5 +197,9 @@ test('the plot starts in the same place whatever its scale', () => {
     const cols = /grid-template-columns:\s*([^;]+);/.exec(rule);
     assert.ok(cols, 'the plot has no columns of its own');
     assert.doesNotMatch(cols[1], /^\s*auto\b/, 'the scale column is sized to its numbers again');
-    assert.match(cols[1], /minmax\(\s*[\d.]+rem/, 'the scale column has no set width');
+    assert.match(rule, /--use-scale-w:\s*[\d.]+rem/, 'the scale column has no set width');
+    // and the same width mirrored on the right, so the plot is centred in the
+    // card instead of pushed against its right edge
+    assert.match(cols[1], /minmax\(var\(--use-scale-w\), max-content\) minmax\(0, 1fr\) var\(--use-scale-w\)/,
+        'the plot is no longer centred between two columns of the same width');
 });
