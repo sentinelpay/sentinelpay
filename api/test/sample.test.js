@@ -210,8 +210,24 @@ test('the page does not say the same number three times', () => {
         'the headline card is back at the top of the page');
     assert.doesNotMatch(usage, /sum\.body\.appendChild\(useHeadline\(/,
         'the headline card is inside the usage summary');
-    assert.match(usage, /smain\.appendChild\(useHeadline\(/,
+    assert.match(usage, /var cardEl = kindCard\(\);\s*smain\.appendChild\(cardEl\);/,
         'the screenings section has lost its chart');
+});
+
+// The kinds of work under the card are its switch: picking one redraws the
+// card with that kind's line, and the choice outlives a change of period. Kept
+// outside draw(), or switching to the last week would quietly put live checks
+// back under somebody who had just asked for sweeps.
+test('the kind under the screenings card is what the card draws', () => {
+    const at = SRC.indexOf('function viewUsage(');
+    const usage = SRC.slice(at, SRC.indexOf('\n    function ', at + 40));
+    const draw = usage.indexOf('function draw(out)');
+    assert.ok(usage.indexOf('var pickedKind') !== -1 && usage.indexOf('var pickedKind') < draw,
+        'the picked kind is reset every time the period changes');
+    assert.match(usage, /cardEl\.parentNode\.replaceChild\(next, cardEl\)/,
+        'picking a kind does not redraw the card');
+    assert.match(usage, /kindName\(pickedKind\)/,
+        'the card is not told which kind it is drawing');
     assert.doesNotMatch(usage, /appendChild\(useStrip\(/,
         'the allowance tiles are back');
 });

@@ -4503,7 +4503,7 @@
         });
     }
 
-    function useChart(source, ghost) {
+    function useChart(source, ghost, name) {
         var box = document.createElement('div');
         box.className = 'use-plot';
 
@@ -4690,7 +4690,7 @@
             });
         }
 
-        if (days.length) plot.appendChild(useHover(plot, days, share, up, past));
+        if (days.length) plot.appendChild(useHover(plot, days, share, up, past, name));
         area.appendChild(plot);
         box.appendChild(area);
 
@@ -4710,7 +4710,7 @@
     // itself marked, and the numbers for that day beside it. The alternative is
     // a tooltip per bar, which cannot exist on a line, and a chart nobody can
     // read a single day off.
-    function useHover(plot, days, share, up, past) {
+    function useHover(plot, days, share, up, past, name) {
         var guide = document.createElement('span');
         guide.className = 'use-guide';
         plot.appendChild(guide);
@@ -4757,7 +4757,7 @@
                 var then = past[i];
                 if (then) tip.appendChild(tipLine('use-key-was', 'The period before', then.n));
             } else {
-                tip.appendChild(tipLine('use-key-run', 'Screenings', d.n));
+                tip.appendChild(tipLine('use-key-run', name || 'Screenings', d.n));
                 if (d.flagged > 0) tip.appendChild(tipLine('use-key-flag', 'Flagged', d.flagged));
             }
             tip.style.left = x + '%';
@@ -4795,7 +4795,7 @@
             // half a screen reader cannot use
             // label then number, the way the tooltip beside it reads, because
             // "2 screenings" has three forms in croatian and this had one
-            say.textContent = bucketText(d.day) + '. ' + t('Screenings') + ': ' + useNum(d.n) +
+            say.textContent = bucketText(d.day) + '. ' + t(name || 'Screenings') + ': ' + useNum(d.n) +
                 (d.flagged > 0 ? '. ' + t('Flagged') + ': ' + useNum(d.flagged) : '');
         };
 
@@ -5169,7 +5169,7 @@
     // identical cards leave the reader to decide which one matters, and the
     // answer is always the same one. So it is said once, large, with the chart
     // under it, and everything else is smaller than it.
-    function useHeadline(s, prev, period, cmp, fresh, meter) {
+    function useHeadline(s, prev, period, cmp, fresh, meter, name) {
         var box = document.createElement('section');
         box.className = 'use-head';
 
@@ -5180,7 +5180,7 @@
         top.className = 'use-head-t';
         var lab = document.createElement('span');
         lab.className = 'use-head-k';
-        lab.textContent = t('Screenings');
+        lab.textContent = t(name || 'Screenings');
         top.appendChild(lab);
         var when = document.createElement('span');
         when.className = 'use-head-w';
@@ -5256,14 +5256,14 @@
             // and swapping moves nothing.
             var stack = document.createElement('div');
             stack.className = 'use-plots';
-            stack.appendChild(useLayer('use-alone', useChart(s.days || [], null),
-                useLegend(false)));
-            stack.appendChild(useLayer('use-against', useChart(s.days || [], cmp.days),
-                useLegend(true)));
+            stack.appendChild(useLayer('use-alone', useChart(s.days || [], null, name),
+                useLegend(false, name)));
+            stack.appendChild(useLayer('use-against', useChart(s.days || [], cmp.days, name),
+                useLegend(true, name)));
             box.appendChild(stack);
         } else {
-            box.appendChild(useChart(s.days || [], null));
-            box.appendChild(useLegend(false));
+            box.appendChild(useChart(s.days || [], null, name));
+            box.appendChild(useLegend(false, name));
         }
 
         // What this metric is allowed, at the foot of the card that draws it.
@@ -5340,10 +5340,10 @@
     // spelled out here for a while: the window on the card above, the earlier
     // one beside it. Two ranges in a legend is more reading than a legend is
     // for, and the card already says which window is on screen.
-    function useLegend(against) {
+    function useLegend(against, name) {
         var legend = document.createElement('div');
         legend.className = 'use-legend';
-        legend.appendChild(key('use-key-run', against ? 'This period' : 'Screenings'));
+        legend.appendChild(key('use-key-run', against ? 'This period' : (name || 'Screenings')));
         legend.appendChild(against
             ? key('use-key-was', 'The period before')
             : key('use-key-flag', 'Flagged'));
@@ -6466,6 +6466,24 @@
             });
         }
 
+        // A cell that picks what something else on the page shows. It says
+        // so the way a toggle does -- pressed or not -- because that is what
+        // it is, and a screen reader is told which one is drawn.
+        if (c.onPick) {
+            cell.className += ' is-open is-pick' + (c.picked ? ' is-picked' : '');
+            cell.setAttribute('role', 'button');
+            cell.setAttribute('tabindex', '0');
+            cell.setAttribute('aria-pressed', c.picked ? 'true' : 'false');
+            if (c.key) cell.setAttribute('data-kind', c.key);
+            cell.addEventListener('click', function () { c.onPick(c.key); });
+            cell.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+                    e.preventDefault();
+                    c.onPick(c.key);
+                }
+            });
+        }
+
         var head = document.createElement('div');
         head.className = 'use-mc-h';
         var name = document.createElement('span');
@@ -6707,6 +6725,11 @@
         // whether the month before is drawn behind this one, and the last thing
         // the server said, so the switch can redraw without asking again
         var alongside = false;
+        // Which kind of work the screenings card is drawing. Kept here rather
+        // than in draw(), so switching the period redraws the same line
+        // instead of falling back to live checks under somebody who had just
+        // asked for sweeps.
+        var pickedKind = 'live';
         var latest = null;
 
         // The title and the two controls are one band, and it stays at the top
@@ -7138,7 +7161,44 @@
             // describes it, shown while that sentence is pointed at and held
             // when it is clicked. The meter at its foot is left off: the three
             // rows directly above say included, used and left already.
-            smain.appendChild(useHeadline(s, out.previous || null, out.period, cmp, fresh, null));
+            // Which kinds there are to draw, this window and the one before.
+            // An older server sends none, and the card falls back to every
+            // screening in the scope, which is what it drew before it could
+            // be pointed at one kind.
+            var kinds = out.kinds || null;
+            var kindsWas = (out.previous && out.previous.kinds) || null;
+            var KIND_CELLS = [
+                ['live', 'Live checks'],
+                ['rescreen', 'Re-screens'],
+                ['transaction', 'Transaction screens'],
+                ['history', 'History sweeps'],
+                ['bulk', 'Bulk screens'],
+                // the scope not on screen, which on the production view is
+                // sandbox work: shown because it spends nothing, and a reader
+                // should be able to see that it spends nothing
+                ['other', 'Sandbox screens']
+            ].filter(function (k) { return !kinds || kinds[k[0]]; });
+            if (kinds && !kinds[pickedKind]) pickedKind = 'live';
+
+            var kindName = function (key) {
+                for (var i = 0; i < KIND_CELLS.length; i++) {
+                    if (KIND_CELLS[i][0] === key) return KIND_CELLS[i][1];
+                }
+                return 'Screenings';
+            };
+            var kindCard = function () {
+                if (!kinds) {
+                    return useHeadline(s, out.previous || null, out.period, cmp, fresh, null);
+                }
+                var now = kinds[pickedKind];
+                var was = kindsWas && kindsWas[pickedKind];
+                var prevOf = was ? { total: was.total, partial: out.previous.partial } : null;
+                var cmpOf = cmp && was ? { on: alongside, days: was.days, toggle: cmp.toggle } : null;
+                return useHeadline({ total: now.total, days: now.days }, prevOf, out.period,
+                    cmpOf, fresh, null, kindName(pickedKind));
+            };
+            var cardEl = kindCard();
+            smain.appendChild(cardEl);
 
             // What this period went on.
             //
@@ -7206,19 +7266,43 @@
                 });
             }
 
-            // The one allowance, by the kind of work that spent it. This is
-            // what the summary above deliberately does not show: five numbers
-            // that all come out of the same thirty thousand, which belong
-            // beside each other and nowhere near the figure they add up to.
-            smain.appendChild(useGridTitle('How the allowance was spent'));
-            smain.appendChild(useGrid([
-                { label: 'Live checks', used: runUsed },
-                { label: 'Re-screens', used: 0 },
-                { label: 'Transaction screens', used: 0 },
-                { label: 'History sweeps', used: 0 },
-                { label: 'Bulk screens', used: 0 },
-                { label: 'Sandbox screens', used: 0 }
-            ]));
+            // The work, by kind, over the window on screen.
+            //
+            // This was the cycle's allowance split five ways, and so it sat
+            // still when the period changed while the card above it moved.
+            // It counts the window now, against the same length of time
+            // before it, and each cell is the switch for the card: choosing
+            // one puts its line where the screenings line was.
+            if (kinds) {
+                var pickKind = function (key) {
+                    if (key === pickedKind) return;
+                    pickedKind = key;
+                    var next = kindCard();
+                    cardEl.parentNode.replaceChild(next, cardEl);
+                    cardEl = next;
+                    var cells = kindGrid.querySelectorAll('.use-mc.is-pick');
+                    for (var i = 0; i < cells.length; i++) {
+                        var on = cells[i].getAttribute('data-kind') === key;
+                        cells[i].classList.toggle('is-picked', on);
+                        cells[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+                    }
+                };
+                var kindGrid = useGrid(KIND_CELLS.map(function (k) {
+                    var now = kinds[k[0]];
+                    var was = kindsWas && kindsWas[k[0]];
+                    return {
+                        key: k[0],
+                        label: k[1],
+                        used: now.total,
+                        was: was ? was.total : null,
+                        series: useSeries(now.days, 'n'),
+                        ghost: was ? useSeries(was.days, 'n') : null,
+                        picked: k[0] === pickedKind,
+                        onPick: pickKind
+                    };
+                }), 'is-kinds');
+                smain.appendChild(kindGrid);
+            }
 
             if (spent.length) {
                 var spentTop = document.createElement('div');
