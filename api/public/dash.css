@@ -4495,6 +4495,14 @@ html.is-theming .btn {
 }
 .use-foot p { margin: 0; font-size: 0.82rem; color: var(--ink-4); }
 
+/* One rule on this page: the one that closes the band and opens the summary.
+   Every section after it carried the same line across its top, and with a
+   heading and a badge already starting each one, the line was a second way of
+   saying a new section begins -- six of them stacked down the page read as a
+   form ruled off into boxes. The space each section opens with stays. */
+.use-body > .use-sec ~ .use-sec,
+.use-body > .use-sec ~ .use-foot { border-top: 0; }
+
 @media (max-width: 720px) {
     /* The explanation goes above the numbers rather than beside them. The tiles
        stay two across: one across turns eight short numbers into a page and a
