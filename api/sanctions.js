@@ -287,4 +287,8 @@ function startRefresh() {
     if (timer.unref) timer.unref();
 }
 
-module.exports = { refresh, check, checkMany, status, startRefresh, keyFor, parseSdn };
+// How often the list is fetched again, said by the usage page as a fact about
+// coverage rather than kept here where only the timer can read it.
+const refreshEveryMs = () => REFRESH_EVERY_MS;
+
+module.exports = { refresh, check, checkMany, status, startRefresh, keyFor, parseSdn, refreshEveryMs };

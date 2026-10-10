@@ -324,9 +324,32 @@ test('sanctions coverage is the same shape, counted from the list itself', () =>
     assert.doesNotMatch(sec, /useSide\(/, 'coverage has its column of prose back');
     assert.match(sec, /switched\(\[/, 'coverage is not built on the shared card and cells');
     assert.match(sec, /'By list'/, 'coverage has no breakdown by list');
-    assert.match(sec, /'Addresses on the lists, by chain'/, 'coverage has no breakdown by chain');
+    assert.match(sec, /'Designated addresses, by chain'/, 'coverage has no breakdown by chain');
+    assert.match(sec, /'By sanctions programme'/, 'coverage has no breakdown by programme');
     assert.doesNotMatch(usage, /'What we screen against'/, 'the old grid that repeated other sections is back');
     const api = fs.readFileSync(path.join(__dirname, '..', 'usage.js'), 'utf8');
     assert.match(api, /async function listsIn\(/, 'the server does not count the lists');
     assert.match(api, /FROM sanctioned_addresses\s+WHERE added_at >= \$1/, 'additions are not counted from the list');
+});
+
+// Programmes are grouped the way an analyst asks about them, and an address
+// listed under several is counted once, under its first, so the themes add up
+// to the addresses on the list rather than to more than it.
+test('a sanctions programme lands in one theme, and the themes add up', () => {
+    const api = fs.readFileSync(path.join(__dirname, '..', 'usage.js'), 'utf8');
+    const themes = eval('(' + /const PROGRAMME_THEMES = (\[[\s\S]*?\n\]);/.exec(api)[1] + ')');
+    const at = api.indexOf('function themeOf(');
+    // eslint-disable-next-line no-new-func
+    const themeOf = new Function('PROGRAMME_THEMES', api.slice(at, api.indexOf('\n}\n', at) + 2) + '; return themeOf;')(themes);
+    const cases = {
+        'CYBER2': 'cyber', 'CYBER2,ELECTION-EO13848': 'cyber', 'DPRK4': 'dprk', 'FTO,SDGT': 'terror',
+        'ILLICIT-DRUGS-EO14059': 'drugs', 'SDNTK': 'drugs', 'TCO': 'crime', 'RUSSIA-EO14024': 'russia',
+        'CAATSA - RUSSIA': 'russia', 'UKRAINE-EO13661': 'russia', 'IRGC': 'iran', 'IRAN-EO13902': 'iran',
+        'NPWMD': 'weapons', 'SOMETHING-NEW': 'other', '': 'other',
+    };
+    for (const [codes, want] of Object.entries(cases)) {
+        assert.strictEqual(themeOf(codes), want, codes + ' went to ' + themeOf(codes));
+    }
+    assert.match(api, /programmes\.rows\.forEach\(\(r\) => \{ out\.byTheme\[themeOf\(r\.programs\)\] \+= r\.n; \}\)/,
+        'an address can be counted under more than one theme');
 });
