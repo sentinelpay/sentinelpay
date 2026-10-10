@@ -5328,3 +5328,136 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
         animation: none;
     }
 }
+
+/* ---- usage: the fourth risk band, and the export block ---------------- */
+
+/* Severe is its own band now that the breakdown follows the organisation's
+   four, and it is the darker red the risk scale already has for it. */
+.use-tally-m.is-severe { background: var(--risk-severe); }
+
+/* Four ways out, side by side, sharing hairlines the way the cells above
+   them do. Each is a link to the file and says in a line who it is for. */
+.use-exp {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    margin-top: 0.2rem;
+}
+.use-exp-i {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+    padding: 0.9rem 1rem 0.85rem;
+    border-right: 1px solid var(--line-2);
+    color: inherit;
+    text-decoration: none;
+}
+.use-exp-i:last-child { border-right: 0; }
+.use-exp-i:hover { background: var(--hover); }
+.use-exp-i:hover .use-exp-n { color: var(--link); }
+.use-exp-i:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
+.use-exp-n { font-size: 0.9rem; font-weight: 600; color: var(--ink); }
+.use-exp-p { font-size: 0.78rem; line-height: 1.45; color: var(--ink-3); }
+.use-exp-a { margin-top: auto; padding-top: 0.5rem; font-size: 0.78rem; font-weight: 600; color: var(--link); }
+.use-exp-note { margin: 0.65rem 0 0; font-size: 0.78rem; color: var(--ink-4); }
+
+/* ---- billing --------------------------------------------------------- */
+
+/* The plan, its price and how far through the cycle it is, as one card in
+   the shape of the usage page's: a hairline box, the name in the display
+   face because it is a heading, the price in the body face because it is a
+   number like every other. */
+.bill-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 17rem);
+    gap: 1.5rem;
+    align-items: end;
+    padding: 1.2rem 1.25rem;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    margin-bottom: 0.6rem;
+}
+.bill-name { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.bill-name h3 {
+    margin: 0;
+    font-family: var(--sp-display);
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--ink);
+}
+.bill-price { margin-top: 0.7rem; }
+.bill-price-v { font-size: 1.6rem; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.bill-price-p { margin-top: 0.15rem; font-size: 0.82rem; color: var(--ink-3); }
+.bill-prog-t { font-size: 0.82rem; font-weight: 600; color: var(--ink); margin-bottom: 0.45rem; }
+.bill-prog-p { margin-top: 0.4rem; font-size: 0.78rem; color: var(--ink-3); }
+
+/* One bar for every allowance, in the link colour until it is four fifths
+   gone, amber from there and red when it is full. */
+.bill-bar {
+    position: relative;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--line);
+    overflow: hidden;
+}
+.bill-bar > i { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: var(--link); }
+.bill-bar.is-mid > i { background: var(--risk-mid); }
+.bill-bar.is-bad > i { background: var(--risk-high); }
+.bill-bar.is-empty { opacity: 0.5; }
+
+.bill-ms { display: grid; }
+.bill-m {
+    display: grid;
+    grid-template-columns: minmax(0, 11rem) minmax(0, 8rem) minmax(0, 1fr) minmax(0, 15rem);
+    align-items: center;
+    gap: 1rem;
+    padding: 0.62rem 0;
+    border-bottom: 1px solid var(--line-2);
+    font-size: 0.85rem;
+}
+.bill-m:last-child { border-bottom: 0; }
+.bill-m-k { color: var(--ink-3); }
+.bill-m-v { font-weight: 600; color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+.bill-m-v.is-none { font-weight: 500; color: var(--ink-4); font-size: 0.8rem; }
+.bill-m-n { font-size: 0.78rem; color: var(--ink-4); text-align: right; font-variant-numeric: tabular-nums; }
+.bill-m-n.is-mid { color: var(--risk-mid); }
+
+/* The plans side by side. It scrolls inside itself on a phone rather than
+   pushing the page sideways. */
+.bill-cmp-w { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; }
+.bill-cmp { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.bill-cmp th, .bill-cmp td { padding: 0.6rem 1rem; border-bottom: 1px solid var(--line-2); text-align: right; }
+.bill-cmp tbody tr:last-child th, .bill-cmp tbody tr:last-child td { border-bottom: 0; }
+.bill-cmp tbody th { text-align: left; font-weight: 400; color: var(--ink-3); white-space: nowrap; }
+.bill-cmp td { font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bill-cmp thead th { vertical-align: bottom; padding-top: 0.9rem; border-bottom: 1px solid var(--line); }
+.bill-cmp .is-on { background: var(--sel-bg); }
+.bill-cmp-n { font-family: var(--sp-display); font-size: 1rem; font-weight: 800; color: var(--ink); }
+.bill-cmp-p { margin-top: 0.15rem; font-size: 0.75rem; font-weight: 500; color: var(--ink-3); white-space: nowrap; }
+.bill-cmp-on { margin-top: 0.3rem; font-size: 0.72rem; font-weight: 600; color: var(--link); }
+.bill-cmp thead .bill-cmp-c { text-align: left; font-size: 0.75rem; font-weight: 500; color: var(--ink-4); }
+
+.bill-hist-k { display: flex; flex-direction: column; gap: 0.1rem; }
+.bill-hist-n { color: var(--ink); font-weight: 500; }
+.bill-hist-d { font-size: 0.78rem; color: var(--ink-4); }
+.bill-hist .use-fact-v { display: inline-flex; align-items: center; gap: 0.5rem; }
+
+@media (max-width: 720px) {
+    .use-exp { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .use-exp-i:nth-child(2n) { border-right: 0; }
+    .use-exp-i:nth-child(-n+2) { border-bottom: 1px solid var(--line-2); }
+    .bill-hero { grid-template-columns: minmax(0, 1fr); gap: 1rem; padding: 1rem; }
+    .bill-m { grid-template-columns: minmax(0, 1fr) auto; gap: 0.35rem 0.8rem; }
+    .bill-m .bill-bar { grid-column: 1 / -1; }
+    .bill-m-n { grid-column: 1 / -1; text-align: left; }
+    /* three plans and a label have to share a phone's width, so the labels
+       and the prices under the names wrap instead of pushing the plans off */
+    .bill-cmp { font-size: 0.8rem; }
+    .bill-cmp th, .bill-cmp td { padding: 0.55rem 0.4rem; }
+    .bill-cmp tbody th, .bill-cmp thead .bill-cmp-c { white-space: normal; min-width: 5rem; padding-left: 0.7rem; }
+    .bill-cmp-p { white-space: normal; }
+    .bill-cmp-n { font-size: 0.9rem; }
+}

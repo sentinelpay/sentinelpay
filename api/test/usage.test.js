@@ -8,6 +8,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert');
+const exports_ = require('../exports.js');
 const usage = require('../usage.js');
 
 const day = (iso) => new Date(iso).getTime();
@@ -77,12 +78,13 @@ test('a csv cell cannot become a formula', () => {
         screenings: { total: 0, flagged: 0, clear: 0, addresses: 0, assetCount: 0, days: [] },
         org: { members: 0, projects: 0, tokensUsed: 0 },
     };
-    const text = usage.csv(out, { name: '=cmd|\' /c calc\'!A1' });
+    const list = exports_.sheets(out, { name: '=cmd|\' /c calc\'!A1' }, null);
+    const text = exports_.csv(list, { reference: exports_.reference(list), generated: '2026-10-01T00:00:00.000Z' });
     assert.ok(text.indexOf("'=cmd") !== -1, 'the formula was not made inert');
     assert.ok(!/(^|,)=/m.test(text), 'a cell still begins with =');
 });
 
-test('every csv row has the same number of columns as its header', () => {
+test('every csv row has the same number of columns as its sheet\'s header', () => {
     const out = {
         period: { from: '2026-09-01T00:00:00.000Z', to: '2026-09-04T00:00:00.000Z' },
         scope: 'sandbox',
@@ -92,10 +94,56 @@ test('every csv row has the same number of columns as its header', () => {
         },
         org: { members: 2, projects: 1, tokensUsed: 0 },
     };
-    const lines = usage.csv(out, { name: 'Acme, Inc' }).trim().split('\r\n');
-    const head = lines.indexOf('Day,Screenings,Flagged');
-    assert.ok(head !== -1, 'no day header');
-    lines.slice(head).forEach((line) => {
-        assert.equal(line.split(',').length, 3, 'wrong number of columns: ' + line);
-    });
+    const list = exports_.sheets(out, { name: 'Acme, Inc' }, null);
+    for (const sh of list) {
+        for (const row of sh.rows) assert.equal(row.length, sh.head.length, sh.name + ': ' + row.join('|'));
+    }
+    const daily = list.find((sh) => sh.name === 'Daily');
+    assert.equal(daily.rows.length, 2, 'a day went missing on the way into the file');
+});
+
+// One set of numbers, one reference: the same period printed and exported as a
+// workbook has to be provably the same period.
+test('every format carries the same reference over the same numbers', () => {
+    const out = {
+        period: { from: '2026-09-01T00:00:00.000Z', to: '2026-09-03T00:00:00.000Z' },
+        scope: 'live', zone: 'UTC',
+        screenings: { total: 2, flagged: 1, clear: 1, addresses: 2, assetCount: 1,
+            verdicts: { severe: 1, clear: 1 }, assets: [{ asset: 'XBT', n: 2 }], projects: [],
+            days: [{ day: '2026-09-01', n: 1, flagged: 1, severe: 1 }, { day: '2026-09-02', n: 1, flagged: 0 }] },
+        org: { members: 1, projects: 0 },
+    };
+    const list = exports_.sheets(out, { name: 'Acme' }, null);
+    const meta = { reference: exports_.reference(list), generated: '2026-09-03T00:00:00.000Z', organisation: 'Acme', back: '/' };
+    assert.match(meta.reference, /^[0-9a-f]{64}$/);
+    assert.ok(exports_.csv(list, meta).includes(meta.reference), 'the csv has no reference');
+    assert.equal(JSON.parse(exports_.json(list, meta, out)).reference, 'sha256:' + meta.reference);
+    assert.ok(exports_.report(list, meta, out).includes(meta.reference), 'the report has no reference');
+    const book = exports_.xlsx(list, meta);
+    assert.equal(book.readUInt32LE(0), 0x04034b50, 'the workbook is not a zip');
+    // and the same numbers give the same reference every time
+    assert.equal(exports_.reference(exports_.sheets(out, { name: 'Acme' }, null)), meta.reference);
+});
+
+test('the workbook\'s checksums are the ones zip readers check', () => {
+    assert.equal(exports_.crc32(Buffer.from('123456789')), 0xcbf43926);
+});
+
+// The database hands back dates as Date objects. Every format has to print
+// them as the day they are, not as whatever String() of a Date begins with.
+test('a date from the database prints as its own day in every format', () => {
+    const out = {
+        period: { from: '2026-09-01T00:00:00.000Z', to: '2026-09-02T00:00:00.000Z' },
+        scope: 'live',
+        screenings: { total: 0, days: [] },
+        review: { queue: { open: 1, oldest: new Date('2026-06-12T11:59:55Z') } },
+        evidence: { state: { oldest: new Date('2026-06-11T09:43:25Z') } },
+        org: {},
+    };
+    const list = exports_.sheets(out, { name: 'Acme' }, null);
+    const sum = new Map(list[0].rows);
+    assert.equal(sum.get('Oldest open finding'), '2026-06-12');
+    assert.equal(sum.get('Oldest record'), '2026-06-11');
+    const meta = { reference: exports_.reference(list), generated: '2026-09-02T00:00:00.000Z', organisation: 'Acme', back: '/' };
+    assert.ok(exports_.report(list, meta, out).includes('12 June 2026'), 'the report printed the wrong year');
 });

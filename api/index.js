@@ -22,6 +22,7 @@ const projects = require('./projects');
 const live = require('./live');
 const invites = require('./invites');
 const usage = require('./usage.js');
+const exportsFile = require('./exports.js');
 const billing = require('./billing.js');
 const plans = require('./plans.js');
 
@@ -2403,26 +2404,59 @@ app.post('/v1/orgs/:id/checks/:check/decision', requireCloudflareOrigin, account
 });
 
 // asked what was screened in March and has to hand over something that can be
-// kept and read without an account.
-app.get('/v1/orgs/:id/usage.csv', async (req, res) => {
+// kept and read without an account. Four shapes of the same file: a CSV and a
+// workbook for whoever reconciles it, JSON for a system that ingests it, and a
+// report laid out to be printed, signed and filed.
+const EXPORT_TYPES = {
+    csv: 'text/csv; charset=utf-8',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    json: 'application/json; charset=utf-8',
+    html: 'text/html; charset=utf-8',
+};
+app.get('/v1/orgs/:id/usage.:format', async (req, res) => {
+    const format = String(req.params.format || '');
+    if (!EXPORT_TYPES[format]) return res.status(404).send('Not a format this exports to.');
     const me = await requireSession(req, res);
     if (!me) return;
     const mine = await orgs.membership(me.userId, req.params.id);
     if (!mine) return res.status(404).send('You are not in that organisation.');
-    const out = await usageFor(req, mine);
+    const [out, sub] = await Promise.all([usageFor(req, mine), billing.get(mine.id)]);
     if (!out.ok) return res.status(503).send('Not available right now.');
-    const name = 'sentinelpay-usage-' + out.period.from.slice(0, 10) + '.csv';
+    const list = exportsFile.sheets(out, mine, sub);
+    const meta = {
+        reference: exportsFile.reference(list),
+        generated: new Date().toISOString(),
+        organisation: mine.name || '',
+        back: '/dashboard/org/' + encodeURIComponent(mine.slug || '') + '/usage',
+    };
+    let body;
+    if (format === 'csv') body = exportsFile.csv(list, meta);
+    else if (format === 'xlsx') body = exportsFile.xlsx(list, meta);
+    else if (format === 'json') body = exportsFile.json(list, meta, out);
+    else body = exportsFile.report(list, meta, out);
+
     res.set('Cache-Control', 'no-store, private');
-    res.set('Content-Type', 'text/csv; charset=utf-8');
-    res.set('Content-Disposition', 'attachment; filename="' + name + '"');
+    res.set('Content-Type', EXPORT_TYPES[format]);
     // a browser that decides for itself what a downloaded file is can decide it
     // is html, and a csv full of somebody's addresses is not a page to render
     res.set('X-Content-Type-Options', 'nosniff');
+    res.set('X-Report-Reference', 'sha256:' + meta.reference);
+    if (format === 'html') {
+        // a page of its own, read in the browser and printed from there
+        res.set('Content-Security-Policy',
+            "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
+            "font-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'");
+        res.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
+    } else {
+        res.set('Content-Disposition', 'attachment; filename="' + exportsFile.filename(out, format) + '"');
+    }
+    // filed under the organisation, so the evidence section can count what
+    // left it and in which shape
     await accounts.audit('usage-export', {
-        actor: String(me.userId), subject: String(me.userId), ip: req.realIp,
-        detail: mine.slug + ' ' + out.period.from.slice(0, 10),
+        actor: String(me.userId), subject: 'org:' + mine.id, ip: req.realIp,
+        detail: format + ' ' + out.period.from.slice(0, 10) + ' ' + meta.reference.slice(0, 16),
     });
-    res.send(usage.csv(out, mine));
+    res.send(body);
 });
 
 // What this organisation is on, what it costs, when it renews, and what it has
