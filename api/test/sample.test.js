@@ -310,3 +310,23 @@ test('monitoring follows review, and the page runs in the summary\'s order', () 
     assert.match(api, /async function monitoringIn\(/, 'the server sends no shape for monitoring');
     assert.match(api, /monitoring: watching,/, 'monitoring does not reach the payload');
 });
+
+// Sanctions coverage is built like the sections above it, and what it counts
+// that is real -- addresses added to the list by day, and what is on the lists
+// by list and by chain -- comes from the table that holds the list, not from
+// anything typed into the page.
+test('sanctions coverage is the same shape, counted from the list itself', () => {
+    const at = SRC.indexOf('function viewUsage(');
+    const usage = SRC.slice(at, SRC.indexOf('\n    function ', at + 40));
+    const from = usage.indexOf("useSection('use-coverage'");
+    const sec = usage.slice(from, usage.indexOf('body.appendChild(cov);', from));
+    assert.match(sec, /cov\.body\.className \+= ' is-wide'/, 'coverage has its column of prose back');
+    assert.doesNotMatch(sec, /useSide\(/, 'coverage has its column of prose back');
+    assert.match(sec, /switched\(\[/, 'coverage is not built on the shared card and cells');
+    assert.match(sec, /'By list'/, 'coverage has no breakdown by list');
+    assert.match(sec, /'Addresses on the lists, by chain'/, 'coverage has no breakdown by chain');
+    assert.doesNotMatch(usage, /'What we screen against'/, 'the old grid that repeated other sections is back');
+    const api = fs.readFileSync(path.join(__dirname, '..', 'usage.js'), 'utf8');
+    assert.match(api, /async function listsIn\(/, 'the server does not count the lists');
+    assert.match(api, /FROM sanctioned_addresses\s+WHERE added_at >= \$1/, 'additions are not counted from the list');
+});

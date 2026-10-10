@@ -6711,6 +6711,7 @@
         // and which line the review card is drawing, kept the same way
         var pickedReview = 'decisions';
         var pickedMonitor = 'alerts';
+        var pickedList = 'added';
         var latest = null;
 
         // The title and the two controls are one band, and it stays at the top
@@ -7112,8 +7113,12 @@
                 { label: 'Custom watchlist', used: 0, of: inc.watchlist, series: useFlat(s.days) , go: 'use-monitoring' },
 
                 // ---- Sanctions coverage
-                { label: 'Re-screens triggered', used: 0, series: useFlat(s.days), go: 'use-coverage' },
-                { label: 'List updates applied', used: 0, series: useFlat(s.days), go: 'use-coverage' },
+                { label: 'Re-screens triggered',
+                  used: out.lists ? out.lists.rescreens.total : 0,
+                  series: out.lists ? useSeries(out.lists.rescreens.days, 'n') : useFlat(s.days), go: 'use-coverage' },
+                { label: 'List updates applied',
+                  used: out.lists ? out.lists.updates.total : 0,
+                  series: out.lists ? useSeries(out.lists.updates.days, 'n') : useFlat(s.days), go: 'use-coverage' },
 
                 // ---- API and webhooks
                 { label: 'API tokens', used: shape.tokens || 0, of: inc.tokens, series: useFlat(s.days) },
@@ -7649,12 +7654,23 @@
             }
 
             // ---- coverage
+            //
+            // The lists every check is matched against, built the way the
+            // three sections above it are: the list as it stands in a table,
+            // the window on a card, six cells that switch it, and two
+            // breakdowns in the table's rows.
+            //
+            // It lost its column of prose, which said every check was run
+            // against this list at the version it was on that day -- a sentence
+            // the table under it already says in four rows -- and the small
+            // grid of what we screen against, whose chains are counted under
+            // screenings and whose watchlist under monitoring.
             var c = out.coverage || {};
+            var li = out.lists || null;
+            var liWas = (out.previous && out.previous.lists) || null;
             var cov = useSection('use-coverage', 'Sanctions coverage', 'coverage',
-                'What the checks were run against.');
-            cov.body.appendChild(useSide([
-                'Every check in this period was run against this list, at the version it was on that day.'
-            ]));
+                'What the checks were run against, and what changed on it.');
+            cov.body.className += ' is-wide';
             var cmain = useMain();
             cmain.appendChild(useFacts([
                 ['List', c.source || 'OFAC SDN'],
@@ -7664,14 +7680,37 @@
                 ['List dated', c.listDate ? (whenText(listDay(c.listDate)) || c.listDate) : '—'],
                 ['Last refreshed', c.refreshedAt ? whenText(c.refreshedAt, true) : '—']
             ]));
-            // The breadth of what we screen against, which is a different
-            // question from the state of the one list above.
-            cmain.appendChild(useGridTitle('What we screen against'));
-            cmain.appendChild(useGrid([
-                { label: 'Sanctions lists', used: 1 },
-                { label: 'Chains covered', used: chains },
-                { label: 'Custom watchlist', used: 0 }
-            ]));
+            if (li && !fresh) {
+                cmain.appendChild(switched([
+                    ['updates', 'List updates applied', false],
+                    ['added', 'Addresses added to lists', false],
+                    ['removed', 'Addresses taken off lists', false],
+                    ['rescreens', 'Re-screens triggered', 'Hits'],
+                    ['hits', 'Hits from a list change', false],
+                    ['cleared', 'Cleared by a list change', false]
+                ], {
+                    get: function () { return pickedList; },
+                    set: function (k) { pickedList = k; }
+                }, function (key, which) {
+                    var src = which === 'was' ? liWas : li;
+                    return src && src[key] ? src[key] : null;
+                }));
+                var bl = li.byList || {};
+                var blAll = (bl.ofac || 0) + (bl.eu || 0) + (bl.uk || 0) + (bl.un || 0);
+                tallied(cmain, 'By list', [
+                    { label: 'OFAC SDN', n: bl.ofac || 0 },
+                    { label: t('EU consolidated list'), n: bl.eu || 0 },
+                    { label: t('UK sanctions list'), n: bl.uk || 0 },
+                    { label: t('UN consolidated list'), n: bl.un || 0 }
+                ], blAll);
+                var bc = li.byChain || [];
+                var bcAll = bc.reduce(function (a, r) { return a + r.n; }, 0);
+                if (bc.length) {
+                    tallied(cmain, 'Addresses on the lists, by chain', bc.map(function (r) {
+                        return { label: chainText(r.asset), n: r.n };
+                    }), bcAll);
+                }
+            }
             cov.body.appendChild(cmain);
             body.appendChild(cov);
 

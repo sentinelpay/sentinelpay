@@ -614,6 +614,53 @@ async function monitoringIn(orgId, from, to, sandbox, zone, grain) {
     return out;
 }
 
+// The lists every check is matched against, and what changed on them.
+//
+// Two of these are counted from what is kept. An address on our copy of a list
+// carries the moment it was first loaded, so "added" is a real count by day --
+// the first load shows as one tall day, which is when it happened. What is on
+// the lists now, by chain and by list, is the table as it stands.
+//
+// The rest is the shape the screen is built against, at nought: no history of
+// refreshes is kept, an address taken off a list is simply gone, and nothing
+// re-screens an organisation's past checks when a list changes. Those counts
+// fill in when the refresh job starts recording what it did.
+//
+// None of it is the organisation's own: a sanctions list is the same list for
+// everybody, so this ignores the org and the scope.
+const LIST_LINES = ['updates', 'added', 'removed', 'rescreens', 'hits', 'cleared'];
+const LISTS = ['ofac', 'eu', 'uk', 'un'];
+
+async function listsIn(from, to, zone, grain) {
+    to = until(to);
+    const g = grain || GRAIN.day;
+    const [added, chains] = await Promise.all([
+        db.query(
+            `SELECT ${g.column.replace(/\bat\b/g, 'added_at').replace(/\$5/g, '$3')} AS d, count(*)::int AS n
+               FROM sanctioned_addresses
+              WHERE added_at >= $1 AND added_at < $2
+           GROUP BY 1`,
+            [from, to, zone]
+        ),
+        db.query(
+            `SELECT asset, count(*)::int AS n FROM sanctioned_addresses GROUP BY 1 ORDER BY 2 DESC, 1`
+        ),
+    ]);
+    const empty = () => ({ total: 0, days: fillDays([], from, to, zone, grain) });
+    const out = {};
+    LIST_LINES.forEach((k) => { out[k] = empty(); });
+    out.added = {
+        total: added.rows.reduce((a, r) => a + r.n, 0),
+        days: fillDays(added.rows, from, to, zone, grain),
+    };
+    const onList = chains.rows.reduce((a, r) => a + r.n, 0);
+    out.byList = {};
+    LISTS.forEach((k) => { out.byList[k] = 0; });
+    out.byList.ofac = onList;
+    out.byChain = chains.rows.map((r) => ({ asset: r.asset, n: r.n }));
+    return out;
+}
+
 async function shapeOf(orgId, from, to) {
     const [members, projects, tokens, invited, ever, decided] = await Promise.all([
         db.query('SELECT count(*)::int AS n FROM memberships WHERE org_id = $1', [Number(orgId)]),
@@ -754,7 +801,7 @@ async function forOrg(orgId, opts) {
         const cycle = list.find((p) => p.current) || null;
         const sameWindow = cycle && cycle.key === period.key;
 
-        const [work, shape, shapeBefore, past, marks, ghost, spent, kinds, kindsBefore, review, reviewBefore, waiting, watching, watchingBefore] = await Promise.all([
+        const [work, shape, shapeBefore, past, marks, ghost, spent, kinds, kindsBefore, review, reviewBefore, waiting, watching, watchingBefore, lists, listsBefore] = await Promise.all([
             screeningsIn(orgId, period.from, period.to, sandbox, zone, grain),
             shapeOf(orgId, period.from, period.to),
             // The same shape over the window before this one. Only the counted
@@ -800,6 +847,8 @@ async function forOrg(orgId, opts) {
             queueNow(orgId, sandbox),
             monitoringIn(orgId, period.from, period.to, sandbox, zone, grain),
             monitoringIn(orgId, before.from, before.to, sandbox, zone, grain),
+            listsIn(period.from, period.to, zone, grain),
+            listsIn(before.from, before.to, zone, grain),
         ]);
         const head = past.rows[0] || null;
         return {
@@ -812,6 +861,7 @@ async function forOrg(orgId, opts) {
             kinds,
             review: Object.assign({}, review, { queue: waiting }),
             monitoring: watching,
+            lists,
             marks,
             // what the plan's allowance is measured against, always the cycle
             cycle: cycle ? {
@@ -833,6 +883,7 @@ async function forOrg(orgId, opts) {
                 kinds: kindsBefore,
                 review: reviewBefore,
                 monitoring: watchingBefore,
+                lists: listsBefore,
                 // the same stretch of it, not all of it, while this one runs
                 partial: Boolean(before.partial),
                 days: ghost,
