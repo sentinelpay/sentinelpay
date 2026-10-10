@@ -398,3 +398,26 @@ test('team is the same shape, counted from the people in it', () => {
     assert.match(api, /async function teamIn\(/, 'the server does not count the team');
     assert.match(api, /u\.totp_at IS NOT NULL/, 'two-factor is not counted from the members');
 });
+
+// Evidence is the last of the sections the summary links to, built like the
+// rest, and it now holds the period's CSV that used to sit alone in a footer.
+// What it counts as sealed is counted from the digest on each row, so a check
+// written without one is never reported as sealed.
+test('evidence is the same shape, and its seals come from the rows', () => {
+    const at = SRC.indexOf('function viewUsage(');
+    const usage = SRC.slice(at, SRC.indexOf('\n    function ', at + 40));
+    const ev = usage.indexOf("useSection('use-evidence'");
+    assert.ok(ev > usage.indexOf("useSection('use-team'"), 'evidence is not after team');
+    assert.ok(ev < usage.indexOf("useSection('use-plan'"), 'evidence is not before the plan');
+    const sec = usage.slice(ev, usage.indexOf('body.appendChild(evSec);', ev));
+    assert.match(sec, /evSec\.body\.className \+= ' is-wide'/, 'evidence has a column of prose again');
+    assert.match(sec, /switched\(\[/, 'evidence is not built on the shared card and cells');
+    assert.match(sec, /'Records, by age'/, 'evidence does not say how old the records are');
+    assert.match(sec, /usage\.csv\?period=/, 'the period cannot be downloaded from evidence');
+    assert.doesNotMatch(usage, /use-foot/, 'the footer the CSV sat in is back');
+    assert.match(usage, /label: 'Evidence exports'[^}]*go: 'use-evidence'/, 'Evidence exports does not open evidence');
+    const api = fs.readFileSync(path.join(__dirname, '..', 'usage.js'), 'utf8');
+    assert.match(api, /async function evidenceIn\(/, 'the server does not count the evidence');
+    assert.match(api, /sandbox = \$4 AND digest <> ''/, 'a check without a digest is counted as sealed');
+    assert.match(api, /evidence,\s/, 'evidence does not reach the payload');
+});
