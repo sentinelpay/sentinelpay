@@ -463,3 +463,20 @@ test('opening any popover shuts the one that was open', () => {
     assert.match(SRC, /function popOpened\(shut\) \{[\s\S]{0,120}if \(was && was !== shut\) was\(\);/,
         'opening a popover no longer shuts the previous one');
 });
+
+// The usage page loads as itself: the summary's heading and its cells with
+// their names, the figures shimmering where they will be. The names come from
+// one list, and the grid that replaces them has to name the same cells in the
+// same order, or the page changes shape the moment its numbers arrive.
+test('the usage page loads in the shape it ends in', () => {
+    const list = /var SUMMARY_LABELS = \[([\s\S]*?)\];/.exec(SRC);
+    assert.ok(list, 'there is no list of the summary cells to draw while loading');
+    const waiting = [...list[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
+    const at = SRC.indexOf('sum.body.appendChild(useGrid([');
+    const grid = SRC.slice(at, SRC.indexOf("], 'is-lead'));", at));
+    const drawn = [...grid.matchAll(/label: '([^']+)'/g)].map((m) => m[1]);
+    assert.deepStrictEqual(waiting, drawn, 'the loading cells and the loaded cells disagree');
+    const usage = SRC.slice(SRC.indexOf('function viewUsage('), SRC.indexOf('function viewUsage(') + 4000);
+    assert.match(usage, /body\.appendChild\(usageLoading\(\)\)/, 'usage loads as grey rows again');
+    assert.doesNotMatch(usage, /body\.appendChild\(waiting\(\)\)/, 'usage loads as grey rows again');
+});

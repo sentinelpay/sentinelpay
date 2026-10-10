@@ -5444,3 +5444,25 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
     .bill-cmp-p { white-space: normal; }
     .bill-cmp-n { font-size: 0.9rem; }
 }
+
+/* ---- usage, before the numbers arrive ------------------------------- */
+
+/* The figure and its line, where they will be. The bar is the height of
+   the figure's line, so the cell is already the height it ends at. */
+.use-mc-r > .use-wait-v { height: 20px; margin: 5px 0; border-radius: 5px; }
+.use-mc-r > .use-wait-s { width: 64px; height: 20px; border-radius: 4px; opacity: 0.5; }
+/* the pickers' outline at the pickers' size, so the band does not move */
+.use-wait-chip {
+    display: block;
+    height: 34px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: var(--canvas);
+    animation: shim 1.4s ease-in-out infinite;
+}
+@media (max-width: 720px) {
+    .use-wait-chip.is-x { width: 37px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .use-wait-chip { animation: none; }
+}
