@@ -518,5 +518,9 @@ test('the report for print opens in a dialog and is counted when printed', () =>
     assert.match(index, /\/\^\[0-9a-f\]\{64\}\$\/\.test\(ref\)/, 'the print record takes any reference it is handed');
 
     const exp = fs.readFileSync(path.join(__dirname, '..', 'exports.js'), 'utf8');
-    assert.match(exp, /meta\.embed\s*\?\s*'<body class="is-embed" data-ref="/, 'the embedded report still carries its own toolbar');
+    // the embedded paper opens straight onto the sheet; the toolbar is only in
+    // the report opened on its own
+    const embedded = /meta\.embed\s*\?\s*([^:]+):/.exec(exp);
+    assert.ok(embedded && /<body class="is-embed/.test(embedded[1]), 'the embedded report has no body of its own');
+    assert.doesNotMatch(embedded[1], /class="bar"/, 'the embedded report still carries its own toolbar');
 });
