@@ -2423,7 +2423,11 @@ app.get('/v1/orgs/:id/usage.:format', async (req, res) => {
     const [out, sub] = await Promise.all([usageFor(req, mine), billing.get(mine.id)]);
     if (!out.ok) return res.status(503).send('Not available right now.');
     const list = exportsFile.sheets(out, mine, sub);
+    // The report shown inside the usage page rather than on its own: the
+    // paper without its toolbar, framed by our own pages and nobody else's.
+    const embed = format === 'html' && String(req.query.embed || '') === '1';
     const meta = {
+        embed,
         reference: exportsFile.reference(list),
         generated: new Date().toISOString(),
         organisation: mine.name || '',
@@ -2445,18 +2449,46 @@ app.get('/v1/orgs/:id/usage.:format', async (req, res) => {
         // a page of its own, read in the browser and printed from there
         res.set('Content-Security-Policy',
             "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
-            "font-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'");
+            "font-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; " +
+            'frame-ancestors ' + (embed ? "'self'" : "'none'"));
+        if (embed) res.set('X-Frame-Options', 'SAMEORIGIN');
         res.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
     } else {
         res.set('Content-Disposition', 'attachment; filename="' + exportsFile.filename(out, format) + '"');
     }
     // filed under the organisation, so the evidence section can count what
-    // left it and in which shape
+    // left it and in which shape. A report previewed inside the usage page has
+    // not left yet: it is counted when it is printed, below.
+    if (!embed) {
+        await accounts.audit('usage-export', {
+            actor: String(me.userId), subject: 'org:' + mine.id, ip: req.realIp,
+            detail: format + ' ' + out.period.from.slice(0, 10) + ' ' + meta.reference.slice(0, 16),
+        });
+    }
+    res.send(body);
+});
+
+// A report printed from the preview inside the usage page. The preview itself
+// is not an export -- somebody looked at a period -- but sending it to a
+// printer or a PDF is, and it is filed the way the other formats are, under
+// the reference the preview showed.
+app.post('/v1/orgs/:id/usage/printed', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const mine = await orgs.membership(me.userId, req.params.id);
+    if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
+    const body = req.body || {};
+    const ref = String(body.reference || '');
+    const from = String(body.from || '').slice(0, 10);
+    if (!/^[0-9a-f]{64}$/.test(ref) || !/^\d{4}-\d{2}-\d{2}$/.test(from)) {
+        return res.status(400).json({ error: 'That is not a report this page showed.' });
+    }
     await accounts.audit('usage-export', {
         actor: String(me.userId), subject: 'org:' + mine.id, ip: req.realIp,
-        detail: format + ' ' + out.period.from.slice(0, 10) + ' ' + meta.reference.slice(0, 16),
+        detail: 'html ' + from + ' ' + ref.slice(0, 16),
     });
-    res.send(body);
+    res.set('Cache-Control', 'no-store, private');
+    res.json({ ok: true });
 });
 
 // What this organisation is on, what it costs, when it renews, and what it has

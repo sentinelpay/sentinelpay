@@ -497,3 +497,26 @@ test('every page loads in its own shape, the shell included', () => {
     assert.match(html, /id="canvas"><div class="pg" aria-busy="true">/, 'the page is served blank');
     assert.match(SRC, /avatar\.classList\.remove\('is-wait'\)/, 'the avatar keeps shimmering after it is drawn');
 });
+
+// The report for print is read inside the usage page, in the dashboard's own
+// dialog, rather than in a tab of its own at an address on the api. It may be
+// framed by our own pages and only when asked for as the embedded paper; the
+// report on its own still refuses every frame. Looking at it is not an
+// export, and printing it is.
+test('the report for print opens in a dialog and is counted when printed', () => {
+    const menu = SRC.slice(SRC.indexOf('function exportMenu('), SRC.indexOf('function reportOnItsOwn('));
+    assert.match(menu, /if \(f\[0\] === 'html'\) \{\s*openReport\(org, out\);/, 'the report opens in a new tab again');
+    const open = SRC.slice(SRC.indexOf('function openReport('), SRC.indexOf('// Included / used / left'));
+    assert.match(open, /modalShell\(/, 'the report is not in the dashboard\'s own dialog');
+    assert.match(open, /&embed=1/, 'the dialog frames the report with its toolbar');
+    assert.match(open, /win\.print\(\)/, 'the print button does not print the paper');
+    assert.match(open, /\/usage\/printed/, 'printing from the dialog is not counted');
+
+    const index = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
+    assert.match(index, /'frame-ancestors ' \+ \(embed \? "'self'" : "'none'"\)/, 'the report can be framed by anyone, or by nobody');
+    assert.match(index, /if \(!embed\) \{\s*await accounts\.audit\('usage-export'/, 'a preview is counted as an export');
+    assert.match(index, /\/\^\[0-9a-f\]\{64\}\$\/\.test\(ref\)/, 'the print record takes any reference it is handed');
+
+    const exp = fs.readFileSync(path.join(__dirname, '..', 'exports.js'), 'utf8');
+    assert.match(exp, /meta\.embed\s*\?\s*'<body class="is-embed" data-ref="/, 'the embedded report still carries its own toolbar');
+});

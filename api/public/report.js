@@ -7,4 +7,13 @@
     if (/[?&]print=1\b/.test(location.search)) {
         window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 250); });
     }
+    // Shown inside the usage page, a key pressed while reading the paper is
+    // pressed in here and never reaches the page around it. Escape is the one
+    // that page needs to hear, to close the window the paper sits in.
+    if (window.parent !== window) {
+        document.addEventListener('keydown', function (e) {
+            if (e.key !== 'Escape') return;
+            try { window.parent.postMessage({ sp: 'report-close' }, location.origin); } catch (err) { /* nothing to close */ }
+        });
+    }
 })();
