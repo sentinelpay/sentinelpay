@@ -26,8 +26,11 @@ function chainName(code) {
 
 const KIND_NAMES = [
     ['live', 'Live checks'], ['rescreen', 'Re-screens'], ['transaction', 'Transaction screens'],
-    ['history', 'History sweeps'], ['bulk', 'Bulk screens'], ['other', 'Sandbox screens'],
+    ['history', 'History sweeps'], ['bulk', 'Bulk screens'],
 ];
+// 'other' is the work in the scope not being reported -- the sandbox on the
+// production report, production on the sandbox one. It is said once, as what
+// was left out, and never counted among the kinds of work that were done.
 const LIST_NAMES = [
     ['ofac', 'OFAC SDN'], ['ofacOther', 'OFAC non-SDN lists'], ['eu', 'EU consolidated list'],
     ['uk', 'UK sanctions list'], ['un', 'UN consolidated list'], ['ca', 'Canada (SEMA)'],
@@ -69,41 +72,54 @@ function sheets(out, org, sub) {
     const inc = (sub && sub.included) || {};
     const list = [];
 
+    // The window before this one, the same length, cut to the same number of
+    // days where this one is still running, so a quarter two days old is
+    // compared with two days and not with three months. Beside each count it
+    // can be compared on; blank beside the ones that are a state now rather
+    // than a count over a window.
+    const prev = out.previous || null;
+    const pk = (prev && prev.kinds) || {};
+    const pr = (prev && prev.review) || {};
+    const pa = (prev && prev.api) || {};
+    const was = (fn) => { if (!prev) return ''; try { return fn(); } catch (e) { return ''; } };
+    // checks made in the other scope over the same window: on the production
+    // report, the sandbox work it leaves out, said so rather than hidden
+    const other = out.scope === 'sandbox' ? null : total(kinds.other);
     list.push({
         name: 'Summary',
-        head: ['Item', 'Value'],
+        head: ['Item', 'Value', 'Period before'],
         rows: [
-            ['Organisation', (org && org.name) || ''],
-            ['Period from', day(out.period.from)],
-            ['Period to', day(out.period.to)],
-            ['Scope', out.scope === 'sandbox' ? 'Sandbox' : 'Production'],
-            ['Time zone', out.zone || 'UTC'],
-            ['Plan', sub ? sub.planName : ''],
-            ['Screenings', s.total || 0],
-            ['Screenings included this cycle', inc.screenings == null ? '' : inc.screenings],
-            ['Screenings used this cycle', out.cycle ? out.cycle.used : s.total || 0],
-            ['Sanctioned', v.severe || 0],
-            ['Worth a look', v.review || 0],
-            ['Clear', v.clear || 0],
-            ['Distinct addresses', s.addresses || 0],
-            ['Chains screened', s.assetCount || 0],
-            ['History sweeps', total(kinds.history)],
-            ['Decisions recorded', total(rv.decisions)],
-            ['Cleared', total(rv.cleared)],
-            ['Confirmed', total(rv.confirmed)],
-            ['Findings open now', q.open || 0],
-            ['Oldest open finding', day(q.oldest)],
-            ['Members', shape.members || 0],
-            ['Projects', shape.projects || 0],
-            ['Active API tokens', shape.tokens || 0],
-            ['API calls', total(ap.calls)],
-            ['Webhook deliveries', total(ap.deliveries)],
-            ['Checks on record', es.checks || 0],
-            ['Sealed with a digest', es.sealed || 0],
-            ['Decisions on record', es.decisions || 0],
-            ['Oldest record', day(es.oldest)],
-            ['Kept for (years)', es.retentionYears || ''],
-        ],
+            ['Organisation', (org && org.name) || '', ''],
+            ['Period from', day(out.period.from), was(() => day(prev.from))],
+            ['Period to', day(out.period.to), was(() => day(prev.to))],
+            ['Scope', out.scope === 'sandbox' ? 'Sandbox' : 'Production', ''],
+            ['Time zone', out.zone || 'UTC', ''],
+            ['Plan', sub ? sub.planName : '', ''],
+            ['Screenings', s.total || 0, was(() => prev.total || 0)],
+            ['Screenings included this cycle', inc.screenings == null ? '' : inc.screenings, ''],
+            ['Screenings used this cycle', out.cycle ? out.cycle.used : s.total || 0, ''],
+            ['Sanctioned', v.severe || 0, was(() => prev.severe || 0)],
+            ['Worth a look', v.review || 0, was(() => Math.max(0, (prev.flagged || 0) - (prev.severe || 0)))],
+            ['Clear', v.clear || 0, was(() => Math.max(0, (prev.total || 0) - (prev.flagged || 0)))],
+            ['Distinct addresses', s.addresses || 0, was(() => prev.addresses || 0)],
+            ['Chains screened', s.assetCount || 0, was(() => prev.assetCount || 0)],
+            ['History sweeps', total(kinds.history), was(() => total(pk.history))],
+            ['Decisions recorded', total(rv.decisions), was(() => total(pr.decisions))],
+            ['Cleared', total(rv.cleared), was(() => total(pr.cleared))],
+            ['Confirmed', total(rv.confirmed), was(() => total(pr.confirmed))],
+            ['Findings open now', q.open || 0, ''],
+            ['Oldest open finding', day(q.oldest), ''],
+            ['Members', shape.members || 0, ''],
+            ['Projects', shape.projects || 0, ''],
+            ['Active API tokens', shape.tokens || 0, ''],
+            ['API calls', total(ap.calls), was(() => total(pa.calls))],
+            ['Webhook deliveries', total(ap.deliveries), was(() => total(pa.deliveries))],
+            ['Checks on record', es.checks || 0, ''],
+            ['Sealed with a digest', es.sealed || 0, ''],
+            ['Decisions on record', es.decisions || 0, ''],
+            ['Oldest record', day(es.oldest), ''],
+            ['Kept for (years)', es.retentionYears || '', ''],
+        ].concat(other === null ? [] : [['Sandbox checks not included', other, was(() => total(pk.other))]]),
     });
 
     // One row per day, every daily line on the page side by side. The days are
@@ -448,9 +464,32 @@ function table(sh, opts) {
 
 function report(list, meta, out) {
     const by = (name) => list.find((sh) => sh.name === name);
-    const sum = new Map(by('Summary').rows);
-    const fig = (label, key, foot) => '<div class="fig"><div class="k">' + esc(label) + '</div><div class="v">' +
-        num(sum.get(key)) + '</div>' + (foot ? '<div class="f">' + esc(foot) + '</div>' : '') + '</div>';
+    const rows = new Map(by('Summary').rows.map((r) => [r[0], r]));
+    const sum = new Map(by('Summary').rows.map((r) => [r[0], r[1]]));
+    const before = (key) => (rows.get(key) || [])[2];
+    const sandbox = out.scope === 'sandbox';
+    // A figure, what it was the period before, and a line of its own where it
+    // has one. The earlier figure is set back: it is context for the number
+    // above it, not a second number competing with it.
+    const fig = (label, key, foot) => {
+        const b = before(key);
+        return '<div class="fig"><div class="k">' + esc(label) + '</div><div class="v">' +
+            num(sum.get(key)) + '</div>' +
+            (b !== '' && b !== undefined ? '<div class="w">' + num(b) + ' the period before</div>' : '') +
+            (foot ? '<div class="f">' + esc(foot) + '</div>' : '') + '</div>';
+    };
+    const prevFrom = sum.get('Period from') && before('Period from');
+    const compared = prevFrom
+        ? '<p class="cmp">Each figure is shown beside the same number of days before this period, ' +
+          longDate(before('Period from')) + ' to ' +
+          longDate(new Date(new Date(before('Period to')).getTime() - 1).toISOString()) + '.</p>'
+        : '';
+    const excluded = sum.has('Sandbox checks not included')
+        ? '<p class="cmp">' + (sum.get('Sandbox checks not included')
+            ? num(sum.get('Sandbox checks not included')) + ' sandbox checks were made in this period. ' +
+              'They are test work, spend nothing and are not counted anywhere in this report.'
+            : 'No sandbox checks were made in this period.') + '</p>'
+        : '';
     const incl = sum.get('Screenings included this cycle');
     const daily = by('Daily');
     const ref = meta.reference;
@@ -466,11 +505,16 @@ function report(list, meta, out) {
         // and the way back, so the report is the paper alone. The reference is
         // on the body for that page to read and show beside its print button.
         (meta.embed
-            ? '<body class="is-embed" data-ref="' + esc(ref) + '">'
-            : '<body data-ref="' + esc(ref) + '">' +
+            ? '<body class="is-embed' + (sandbox ? ' is-sandbox' : '') + '" data-ref="' + esc(ref) + '">'
+            : '<body' + (sandbox ? ' class="is-sandbox"' : '') + ' data-ref="' + esc(ref) + '">' +
               '<div class="bar"><a href="' + esc(meta.back) + '">Back to usage</a>' +
               '<button type="button" id="print">Print or save as PDF</button></div>') +
+        // a sandbox report says what it is before anything else, and again
+        // across every printed page, so a copy cannot be mistaken for evidence
+        (sandbox ? '<div class="wm" aria-hidden="true">Sandbox</div>' : '') +
         '<main class="sheet">' +
+        (sandbox ? '<div class="sbx"><strong>Sandbox.</strong> Test data from the sandbox scope. ' +
+            'It spends nothing and is not evidence of screening.</div>' : '') +
         '<header class="top"><div><div class="brand">Sentinelpay</div>' +
         '<h1>Usage and evidence report</h1>' +
         '<p class="lede">' + esc(meta.organisation) + ', ' + longDate(out.period.from) + ' to ' +
@@ -483,8 +527,10 @@ function report(list, meta, out) {
         '<div><dt>Reference</dt><dd>' + esc(ref.slice(0, 16)) + '</dd></div>' +
         '</dl></header>' +
 
-        '<section><h2>At a glance</h2><div class="figs">' +
-        fig('Screenings', 'Screenings', incl !== '' && incl !== undefined
+        '<section><h2>At a glance</h2>' + compared + '<div class="figs">' +
+        // the allowance is spent by production alone; a sandbox report saying
+        // how much of it went would be saying something that never happened
+        fig('Screenings', 'Screenings', !sandbox && incl !== '' && incl !== undefined
             ? num(sum.get('Screenings used this cycle')) + ' of ' + num(incl) + ' used this cycle' : '') +
         fig('Sanctioned', 'Sanctioned') +
         fig('Worth a look', 'Worth a look') +
@@ -493,7 +539,7 @@ function report(list, meta, out) {
         fig('Findings open now', 'Findings open now', sum.get('Oldest open finding') ? 'oldest from ' + longDate(sum.get('Oldest open finding')) : '') +
         fig('Checks on record', 'Checks on record') +
         fig('Sealed with a digest', 'Sealed with a digest', 'kept for ' + sum.get('Kept for (years)') + ' years') +
-        '</div></section>' +
+        '</div>' + excluded + '</section>' +
 
         '<section><h2>Screenings</h2>' + table(by('Screenings'), { grouped: true, pct: true, skipEmpty: true }) + '</section>' +
         '<section><h2>Review</h2>' + table(by('Review'), { grouped: true, pct: true }) + '</section>' +
@@ -552,6 +598,17 @@ h2 { font:700 14px 'Plus Jakarta Sans', Inter, sans-serif; margin:0 0 8px; paddi
 .fig .k { color:var(--ink-3); font-size:11px; }
 .fig .v { font-size:18px; font-weight:700; margin-top:2px; }
 .fig .f { color:var(--ink-3); font-size:10.5px; margin-top:1px; }
+.fig .w { color:var(--ink-3); font-size:10.5px; margin-top:1px; font-variant-numeric:tabular-nums; }
+.cmp { margin:0 0 8px; color:var(--ink-3); font-size:11.5px; }
+.figs + .cmp { margin:8px 0 0; }
+/* the sandbox: a band at the top of the first page and the word across every
+   page behind the figures, faint enough to read through and impossible to
+   miss */
+.sbx { margin:0 0 14px; padding:8px 12px; border:1px solid #e0a43a; border-radius:6px; background:#fff6e5;
+  color:#7a4a00; font-size:12px; }
+.wm { position:fixed; inset:0; display:grid; place-items:center; pointer-events:none; z-index:3;
+  font:800 120px/1 'Plus Jakarta Sans', Inter, sans-serif; color:rgba(224,164,58,.13);
+  transform:rotate(-30deg); letter-spacing:.06em; text-transform:uppercase; }
 table { width:100%; border-collapse:collapse; font-size:12px; }
 thead th { text-align:left; font-weight:600; color:var(--ink-3); font-size:11px; padding:4px 0; border-bottom:1px solid var(--line); }
 td { padding:4px 0; border-bottom:1px solid var(--line); }
