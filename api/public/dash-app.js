@@ -6932,29 +6932,13 @@
             'What you see here is what prints, page for page, with the reference on every sheet.');
         m.box.classList.add('is-report');
 
-        // what is being printed, and the two ways out of here with it
+        // The one thing to do here. The period, the scope and the reference
+        // are printed at the top of the paper itself, so they are not said a
+        // second time above it.
         var bar = document.createElement('div');
         bar.className = 'rep-bar';
-        var meta = document.createElement('div');
-        meta.className = 'rep-meta';
-        var span = document.createElement('span');
-        span.className = 'rep-span';
-        span.textContent = useSpan(out.period) + ' · ' + t(out.scope === 'sandbox' ? 'Sandbox' : 'Production');
-        meta.appendChild(span);
-        var ref = document.createElement('span');
-        ref.className = 'rep-ref';
-        meta.appendChild(ref);
-        bar.appendChild(meta);
-
         var acts = document.createElement('div');
         acts.className = 'rep-acts';
-        var own = document.createElement('a');
-        own.className = 'btn btn-quiet rep-own';
-        own.href = alone;
-        own.target = '_blank';
-        own.rel = 'noopener';
-        own.textContent = t('Open in a new tab');
-        acts.appendChild(own);
         var print = document.createElement('button');
         print.type = 'button';
         print.className = 'btn btn-primary';
@@ -6998,8 +6982,6 @@
                 desk.appendChild(emptyState('That did not load.', 'Close this and try again.'));
                 return;
             }
-            ref.textContent = t('Reference') + ' ' + got.slice(0, 16);
-            ref.title = 'sha256:' + got;
             print.dataset.ref = got;
             print.disabled = false;
             desk.classList.add('is-ready');

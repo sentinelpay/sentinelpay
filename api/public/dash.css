@@ -5524,17 +5524,10 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
 
 .rep-bar {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.6rem 1rem;
-    flex-wrap: wrap;
+    justify-content: center;
     padding-bottom: 0.9rem;
     border-bottom: 1px solid var(--line);
 }
-.rep-meta { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; font-size: 0.85rem; }
-.rep-span { font-weight: 600; color: var(--ink); }
-.rep-ref { font-size: 0.78rem; color: var(--ink-4); }
-.rep-ref:empty::before { content: '\00a0'; }
 .rep-acts { display: flex; align-items: center; gap: 0.5rem; }
 
 /* The desk the sheet lies on: the panel's own surface, the sheet scrolling on
@@ -5596,6 +5589,6 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
     .modal.is-report .modal-head { margin-inline: 2.2rem; }
     .rep-desk { margin: 0 -1rem; }
     .rep-acts { width: 100%; }
-    .rep-acts .btn { flex: 1 1 0; justify-content: center; }
+    .rep-acts .btn { flex: 1 1 auto; justify-content: center; }
     .rep-wait { padding: 20px 16px; }
 }
