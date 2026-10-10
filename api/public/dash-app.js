@@ -6392,6 +6392,87 @@
     // single column of them would run the length of the page with half of it
     // empty. The cells share one set of hairlines rather than each carrying a
     // border, so the grid reads as a table and not as a wall of boxes.
+    // The summary's cells, in the order the grid draws them. Named once so the
+    // page can be drawn before its numbers arrive: the labels never depend on
+    // the answer, only the figures do.
+    var SUMMARY_LABELS = [
+        'Screenings', 'Addresses screened', 'Chains screened', 'History sweeps',
+        'Findings to review', 'Decisions recorded',
+        'Addresses monitored', 'Alerts raised', 'Custom watchlist',
+        'Re-screens triggered', 'List updates applied',
+        'API tokens', 'API calls', 'Webhook deliveries',
+        'Seats', 'Projects', 'SSO users',
+        'Files exported'
+    ];
+
+    // The usage page before its numbers have come back.
+    //
+    // It was the shared loading rows: three lines of grey bars, nothing like
+    // the page that replaced them, so the first thing on screen after every
+    // load was a shape that then jumped into a different one. This is the
+    // page itself -- the summary's heading and its eighteen cells with their
+    // names -- with the figures and the lines beside them shimmering where
+    // they will be, so when the answer lands only the numbers change.
+    function usageLoading() {
+        var sum = useSection('use-summary-wait', 'Usage summary', 'gauge',
+            fill('A figure against a limit is measured against the plan, whatever the window. Plain counts cover {window}, against the same length of time before it.',
+                { window: t('this billing cycle') }));
+        sum.body.className += ' is-wide';
+        var grid = document.createElement('div');
+        grid.className = 'use-mg is-lead';
+        // widths that vary the way the figures do, so the column does not
+        // read as a row of identical bars
+        var W = [6.2, 2.6, 1.6, 4.2, 2.4, 2.2, 5.4, 1.4, 5.4, 1.4, 1.4, 3.6, 5.8, 5.8, 3, 3.2, 4.6, 4.2];
+        SUMMARY_LABELS.forEach(function (label, i) {
+            var cell = document.createElement('div');
+            cell.className = 'use-mc';
+            var head = document.createElement('div');
+            head.className = 'use-mc-h';
+            var name = document.createElement('span');
+            name.className = 'use-mc-n';
+            name.textContent = t(label);
+            head.appendChild(name);
+            cell.appendChild(head);
+            var row = document.createElement('div');
+            row.className = 'use-mc-r';
+            var v = document.createElement('span');
+            v.className = 'shim use-wait-v';
+            v.style.width = W[i % W.length] + 'rem';
+            v.style.animationDelay = ((i % 3) * 0.12) + 's';
+            row.appendChild(v);
+            var sp = document.createElement('span');
+            sp.className = 'shim use-wait-s';
+            sp.style.animationDelay = ((i % 3) * 0.12) + 's';
+            row.appendChild(sp);
+            cell.appendChild(row);
+            grid.appendChild(cell);
+        });
+        sum.body.appendChild(grid);
+        sum.classList.add('use-loading');
+        sum.setAttribute('aria-busy', 'true');
+        return sum;
+    }
+
+    // The band's controls before the periods are known: three chips the size
+    // of the real ones.
+    function usageLoadingBar() {
+        var frag = document.createDocumentFragment();
+        var left = document.createElement('div');
+        left.className = 'use-bar-l';
+        [9.6, 6.2, 4.6].forEach(function (w, i) {
+            var chip = document.createElement('span');
+            chip.className = 'use-wait-chip' + (i === 2 ? ' is-x' : '');
+            chip.style.width = w + 'rem';
+            left.appendChild(chip);
+        });
+        frag.appendChild(left);
+        // Nothing stands in for the line about the plan. Whether it shows at
+        // all depends on how much room the first screen has, which is worked
+        // out once the page is there; a placeholder for it pushed the band a
+        // row taller on a phone and then vanished.
+        return frag;
+    }
+
     function useGrid(cells, mod) {
         var grid = document.createElement('div');
         grid.className = 'use-mg' + (mod ? ' ' + mod : '');
@@ -6965,6 +7046,7 @@
 
         var bar = document.createElement('div');
         bar.className = 'use-bar';
+        bar.appendChild(usageLoadingBar());
         inner.appendChild(bar);
         out_.appendChild(top);
         out_.appendChild(page);
@@ -6972,7 +7054,16 @@
         var body = document.createElement('div');
         body.className = 'use-body';
         page.appendChild(body);
-        body.appendChild(waiting());
+        body.appendChild(usageLoading());
+        // and the same fitting to the first screen the loaded page gets, so
+        // the band settles at the height it will keep instead of moving by a
+        // few pixels when the numbers arrive
+        var waitGap = document.createElement('div');
+        waitGap.className = 'use-fold-gap';
+        waitGap.setAttribute('aria-hidden', 'true');
+        body.appendChild(waitGap);
+        body.appendChild(document.createElement('div'));
+        queueFold();
 
         // Built once, then updated. A live notice reloads this screen, and
         // rebuilding the band would shut a dropdown somebody had just opened
