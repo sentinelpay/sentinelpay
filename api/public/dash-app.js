@@ -6715,6 +6715,7 @@
         var pickedMonitor = 'alerts';
         var pickedList = 'added';
         var pickedApi = 'calls';
+        var pickedTeam = 'joined';
         var latest = null;
 
         // The title and the two controls are one band, and it stays at the top
@@ -7816,21 +7817,64 @@
             }
 
             // ---- team
+            //
+            // The people in the organisation and the projects they work in,
+            // in the shape of the sections above. The table is the state of the
+            // team now, with the security of it beside the size of it: how many
+            // seats are taken, what is still waiting to be accepted, and how
+            // many of the people who can decide about a sanctions hit have a
+            // second factor on. For a compliance tool that last one is the
+            // number an auditor asks for first.
+            var tm = out.team || null;
+            var tmWas = (out.previous && out.previous.team) || null;
             var team = useSection('use-team', 'Team', 'team',
-                'Who and what can reach this organisation.');
-            // The keys, the calls and the deliveries moved to the API section,
-            // and the sentence about withdrawing an unused token went with them.
-            // What is left is people and the projects they work in.
+                'Who can reach this organisation, and what they did in it.');
             team.body.className += ' is-wide';
             var tmain = useMain();
-            tmain.appendChild(useGrid([
-                { label: 'Members', used: shape.members || 0, of: inc.seats },
-                { label: 'Members joined', used: shape.joined || 0 },
-                { label: 'SSO users', used: 0 },
-                { label: 'Projects', used: shape.projects || 0 },
-                { label: 'Projects archived', used: Math.max(0, (shape.projectsAll || 0) - (shape.projects || 0)) },
-                { label: 'Evidence exports', used: 0 }
+            var ts = (tm && tm.state) || {};
+            var members = shape.members || 0;
+            tmain.appendChild(useFacts([
+                ['Seats used', inc.seats ? useNum(members) + ' / ' + useNum(inc.seats) : useNum(members)],
+                ['Pending invites', useNum(ts.pending || 0)],
+                ['Members with two-factor', useNum(ts.mfa || 0) + ' / ' + useNum(members)],
+                ['Single sign-on', inc.ssoSeats === 0 ? t('Not in this plan') : t('Not set up')],
+                ['Projects', inc.projects ? useNum(shape.projects || 0) + ' / ' + useNum(inc.projects) : useNum(shape.projects || 0)],
+                ['Projects archived', useNum(Math.max(0, (shape.projectsAll || 0) - (shape.projects || 0)))]
             ]));
+            if (tm && !fresh) {
+                tmain.appendChild(switched([
+                    ['joined', 'Members joined', false],
+                    ['left', 'Members left', false],
+                    ['invited', 'Invites sent', 'Accepted'],
+                    ['accepted', 'Invites accepted', false],
+                    ['signins', 'Sign-ins', false],
+                    ['projects', 'Projects created', false]
+                ], {
+                    get: function () { return pickedTeam; },
+                    set: function (k) { pickedTeam = k; }
+                }, function (key, which) {
+                    var src = which === 'was' ? tmWas : tm;
+                    return src && src[key] ? src[key] : null;
+                }));
+                // Roles widest first, the order the team page lists them in.
+                var roles = ts.roles || {};
+                tallied(tmain, 'By role', [
+                    { label: t('Owner'), n: roles.owner || 0 },
+                    { label: t('Admin'), n: roles.admin || 0 },
+                    { label: t('Analyst'), n: roles.analyst || 0 },
+                    { label: t('Viewer'), n: roles.viewer || 0 }
+                ], members);
+                // Who has been in lately. A seat nobody has signed into for a
+                // month is a seat paid for and a login nobody is watching.
+                var seen = ts.seen || {};
+                tallied(tmain, 'Last signed in', [
+                    { label: t('Today'), n: seen.today || 0 },
+                    { label: t('This week'), n: seen.week || 0 },
+                    { label: t('This month'), n: seen.month || 0 },
+                    { label: t('Longer ago'), n: seen.older || 0 },
+                    { label: t('Never'), n: seen.never || 0 }
+                ], members);
+            }
             team.body.appendChild(tmain);
             body.appendChild(team);
 

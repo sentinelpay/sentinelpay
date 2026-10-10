@@ -376,3 +376,25 @@ test('the API section states the limits the server enforces', () => {
     assert.match(index, /limits: \{ perMinute: REQUESTS_PER_MINUTE, screensPerHour: SCREENS_PER_HOUR \}/,
         'the page is told limits other than the ones enforced');
 });
+
+// Team is built like the sections above it and counted from what is kept:
+// members joining, invites sent and accepted, sign-ins and projects made, and
+// the state of the team now -- seats, pending invites, who has a second factor
+// on, roles and when each member last signed in.
+test('team is the same shape, counted from the people in it', () => {
+    const at = SRC.indexOf('function viewUsage(');
+    const usage = SRC.slice(at, SRC.indexOf('\n    function ', at + 40));
+    const from = usage.indexOf("useSection('use-team'");
+    const sec = usage.slice(from, usage.indexOf('body.appendChild(team);', from));
+    assert.match(sec, /team\.body\.className \+= ' is-wide'/, 'team has a column of prose again');
+    assert.match(sec, /switched\(\[/, 'team is not built on the shared card and cells');
+    assert.match(sec, /'Members with two-factor'/, 'team does not say how many members have a second factor');
+    assert.match(sec, /'By role'/, 'team has no breakdown by role');
+    assert.match(sec, /'Last signed in'/, 'team does not say who has been in lately');
+    for (const label of ['Seats', 'Projects', 'SSO users']) {
+        assert.match(usage, new RegExp("label: '" + label + "'[^}]*go: 'use-team'"), label + ' does not open team');
+    }
+    const api = fs.readFileSync(path.join(__dirname, '..', 'usage.js'), 'utf8');
+    assert.match(api, /async function teamIn\(/, 'the server does not count the team');
+    assert.match(api, /u\.totp_at IS NOT NULL/, 'two-factor is not counted from the members');
+});
