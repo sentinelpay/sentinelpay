@@ -4029,12 +4029,12 @@ html.is-theming .btn {
 .use-mc-v.is-none { font-size: 0.85rem; font-weight: 500; color: var(--ink-4); }
 /* How the same length of time before this one came to.
    The two ends of the logo's gradient rather than green and red: more findings
-   than last week is not a defeat and should not be printed as one. Cyan for
-   less than before, violet for more. Nothing is drawn at no change, so there
+   than last week is not a defeat and should not be printed as one. Violet for
+   less than before, cyan for more. Nothing is drawn at no change, so there
    is no third colour to pick. */
 .use-mc-d { font-size: 0.78rem; font-weight: 500; }
-.use-mc-d.is-down { color: var(--link); }
-.use-mc-d.is-up { color: var(--fall); }
+.use-mc-d.is-down { color: var(--fall); }
+.use-mc-d.is-up { color: var(--link); }
 
 /* The shape of the window, in every cell. Stretched to the
    box rather than drawn to scale: the horizontal is days and nobody reads a
