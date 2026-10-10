@@ -710,6 +710,44 @@ async function listsIn(from, to, zone, grain) {
     return out;
 }
 
+// What an organisation's own systems asked of the API, and what it sent back.
+//
+// The tokens are real: which are live, and which project each answers for. The
+// traffic is the shape the screen is built against, at nought -- requests are
+// not logged per token, a screening does not record whether it came from a
+// token or the dashboard, and there are no webhooks to deliver. The endpoints
+// are the five a token can call today, so that row fills in by name the day
+// requests are counted.
+const API_LINES = ['calls', 'screens', 'limited', 'errors', 'deliveries', 'failed'];
+const API_ENDPOINTS = [
+    'POST /v1/screen',
+    'GET /v1/screenings',
+    'GET /v1/screenings/stats',
+    'GET /v1/screenings/:id',
+    'GET /v1/screenings/:id/evidence',
+];
+
+async function apiIn(orgId, from, to, zone, grain) {
+    to = until(to);
+    const empty = () => ({ total: 0, days: fillDays([], from, to, zone, grain) });
+    const out = {};
+    API_LINES.forEach((k) => { out[k] = empty(); });
+    out.byEndpoint = API_ENDPOINTS.map((path) => ({ path, n: 0 }));
+    const tokens = await db.query(
+        `SELECT t.project_id AS id, p.name AS name, count(*)::int AS n
+           FROM api_tokens t
+           LEFT JOIN projects p ON p.id = t.project_id
+          WHERE t.org_id = $1 AND t.revoked_at IS NULL
+            AND (t.expires_at IS NULL OR t.expires_at > now())
+       GROUP BY 1, 2 ORDER BY 3 DESC`,
+        [Number(orgId)]
+    );
+    out.byProject = tokens.rows.map((r) => ({ id: r.id ? String(r.id) : '', name: r.name || '', n: r.n }));
+    out.webhooks = 0;
+    out.answerMs = null;
+    return out;
+}
+
 async function shapeOf(orgId, from, to) {
     const [members, projects, tokens, invited, ever, decided] = await Promise.all([
         db.query('SELECT count(*)::int AS n FROM memberships WHERE org_id = $1', [Number(orgId)]),
@@ -850,7 +888,7 @@ async function forOrg(orgId, opts) {
         const cycle = list.find((p) => p.current) || null;
         const sameWindow = cycle && cycle.key === period.key;
 
-        const [work, shape, shapeBefore, past, marks, ghost, spent, kinds, kindsBefore, review, reviewBefore, waiting, watching, watchingBefore, lists, listsBefore] = await Promise.all([
+        const [work, shape, shapeBefore, past, marks, ghost, spent, kinds, kindsBefore, review, reviewBefore, waiting, watching, watchingBefore, lists, listsBefore, api, apiBefore] = await Promise.all([
             screeningsIn(orgId, period.from, period.to, sandbox, zone, grain),
             shapeOf(orgId, period.from, period.to),
             // The same shape over the window before this one. Only the counted
@@ -898,6 +936,8 @@ async function forOrg(orgId, opts) {
             monitoringIn(orgId, before.from, before.to, sandbox, zone, grain),
             listsIn(period.from, period.to, zone, grain),
             listsIn(before.from, before.to, zone, grain),
+            apiIn(orgId, period.from, period.to, zone, grain),
+            apiIn(orgId, before.from, before.to, zone, grain),
         ]);
         const head = past.rows[0] || null;
         return {
@@ -911,6 +951,7 @@ async function forOrg(orgId, opts) {
             review: Object.assign({}, review, { queue: waiting }),
             monitoring: watching,
             lists,
+            api,
             marks,
             // what the plan's allowance is measured against, always the cycle
             cycle: cycle ? {
@@ -933,6 +974,7 @@ async function forOrg(orgId, opts) {
                 review: reviewBefore,
                 monitoring: watchingBefore,
                 lists: listsBefore,
+                api: apiBefore,
                 // the same stretch of it, not all of it, while this one runs
                 partial: Boolean(before.partial),
                 days: ghost,
