@@ -6827,9 +6827,18 @@
             var r = btn.getBoundingClientRect();
             pop.style.top = Math.round(r.bottom + 6) + 'px';
             pop.style.bottom = 'auto';
-            // under the button, and pulled back in where the screen ends
+            // Under the button, from its left edge where there is room and
+            // from its right edge where there is not. The edge is where the
+            // content ends, not the window: the page scrolls inside a box, and
+            // on a phone with a visible scrollbar the window's width ran the
+            // menu over it.
+            var cv = btn.closest('.canvas') || document.getElementById('canvas');
+            var edge = cv ? cv.getBoundingClientRect().left + cv.clientWidth : document.documentElement.clientWidth;
             var w = pop.offsetWidth || 220;
-            pop.style.left = Math.round(Math.max(8, Math.min(r.left, window.innerWidth - w - 8))) + 'px';
+            var left = r.left;
+            if (left + w > edge - 8) left = r.right - w;
+            left = Math.max(8, Math.min(left, edge - 8 - w));
+            pop.style.left = Math.round(left) + 'px';
         }
         function shutMenu() { open(false); }
         function open(on) {
