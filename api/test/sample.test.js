@@ -480,3 +480,20 @@ test('the usage page loads in the shape it ends in', () => {
     assert.match(usage, /body\.appendChild\(usageLoading\(\)\)/, 'usage loads as grey rows again');
     assert.doesNotMatch(usage, /body\.appendChild\(waiting\(\)\)/, 'usage loads as grey rows again');
 });
+
+// Every page loads in the shape of what it is loading: rows built from the
+// real row's class, column names and section titles drawn for real. The one
+// shared set of grey rows is gone, and so is the empty shell: the page is
+// served with the sidebar, the corner and a page already sketched in.
+test('every page loads in its own shape, the shell included', () => {
+    assert.doesNotMatch(SRC, /function waiting\(\)|waiting\(\)\)/, 'a page loads as the shared grey rows again');
+    for (const f of ['skAlerts', 'skLatest', 'skChecks', 'skTeam', 'skTokens', 'skProjects', 'skOrgs', 'skSessions', 'skLogs', 'skBilling', 'skPage']) {
+        assert.match(SRC, new RegExp('function ' + f + '\\('), f + ' is gone');
+        assert.match(SRC, new RegExp('\\b' + f + '\\(\\d*\\)(?!\\s*\\{)'), f + ' is never used');
+    }
+    const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'dashboard-next.html'), 'utf8');
+    assert.match(html, /id="side-nav"[^>]*aria-busy="true"[^>]*>[\s\S]*?nav-sk/, 'the sidebar is served empty');
+    assert.match(html, /class="avatar is-wait"/, 'the avatar is served as a solid circle');
+    assert.match(html, /id="canvas"><div class="pg" aria-busy="true">/, 'the page is served blank');
+    assert.match(SRC, /avatar\.classList\.remove\('is-wait'\)/, 'the avatar keeps shimmering after it is drawn');
+});

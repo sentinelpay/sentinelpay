@@ -319,6 +319,7 @@
             return false;
         }
         host.setAttribute('data-navset', key);
+        host.removeAttribute('aria-busy');
         host.textContent = '';
 
         if (inAccount()) {
@@ -1152,6 +1153,9 @@
         if (name) name.textContent = me.name || '';
         if (mail) mail.textContent = me.email || '';
         if (!avatar || !inner) return;
+        // the page is served with the avatar shimmering until there is a
+        // somebody to draw in it
+        avatar.classList.remove('is-wait');
         inner.textContent = initials(me.name, me.email);
         avatar.setAttribute('aria-label', me.email || 'Account');
         var place = function () { centreInk(avatar, inner); };
@@ -2879,7 +2883,7 @@
         card.className = 'card';
         card.classList.add('ovw');
         first.appendChild(card);
-        card.appendChild(waiting());
+        skBusy(card).appendChild(skAlerts(10));
         page.appendChild(first);
 
         var lastSec = useSection('ovw-last', 'Latest checks',
@@ -2887,6 +2891,7 @@
         lastSec.body.classList.add('is-wide');
         var lastList = document.createElement('div');
         lastList.className = 'card use-last';
+        skBusy(lastList).appendChild(skLatest(6));
         lastSec.body.appendChild(lastList);
         page.appendChild(lastSec);
 
@@ -2993,12 +2998,12 @@
                 });
 
             lastList.textContent = '';
-            lastList.classList.add('is-waiting');
+            skBusy(lastList).appendChild(skLatest(6));
             fetch('/v1/orgs/' + encodeURIComponent(org.id) + '/checks?limit=6' +
                 (me.sandbox ? '&scope=sandbox' : ''), { credentials: 'same-origin' })
                 .then(function (r) { return r.ok ? r.json() : null; })
                 .then(function (body) {
-                    lastList.classList.remove('is-waiting');
+                    lastList.textContent = '';
                     var rows = (body && body.rows) || [];
                     if (!rows.length) {
                         lastList.appendChild(emptyState('Nothing to show yet', ''));
@@ -3007,7 +3012,7 @@
                     rows.forEach(function (r) { lastList.appendChild(lastRow(r)); });
                 })
                 .catch(function (err) {
-                    lastList.classList.remove('is-waiting');
+                    lastList.textContent = '';
                     console.error('[overview] ' + err.message);
                     lastList.appendChild(emptyState('That did not load.', ''));
                 });
@@ -3191,7 +3196,7 @@
         // empty draws its empty state rather than a skeleton, because that is
         // what it will almost certainly say again.
         if (warm) draw();
-        else list.appendChild(waiting());
+        else skBusy(list).appendChild(skProjects(4));
         load();
         return page;
     }
@@ -3885,7 +3890,7 @@
         var card = document.createElement('div');
         card.className = 'card';
         page.appendChild(card);
-        card.appendChild(waiting());
+        skBusy(card).appendChild(skTeam(3));
 
         var rows = [];
         var asked = [];
@@ -8662,7 +8667,7 @@
         var card = document.createElement('div');
         card.className = 'card';
         page.appendChild(card);
-        card.appendChild(waiting());
+        skBusy(card).appendChild(skChecks(12));
 
         var foot = document.createElement('div');
         foot.className = 'chk-foot';
@@ -8797,7 +8802,7 @@
                 (want.from ? '&from=' + encodeURIComponent(want.from) : '') +
                 (want.to ? '&to=' + encodeURIComponent(want.to) : '') +
                 (want.cursor ? '&cursor=' + encodeURIComponent(want.cursor) : '');
-            if (!append) { card.textContent = ''; card.appendChild(waiting()); }
+            if (!append) { card.textContent = ''; skBusy(card).appendChild(skChecks(12)); }
             fetch(url, { credentials: 'same-origin' })
                 .then(function (r) { if (!r.ok) throw new Error('bad'); return r.json(); })
                 .then(function (out) {
@@ -9140,7 +9145,7 @@
         var body = document.createElement('div');
         body.className = 'use-body bill-body';
         page.appendChild(body);
-        body.appendChild(waiting());
+        body.appendChild(skBilling());
         if (!org.id) return page;
         var base = '/v1/orgs/' + encodeURIComponent(org.id);
         var json = function (r) {
@@ -9787,7 +9792,7 @@
         var host = document.createElement('div');
         host.className = 'sess';
         sess.appendChild(host);
-        host.appendChild(waiting());
+        skBusy(host).appendChild(skSessions(3));
 
         var out = document.createElement('div');
         out.className = 'orgh-body';
@@ -9905,7 +9910,7 @@
         var card = document.createElement('div');
         card.className = 'card';
         page.appendChild(card);
-        card.appendChild(waiting());
+        skBusy(card).appendChild(skLogs(10));
 
         function load() {
             fetch('/v1/account/logs', { credentials: 'same-origin' })
@@ -10193,32 +10198,258 @@
         onLive(function (e) { if (e.topic === 'org') load(); });
 
         if (warm) draw();
-        else card.appendChild(waiting());
+        else skBusy(card).appendChild(skTokens(3));
         load();
         return page;
     }
 
     // on a cold visit there is nothing to show yet. the shape of the table reads
     // as the page arriving, where the word Loading reads as the page being late.
-    function waiting() {
-        var box = document.createElement('div');
-        box.className = 'waiting';
-        box.setAttribute('aria-hidden', 'true');
-        for (var i = 0; i < 3; i++) {
-            var row = document.createElement('div');
-            row.className = 'tr';
-            for (var j = 0; j < 4; j++) {
-                var cell = document.createElement('div');
-                var bar = document.createElement('span');
-                bar.className = 'shim';
-                cell.appendChild(bar);
-                row.appendChild(cell);
-            }
-            row.appendChild(document.createElement('div'));
-            box.appendChild(row);
-        }
-        return box;
+    // ---- loading shapes
+    //
+    // Every list in the dashboard used to load as the same three rows of grey
+    // bars, whatever was coming: an alerts table, a list of members, a plan,
+    // the sessions on an account. The bars were a different height from the
+    // rows that replaced them, so each page jumped as it filled in.
+    //
+    // These are the rows themselves. Each is built from the class its real row
+    // uses, so the stylesheet that sizes the real row sizes this one, and in
+    // each cell a bar sits where the text will be: a name-length bar where a
+    // name goes, a pill where a verdict goes, a circle where an avatar goes.
+    // Headings that do not depend on the answer -- column names, section
+    // titles -- are drawn for real.
+
+    // one bar: a width, a height, and a shape where it is not a line of text
+    function sk(w, h, shape) {
+        var b = document.createElement('span');
+        b.className = 'shim sk is-' + (shape || 'line');
+        b.style.width = typeof w === 'number' ? w + 'px' : w;
+        b.style.height = h + 'px';
+        b.style.setProperty('--h', h + 'px');
+        return b;
     }
+    function skEl(tag, cls, kids) {
+        var e = document.createElement(tag);
+        if (cls) e.className = cls;
+        (kids || []).forEach(function (k) { if (k) e.appendChild(k); });
+        return e;
+    }
+    // widths that vary the way real text does, so a column of bars does not
+    // read as a column of identical blocks
+    var SK_W = [1, 0.72, 0.86, 0.6, 0.94, 0.78, 0.66, 0.9, 0.7, 0.82];
+    function skw(base, i) { return (base * SK_W[i % SK_W.length]).toFixed(2) + 'rem'; }
+    // Said to be busy while the shapes are in it, and not after. Every view
+    // clears its container before drawing the real rows, so the moment the
+    // last shape leaves is the moment it stops being busy, whichever view it is.
+    function skBusy(el) {
+        el.setAttribute('aria-busy', 'true');
+        if (window.MutationObserver) {
+            var watch = new MutationObserver(function () {
+                if (el.querySelector('.sk')) return;
+                el.removeAttribute('aria-busy');
+                watch.disconnect();
+            });
+            watch.observe(el, { childList: true });
+        }
+        return el;
+    }
+    function skHead(cls, labels, trailing) {
+        // every one of these is a header row, so the class that says so is
+        // added here rather than written into each call
+        var th = skEl('div', cls);
+        th.classList.add('th');
+        labels.forEach(function (h) {
+            var cl = document.createElement('div');
+            cl.textContent = t(h);
+            th.appendChild(cl);
+        });
+        if (trailing) th.appendChild(document.createElement('div'));
+        return th;
+    }
+
+    // The overview's alerts: the count over a page of checks.
+    function skAlerts(n) {
+        var f = document.createDocumentFragment();
+        f.appendChild(skEl('div', 'ovw-top', [skEl('div', 'ovw-n', [sk('3.4rem', 26), sk('5.5rem', 11)])]));
+        for (var i = 0; i < n; i++) {
+            f.appendChild(skEl('div', 'tr is-last chk-row has-state', [
+                skEl('div', 'chk-addr', [sk(skw(10, i), 12)]),
+                skEl('div', '', [sk(72, 24, 'pill')]),
+                skEl('div', 'tr-dim use-last-c', [sk('2rem', 11)]),
+                skEl('div', 'tr-dim use-last-s', [sk(44, 24, 'pill')]),
+                skEl('div', 'tr-dim use-last-w', [sk('5.6rem', 11)])
+            ]));
+        }
+        f.appendChild(skEl('div', 'ovw-foot', [sk('10rem', 11), sk('7rem', 34, 'chip')]));
+        return f;
+    }
+
+    // The overview's latest checks: the same rows without a state.
+    function skLatest(n) {
+        var f = document.createDocumentFragment();
+        for (var i = 0; i < n; i++) {
+            f.appendChild(skEl('div', 'tr is-last chk-row', [
+                skEl('div', 'chk-addr', [sk(skw(10, i + 3), 12)]),
+                skEl('div', '', [sk(72, 22, 'pill')]),
+                skEl('div', 'tr-dim use-last-c', [sk('2rem', 11)]),
+                skEl('div', 'tr-dim use-last-w', [sk('5.6rem', 11)])
+            ]));
+        }
+        return f;
+    }
+
+    // The checks log: its column names, and rows of an address, a verdict, a
+    // chain and a time.
+    function skChecks(n) {
+        var f = document.createDocumentFragment();
+        f.appendChild(skHead('tr is-chk', ['Address', 'Verdict', 'Chain', 'When']));
+        for (var i = 0; i < n; i++) {
+            f.appendChild(skEl('div', 'tr is-chk chk-row', [
+                skEl('div', 'chk-addr', [sk(skw(10, i), 12)]),
+                skEl('div', '', [sk(46, 19, 'pill')]),
+                skEl('div', 'tr-dim', [sk('2rem', 11)]),
+                skEl('div', 'tr-dim', [sk('8.5rem', 11)])
+            ]));
+        }
+        return f;
+    }
+
+    // The team: column names, and a person per row with their avatar.
+    function skTeam(n) {
+        var slide = skEl('div', 'tbl-slide');
+        slide.appendChild(skHead('tr is-team', ['Member', 'Two-factor', 'Role'], true));
+        for (var i = 0; i < n; i++) {
+            slide.appendChild(skEl('div', 'tr is-team', [
+                skEl('div', 'mem-who', [sk(34, 34, 'dot'), skEl('div', 'tr-t', [sk(skw(8, i), 12)])]),
+                skEl('div', 'tr-facts', [skEl('div', 'tr-dim', [sk(34, 20, 'pill')]), skEl('div', 'tr-dim', [sk('3.4rem', 11)])]),
+                skEl('div', 'tr-act')
+            ]));
+        }
+        var f = document.createDocumentFragment();
+        f.appendChild(slide);
+        f.appendChild(skEl('div', 'tr-foot', [sk('4.5rem', 11)]));
+        return f;
+    }
+
+    // Access tokens: column names, and a token per row.
+    function skTokens(n) {
+        var f = document.createDocumentFragment();
+        f.appendChild(skHead('tr', ['Token', 'Scopes', 'Last used', 'Expires'], true));
+        for (var i = 0; i < n; i++) {
+            f.appendChild(skEl('div', 'tr', [
+                skEl('div', '', [skEl('div', 'tr-name', [sk(skw(8, i), 12)]), skEl('div', 'tr-sub', [sk('6rem', 10)])]),
+                skEl('div', 'tr-tags', [sk(58, 20, 'pill')]),
+                skEl('div', 'tr-dim', [sk('5rem', 11)]),
+                skEl('div', 'tr-dim', [sk('5rem', 11)]),
+                skEl('div', 'tr-act')
+            ]));
+        }
+        return f;
+    }
+
+    // Projects: a card each, with its mark.
+    function skProjects(n) {
+        var f = document.createDocumentFragment();
+        for (var i = 0; i < n; i++) {
+            f.appendChild(skEl('div', 'prj', [
+                skEl('span', 'prj-mark', [sk(34, 34, 'chip')]),
+                skEl('span', 'prj-t', [skEl('span', 'prj-n', [sk(skw(8, i), 12)]), skEl('span', 'prj-sub', [sk('9rem', 10)])])
+            ]));
+        }
+        return f;
+    }
+
+    // Organisations: a row each, with its mark and its plan.
+    function skOrgs(n) {
+        var f = document.createDocumentFragment();
+        for (var i = 0; i < n; i++) {
+            f.appendChild(skEl('div', 'org', [skEl('div', 'org-go', [
+                skEl('span', 'org-mark', [sk(35, 35, 'chip')]),
+                skEl('span', 'org-t', [skEl('span', 'org-n', [sk(skw(7, i), 13)]), skEl('span', 'org-sub', [sk('7rem', 10)])]),
+                sk(72, 22, 'pill')
+            ])]));
+        }
+        return f;
+    }
+
+    // Sessions on an account: when each was last used and how it started.
+    function skSessions(n) {
+        var f = document.createDocumentFragment();
+        for (var i = 0; i < n; i++) {
+            f.appendChild(skEl('div', 'sess-row', [skEl('span', 'sess-t', [
+                skEl('span', 'sess-n', [sk(skw(13, i), 12)]),
+                skEl('span', 'sess-sub', [sk('9rem', 10)])
+            ])]));
+        }
+        return f;
+    }
+
+    // The audit trail: a time, what happened, and from where.
+    function skLogs(n) {
+        var f = document.createDocumentFragment();
+        for (var i = 0; i < n; i++) {
+            f.appendChild(skEl('div', 'lg', [
+                skEl('span', 'lg-when', [sk('6.5rem', 11)]),
+                skEl('span', 'lg-t', [skEl('span', 'lg-n', [sk(skw(6, i), 12)]), skEl('span', 'lg-d', [sk(skw(13, i + 2), 10)])]),
+                skEl('span', 'lg-ip', [sk('4rem', 10)])
+            ]));
+        }
+        return f;
+    }
+
+    // Billing: the plan card and the first allowances, under their real
+    // section headings.
+    function skBilling() {
+        var f = document.createDocumentFragment();
+        var plan = useSection('bill-plan-wait', 'Plan', 'plan', 'The plan this organisation is on, and the day it renews.');
+        plan.body.className += ' is-wide';
+        var pm = useMain();
+        pm.appendChild(skEl('div', 'bill-hero', [
+            skEl('div', 'bill-hero-l', [
+                skEl('div', 'bill-name', [skEl('h3', '', [sk('6rem', 22)]), sk(48, 20, 'pill')]),
+                skEl('div', 'bill-price', [skEl('div', 'bill-price-v', [sk('5.5rem', 26)]), skEl('div', 'bill-price-p', [sk('16rem', 11)])])
+            ]),
+            skEl('div', 'bill-hero-r', [skEl('div', 'bill-prog-t', [sk('5rem', 11)]), skEl('div', 'bill-bar'), skEl('div', 'bill-prog-p', [sk('9rem', 10)])])
+        ]));
+        var facts = skEl('div', 'use-facts');
+        for (var i = 0; i < 5; i++) {
+            facts.appendChild(skEl('div', 'use-fact', [sk(skw(4.5, i), 11), skEl('span', 'use-fact-v', [sk(skw(5.5, i + 4), 11)])]));
+        }
+        pm.appendChild(facts);
+        plan.body.appendChild(pm);
+        f.appendChild(plan);
+        var cyc = useSection('bill-cycle-wait', 'This cycle', 'meter', 'How much of each allowance this cycle has used, and where it is heading.');
+        cyc.body.className += ' is-wide';
+        var cm = useMain();
+        var ms = skEl('div', 'bill-ms');
+        for (var j = 0; j < 6; j++) {
+            ms.appendChild(skEl('div', 'bill-m', [
+                skEl('div', 'bill-m-k', [sk(skw(7, j), 11)]),
+                skEl('div', 'bill-m-v', [sk(skw(5, j + 3), 11)]),
+                skEl('div', 'bill-bar'),
+                skEl('div', 'bill-m-n', [sk('7rem', 10)])
+            ]));
+        }
+        cm.appendChild(ms);
+        cyc.body.appendChild(cm);
+        f.appendChild(cyc);
+        return f;
+    }
+
+    // Any page before the account is known: a title, the line under it, and
+    // a card of rows. The shell draws this until it knows which page it is.
+    function skPage() {
+        var pg = skEl('div', 'pg');
+        pg.setAttribute('aria-busy', 'true');
+        pg.appendChild(skEl('div', 'pg-head', [skEl('div', 'pg-h1', [sk('9rem', 26)]), skEl('div', 'pg-sub', [sk('26rem', 12)])]));
+        var card = skEl('div', 'card');
+        for (var i = 0; i < 6; i++) {
+            card.appendChild(skEl('div', 'tr', [sk(skw(12, i), 12), sk('5rem', 11), sk('4rem', 11)]));
+        }
+        pg.appendChild(card);
+        return pg;
+    }
+
 
     // Taking a row apart. It is cloned into a grid of tiles, each clipped to its
     // own square of the original, and the tiles are thrown outward and faded.
@@ -11229,7 +11460,7 @@
         onLive(function (e) { if (e.topic === 'orgs') load(); });
 
         if (served || warm) draw();
-        else list.appendChild(waiting());
+        else skBusy(list).appendChild(skOrgs(2));
         load();
         return page;
     }
@@ -11589,7 +11820,8 @@
         // its own and has to be drawn again to show them
         ownsLive = false;
         canvas.textContent = '';
-        if (!lastMe) return;
+        // before the account is known, the shape of a page rather than nothing
+        if (!lastMe) { canvas.appendChild(skPage()); return; }
         if (onOrgs()) {
             canvas.appendChild(viewOrgs(lastMe));
             return;

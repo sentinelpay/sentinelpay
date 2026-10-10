@@ -13,7 +13,7 @@
     <script>(function(){var p=location.pathname;var O='/dashboard/organisations';if(p==='/dashboard'||p==='/dashboard/'){location.replace(O);return;}if(p.indexOf('/dashboard/org/')===0){var s=p.slice(15).split('/')[0];if(!/^[a-z0-9]{20}$/.test(s))location.replace(O);}})();</script>
     <script>(function(){var m;try{m=localStorage.getItem('sp-theme')}catch(e){}if(m!=='dark'&&m!=='light'&&m!=='system')m='system';var d=m==='dark'||(m==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.setAttribute('data-theme',d?'dark':'light');document.documentElement.setAttribute('data-theme-mode',m);})();</script>
     <link rel="stylesheet" href="/fonts.2.css">
-    <link rel="stylesheet" href="/dash.265.css">
+    <link rel="stylesheet" href="/dash.266.css">
 </head>
 <body>
     <div class="app" id="app">
@@ -21,8 +21,8 @@
             <a class="side-brand" href="/dashboard" aria-label="Sentinelpay">
                 <img class="side-mark" src="/logo.svg" alt="Sentinelpay" width="28" height="28">
             </a>
-            <nav class="side-nav" id="side-nav" aria-label="Dashboard"></nav>
-            <div class="side-foot" id="side-foot"></div>
+            <nav class="side-nav" id="side-nav" aria-label="Dashboard" aria-busy="true"><div class="nav-group"><span class="shim sk is-line" style="width:2.4rem;height:7px;--h:7px"></span></div><ul class="nav-list"><li><span class="nav-btn nav-sk"><span class="shim sk is-chip" style="width:16px;height:16px;--h:16px"></span><span class="shim sk is-line" style="width:4.4rem;height:10px;--h:10px"></span></span></li></ul><div class="nav-group"><span class="shim sk is-line" style="width:5.6rem;height:7px;--h:7px"></span></div><ul class="nav-list"><li><span class="nav-btn nav-sk"><span class="shim sk is-chip" style="width:16px;height:16px;--h:16px"></span><span class="shim sk is-line" style="width:3rem;height:10px;--h:10px"></span></span></li><li><span class="nav-btn nav-sk"><span class="shim sk is-chip" style="width:16px;height:16px;--h:16px"></span><span class="shim sk is-line" style="width:3.3rem;height:10px;--h:10px"></span></span></li><li><span class="nav-btn nav-sk"><span class="shim sk is-chip" style="width:16px;height:16px;--h:16px"></span><span class="shim sk is-line" style="width:3.4rem;height:10px;--h:10px"></span></span></li><li><span class="nav-btn nav-sk"><span class="shim sk is-chip" style="width:16px;height:16px;--h:16px"></span><span class="shim sk is-line" style="width:8.4rem;height:10px;--h:10px"></span></span></li></ul></nav>
+            <div class="side-foot" id="side-foot"><span class="nav-btn nav-sk"><span class="shim sk is-chip" style="width:16px;height:16px;--h:16px"></span><span class="shim sk is-line" style="width:6rem;height:10px;--h:10px"></span></span></div>
         </aside>
 
         <div class="main">
@@ -35,23 +35,23 @@
                     <div class="acct" id="acct">
                         <button type="button" class="acct-btn" id="acct-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="acct-pop">
                             <span class="who" id="who">
-                                <span class="who-name" id="who-name"></span>
-                                <span class="who-mail" id="who-mail"></span>
+                                <span class="who-name" id="who-name"><span class="shim sk is-line" style="width:5.6rem;height:10px;--h:10px"></span></span>
+                                <span class="who-mail" id="who-mail"><span class="shim sk is-line" style="width:7.4rem;height:8px;--h:8px"></span></span>
                             </span>
-                            <span class="avatar" id="avatar"><span class="avatar-in" id="avatar-in"></span></span>
+                            <span class="avatar is-wait" id="avatar"><span class="avatar-in" id="avatar-in"></span></span>
                         </button>
                         <div class="acct-pop" id="acct-pop" role="menu"></div>
                     </div>
                 </div>
             </header>
 
-            <main class="canvas" id="canvas"></main>
+            <main class="canvas" id="canvas"><div class="pg" aria-busy="true"><div class="pg-head"><div class="pg-h1"><span class="shim sk is-line" style="width:9rem;height:26px;--h:26px"></span></div><div class="pg-sub"><span class="shim sk is-line" style="width:26rem;height:12px;--h:12px"></span></div></div><div class="card"><div class="tr"><span class="shim sk is-line" style="width:12rem;height:12px;--h:12px"></span><span class="shim sk is-line" style="width:5rem;height:11px;--h:11px"></span><span class="shim sk is-line" style="width:4rem;height:11px;--h:11px"></span></div><div class="tr"><span class="shim sk is-line" style="width:8.6rem;height:12px;--h:12px"></span><span class="shim sk is-line" style="width:5rem;height:11px;--h:11px"></span><span class="shim sk is-line" style="width:4rem;height:11px;--h:11px"></span></div><div class="tr"><span class="shim sk is-line" style="width:10.3rem;height:12px;--h:12px"></span><span class="shim sk is-line" style="width:5rem;height:11px;--h:11px"></span><span class="shim sk is-line" style="width:4rem;height:11px;--h:11px"></span></div><div class="tr"><span class="shim sk is-line" style="width:7.2rem;height:12px;--h:12px"></span><span class="shim sk is-line" style="width:5rem;height:11px;--h:11px"></span><span class="shim sk is-line" style="width:4rem;height:11px;--h:11px"></span></div><div class="tr"><span class="shim sk is-line" style="width:11.3rem;height:12px;--h:12px"></span><span class="shim sk is-line" style="width:5rem;height:11px;--h:11px"></span><span class="shim sk is-line" style="width:4rem;height:11px;--h:11px"></span></div><div class="tr"><span class="shim sk is-line" style="width:9.4rem;height:12px;--h:12px"></span><span class="shim sk is-line" style="width:5rem;height:11px;--h:11px"></span><span class="shim sk is-line" style="width:4rem;height:11px;--h:11px"></span></div></div></div></main>
         </div>
 
         <div class="scrim" id="scrim"></div>
     </div>
     <!--SP_STATE-->
     <script src="/i18n.272.js" defer></script>
-    <script src="/dash-app.276.js" defer></script>
+    <script src="/dash-app.277.js" defer></script>
 </body>
 </html>
