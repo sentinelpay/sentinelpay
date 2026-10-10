@@ -579,14 +579,20 @@ function report(list, meta, out) {
         // same composition on A5 as on A3.
         '<main class="doc">' +
         '<section class="sheet cover">' +
-        '<img class="c-mark" src="/logo.svg" alt="Sentinelpay">' +
-        '<h1 class="c-title">Usage and<br>evidence report</h1>' +
-        '<svg class="c-eye" viewBox="33 43 54 34" aria-hidden="true">' +
-        '<defs><linearGradient id="eyeInk" x1="0%" y1="0%" x2="100%" y2="100%">' +
-        '<stop offset="0%" stop-color="#00c8e0"/><stop offset="100%" stop-color="#8a2be2"/></linearGradient></defs>' +
-        '<g fill="none" stroke="url(#eyeInk)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">' +
-        '<path d="M38 60 Q 60 40 82 60 Q 60 80 38 60 Z"/><circle cx="60" cy="60" r="6"/></g>' +
-        '<circle cx="60" cy="60" r="2" fill="url(#eyeInk)"/></svg>' +
+        // The mark for paper. The site's logo is a neon outline with a glow,
+        // drawn for a dark screen; on white it prints pale and soft. This is
+        // the same shield and eye solid in the brand's ink, the way a
+        // company's logo is set on its own documents.
+        '<svg class="c-mark" viewBox="22 12 76 96" role="img" aria-label="Sentinelpay">' +
+        '<path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z" fill="currentColor"/>' +
+        '<path d="M38 60 Q 60 40 82 60 Q 60 80 38 60 Z" fill="#fff"/>' +
+        '<circle cx="60" cy="60" r="6.5" fill="currentColor"/></svg>' +
+        '<h1 class="c-title">Usage and Evidence<br>Report</h1>' +
+        // the eye alone, large and solid, the one image on the page
+        '<svg class="c-eye" viewBox="0 0 100 56" aria-hidden="true">' +
+        '<path d="M2 28 Q 50 -18 98 28 Q 50 74 2 28 Z" fill="currentColor"/>' +
+        '<circle cx="50" cy="28" r="15.5" fill="#fff"/>' +
+        '<circle cx="50" cy="28" r="9" fill="currentColor"/></svg>' +
         '<div class="c-foot"><div class="c-org">' + esc(org) + '</div>' +
         '<div class="c-period">' + from + ' to ' + to + '</div>' +
         (sandbox ? '<div class="c-sbx">Sandbox. Test data, not evidence.</div>' : '') + '</div>' +
@@ -687,15 +693,15 @@ body { margin:0; color:var(--ink); font:var(--fs, 13px)/1.5 Inter, system-ui, sa
    89%. Sizes are shares of the width too, through the sheet's own container
    units, so A5 is A3 made smaller rather than laid out again. */
 .cover { position:relative; padding:0; aspect-ratio:var(--ar); min-height:0; container-type:inline-size; overflow:hidden; }
-.c-mark { position:absolute; top:4.6%; right:8.5%; width:6cqw; height:auto; }
+.c-mark { position:absolute; top:4.8%; right:9%; width:4.6cqw; height:auto; color:var(--ink); }
 .c-title { position:absolute; top:29%; left:39%; right:8%; margin:0;
-  font:700 5.3cqw/1.12 'Plus Jakarta Sans', Inter, sans-serif; letter-spacing:-.015em; color:var(--ink); }
+  font:600 5.1cqw/1.14 'Plus Jakarta Sans', Inter, sans-serif; letter-spacing:-.02em; color:var(--ink); }
 /* the eye is wider than it is tall, so it is given the width that makes
    it weigh what Apple's square mark weighs on the same page */
-.c-eye { position:absolute; top:46%; left:39%; width:25cqw; height:auto; }
+.c-eye { position:absolute; top:46.5%; left:39%; width:24cqw; height:auto; color:var(--ink); }
 .c-foot { position:absolute; top:88.5%; left:39%; right:8%; }
 .c-org { font:600 2.6cqw/1.3 'Plus Jakarta Sans', Inter, sans-serif; color:var(--ink); overflow-wrap:anywhere; }
-.c-period { font:500 2.1cqw/1.4 Inter, sans-serif; color:var(--ink-3); margin-top:.3cqw; }
+.c-period { font:500 2.1cqw/1.4 Inter, sans-serif; color:var(--ink-2); margin-top:.3cqw; }
 .c-sbx { font:600 1.8cqw/1.4 Inter, sans-serif; color:#a06000; margin-top:.8cqw; }
 
 /* the details the cover leaves out, opening the statement */
