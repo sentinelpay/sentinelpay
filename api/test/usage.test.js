@@ -172,12 +172,12 @@ test('a report counts one scope and says what it left out', () => {
     const meta = { reference: exports_.reference(sheets), generated: '2026-09-03T00:00:00.000Z', organisation: 'Acme', back: '/' };
     const html = exports_.report(sheets, meta, live);
     assert.match(html, /7 sandbox checks were made in this period/);
-    assert.doesNotMatch(html, /class="sbx"/);
+    assert.doesNotMatch(html, /class="c-sbx"/);
 
     const sbx = { ...base, scope: 'sandbox' };
     const sheets2 = exports_.sheets(sbx, { name: 'Acme' }, sub);
     const html2 = exports_.report(sheets2, { ...meta, reference: exports_.reference(sheets2) }, sbx);
-    assert.match(html2, /class="sbx"/, 'a sandbox report does not say it is the sandbox');
+    assert.match(html2, /class="c-sbx"/, 'a sandbox report does not say it is the sandbox');
     assert.match(html2, /class="wm"/, 'a printed sandbox page carries no mark');
     assert.doesNotMatch(html2, /used this cycle/, 'the sandbox report claims to have spent the allowance');
     assert.ok(!new Map(sheets2[0].rows.map((r) => [r[0], r])).has('Sandbox checks not included'));
@@ -202,7 +202,7 @@ test('the report is laid out on the paper asked for, A4 when none is', () => {
     const html = exports_.report(list, meta, out);
     assert.match(html, /@page \{ size:210mm 297mm;/, 'the default is not A4');
     assert.match(html, /@bottom-right \{ content:"Page " counter\(page\) " of " counter\(pages\)/, 'pages are not numbered');
-    assert.match(html, /@page :first \{ @top-left \{ content:none; \}/, 'the cover carries the running head');
+    assert.match(html, /@page :first \{ margin:0; @top-left \{ content:none; \}/, 'the cover carries the running head');
     const cover = html.indexOf('class="sheet cover"');
     const statement = html.indexOf('class="sheet statement"');
     const figures = html.indexOf('<h2>At a glance</h2>');

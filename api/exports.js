@@ -540,9 +540,11 @@ function report(list, meta, out) {
         '@top-right { content:' + cssStr(whose) + '; ' + box + ' text-align:right; } ' +
         '@bottom-left { content:' + cssStr('Reference ' + ref.slice(0, 16)) + '; ' + box + ' } ' +
         '@bottom-right { content:"Page " counter(page) " of " counter(pages); ' + box + ' text-align:right; } } ' +
-        '@page :first { @top-left { content:none; } @top-right { content:none; } ' +
+        // the cover is the whole sheet, with no margin and nothing running
+        '@page :first { margin:0; @top-left { content:none; } @top-right { content:none; } ' +
         '@bottom-left { content:none; } @bottom-right { content:none; } } ' +
         ':root { --pw:' + paper.w + 'mm; --ph:' + paper.h + 'mm; --mx:' + paper.mx + 'mm; --my:' + paper.my + 'mm; ' +
+        '--ar:' + paper.w + ' / ' + paper.h + '; ' +
         '--cols:' + paper.cols + '; --fs:' + paper.font + 'px; }';
 
     const sheetHead = '<div class="run" aria-hidden="true"><span>' + esc(running) + '</span><span>' + esc(whose) + '</span></div>';
@@ -569,30 +571,41 @@ function report(list, meta, out) {
         // across every printed page, so a copy cannot be mistaken for evidence
         (sandbox ? '<div class="wm" aria-hidden="true">Sandbox</div>' : '') +
 
-        // ---- the cover: what this is, whose, and for when, on a page alone
+        // ---- the cover, on a page alone and laid out the way Apple lays out
+        // its own: the mark small in the corner, the title in two lines on a
+        // column a little left of centre, the eye large under it, and at the
+        // foot of that column whose report it is and the period it covers.
+        // Every measure is a share of the paper's width, so the cover is the
+        // same composition on A5 as on A3.
         '<main class="doc">' +
         '<section class="sheet cover">' +
-        '<div class="cover-top"><img src="/logo.svg" alt="" width="30" height="30"><span>Sentinelpay</span></div>' +
-        '<div class="cover-mid">' +
-        (sandbox ? '<div class="sbx"><strong>Sandbox.</strong> Test data from the sandbox scope. ' +
-            'It spends nothing and is not evidence of screening.</div>' : '') +
-        '<div class="kicker">Usage and evidence report</div>' +
-        '<h1>' + esc(org) + '</h1>' +
-        '<p class="period">For the period ' + from + ' to ' + to + '</p>' +
+        '<img class="c-mark" src="/logo.svg" alt="Sentinelpay">' +
+        '<h1 class="c-title">Usage and<br>evidence report</h1>' +
+        '<svg class="c-eye" viewBox="33 43 54 34" aria-hidden="true">' +
+        '<defs><linearGradient id="eyeInk" x1="0%" y1="0%" x2="100%" y2="100%">' +
+        '<stop offset="0%" stop-color="#00c8e0"/><stop offset="100%" stop-color="#8a2be2"/></linearGradient></defs>' +
+        '<g fill="none" stroke="url(#eyeInk)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M38 60 Q 60 40 82 60 Q 60 80 38 60 Z"/><circle cx="60" cy="60" r="6"/></g>' +
+        '<circle cx="60" cy="60" r="2" fill="url(#eyeInk)"/></svg>' +
+        '<div class="c-foot"><div class="c-org">' + esc(org) + '</div>' +
+        '<div class="c-period">' + from + ' to ' + to + '</div>' +
+        (sandbox ? '<div class="c-sbx">Sandbox. Test data, not evidence.</div>' : '') + '</div>' +
+        '</section>' +
+
+        // ---- the details the cover leaves out, at the head of the statement
+        '<section class="sheet statement">' + sheetHead +
         '<dl class="meta">' +
+        '<div><dt>Organisation</dt><dd>' + esc(org) + '</dd></div>' +
+        '<div><dt>Period</dt><dd>' + from + ' to ' + to + '</dd></div>' +
         '<div><dt>Scope</dt><dd>' + esc(sum.get('Scope')) + '</dd></div>' +
         (sum.get('Plan') ? '<div><dt>Plan</dt><dd>' + esc(sum.get('Plan')) + '</dd></div>' : '') +
         '<div><dt>Time zone</dt><dd>' + esc(sum.get('Time zone')) + '</dd></div>' +
         '<div><dt>Generated</dt><dd>' + esc(generated) + '</dd></div>' +
         '<div><dt>Paper</dt><dd>' + esc(paper.name) + '</dd></div>' +
-        '<div class="is-ref"><dt>Reference</dt><dd>sha256:' + esc(ref) + '</dd></div>' +
-        '</dl></div>' +
-        '<div class="cover-foot">Confidential. Prepared for ' + esc(org) + ' from its records in Sentinelpay.</div>' +
-        '</section>' +
+        '</dl>' +
 
         // ---- the statement, and the two people who put their names to it,
         // before any figure: what the numbers are, then the numbers
-        '<section class="sheet statement">' + sheetHead +
         '<h2 class="big">Statement</h2>' +
         '<p>This report sets out the screening ' + esc(org) + ' carried out through Sentinelpay between ' +
         from + ' and ' + to + ', in the ' + scopeWord + ' scope. It was generated on ' + esc(generated) +
@@ -660,7 +673,7 @@ body { margin:0; color:var(--ink); font:var(--fs, 13px)/1.5 Inter, system-ui, sa
 .doc { padding:24px 0 48px; }
 .sheet { position:relative; width:var(--pw); max-width:calc(100% - 32px); margin:0 auto 20px; background:#fff;
   padding:var(--my) var(--mx); box-shadow:0 1px 3px rgba(14,35,88,.08), 0 12px 40px rgba(14,35,88,.08); border-radius:3px; }
-.cover, .statement { min-height:var(--ph); display:flex; flex-direction:column; }
+.statement { min-height:var(--ph); display:flex; flex-direction:column; }
 
 /* the running head and foot, drawn on screen where the page rule cannot be */
 .run { display:flex; justify-content:space-between; gap:16px; margin:calc(var(--my) * -0.55) 0 calc(var(--my) * 0.45);
@@ -668,19 +681,29 @@ body { margin:0; color:var(--ink); font:var(--fs, 13px)/1.5 Inter, system-ui, sa
 .run.is-foot { margin:auto 0 calc(var(--my) * -0.55); padding-top:calc(var(--my) * 0.45); }
 .body .run.is-foot { margin-top:28px; }
 
-/* ---- cover */
-.cover-top { display:flex; align-items:center; gap:10px; font:700 15px 'Plus Jakarta Sans', Inter, sans-serif; }
-.cover-mid { margin:auto 0; padding:10% 0; }
-.kicker { font:700 11px 'Plus Jakarta Sans', Inter, sans-serif; letter-spacing:.12em; text-transform:uppercase; color:var(--link); }
-h1 { font:800 34px/1.12 'Plus Jakarta Sans', Inter, sans-serif; margin:10px 0 10px; letter-spacing:-.01em; overflow-wrap:anywhere; }
-.period { margin:0 0 30px; font-size:15px; color:var(--ink-2); }
-.meta { margin:0; padding-top:18px; border-top:2px solid var(--ink); display:grid; grid-template-columns:max-content 1fr;
-  gap:6px 28px; font-size:12px; }
+/* ---- cover
+   Measured off Apple's own cover and kept as shares of the sheet: the column
+   starts 39% in, the title's top at 29% down, the eye from 46%, the foot at
+   89%. Sizes are shares of the width too, through the sheet's own container
+   units, so A5 is A3 made smaller rather than laid out again. */
+.cover { position:relative; padding:0; aspect-ratio:var(--ar); min-height:0; container-type:inline-size; overflow:hidden; }
+.c-mark { position:absolute; top:4.6%; right:8.5%; width:6cqw; height:auto; }
+.c-title { position:absolute; top:29%; left:39%; right:8%; margin:0;
+  font:700 5.3cqw/1.12 'Plus Jakarta Sans', Inter, sans-serif; letter-spacing:-.015em; color:var(--ink); }
+/* the eye is wider than it is tall, so it is given the width that makes
+   it weigh what Apple's square mark weighs on the same page */
+.c-eye { position:absolute; top:46%; left:39%; width:25cqw; height:auto; }
+.c-foot { position:absolute; top:88.5%; left:39%; right:8%; }
+.c-org { font:600 2.6cqw/1.3 'Plus Jakarta Sans', Inter, sans-serif; color:var(--ink); overflow-wrap:anywhere; }
+.c-period { font:500 2.1cqw/1.4 Inter, sans-serif; color:var(--ink-3); margin-top:.3cqw; }
+.c-sbx { font:600 1.8cqw/1.4 Inter, sans-serif; color:#a06000; margin-top:.8cqw; }
+
+/* the details the cover leaves out, opening the statement */
+.statement .meta { margin:0 0 22px; padding:0 0 14px; border:0; border-bottom:1px solid var(--line);
+  display:grid; grid-template-columns:max-content 1fr; gap:4px 28px; font-size:.88em; }
 .meta div { display:contents; }
 .meta dt { color:var(--ink-3); }
 .meta dd { margin:0; font-weight:600; }
-.meta .is-ref dd { font-weight:500; word-break:break-all; }
-.cover-foot { font-size:10.5px; color:var(--ink-3); }
 
 /* ---- statement */
 h2 { font:700 14px 'Plus Jakarta Sans', Inter, sans-serif; margin:0 0 8px; padding-bottom:6px; border-bottom:1px solid var(--line); break-after:avoid; }
@@ -713,22 +736,17 @@ tr { break-inside:avoid; }
 
 /* the sandbox: a band on the cover and the word across every page, faint
    enough to read through and impossible to miss */
-.sbx { margin:0 0 22px; padding:8px 12px; border:1px solid #e0a43a; border-radius:6px; background:#fff6e5;
-  color:#7a4a00; font-size:12px; }
 .wm { position:fixed; inset:0; display:grid; place-items:center; pointer-events:none; z-index:3;
   font:800 120px/1 'Plus Jakarta Sans', Inter, sans-serif; color:rgba(224,164,58,.13);
   transform:rotate(-30deg); letter-spacing:.06em; text-transform:uppercase; }
 
 /* small paper and narrow screens: two figures to a row, the meta under itself */
-.paper-a5 h1 { font-size:26px; }
 .paper-a5 .sign { gap:6mm; padding-top:8mm; }
 .paper-a5 .signer .line { margin-top:9px; }
 .paper-a5 .signer .line span { height:16px; }
 @media (max-width: 700px) {
   .sheet { padding:22px 16px; }
-  .cover, .statement { min-height:0; }
-  .cover-mid { padding:40px 0; }
-  h1 { font-size:26px; }
+  .statement { min-height:0; }
   .figs { grid-template-columns:repeat(2, 1fr); }
   .sign { grid-template-columns:1fr; gap:6mm; padding-top:24px; }
   .run { display:none; }
@@ -747,7 +765,10 @@ html:has(body.is-embed) { background:transparent; }
   .sheet { width:auto; max-width:none; margin:0; padding:0; box-shadow:none; border-radius:0; }
   /* a page each, the height of the page less its margins, less a hair so a
      rounding never spills a cover onto a blank second page */
-  .cover, .statement { min-height:0; height:calc(var(--ph) - 2 * var(--my) - 2mm); break-after:page; }
+  .statement { min-height:0; height:calc(var(--ph) - 2 * var(--my) - 2mm); break-after:page; }
+  /* the cover is the whole sheet, its margin taken off by the first page's
+     rule, less a hair so it never spills onto a blank second page */
+  .cover { width:var(--pw); height:calc(var(--ph) - 1mm); aspect-ratio:auto; break-after:page; }
   .part.is-days { break-before:page; }
 }
 `;
