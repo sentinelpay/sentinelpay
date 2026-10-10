@@ -748,6 +748,77 @@ async function apiIn(orgId, from, to, zone, grain) {
     return out;
 }
 
+// The people in an organisation and the projects they work in, over one window.
+//
+// Counted from what is kept: when each member joined, every invite sent and
+// when it was accepted, each sign-in a member's sessions record, and when each
+// project was made. Who holds which role, who has a second factor on, what is
+// still waiting to be accepted and when each member last signed in are the
+// table as it stands.
+//
+// A member who leaves is simply removed, so departures have no history and
+// that line is at nought until removals are recorded. A sign-in is a session
+// begun, and sessions are pruned per person, so a busy member's oldest ones
+// are not there to count: it says at least, never more than happened.
+const TEAM_LINES = ['joined', 'left', 'invited', 'accepted', 'signins', 'projects'];
+
+async function teamIn(orgId, from, to, zone, grain) {
+    to = until(to);
+    const g = grain || GRAIN.day;
+    const on = (col) => g.column.replace(/\bat\b/g, col);
+    const args = [Number(orgId), from, to, zone];
+    const day = (col, table, where) => db.query(
+        `SELECT ${on(col).replace(/\$5/g, '$4')} AS d, count(*)::int AS n
+           FROM ${table}
+          WHERE ${where} AND ${col} >= $2 AND ${col} < $3
+       GROUP BY 1`, args);
+    const [joined, invited, acceptedRows, signins, made, now] = await Promise.all([
+        day('created_at', 'memberships', 'org_id = $1'),
+        day('created_at', 'invites', 'org_id = $1'),
+        day('accepted_at', 'invites', 'org_id = $1'),
+        day('s.created_at', 'sessions s JOIN memberships m ON m.user_id = s.user_id', 'm.org_id = $1'),
+        day('created_at', 'projects', 'org_id = $1'),
+        db.query(
+            `SELECT
+                (SELECT count(*) FROM invites WHERE org_id = $1 AND accepted_at IS NULL
+                    AND revoked_at IS NULL AND expires_at > now())::int AS pending,
+                (SELECT count(*) FROM memberships m JOIN users u ON u.id = m.user_id
+                    WHERE m.org_id = $1 AND u.totp_at IS NOT NULL)::int AS mfa,
+                (SELECT json_object_agg(role, n) FROM (
+                    SELECT role, count(*)::int AS n FROM memberships WHERE org_id = $1 GROUP BY role) r) AS roles,
+                (SELECT json_build_object(
+                    'today', count(*) FILTER (WHERE u.last_login_at >= now() - interval '1 day'),
+                    'week', count(*) FILTER (WHERE u.last_login_at < now() - interval '1 day'
+                                               AND u.last_login_at >= now() - interval '7 days'),
+                    'month', count(*) FILTER (WHERE u.last_login_at < now() - interval '7 days'
+                                                AND u.last_login_at >= now() - interval '30 days'),
+                    'older', count(*) FILTER (WHERE u.last_login_at < now() - interval '30 days'),
+                    'never', count(*) FILTER (WHERE u.last_login_at IS NULL))
+                   FROM memberships m JOIN users u ON u.id = m.user_id WHERE m.org_id = $1) AS seen`,
+            [Number(orgId)]
+        ),
+    ]);
+    const line = (r) => ({ total: r.rows.reduce((a, x) => a + x.n, 0), days: fillDays(r.rows, from, to, zone, grain) });
+    const out = {};
+    TEAM_LINES.forEach((k) => { out[k] = { total: 0, days: fillDays([], from, to, zone, grain) }; });
+    out.joined = line(joined);
+    // invites sent, with the accepted ones as the card's second line
+    out.invited = line(invited);
+    const acc = new Map(acceptedRows.rows.map((r) => [r.d, r.n]));
+    out.invited.days = out.invited.days.map((d) => ({ ...d, flagged: acc.get(d.day) || 0 }));
+    out.accepted = line(acceptedRows);
+    out.signins = line(signins);
+    out.projects = line(made);
+    const st = now.rows[0] || {};
+    out.state = {
+        pending: st.pending || 0,
+        mfa: st.mfa || 0,
+        roles: st.roles || {},
+        seen: st.seen || { today: 0, week: 0, month: 0, older: 0, never: 0 },
+    };
+    return out;
+}
+
 async function shapeOf(orgId, from, to) {
     const [members, projects, tokens, invited, ever, decided] = await Promise.all([
         db.query('SELECT count(*)::int AS n FROM memberships WHERE org_id = $1', [Number(orgId)]),
@@ -888,7 +959,7 @@ async function forOrg(orgId, opts) {
         const cycle = list.find((p) => p.current) || null;
         const sameWindow = cycle && cycle.key === period.key;
 
-        const [work, shape, shapeBefore, past, marks, ghost, spent, kinds, kindsBefore, review, reviewBefore, waiting, watching, watchingBefore, lists, listsBefore, api, apiBefore] = await Promise.all([
+        const [work, shape, shapeBefore, past, marks, ghost, spent, kinds, kindsBefore, review, reviewBefore, waiting, watching, watchingBefore, lists, listsBefore, api, apiBefore, team, teamBefore] = await Promise.all([
             screeningsIn(orgId, period.from, period.to, sandbox, zone, grain),
             shapeOf(orgId, period.from, period.to),
             // The same shape over the window before this one. Only the counted
@@ -938,6 +1009,8 @@ async function forOrg(orgId, opts) {
             listsIn(before.from, before.to, zone, grain),
             apiIn(orgId, period.from, period.to, zone, grain),
             apiIn(orgId, before.from, before.to, zone, grain),
+            teamIn(orgId, period.from, period.to, zone, grain),
+            teamIn(orgId, before.from, before.to, zone, grain),
         ]);
         const head = past.rows[0] || null;
         return {
@@ -952,6 +1025,7 @@ async function forOrg(orgId, opts) {
             monitoring: watching,
             lists,
             api,
+            team,
             marks,
             // what the plan's allowance is measured against, always the cycle
             cycle: cycle ? {
@@ -975,6 +1049,7 @@ async function forOrg(orgId, opts) {
                 monitoring: watchingBefore,
                 lists: listsBefore,
                 api: apiBefore,
+                team: teamBefore,
                 // the same stretch of it, not all of it, while this one runs
                 partial: Boolean(before.partial),
                 days: ghost,
