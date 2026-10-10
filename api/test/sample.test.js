@@ -449,3 +449,17 @@ test('billing carries the plan, and exports come in four shapes', () => {
     assert.match(index, /app\.get\('\/v1\/orgs\/:id\/usage\.:format'/, 'there is no export route');
     assert.match(index, /subject: 'org:' \+ mine\.id/, 'exports are not filed under the organisation');
 });
+
+// One popover open at a time. Every menu stops its own button's click from
+// reaching the page, so the page's "close on a click elsewhere" never hears a
+// click on another menu's button; without the shared rule the period, scope
+// and export menus could all hang open on top of each other. A popover added
+// later has to join it, or this count comes out short.
+test('opening any popover shuts the one that was open', () => {
+    const shields = (SRC.match(/pop\.addEventListener\('click', function \(e\) \{ e\.stopPropagation\(\); \}\);/g) || []).length;
+    const joined = (SRC.match(/popOpened\((?!shut\) \{)/g) || []).length;
+    assert.ok(shields >= 5, 'fewer popovers than expected; the pattern may have changed');
+    assert.strictEqual(joined, shields, shields + ' popovers, ' + joined + ' of them shut the others');
+    assert.match(SRC, /function popOpened\(shut\) \{[\s\S]{0,120}if \(was && was !== shut\) was\(\);/,
+        'opening a popover no longer shuts the previous one');
+});
