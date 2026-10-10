@@ -46,6 +46,8 @@
         // else: a whole cell is already the target, so the mark is a direction
         // rather than a button.
         chev: '<path d="m9.5 5.5 6.5 6.5-6.5 6.5"/>',
+        // Two angle brackets and a stroke: the API, as a developer draws it.
+        api: '<path d="m8.4 7.4-4.6 4.6 4.6 4.6"/><path d="m15.6 7.4 4.6 4.6-4.6 4.6"/><path d="m13.6 5.4-3.2 13.2"/>',
         // An eye: an address being watched after its first check.
         watch: '<path d="M2.6 12s3.4-6.4 9.4-6.4S21.4 12 21.4 12s-3.4 6.4-9.4 6.4S2.6 12 2.6 12Z"/>' +
             '<circle cx="12" cy="12" r="2.7"/>',
@@ -6712,6 +6714,7 @@
         var pickedReview = 'decisions';
         var pickedMonitor = 'alerts';
         var pickedList = 'added';
+        var pickedApi = 'calls';
         var latest = null;
 
         // The title and the two controls are one band, and it stays at the top
@@ -7121,9 +7124,11 @@
                   series: out.lists ? useSeries(out.lists.updates.days, 'n') : useFlat(s.days), go: 'use-coverage' },
 
                 // ---- API and webhooks
-                { label: 'API tokens', used: shape.tokens || 0, of: inc.tokens, series: useFlat(s.days) },
-                { label: 'API calls', used: 0, of: inc.apiCalls, series: useFlat(s.days) },
-                { label: 'Webhook deliveries', used: 0, of: inc.webhooks, series: useFlat(s.days) },
+                { label: 'API tokens', used: shape.tokens || 0, of: inc.tokens, series: useFlat(s.days), go: 'use-api' },
+                { label: 'API calls', used: out.api ? out.api.calls.total : 0, of: inc.apiCalls,
+                  series: out.api ? useSeries(out.api.calls.days, 'n') : useFlat(s.days), go: 'use-api' },
+                { label: 'Webhook deliveries', used: out.api ? out.api.deliveries.total : 0, of: inc.webhooks,
+                  series: out.api ? useSeries(out.api.deliveries.days, 'n') : useFlat(s.days), go: 'use-api' },
 
                 // ---- Team
                 { label: 'Seats', used: shape.members || 0, of: inc.seats, series: useFlat(s.days), go: 'use-team' },
@@ -7755,25 +7760,75 @@
             cov.body.appendChild(cmain);
             body.appendChild(cov);
 
+            // ---- API and webhooks
+            //
+            // What the organisation's own systems asked of the API and what it
+            // sent back to them, in the shape of the sections above. The table
+            // is what a developer checks before writing a line: how many keys
+            // are live, the two limits they will run into, where events would
+            // be sent, how fast an answer comes, and the version. The limits
+            // are the limiters' own numbers, not restated.
+            var ap = out.api || null;
+            var apWas = (out.previous && out.previous.api) || null;
+            if (ap && !fresh) {
+                var apiSec = useSection('use-api', 'API and webhooks', 'api',
+                    'What your own systems asked of the API, and what it sent back to them.');
+                apiSec.body.className += ' is-wide';
+                var amain = useMain();
+                var lim = ap.limits || {};
+                amain.appendChild(useFacts([
+                    ['Active tokens', inc.tokens ? useNum(shape.tokens || 0) + ' / ' + useNum(inc.tokens) : useNum(shape.tokens || 0)],
+                    ['Tokens used in this period', useNum(shape.tokensUsed || 0)],
+                    ['Request limit', lim.perMinute ? fill('{n} a minute', { n: useNum(lim.perMinute) }) : '—'],
+                    ['Screening limit', lim.screensPerHour ? fill('{n} an hour per IP', { n: useNum(lim.screensPerHour) }) : '—'],
+                    ['Webhook endpoints', useNum(ap.webhooks || 0)],
+                    ['Answer time, slowest in 20', ap.answerMs ? fill('{n} ms', { n: useNum(ap.answerMs) }) : t('Nothing measured yet')],
+                    ['API version', ap.version || 'v1']
+                ]));
+                amain.appendChild(switched([
+                    ['calls', 'API calls', 'Errors'],
+                    ['screens', 'Screens by API', false],
+                    ['limited', 'Rate-limited requests', false],
+                    ['errors', 'Errors', false],
+                    ['deliveries', 'Webhook deliveries', 'Failed'],
+                    ['failed', 'Failed deliveries', false]
+                ], {
+                    get: function () { return pickedApi; },
+                    set: function (k) { pickedApi = k; }
+                }, function (key, which) {
+                    var src = which === 'was' ? apWas : ap;
+                    return src && src[key] ? src[key] : null;
+                }));
+                // The route as a developer writes it, in the ordinary face: the
+                // monospace on this page is for addresses and nothing else.
+                var eps = ap.byEndpoint || [];
+                tallied(amain, 'Calls by endpoint', eps.map(function (e) {
+                    return { label: e.path, n: e.n };
+                }), eps.reduce(function (a, e) { return a + e.n; }, 0));
+                var tp = ap.byProject || [];
+                if (tp.length) {
+                    tallied(amain, 'Active tokens, by project', tp.map(function (r) {
+                        return { label: r.id ? (r.name || t('Unnamed project')) : t('No project'), n: r.n };
+                    }), tp.reduce(function (a, r) { return a + r.n; }, 0));
+                }
+                apiSec.body.appendChild(amain);
+                body.appendChild(apiSec);
+            }
+
             // ---- team
             var team = useSection('use-team', 'Team', 'team',
                 'Who and what can reach this organisation.');
-            team.body.appendChild(useSide([
-                'A token that has not been used in a long time is worth withdrawing: it can still screen until it is.'
-            ]));
+            // The keys, the calls and the deliveries moved to the API section,
+            // and the sentence about withdrawing an unused token went with them.
+            // What is left is people and the projects they work in.
+            team.body.className += ' is-wide';
             var tmain = useMain();
-            // These were five rows of a facts list saying the same five things.
-            // One shape for a metric across the page beats two, and the grid is
-            // the one the rest of it uses.
             tmain.appendChild(useGrid([
                 { label: 'Members', used: shape.members || 0, of: inc.seats },
                 { label: 'Members joined', used: shape.joined || 0 },
                 { label: 'SSO users', used: 0 },
                 { label: 'Projects', used: shape.projects || 0 },
-                { label: 'API tokens', used: shape.tokens || 0 },
-                { label: 'Tokens used', used: shape.tokensUsed || 0 },
-                { label: 'API calls', used: 0 },
-                { label: 'Webhook deliveries', used: 0 },
+                { label: 'Projects archived', used: Math.max(0, (shape.projectsAll || 0) - (shape.projects || 0)) },
                 { label: 'Evidence exports', used: 0 }
             ]));
             team.body.appendChild(tmain);

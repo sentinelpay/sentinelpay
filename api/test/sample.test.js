@@ -353,3 +353,26 @@ test('a sanctions programme lands in one theme, and the themes add up', () => {
     assert.match(api, /programmes\.rows\.forEach\(\(r\) => \{ out\.byTheme\[themeOf\(r\.programs\)\] \+= r\.n; \}\)/,
         'an address can be counted under more than one theme');
 });
+
+// The API section follows coverage. The two limits it states are the
+// limiters' own numbers, named once in index.js, so the page cannot say one
+// thing while the server enforces another; and the keys, calls and deliveries
+// that Team used to repeat are said here and not there.
+test('the API section states the limits the server enforces', () => {
+    const at = SRC.indexOf('function viewUsage(');
+    const usage = SRC.slice(at, SRC.indexOf('\n    function ', at + 40));
+    assert.ok(usage.indexOf("useSection('use-api'") > usage.indexOf("useSection('use-coverage'"),
+        'the API section is not after coverage');
+    assert.ok(usage.indexOf("useSection('use-team'") > usage.indexOf("useSection('use-api'"),
+        'the API section is not before team');
+    for (const label of ['API tokens', 'API calls', 'Webhook deliveries']) {
+        assert.match(usage, new RegExp("label: '" + label + "'[\\s\\S]{0,260}go: 'use-api'"), label + ' does not open the API section');
+    }
+    const team = usage.slice(usage.indexOf("useSection('use-team'"), usage.indexOf('body.appendChild(team);'));
+    assert.doesNotMatch(team, /'API calls'|'Webhook deliveries'|'API tokens'/, 'team repeats the API section');
+    const index = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
+    assert.match(index, /max: REQUESTS_PER_MINUTE,/, 'the request limiter does not use the named limit');
+    assert.match(index, /max: SCREENS_PER_HOUR,/, 'the screening limiter does not use the named limit');
+    assert.match(index, /limits: \{ perMinute: REQUESTS_PER_MINUTE, screensPerHour: SCREENS_PER_HOUR \}/,
+        'the page is told limits other than the ones enforced');
+});

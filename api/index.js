@@ -511,9 +511,14 @@ function sendPage(res, req, file, status, forcedLang, cache, state) {
         .send(renderPage(file, req, forcedLang, state));
 }
 
+// The two limits a token runs into, named once: the limiter enforces them and
+// the usage page says them, and a number typed into each would drift.
+const REQUESTS_PER_MINUTE = 300;
+const SCREENS_PER_HOUR = 60;
+
 app.use(rateLimit({
     windowMs: 60 * 1000,
-    max: 300,
+    max: REQUESTS_PER_MINUTE,
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => `all:${ipKey(req.realIp)}`,
@@ -920,7 +925,7 @@ const demoRequestLimiter = rateLimit({
 
 const screenLimiter = rateLimit({
     windowMs: 60 * 60 * 1000,
-    max: 60,
+    max: SCREENS_PER_HOUR,
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => `screen:${ipKey(req.realIp)}`,
@@ -2268,6 +2273,12 @@ app.get('/v1/orgs/:id/usage', async (req, res) => {
             addresses: listed.addressCount || 0,
             refreshedAt: listed.refreshedAt || null,
         },
+        // what a token runs into, read from the limiters rather than restated
+        api: out.api ? {
+            ...out.api,
+            limits: { perMinute: REQUESTS_PER_MINUTE, screensPerHour: SCREENS_PER_HOUR },
+            version: 'v1',
+        } : null,
     });
 });
 
