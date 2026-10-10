@@ -462,12 +462,47 @@ function table(sh, opts) {
         esc(i === 0 && o.grouped ? '' : h) + '</th>').join('') + '</tr></thead><tbody>' + body + '</tbody></table>';
 }
 
+// The paper sizes a report can be printed on. A4 unless asked otherwise: it is
+// what a compliance file in Europe is kept on, and the browser's own default
+// is whatever the reader's printer was last set to. Each size carries the
+// margins that suit it, so a page of A5 is not laid out with A3's.
+const PAPERS = {
+    a4: { name: 'A4', w: 210, h: 297, mx: 16, my: 18, cols: 4, font: 13 },
+    letter: { name: 'US Letter', w: 215.9, h: 279.4, mx: 16, my: 17, cols: 4, font: 13 },
+    legal: { name: 'US Legal', w: 215.9, h: 355.6, mx: 16, my: 18, cols: 4, font: 13 },
+    a3: { name: 'A3', w: 297, h: 420, mx: 22, my: 24, cols: 4, font: 14 },
+    a5: { name: 'A5', w: 148, h: 210, mx: 11, my: 13, cols: 2, font: 11 },
+};
+function paperOf(key) {
+    return PAPERS[String(key || '').toLowerCase()] ? String(key).toLowerCase() : 'a4';
+}
+
+// A string set inside a stylesheet. Escaped for css, and with no way to close
+// the style element it sits in: an organisation named "</style>" stays a name.
+function cssStr(v) {
+    return '"' + String(v === null || v === undefined ? '' : v)
+        .replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/[\r\n]+/g, ' ').replace(/</g, '\\3C ') + '"';
+}
+
+function lastDay(iso) {
+    return new Date(new Date(iso).getTime() - 1).toISOString();
+}
+
 function report(list, meta, out) {
     const by = (name) => list.find((sh) => sh.name === name);
     const rows = new Map(by('Summary').rows.map((r) => [r[0], r]));
     const sum = new Map(by('Summary').rows.map((r) => [r[0], r[1]]));
     const before = (key) => (rows.get(key) || [])[2];
     const sandbox = out.scope === 'sandbox';
+    const paperKey = paperOf(meta.paper);
+    const paper = PAPERS[paperKey];
+    const ref = meta.reference;
+    const org = meta.organisation || '';
+    const from = longDate(out.period.from);
+    const to = longDate(lastDay(out.period.to));
+    const scopeWord = sandbox ? 'sandbox' : 'production';
+    const generated = meta.generated.replace('T', ' ').slice(0, 16) + ' UTC';
+
     // A figure, what it was the period before, and a line of its own where it
     // has one. The earlier figure is set back: it is context for the number
     // above it, not a second number competing with it.
@@ -478,11 +513,11 @@ function report(list, meta, out) {
             (b !== '' && b !== undefined ? '<div class="w">' + num(b) + ' the period before</div>' : '') +
             (foot ? '<div class="f">' + esc(foot) + '</div>' : '') + '</div>';
     };
-    const prevFrom = sum.get('Period from') && before('Period from');
-    const compared = prevFrom
+    const incl = sum.get('Screenings included this cycle');
+    const daily = by('Daily');
+    const compared = before('Period from')
         ? '<p class="cmp">Each figure is shown beside the same number of days before this period, ' +
-          longDate(before('Period from')) + ' to ' +
-          longDate(new Date(new Date(before('Period to')).getTime() - 1).toISOString()) + '.</p>'
+          longDate(before('Period from')) + ' to ' + longDate(lastDay(before('Period to'))) + '.</p>'
         : '';
     const excluded = sum.has('Sandbox checks not included')
         ? '<p class="cmp">' + (sum.get('Sandbox checks not included')
@@ -490,44 +525,92 @@ function report(list, meta, out) {
               'They are test work, spend nothing and are not counted anywhere in this report.'
             : 'No sandbox checks were made in this period.') + '</p>'
         : '';
-    const incl = sum.get('Screenings included this cycle');
-    const daily = by('Daily');
-    const ref = meta.reference;
+
+    // What runs along the top and the bottom of every printed page after the
+    // cover: what the document is and whose, and where it sits in itself.
+    const running = 'Sentinelpay · Usage and evidence report';
+    const whose = org + ' · ' + from + ' to ' + to;
+    // set in the document's own face, small and set back: without it the
+    // browser prints these in its default serif at the size of body text
+    const box = 'font-family:Inter, system-ui, sans-serif; font-size:' + (paperKey === 'a5' ? '6.5pt' : '7.5pt') +
+        '; color:#6b7898; vertical-align:middle;';
+    const pageCss =
+        '@page { size:' + paper.w + 'mm ' + paper.h + 'mm; margin:' + paper.my + 'mm ' + paper.mx + 'mm; ' +
+        '@top-left { content:' + cssStr(running) + '; ' + box + ' } ' +
+        '@top-right { content:' + cssStr(whose) + '; ' + box + ' text-align:right; } ' +
+        '@bottom-left { content:' + cssStr('Reference ' + ref.slice(0, 16)) + '; ' + box + ' } ' +
+        '@bottom-right { content:"Page " counter(page) " of " counter(pages); ' + box + ' text-align:right; } } ' +
+        '@page :first { @top-left { content:none; } @top-right { content:none; } ' +
+        '@bottom-left { content:none; } @bottom-right { content:none; } } ' +
+        ':root { --pw:' + paper.w + 'mm; --ph:' + paper.h + 'mm; --mx:' + paper.mx + 'mm; --my:' + paper.my + 'mm; ' +
+        '--cols:' + paper.cols + '; --fs:' + paper.font + 'px; }';
+
+    const sheetHead = '<div class="run" aria-hidden="true"><span>' + esc(running) + '</span><span>' + esc(whose) + '</span></div>';
+    const sheetFoot = '<div class="run is-foot" aria-hidden="true"><span>Reference ' + esc(ref.slice(0, 16)) + '</span></div>';
+    const signer = (title) => '<div class="signer"><div class="signer-t">' + esc(title) + '</div>' +
+        ['Name', 'Role', 'Date', 'Signature'].map((l) => '<div class="line"><span></span>' + l + '</div>').join('') + '</div>';
 
     return '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
         '<meta name="viewport" content="width=device-width,initial-scale=1">' +
         '<meta name="robots" content="noindex,nofollow">' +
-        '<title>Usage report ' + esc(day(out.period.from)) + ' to ' + esc(day(out.period.to)) + ' · ' + esc(meta.organisation) + '</title>' +
+        '<title>Usage report ' + esc(day(out.period.from)) + ' to ' + esc(day(out.period.to)) + ' · ' + esc(org) + '</title>' +
         '<link rel="icon" type="image/svg+xml" href="/logo.svg">' +
         '<link rel="stylesheet" href="/fonts.css">' +
-        '<style>' + REPORT_CSS + '</style></head>' +
+        '<style>' + REPORT_CSS + pageCss + '</style></head>' +
         // Shown inside the usage page, the page around it carries the controls
         // and the way back, so the report is the paper alone. The reference is
-        // on the body for that page to read and show beside its print button.
+        // on the body for that page to read and print under.
         (meta.embed
-            ? '<body class="is-embed' + (sandbox ? ' is-sandbox' : '') + '" data-ref="' + esc(ref) + '">'
-            : '<body' + (sandbox ? ' class="is-sandbox"' : '') + ' data-ref="' + esc(ref) + '">' +
+            ? '<body class="is-embed' + (sandbox ? ' is-sandbox' : '') + ' paper-' + paperKey + '" data-ref="' + esc(ref) + '">'
+            : '<body class="paper-' + paperKey + (sandbox ? ' is-sandbox' : '') + '" data-ref="' + esc(ref) + '">' +
               '<div class="bar"><a href="' + esc(meta.back) + '">Back to usage</a>' +
               '<button type="button" id="print">Print or save as PDF</button></div>') +
         // a sandbox report says what it is before anything else, and again
         // across every printed page, so a copy cannot be mistaken for evidence
         (sandbox ? '<div class="wm" aria-hidden="true">Sandbox</div>' : '') +
-        '<main class="sheet">' +
+
+        // ---- the cover: what this is, whose, and for when, on a page alone
+        '<main class="doc">' +
+        '<section class="sheet cover">' +
+        '<div class="cover-top"><img src="/logo.svg" alt="" width="30" height="30"><span>Sentinelpay</span></div>' +
+        '<div class="cover-mid">' +
         (sandbox ? '<div class="sbx"><strong>Sandbox.</strong> Test data from the sandbox scope. ' +
             'It spends nothing and is not evidence of screening.</div>' : '') +
-        '<header class="top"><div><div class="brand">Sentinelpay</div>' +
-        '<h1>Usage and evidence report</h1>' +
-        '<p class="lede">' + esc(meta.organisation) + ', ' + longDate(out.period.from) + ' to ' +
-        longDate(new Date(new Date(out.period.to).getTime() - 1).toISOString()) + '</p></div>' +
+        '<div class="kicker">Usage and evidence report</div>' +
+        '<h1>' + esc(org) + '</h1>' +
+        '<p class="period">For the period ' + from + ' to ' + to + '</p>' +
         '<dl class="meta">' +
         '<div><dt>Scope</dt><dd>' + esc(sum.get('Scope')) + '</dd></div>' +
-        '<div><dt>Time zone</dt><dd>' + esc(sum.get('Time zone')) + '</dd></div>' +
         (sum.get('Plan') ? '<div><dt>Plan</dt><dd>' + esc(sum.get('Plan')) + '</dd></div>' : '') +
-        '<div><dt>Generated</dt><dd>' + esc(meta.generated.replace('T', ' ').slice(0, 16)) + ' UTC</dd></div>' +
-        '<div><dt>Reference</dt><dd>' + esc(ref.slice(0, 16)) + '</dd></div>' +
-        '</dl></header>' +
+        '<div><dt>Time zone</dt><dd>' + esc(sum.get('Time zone')) + '</dd></div>' +
+        '<div><dt>Generated</dt><dd>' + esc(generated) + '</dd></div>' +
+        '<div><dt>Paper</dt><dd>' + esc(paper.name) + '</dd></div>' +
+        '<div class="is-ref"><dt>Reference</dt><dd>sha256:' + esc(ref) + '</dd></div>' +
+        '</dl></div>' +
+        '<div class="cover-foot">Confidential. Prepared for ' + esc(org) + ' from its records in Sentinelpay.</div>' +
+        '</section>' +
 
-        '<section><h2>At a glance</h2>' + compared + '<div class="figs">' +
+        // ---- the statement, and the two people who put their names to it,
+        // before any figure: what the numbers are, then the numbers
+        '<section class="sheet statement">' + sheetHead +
+        '<h2 class="big">Statement</h2>' +
+        '<p>This report sets out the screening ' + esc(org) + ' carried out through Sentinelpay between ' +
+        from + ' and ' + to + ', in the ' + scopeWord + ' scope. It was generated on ' + esc(generated) +
+        ' from the records as they stood at that moment.</p>' +
+        '<p>Every check and every decision counted here was sealed with a SHA-256 digest when it was written. ' +
+        'Each one can be opened from its evidence file and its digest checked on its own, without this report ' +
+        'and without access to Sentinelpay.</p>' +
+        (sandbox
+            ? '<p>This is the sandbox scope. Its checks are test work and are not evidence of screening.</p>'
+            : '<p>Sandbox checks are test work. They spend no allowance and are left out of every figure here.</p>') +
+        '<p>Any export of the same period carries the reference below, so a copy in any format can be matched to this one.</p>' +
+        '<p class="ref">sha256:' + esc(ref) + '</p>' +
+        '<div class="sign">' + signer('Prepared by') + signer('Reviewed by') + '</div>' +
+        sheetFoot + '</section>' +
+
+        // ---- the figures
+        '<section class="sheet body">' + sheetHead +
+        '<div class="part"><h2>At a glance</h2>' + compared + '<div class="figs">' +
         // the allowance is spent by production alone; a sandbox report saying
         // how much of it went would be saying something that never happened
         fig('Screenings', 'Screenings', !sandbox && incl !== '' && incl !== undefined
@@ -539,107 +622,133 @@ function report(list, meta, out) {
         fig('Findings open now', 'Findings open now', sum.get('Oldest open finding') ? 'oldest from ' + longDate(sum.get('Oldest open finding')) : '') +
         fig('Checks on record', 'Checks on record') +
         fig('Sealed with a digest', 'Sealed with a digest', 'kept for ' + sum.get('Kept for (years)') + ' years') +
-        '</div>' + excluded + '</section>' +
-
-        '<section><h2>Screenings</h2>' + table(by('Screenings'), { grouped: true, pct: true, skipEmpty: true }) + '</section>' +
-        '<section><h2>Review</h2>' + table(by('Review'), { grouped: true, pct: true }) + '</section>' +
-        '<section class="break"><h2>Sanctions coverage</h2>' + table(by('Coverage'), { grouped: true, pct: true, skipEmpty: true }) + '</section>' +
-        '<section><h2>API</h2>' + table(by('API'), { pct: true }) + '</section>' +
-        '<section><h2>Team</h2>' + table(by('Team'), { grouped: true, pct: true }) + '</section>' +
-        '<section><h2>Evidence</h2>' + table(by('Evidence'), { grouped: true, pct: true }) + '</section>' +
-        '<section class="break"><h2>Day by day</h2>' + table({
+        '</div>' + excluded + '</div>' +
+        '<div class="part"><h2>Screenings</h2>' + table(by('Screenings'), { grouped: true, pct: true, skipEmpty: true }) + '</div>' +
+        '<div class="part"><h2>Review</h2>' + table(by('Review'), { grouped: true, pct: true }) + '</div>' +
+        '<div class="part"><h2>Sanctions coverage</h2>' + table(by('Coverage'), { grouped: true, pct: true, skipEmpty: true }) + '</div>' +
+        '<div class="part"><h2>API</h2>' + table(by('API'), { pct: true }) + '</div>' +
+        '<div class="part"><h2>Team</h2>' + table(by('Team'), { grouped: true, pct: true }) + '</div>' +
+        '<div class="part"><h2>Evidence</h2>' + table(by('Evidence'), { grouped: true, pct: true }) + '</div>' +
+        '<div class="part is-days"><h2>Day by day</h2>' + table({
             head: ['Day', 'Screenings', 'Flagged', 'Sanctioned', 'Decisions', 'API calls'],
             rows: daily.rows.map((r) => [r[0], r[1], r[2], r[3], r[5], r[8]]),
-        }) + '</section>' +
-
-        '<section class="attest"><h2>Attestation</h2>' +
-        '<p>Every check and every decision counted here was sealed with a SHA-256 digest when it was written, ' +
-        'and each one can be opened and verified on its own from the evidence file. ' +
-        'The figures in this report were read from those records at the moment it was generated. ' +
-        'The same period exported as a spreadsheet, a CSV or JSON carries the same reference below, ' +
-        'so any copy can be matched to this one.</p>' +
-        '<p class="ref">Reference sha256:' + esc(ref) + '</p>' +
-        '<div class="sign"><div><span></span>Prepared by, name and date</div>' +
-        '<div><span></span>Reviewed by, name and date</div></div></section>' +
+        }) + '</div>' +
+        '<p class="end">End of report · sha256:' + esc(ref) + '</p>' +
+        sheetFoot + '</section>' +
         '</main>' +
-        '<footer class="pf">Sentinelpay usage report · ' + esc(meta.organisation) + ' · ' + esc(ref.slice(0, 16)) + '</footer>' +
         '<script src="/report.js"></script></body></html>';
 }
 
 const REPORT_CSS = `
-:root { --ink:#0e2358; --ink-2:rgba(14,35,88,.72); --ink-3:rgba(14,35,88,.52); --line:rgba(14,35,88,.12);
-  --soft:#f5f7fb; --link:#0091c8; --bad:#c2334d; }
+:root { --ink:#0e2358; --ink-2:rgba(14,35,88,.74); --ink-3:rgba(14,35,88,.54); --ink-4:rgba(14,35,88,.4);
+  --line:rgba(14,35,88,.12); --soft:#f5f7fb; --link:#0091c8; }
 * { box-sizing:border-box; }
 html { background:#e9edf4; }
-body { margin:0; color:var(--ink); font:13px/1.5 Inter, system-ui, sans-serif; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-.bar { position:sticky; top:0; z-index:2; display:flex; justify-content:space-between; align-items:center; gap:12px;
-  padding:10px max(16px, calc(50% - 105mm)); background:#fff; border-bottom:1px solid var(--line); }
+body { margin:0; color:var(--ink); font:var(--fs, 13px)/1.5 Inter, system-ui, sans-serif;
+  -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+.bar { position:sticky; top:0; z-index:4; display:flex; justify-content:space-between; align-items:center; gap:12px;
+  padding:10px max(16px, calc(50% - var(--pw) / 2)); background:#fff; border-bottom:1px solid var(--line); }
 .bar a { color:var(--ink-2); text-decoration:none; font-weight:500; }
 .bar a:hover { color:var(--ink); }
 .bar button { font:600 13px Inter, system-ui, sans-serif; color:#fff; background:var(--ink); border:0; border-radius:8px;
   padding:8px 14px; cursor:pointer; }
-.sheet { width:210mm; max-width:calc(100% - 32px); margin:24px auto 48px; background:#fff; padding:18mm 16mm;
-  box-shadow:0 1px 3px rgba(14,35,88,.08), 0 12px 40px rgba(14,35,88,.08); border-radius:4px; }
-.top { display:flex; justify-content:space-between; gap:24px; padding-bottom:18px; border-bottom:2px solid var(--ink); }
-.brand { font:700 12px 'Plus Jakarta Sans', Inter, sans-serif; letter-spacing:.02em; color:var(--link); }
-h1 { font:800 24px/1.2 'Plus Jakarta Sans', Inter, sans-serif; margin:6px 0 4px; }
-.lede { margin:0; color:var(--ink-2); font-size:13.5px; }
-.meta { margin:0; display:grid; grid-template-columns:auto auto; gap:2px 14px; align-content:start; font-size:11.5px; }
+
+/* On screen, each part of the document is a sheet of the paper it will print
+   on: the cover and the statement a page each, the figures one long sheet.
+   In print the sheets dissolve into the pages and the margins the page rule
+   sets. */
+.doc { padding:24px 0 48px; }
+.sheet { position:relative; width:var(--pw); max-width:calc(100% - 32px); margin:0 auto 20px; background:#fff;
+  padding:var(--my) var(--mx); box-shadow:0 1px 3px rgba(14,35,88,.08), 0 12px 40px rgba(14,35,88,.08); border-radius:3px; }
+.cover, .statement { min-height:var(--ph); display:flex; flex-direction:column; }
+
+/* the running head and foot, drawn on screen where the page rule cannot be */
+.run { display:flex; justify-content:space-between; gap:16px; margin:calc(var(--my) * -0.55) 0 calc(var(--my) * 0.45);
+  font-size:9.5px; color:var(--ink-4); }
+.run.is-foot { margin:auto 0 calc(var(--my) * -0.55); padding-top:calc(var(--my) * 0.45); }
+.body .run.is-foot { margin-top:28px; }
+
+/* ---- cover */
+.cover-top { display:flex; align-items:center; gap:10px; font:700 15px 'Plus Jakarta Sans', Inter, sans-serif; }
+.cover-mid { margin:auto 0; padding:10% 0; }
+.kicker { font:700 11px 'Plus Jakarta Sans', Inter, sans-serif; letter-spacing:.12em; text-transform:uppercase; color:var(--link); }
+h1 { font:800 34px/1.12 'Plus Jakarta Sans', Inter, sans-serif; margin:10px 0 10px; letter-spacing:-.01em; overflow-wrap:anywhere; }
+.period { margin:0 0 30px; font-size:15px; color:var(--ink-2); }
+.meta { margin:0; padding-top:18px; border-top:2px solid var(--ink); display:grid; grid-template-columns:max-content 1fr;
+  gap:6px 28px; font-size:12px; }
 .meta div { display:contents; }
 .meta dt { color:var(--ink-3); }
-.meta dd { margin:0; font-weight:600; text-align:right; }
-section { margin-top:22px; break-inside:auto; }
-section.break { break-before:page; }
+.meta dd { margin:0; font-weight:600; }
+.meta .is-ref dd { font-weight:500; word-break:break-all; }
+.cover-foot { font-size:10.5px; color:var(--ink-3); }
+
+/* ---- statement */
 h2 { font:700 14px 'Plus Jakarta Sans', Inter, sans-serif; margin:0 0 8px; padding-bottom:6px; border-bottom:1px solid var(--line); break-after:avoid; }
-.figs { display:grid; grid-template-columns:repeat(4, 1fr); border:1px solid var(--line); border-radius:6px; overflow:hidden; }
-.fig { padding:10px 12px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); }
-.fig:nth-child(4n) { border-right:0; }
-.fig:nth-last-child(-n+4) { border-bottom:0; }
-.fig .k { color:var(--ink-3); font-size:11px; }
-.fig .v { font-size:18px; font-weight:700; margin-top:2px; }
-.fig .f { color:var(--ink-3); font-size:10.5px; margin-top:1px; }
-.fig .w { color:var(--ink-3); font-size:10.5px; margin-top:1px; font-variant-numeric:tabular-nums; }
-.cmp { margin:0 0 8px; color:var(--ink-3); font-size:11.5px; }
+h2.big { font-size:20px; border:0; padding:0; margin:0 0 14px; }
+.statement p { margin:0 0 10px; color:var(--ink-2); max-width:150mm; }
+.statement .ref { margin-top:16px; color:var(--ink); font-weight:600; word-break:break-all; font-size:11.5px; }
+.sign { display:grid; grid-template-columns:1fr 1fr; gap:10mm; margin-top:auto; padding-top:18mm; }
+.signer-t { font:700 12px 'Plus Jakarta Sans', Inter, sans-serif; margin-bottom:6px; }
+.signer .line { font-size:10px; color:var(--ink-3); margin-top:14px; }
+.signer .line span { display:block; height:22px; border-bottom:1px solid var(--ink); margin-bottom:3px; }
+
+/* ---- figures */
+.part { margin-top:22px; }
+.part:first-of-type { margin-top:0; }
+.figs { display:grid; grid-template-columns:repeat(var(--cols), 1fr); border:1px solid var(--line); border-radius:6px; overflow:hidden; break-inside:avoid; }
+.fig { padding:10px 12px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); margin:0 -1px -1px 0; }
+.fig .k { color:var(--ink-3); font-size:.85em; }
+.fig .v { font-size:1.4em; font-weight:700; margin-top:2px; font-variant-numeric:tabular-nums; }
+.fig .f, .fig .w { color:var(--ink-3); font-size:.8em; margin-top:1px; font-variant-numeric:tabular-nums; }
+.cmp { margin:0 0 8px; color:var(--ink-3); font-size:.88em; }
 .figs + .cmp { margin:8px 0 0; }
-/* the sandbox: a band at the top of the first page and the word across every
-   page behind the figures, faint enough to read through and impossible to
-   miss */
-.sbx { margin:0 0 14px; padding:8px 12px; border:1px solid #e0a43a; border-radius:6px; background:#fff6e5;
-  color:#7a4a00; font-size:12px; }
-.wm { position:fixed; inset:0; display:grid; place-items:center; pointer-events:none; z-index:3;
-  font:800 120px/1 'Plus Jakarta Sans', Inter, sans-serif; color:rgba(224,164,58,.13);
-  transform:rotate(-30deg); letter-spacing:.06em; text-transform:uppercase; }
-table { width:100%; border-collapse:collapse; font-size:12px; }
-thead th { text-align:left; font-weight:600; color:var(--ink-3); font-size:11px; padding:4px 0; border-bottom:1px solid var(--line); }
+table { width:100%; border-collapse:collapse; font-size:.92em; }
+thead th { text-align:left; font-weight:600; color:var(--ink-3); font-size:.85em; padding:4px 0; border-bottom:1px solid var(--line); }
 td { padding:4px 0; border-bottom:1px solid var(--line); }
 .n { text-align:right; font-variant-numeric:tabular-nums; padding-left:12px; white-space:nowrap; }
 tr.grp th { text-align:left; font-weight:700; padding:12px 0 4px; border-bottom:1px solid var(--line); }
 tr { break-inside:avoid; }
 .none { color:var(--ink-3); margin:0; }
-.attest p { margin:0 0 8px; color:var(--ink-2); max-width:150mm; }
-.attest .ref { color:var(--ink); font-weight:600; word-break:break-all; }
-.sign { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:28px; color:var(--ink-3); font-size:11px; }
-.sign span { display:block; height:28px; border-bottom:1px solid var(--ink); margin-bottom:4px; }
-.pf { display:none; }
+.end { margin:24px 0 0; font-size:10px; color:var(--ink-3); word-break:break-all; }
+
+/* the sandbox: a band on the cover and the word across every page, faint
+   enough to read through and impossible to miss */
+.sbx { margin:0 0 22px; padding:8px 12px; border:1px solid #e0a43a; border-radius:6px; background:#fff6e5;
+  color:#7a4a00; font-size:12px; }
+.wm { position:fixed; inset:0; display:grid; place-items:center; pointer-events:none; z-index:3;
+  font:800 120px/1 'Plus Jakarta Sans', Inter, sans-serif; color:rgba(224,164,58,.13);
+  transform:rotate(-30deg); letter-spacing:.06em; text-transform:uppercase; }
+
+/* small paper and narrow screens: two figures to a row, the meta under itself */
+.paper-a5 h1 { font-size:26px; }
+.paper-a5 .sign { gap:6mm; padding-top:8mm; }
+.paper-a5 .signer .line { margin-top:9px; }
+.paper-a5 .signer .line span { height:16px; }
 @media (max-width: 700px) {
-  .sheet { padding:20px 16px; }
-  .top { flex-direction:column; }
+  .sheet { padding:22px 16px; }
+  .cover, .statement { min-height:0; }
+  .cover-mid { padding:40px 0; }
+  h1 { font-size:26px; }
   .figs { grid-template-columns:repeat(2, 1fr); }
-  .fig:nth-child(4n) { border-right:1px solid var(--line); }
-  .fig:nth-child(2n) { border-right:0; }
-  .fig:nth-last-child(-n+4) { border-bottom:1px solid var(--line); }
-  .fig:nth-last-child(-n+2) { border-bottom:0; }
+  .sign { grid-template-columns:1fr; gap:6mm; padding-top:24px; }
+  .run { display:none; }
 }
-/* inside the usage page: the sheet on whatever is behind the frame, not on a
-   grey desk of its own */
+
+/* inside the usage page: the sheets on whatever is behind the frame, not on a
+   grey desk of their own */
 html:has(body.is-embed) { background:transparent; }
-.is-embed .sheet { margin:4px auto 28px; box-shadow:0 1px 2px rgba(14,35,88,.1), 0 10px 32px rgba(0,0,0,.18); }
-@page { size:A4; margin:14mm 14mm 16mm; }
+.is-embed .doc { padding:4px 0 28px; }
+.is-embed .sheet { box-shadow:0 1px 2px rgba(14,35,88,.1), 0 10px 32px rgba(0,0,0,.18); }
+
 @media print {
   html, body { background:#fff; }
-  .bar { display:none; }
+  .bar, .run { display:none; }
+  .doc { padding:0; }
   .sheet { width:auto; max-width:none; margin:0; padding:0; box-shadow:none; border-radius:0; }
-  .pf { display:block; position:fixed; bottom:-10mm; left:0; right:0; font-size:9px; color:var(--ink-3); text-align:center; }
+  /* a page each, the height of the page less its margins, less a hair so a
+     rounding never spills a cover onto a blank second page */
+  .cover, .statement { min-height:0; height:calc(var(--ph) - 2 * var(--my) - 2mm); break-after:page; }
+  .part.is-days { break-before:page; }
 }
 `;
 
@@ -648,4 +757,4 @@ function filename(out, format) {
         (out.scope === 'sandbox' ? '-sandbox' : '') + '.' + format;
 }
 
-module.exports = { FORMATS, sheets, reference, csv, json, xlsx, report, filename, crc32, csvCell };
+module.exports = { FORMATS, PAPERS, paperOf, sheets, reference, csv, json, xlsx, report, filename, crc32, csvCell };

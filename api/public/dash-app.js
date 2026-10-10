@@ -6924,12 +6924,14 @@
             '&tz=' + encodeURIComponent(zoneNow());
         var alone = base + '/usage.html' + q;
         if (reportOnItsOwn()) {
-            window.open(alone + '&print=1', '_blank', 'noopener');
+            var kept = 'a4';
+            try { kept = localStorage.getItem('sp-report-paper') || 'a4'; } catch (err) { kept = 'a4'; }
+            window.open(alone + '&paper=' + encodeURIComponent(kept) + '&print=1', '_blank', 'noopener');
             return;
         }
 
         var m = modalShell('Report for print',
-            'What you see here is what prints, page for page, with the reference on every sheet.');
+            'What you see here is what prints. Choose the paper, then print it or save it as a PDF.');
         m.box.classList.add('is-report');
 
         // The one thing to do here. The period, the scope and the reference
@@ -6939,6 +6941,27 @@
         bar.className = 'rep-bar';
         var acts = document.createElement('div');
         acts.className = 'rep-acts';
+        // The paper it is laid out for. A4 to begin with, and the choice is
+        // kept for the next report: somebody in an office with Letter in the
+        // printer should not have to say so every time.
+        var paper = 'a4';
+        try { paper = localStorage.getItem('sp-report-paper') || 'a4'; } catch (err) { paper = 'a4'; }
+        if (!/^(a4|letter|legal|a3|a5)$/.test(paper)) paper = 'a4';
+        var paperPick = selectBox('rep-paper', [{
+            options: [
+                { value: 'a4', label: 'A4', meta: '210 \u00d7 297 mm' },
+                { value: 'letter', label: t('US Letter'), meta: '8.5 \u00d7 11 in' },
+                { value: 'legal', label: t('US Legal'), meta: '8.5 \u00d7 14 in' },
+                { value: 'a3', label: 'A3', meta: '297 \u00d7 420 mm' },
+                { value: 'a5', label: 'A5', meta: '148 \u00d7 210 mm' }
+            ]
+        }], paper, function (v) {
+            paper = v;
+            try { localStorage.setItem('sp-report-paper', v); } catch (err) { /* kept for this one only */ }
+            load();
+        });
+        paperPick.classList.add('rep-paper');
+        acts.appendChild(paperPick);
         var print = document.createElement('button');
         print.type = 'button';
         print.className = 'btn btn-primary';
@@ -6986,7 +7009,15 @@
             print.disabled = false;
             desk.classList.add('is-ready');
         });
-        frame.src = base + '/usage.html' + q + '&embed=1';
+        // drawn again on the paper chosen, with the sketch back over it until
+        // the new one is in
+        function load() {
+            print.disabled = true;
+            desk.classList.remove('is-ready', 'is-bad');
+            wait.hidden = false;
+            frame.src = base + '/usage.html' + q + '&embed=1&paper=' + encodeURIComponent(paper);
+        }
+        load();
         desk.appendChild(frame);
         m.body.appendChild(desk);
 
@@ -7005,7 +7036,7 @@
                 win.focus();
                 win.print();
             } catch (err) {
-                window.open(alone + '&print=1', '_blank', 'noopener');
+                window.open(alone + '&paper=' + encodeURIComponent(paper) + '&print=1', '_blank', 'noopener');
             }
         });
 
