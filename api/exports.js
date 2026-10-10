@@ -461,9 +461,15 @@ function report(list, meta, out) {
         '<title>Usage report ' + esc(day(out.period.from)) + ' to ' + esc(day(out.period.to)) + ' · ' + esc(meta.organisation) + '</title>' +
         '<link rel="icon" type="image/svg+xml" href="/logo.svg">' +
         '<link rel="stylesheet" href="/fonts.css">' +
-        '<style>' + REPORT_CSS + '</style></head><body>' +
-        '<div class="bar"><a href="' + esc(meta.back) + '">Back to usage</a>' +
-        '<button type="button" id="print">Print or save as PDF</button></div>' +
+        '<style>' + REPORT_CSS + '</style></head>' +
+        // Shown inside the usage page, the page around it carries the controls
+        // and the way back, so the report is the paper alone. The reference is
+        // on the body for that page to read and show beside its print button.
+        (meta.embed
+            ? '<body class="is-embed" data-ref="' + esc(ref) + '">'
+            : '<body data-ref="' + esc(ref) + '">' +
+              '<div class="bar"><a href="' + esc(meta.back) + '">Back to usage</a>' +
+              '<button type="button" id="print">Print or save as PDF</button></div>') +
         '<main class="sheet">' +
         '<header class="top"><div><div class="brand">Sentinelpay</div>' +
         '<h1>Usage and evidence report</h1>' +
@@ -567,6 +573,10 @@ tr { break-inside:avoid; }
   .fig:nth-last-child(-n+4) { border-bottom:1px solid var(--line); }
   .fig:nth-last-child(-n+2) { border-bottom:0; }
 }
+/* inside the usage page: the sheet on whatever is behind the frame, not on a
+   grey desk of its own */
+html:has(body.is-embed) { background:transparent; }
+.is-embed .sheet { margin:4px auto 28px; box-shadow:0 1px 2px rgba(14,35,88,.1), 0 10px 32px rgba(0,0,0,.18); }
 @page { size:A4; margin:14mm 14mm 16mm; }
 @media print {
   html, body { background:#fff; }

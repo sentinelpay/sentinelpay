@@ -5497,3 +5497,104 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
 @media (prefers-reduced-motion: reduce) {
     .avatar.is-wait { animation: none; }
 }
+
+/* ---- the report for print, inside the usage page --------------------- */
+
+/* The dialog every other one here is -- dotted corner, brand edge, the close
+   in the corner, the same rise on the way in -- made wide and tall enough to
+   hold a sheet of A4, with the heading to the left over the controls rather
+   than centred over a form. */
+.modal.is-report {
+    max-width: 62rem;
+    height: calc(100dvh - 2.5rem);
+    grid-template-rows: auto minmax(0, 1fr);
+    overflow: hidden;
+    padding: 1.6rem 1.6rem 0;
+}
+.modal.is-report .modal-head { text-align: left; margin: 0 2.4rem 1rem 0; }
+/* the brand edge every dialog here closes on, over the desk rather than
+   under it */
+.modal.is-report .modal-edge { z-index: 3; }
+.modal.is-report .modal-h { font-size: 1.3rem; }
+.modal.is-report .modal-p { font-size: 0.85rem; }
+/* the base dialog starts its rows at the top; this one's body fills the row
+   it is given, or the desk under the controls has no height at all */
+.modal.is-report .modal-body { display: flex; flex-direction: column; min-height: 0; align-self: stretch; }
+
+.rep-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem 1rem;
+    flex-wrap: wrap;
+    padding-bottom: 0.9rem;
+    border-bottom: 1px solid var(--line);
+}
+.rep-meta { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; font-size: 0.85rem; }
+.rep-span { font-weight: 600; color: var(--ink); }
+.rep-ref { font-size: 0.78rem; color: var(--ink-4); }
+.rep-ref:empty::before { content: '\00a0'; }
+.rep-acts { display: flex; align-items: center; gap: 0.5rem; }
+
+/* The desk the sheet lies on: the panel's own surface, the sheet scrolling on
+   it, and the brand edge of the dialog underneath. */
+.rep-desk {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    margin: 0 -1.6rem;
+    background: var(--canvas);
+}
+.rep-frame {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: transparent;
+    color-scheme: light;
+    opacity: 0;
+    transition: opacity 0.24s ease;
+}
+.rep-desk.is-ready .rep-frame { opacity: 1; }
+.rep-desk.is-ready .rep-wait,
+.rep-desk.is-bad .rep-frame { display: none; }
+.rep-desk .empty { position: absolute; inset: 0; display: grid; place-content: center; }
+
+/* A sheet sketched where the paper will be, the paper's width and shape. */
+.rep-wait {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(210mm, calc(100% - 32px));
+    aspect-ratio: 210 / 297;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 18mm 16mm;
+    border-radius: 4px;
+    background: var(--panel);
+    box-shadow: 0 1px 2px rgba(14, 35, 88, 0.1), 0 10px 32px rgba(0, 0, 0, 0.18);
+    overflow: hidden;
+}
+.rep-line { display: block; flex: none; border-radius: 5px; }
+.rep-gap { display: block; flex: none; height: 10px; }
+
+@media (max-width: 720px) {
+    /* the whole screen on a phone: a sheet of paper wants every pixel */
+    .modal-back:has(.modal.is-report) { padding: 0; }
+    .modal.is-report {
+        max-width: none;
+        height: 100dvh;
+        max-height: none;
+        border-radius: 0;
+        border: 0;
+        padding: 1.1rem 1rem 0;
+    }
+    .modal.is-report .modal-head { margin-right: 2.2rem; }
+    .rep-desk { margin: 0 -1rem; }
+    .rep-acts { width: 100%; }
+    .rep-acts .btn { flex: 1 1 0; justify-content: center; }
+    .rep-wait { padding: 20px 16px; }
+}

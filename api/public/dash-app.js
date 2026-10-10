@@ -6812,9 +6812,10 @@
                 var url = '/v1/orgs/' + encodeURIComponent(org.id) +
                     '/usage.' + f[0] + '?period=' + encodeURIComponent(out.period.key) +
                     '&scope=' + encodeURIComponent(out.scope) + '&tz=' + encodeURIComponent(zoneNow());
-                // the report is a page to read and print; the rest are files
+                // the report is read and printed inside this page; the rest
+                // are files
                 if (f[0] === 'html') {
-                    window.open(url, '_blank', 'noopener');
+                    openReport(org, out);
                     return;
                 }
                 var a = document.createElement('a');
@@ -6898,6 +6899,148 @@
         var canvas = document.getElementById('canvas');
         if (canvas) canvas.addEventListener('scroll', shut);
         return wrap;
+    }
+
+    // The report for print, read inside the usage page.
+    //
+    // It used to open in a tab of its own, at an address on the api, which
+    // left the dashboard behind for a page with no way back but the browser's.
+    // It is the same report -- built by the server from the same sheets, under
+    // the same reference as the files beside it -- shown on the paper it will
+    // print on, in the dialog every other one on this dashboard is, with the
+    // print button above it.
+    //
+    // Printing prints the frame and nothing around it. Safari on an iPhone or
+    // an iPad prints the page a frame sits in rather than the frame, so there
+    // it opens on its own and goes straight to the print dialog, as before.
+    function reportOnItsOwn() {
+        return /iP(hone|ad|od)/.test(navigator.userAgent) ||
+            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    }
+
+    function openReport(org, out) {
+        var base = '/v1/orgs/' + encodeURIComponent(org.id);
+        var q = '?period=' + encodeURIComponent(out.period.key) + '&scope=' + encodeURIComponent(out.scope) +
+            '&tz=' + encodeURIComponent(zoneNow());
+        var alone = base + '/usage.html' + q;
+        if (reportOnItsOwn()) {
+            window.open(alone + '&print=1', '_blank', 'noopener');
+            return;
+        }
+
+        var m = modalShell('Report for print',
+            'What you see here is what prints, page for page, with the reference on every sheet.');
+        m.box.classList.add('is-report');
+
+        // what is being printed, and the two ways out of here with it
+        var bar = document.createElement('div');
+        bar.className = 'rep-bar';
+        var meta = document.createElement('div');
+        meta.className = 'rep-meta';
+        var span = document.createElement('span');
+        span.className = 'rep-span';
+        span.textContent = useSpan(out.period) + ' · ' + t(out.scope === 'sandbox' ? 'Sandbox' : 'Production');
+        meta.appendChild(span);
+        var ref = document.createElement('span');
+        ref.className = 'rep-ref';
+        meta.appendChild(ref);
+        bar.appendChild(meta);
+
+        var acts = document.createElement('div');
+        acts.className = 'rep-acts';
+        var own = document.createElement('a');
+        own.className = 'btn btn-quiet rep-own';
+        own.href = alone;
+        own.target = '_blank';
+        own.rel = 'noopener';
+        own.textContent = t('Open in a new tab');
+        acts.appendChild(own);
+        var print = document.createElement('button');
+        print.type = 'button';
+        print.className = 'btn btn-primary';
+        print.textContent = t('Print or save as PDF');
+        print.disabled = true;
+        acts.appendChild(print);
+        bar.appendChild(acts);
+        m.body.appendChild(bar);
+
+        // the desk the paper lies on, with a sheet sketched on it until the
+        // real one has been drawn
+        var desk = document.createElement('div');
+        desk.className = 'rep-desk';
+        var wait = document.createElement('div');
+        wait.className = 'rep-wait';
+        wait.setAttribute('aria-hidden', 'true');
+        [['34%', 10], ['62%', 22], ['48%', 12], [0, 18], ['100%', 64], [0, 14], ['30%', 14],
+         ['100%', 11], ['100%', 11], ['86%', 11], ['100%', 11], ['72%', 11]].forEach(function (b) {
+            if (!b[0]) { wait.appendChild(document.createElement('i')).className = 'rep-gap'; return; }
+            var line = document.createElement('span');
+            line.className = 'shim rep-line';
+            line.style.width = b[0];
+            line.style.height = b[1] + 'px';
+            wait.appendChild(line);
+        });
+        desk.appendChild(wait);
+
+        var frame = document.createElement('iframe');
+        frame.className = 'rep-frame';
+        frame.title = t('Report for print');
+        frame.setAttribute('loading', 'eager');
+        frame.addEventListener('load', function () {
+            var doc = null;
+            try { doc = frame.contentDocument; } catch (err) { doc = null; }
+            var got = doc && doc.body && doc.body.getAttribute('data-ref');
+            if (!got) {
+                // not the report: a sign-in page, an error. say so rather than
+                // offering to print it
+                desk.classList.add('is-bad');
+                wait.hidden = true;
+                desk.appendChild(emptyState('That did not load.', 'Close this and try again.'));
+                return;
+            }
+            ref.textContent = t('Reference') + ' ' + got.slice(0, 16);
+            ref.title = 'sha256:' + got;
+            print.dataset.ref = got;
+            print.disabled = false;
+            desk.classList.add('is-ready');
+        });
+        frame.src = base + '/usage.html' + q + '&embed=1';
+        desk.appendChild(frame);
+        m.body.appendChild(desk);
+
+        print.addEventListener('click', function () {
+            var win = frame.contentWindow;
+            if (!win) return;
+            // filed as an export the moment it is sent to a printer, under the
+            // reference the paper carries
+            fetch(base + '/usage/printed', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ reference: print.dataset.ref, from: String(out.period.from).slice(0, 10) })
+            }).catch(function () { /* the print still goes ahead */ });
+            try {
+                win.focus();
+                win.print();
+            } catch (err) {
+                window.open(alone + '&print=1', '_blank', 'noopener');
+            }
+        });
+
+        // Escape pressed while reading the paper is pressed inside the frame,
+        // which tells this page so the dialog closes the way it does from
+        // anywhere else
+        var onMsg = function (e) {
+            if (e.origin !== location.origin || !e.data || e.data.sp !== 'report-close') return;
+            m.shut();
+        };
+        window.addEventListener('message', onMsg);
+        var watch = new MutationObserver(function () {
+            if (document.body.contains(m.box)) return;
+            window.removeEventListener('message', onMsg);
+            watch.disconnect();
+        });
+        watch.observe(document.body, { childList: true });
     }
 
     // Included / used / left, as three lines rather than a sentence: a number
