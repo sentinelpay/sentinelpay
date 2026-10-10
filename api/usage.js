@@ -2,6 +2,7 @@
 
 const db = require('./db.js');
 const months = require('./months.js');
+const sanctions = require('./sanctions.js');
 
 // What an organisation has done in a period.
 //
@@ -616,34 +617,61 @@ async function monitoringIn(orgId, from, to, sandbox, zone, grain) {
 
 // The lists every check is matched against, and what changed on them.
 //
-// Two of these are counted from what is kept. An address on our copy of a list
-// carries the moment it was first loaded, so "added" is a real count by day --
-// the first load shows as one tall day, which is when it happened. What is on
-// the lists now, by chain and by list, is the table as it stands.
+// Counted from the list itself wherever the list says it. An address on our
+// copy carries the moment it was first loaded, so additions by day are a true
+// count, and so is the number of people and entities they belong to; the first
+// load shows as one tall day, because that is when it happened. What is on the
+// lists now -- by list, by sanctions programme, by chain -- is the table as it
+// stands, and how often it is fetched again is the refresh job's own setting.
 //
 // The rest is the shape the screen is built against, at nought: no history of
-// refreshes is kept, an address taken off a list is simply gone, and nothing
-// re-screens an organisation's past checks when a list changes. Those counts
-// fill in when the refresh job starts recording what it did.
+// refreshes is kept, a delisted address is simply gone, nothing re-screens past
+// checks when a list changes, no list but OFAC's is loaded, and no address is
+// attributed to a sanctioned entity beyond the ones the list names. Each of
+// those fills in when the thing that would count it exists.
 //
-// None of it is the organisation's own: a sanctions list is the same list for
-// everybody, so this ignores the org and the scope.
-const LIST_LINES = ['updates', 'added', 'removed', 'rescreens', 'hits', 'cleared'];
-const LISTS = ['ofac', 'eu', 'uk', 'un'];
+// A sanctions list is the same list for everybody, so none of this is the
+// organisation's own, and none of it depends on the scope.
+const LIST_LINES = ['updates', 'added', 'entities', 'removed', 'rescreens', 'hits'];
+const LISTS = ['ofac', 'ofacOther', 'eu', 'uk', 'un', 'ca', 'au', 'ch', 'jp'];
+
+// What a programme is about, the way an analyst asks it: not CYBER2 or DPRK4
+// but "cyber" and "North Korea". An address listed under several is counted
+// once, under the first, so the themes add up to the addresses on the list.
+const PROGRAMME_THEMES = [
+    ['cyber', /^CYBER/],
+    ['dprk', /^DPRK/],
+    ['russia', /RUSSIA|UKRAINE|ELECTION/],
+    ['iran', /^IRAN|^IRGC|^HRIT-IR|^IFSR/],
+    ['terror', /^FTO$|^SDGT$/],
+    ['drugs', /ILLICIT-DRUGS|^SDNTK$/],
+    ['crime', /^TCO$/],
+    ['weapons', /^NPWMD$/],
+];
+function themeOf(programs) {
+    const first = String(programs || '').split(',')[0].trim();
+    for (const [key, test] of PROGRAMME_THEMES) if (test.test(first)) return key;
+    return 'other';
+}
 
 async function listsIn(from, to, zone, grain) {
     to = until(to);
     const g = grain || GRAIN.day;
-    const [added, chains] = await Promise.all([
+    const col = g.column.replace(/\bat\b/g, 'added_at').replace(/\$5/g, '$3');
+    const [added, chains, programmes, who] = await Promise.all([
         db.query(
-            `SELECT ${g.column.replace(/\bat\b/g, 'added_at').replace(/\$5/g, '$3')} AS d, count(*)::int AS n
+            `SELECT ${col} AS d, count(*)::int AS n, count(DISTINCT entity_uid)::int AS entities
                FROM sanctioned_addresses
               WHERE added_at >= $1 AND added_at < $2
            GROUP BY 1`,
             [from, to, zone]
         ),
+        db.query('SELECT asset, count(*)::int AS n FROM sanctioned_addresses GROUP BY 1 ORDER BY 2 DESC, 1'),
+        db.query('SELECT programs, count(*)::int AS n FROM sanctioned_addresses GROUP BY 1'),
         db.query(
-            `SELECT asset, count(*)::int AS n FROM sanctioned_addresses GROUP BY 1 ORDER BY 2 DESC, 1`
+            `SELECT count(DISTINCT entity_uid)::int AS n,
+                    count(DISTINCT entity_uid) FILTER (WHERE entity_type = 'Individual')::int AS people
+               FROM sanctioned_addresses`
         ),
     ]);
     const empty = () => ({ total: 0, days: fillDays([], from, to, zone, grain) });
@@ -653,11 +681,32 @@ async function listsIn(from, to, zone, grain) {
         total: added.rows.reduce((a, r) => a + r.n, 0),
         days: fillDays(added.rows, from, to, zone, grain),
     };
+    // a person or entity added in two batches on two days is counted on each:
+    // what a day shows is who was named that day
+    out.entities = {
+        total: added.rows.reduce((a, r) => a + r.entities, 0),
+        days: fillDays(added.rows.map((r) => ({ d: r.d, n: r.entities })), from, to, zone, grain),
+    };
+
     const onList = chains.rows.reduce((a, r) => a + r.n, 0);
     out.byList = {};
     LISTS.forEach((k) => { out.byList[k] = 0; });
     out.byList.ofac = onList;
     out.byChain = chains.rows.map((r) => ({ asset: r.asset, n: r.n }));
+    out.byTheme = {};
+    PROGRAMME_THEMES.forEach(([k]) => { out.byTheme[k] = 0; });
+    out.byTheme.other = 0;
+    programmes.rows.forEach((r) => { out.byTheme[themeOf(r.programs)] += r.n; });
+
+    const w = who.rows[0] || {};
+    out.state = {
+        lists: LISTS.length,
+        addresses: onList,
+        entities: w.n || 0,
+        people: w.people || 0,
+        attributed: 0,
+        refreshEveryMs: sanctions.refreshEveryMs(),
+    };
     return out;
 }
 

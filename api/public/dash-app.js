@@ -7669,25 +7669,34 @@
             var li = out.lists || null;
             var liWas = (out.previous && out.previous.lists) || null;
             var cov = useSection('use-coverage', 'Sanctions coverage', 'coverage',
-                'What the checks were run against, and what changed on it.');
+                'The lists every check is matched against, and how fast a change on them reaches you.');
             cov.body.className += ' is-wide';
             var cmain = useMain();
+            // The state of coverage now, whatever window is open. Freshness is
+            // the refresh job's own setting, said as a fact, because how long a
+            // new designation takes to reach a check is the first thing anybody
+            // buying this asks. Attribution is the count of addresses tied to a
+            // listed person or entity beyond the ones the list itself names:
+            // the part of sanctions screening that is analysis rather than a
+            // lookup, and the part this does not do yet.
+            var st = (li && li.state) || {};
+            var hours = st.refreshEveryMs ? Math.round(st.refreshEveryMs / 3600000) : 0;
             cmain.appendChild(useFacts([
-                ['List', c.source || 'OFAC SDN'],
-                ['Addresses on it', c.addresses ? useNum(c.addresses) : '—'],
-                // the list publishes its own date in american order, which is
-                // not how it is read anywhere this is sold
-                ['List dated', c.listDate ? (whenText(listDay(c.listDate)) || c.listDate) : '—'],
+                ['Lists screened against', st.lists ? useNum(st.lists) : '1'],
+                ['Designated addresses', useNum(st.addresses || c.addresses || 0)],
+                ['Sanctioned people and entities', useNum(st.entities || 0)],
+                ['Attributed beyond the listing', useNum(st.attributed || 0)],
+                ['Checked for changes', hours ? fill('Every {n} h', { n: useNum(hours) }) : '—'],
                 ['Last refreshed', c.refreshedAt ? whenText(c.refreshedAt, true) : '—']
             ]));
             if (li && !fresh) {
                 cmain.appendChild(switched([
                     ['updates', 'List updates applied', false],
-                    ['added', 'Addresses added to lists', false],
-                    ['removed', 'Addresses taken off lists', false],
-                    ['rescreens', 'Re-screens triggered', 'Hits'],
-                    ['hits', 'Hits from a list change', false],
-                    ['cleared', 'Cleared by a list change', false]
+                    ['added', 'Addresses designated', false],
+                    ['entities', 'People and entities designated', false],
+                    ['removed', 'Addresses delisted', false],
+                    ['rescreens', 'Past checks re-screened', 'Retroactive hits'],
+                    ['hits', 'Retroactive hits', false]
                 ], {
                     get: function () { return pickedList; },
                     set: function (k) { pickedList = k; }
@@ -7695,18 +7704,50 @@
                     var src = which === 'was' ? liWas : li;
                     return src && src[key] ? src[key] : null;
                 }));
+
+                // Every jurisdiction a payments business is asked about, in the
+                // order compliance teams are asked about them.
                 var bl = li.byList || {};
-                var blAll = (bl.ofac || 0) + (bl.eu || 0) + (bl.uk || 0) + (bl.un || 0);
-                tallied(cmain, 'By list', [
-                    { label: 'OFAC SDN', n: bl.ofac || 0 },
-                    { label: t('EU consolidated list'), n: bl.eu || 0 },
-                    { label: t('UK sanctions list'), n: bl.uk || 0 },
-                    { label: t('UN consolidated list'), n: bl.un || 0 }
-                ], blAll);
+                var LIST_ROWS = [
+                    ['ofac', 'OFAC SDN'],
+                    ['ofacOther', 'OFAC non-SDN lists'],
+                    ['eu', 'EU consolidated list'],
+                    ['uk', 'UK sanctions list'],
+                    ['un', 'UN consolidated list'],
+                    ['ca', 'Canada (SEMA)'],
+                    ['au', 'Australia (DFAT)'],
+                    ['ch', 'Switzerland (SECO)'],
+                    ['jp', 'Japan (MOF)']
+                ];
+                var blAll = LIST_ROWS.reduce(function (a, r) { return a + (bl[r[0]] || 0); }, 0);
+                tallied(cmain, 'By list', LIST_ROWS.map(function (r) {
+                    return { label: r[0] === 'ofac' ? r[1] : t(r[1]), n: bl[r[0]] || 0 };
+                }), blAll);
+
+                // What the designations are about, the way an analyst asks it.
+                var bt = li.byTheme || {};
+                var THEME_ROWS = [
+                    ['cyber', 'Cyber-related'],
+                    ['drugs', 'Narcotics'],
+                    ['terror', 'Terrorism'],
+                    ['dprk', 'North Korea'],
+                    ['crime', 'Organised crime'],
+                    ['russia', 'Russia and Ukraine'],
+                    ['iran', 'Iran'],
+                    ['weapons', 'Weapons proliferation'],
+                    ['other', 'Other programmes']
+                ];
+                var btAll = THEME_ROWS.reduce(function (a, r) { return a + (bt[r[0]] || 0); }, 0);
+                tallied(cmain, 'By sanctions programme', THEME_ROWS
+                    .map(function (r) { return { label: t(r[1]), n: bt[r[0]] || 0 }; })
+                    .sort(function (x, y) { return y.n - x.n; }), btAll);
+
                 var bc = li.byChain || [];
                 var bcAll = bc.reduce(function (a, r) { return a + r.n; }, 0);
                 if (bc.length) {
-                    tallied(cmain, 'Addresses on the lists, by chain', bc.map(function (r) {
+                    // not "By chain", which under screenings means the checks
+                    // made on each chain; these are the listed addresses
+                    tallied(cmain, 'Designated addresses, by chain', bc.map(function (r) {
                         return { label: chainText(r.asset), n: r.n };
                     }), bcAll);
                 }
