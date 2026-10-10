@@ -1570,8 +1570,6 @@ button { font: inherit; color: inherit; }
 .rowbtn:hover { border-color: var(--pill-line-hover); color: var(--ink); background: var(--hover); }
 .rowbtn.is-bad:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-bg); }
 
-.waiting .tr { border-bottom: 1px solid var(--line-2); }
-.waiting .tr:last-child { border-bottom: 0; }
 .shim {
     display: block;
     height: 10px;
@@ -1579,8 +1577,6 @@ button { font: inherit; color: inherit; }
     background: var(--line);
     animation: shim 1.4s ease-in-out infinite;
 }
-.waiting .tr:nth-child(2) .shim { animation-delay: 0.12s; }
-.waiting .tr:nth-child(3) .shim { animation-delay: 0.24s; }
 @keyframes shim {
     0%, 100% { opacity: 0.45; }
     50% { opacity: 0.9; }
@@ -2867,8 +2863,6 @@ html.is-theming .btn {
    the first column and jumped sideways when the view was switched. */
 .prjs > .empty,
 .prjs.is-grid > .empty,
-.prjs > .waiting,
-.prjs.is-grid > .waiting { grid-column: 1 / -1; }
 
 /* a value in the panel that is shown rather than chosen */
 .drw-static {
@@ -3567,7 +3561,6 @@ html.is-theming .btn {
    lives in, and in the row shape the checks screen uses: a reader who has read
    one of them has read both. */
 .use-last { min-width: 0; }
-.use-last.is-waiting { min-height: 8rem; opacity: 0.55; }
 .use-last > .tr:last-child { border-bottom: 0; }
 
 /* Four columns: the address takes what is left, the rest take what they need.
@@ -5465,4 +5458,42 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
 }
 @media (prefers-reduced-motion: reduce) {
     .use-wait-chip { animation: none; }
+}
+
+/* ---- loading shapes ------------------------------------------------- */
+
+/* A bar where text will be. Inline, so it sits in a row of cells the way the
+   words it stands in for do, and shaped where the thing it stands in for has
+   a shape: a pill for a verdict, a rounded square for a mark or a chip, a
+   circle for an avatar. */
+.shim.sk { display: inline-block; vertical-align: middle; max-width: 100%; }
+/* A bar standing in for a line of text takes up the line it stands in for:
+   drawn at its own height, padded out to the height of a line in the font
+   around it. In a flex row there is no line box to hold it open, and a row of
+   bars came out a few pixels shorter than the row of words that replaced it. */
+.shim.sk.is-line { vertical-align: top; margin-block: max(0px, calc((1lh - var(--h, 10px)) / 2)); }
+.shim.sk.is-pill { border-radius: 999px; }
+.shim.sk.is-chip { border-radius: 9px; }
+.shim.sk.is-dot { border-radius: 50%; }
+/* the second line of a two-line cell sits under the first, not beside it */
+.sk + .sk { margin-left: 0.6rem; }
+.prj-t > span, .org-t > span, .sess-t > span, .lg-t > span { display: block; }
+.prj-t > span + span, .org-t > span + span, .sess-t > span + span, .lg-t > span + span { margin-top: 0.35rem; }
+/* marks that carry their own box keep it; the bar inside them is the glyph */
+.prj-mark > .sk, .org-mark > .sk { width: 100% !important; height: 100% !important; }
+/* rows cascade, so the list breathes down the page rather than all at once */
+[aria-busy="true"] > :nth-child(3n+2) .sk { animation-delay: 0.12s; }
+[aria-busy="true"] > :nth-child(3n) .sk { animation-delay: 0.24s; }
+
+/* The shell as it is served, before the script has drawn anything: rows in
+   the sidebar where the links go, the name and address in the corner and the
+   avatar shimmering. Each is replaced as the script paints it. */
+.nav-sk { pointer-events: none; }
+.nav-sk .sk + .sk { margin-left: 11px; }
+.nav-group > .sk { vertical-align: baseline; }
+.avatar.is-wait { background: var(--line); animation: shim 1.4s ease-in-out infinite; }
+.who-name > .sk, .who-mail > .sk { display: block; margin-left: auto; }
+.who-mail > .sk { margin-top: 4px; }
+@media (prefers-reduced-motion: reduce) {
+    .avatar.is-wait { animation: none; }
 }
