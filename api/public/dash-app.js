@@ -6827,17 +6827,25 @@
             var r = btn.getBoundingClientRect();
             pop.style.top = Math.round(r.bottom + 6) + 'px';
             pop.style.bottom = 'auto';
-            // Under the button, from its left edge where there is room and
-            // from its right edge where there is not. The edge is where the
-            // content ends, not the window: the page scrolls inside a box, and
-            // on a phone with a visible scrollbar the window's width ran the
-            // menu over it.
+            // Under the button, from its left edge where there is room. Where
+            // there is not, it runs out to the right edge of the page's column
+            // -- the end of the rule under these controls -- rather than
+            // hanging back under the button. Never past the content: the page
+            // scrolls inside a box, and on a phone with a visible scrollbar the
+            // window's width ran the menu over it.
             var cv = btn.closest('.canvas') || document.getElementById('canvas');
             var edge = cv ? cv.getBoundingClientRect().left + cv.clientWidth : document.documentElement.clientWidth;
-            var w = pop.offsetWidth || 220;
+            var row = btn.closest('.use-bar');
+            var column = row ? row.getBoundingClientRect().right : edge - 8;
+            // measured where it has the whole screen, then held at that, so
+            // moving it cannot narrow it and leave the right edge short
+            pop.style.width = '';
+            pop.style.left = '0px';
+            var w = Math.ceil(pop.getBoundingClientRect().width) || 220;
+            pop.style.width = w + 'px';
             var left = r.left;
-            if (left + w > edge - 8) left = r.right - w;
-            left = Math.max(8, Math.min(left, edge - 8 - w));
+            if (left + w > column) left = column - w;
+            left = Math.max(8, Math.min(left, edge - 4 - w));
             pop.style.left = Math.round(left) + 'px';
         }
         function shutMenu() { open(false); }
