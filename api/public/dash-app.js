@@ -61,6 +61,12 @@
         seal: '<path d="M13.6 20.4H6.6a1.2 1.2 0 0 1-1.2-1.2V4.8a1.2 1.2 0 0 1 1.2-1.2h10.8a1.2 1.2 0 0 1 1.2 1.2v4.8"/>' +
             '<path d="M8.6 7.8h6.8M8.6 11.2h4"/><circle cx="17.2" cy="14.8" r="2.6"/>' +
             '<path d="m15.7 17-.7 3.6 2.2-1.2 2.2 1.2-.7-3.6"/>',
+        // A bar part filled: an allowance and how much of it is gone.
+        meter: '<rect x="3" y="9.2" width="18" height="5.6" rx="2.8"/><path d="M5.8 12h6.8"/>',
+        // Two ticked lines: what a plan carries.
+        carries: '<path d="m4 7.4 1.7 1.7 3-3"/><path d="M11.6 7.6H20"/><path d="m4 15.4 1.7 1.7 3-3"/><path d="M11.6 15.6H20"/>',
+        // A clock turned back: what came before.
+        history: '<path d="M4.2 12a7.8 7.8 0 1 0 2.3-5.5"/><path d="M4.2 3.9v3.5h3.5"/><path d="M12 8v4l2.8 1.8"/>',
         usage: '<path d="M4 20V4"/><path d="M4 20h16"/><rect x="7.4" y="12.6" width="2.9" height="4.6" rx="0.6"/>' +
             '<rect x="12" y="9" width="2.9" height="8.2" rx="0.6"/><rect x="16.6" y="5.6" width="2.9" height="11.6" rx="0.6"/>',
         billing: '<rect x="2.8" y="6" width="18.4" height="12" rx="2.2"/><path d="M2.8 10.4h18.4"/>' +
@@ -4470,8 +4476,13 @@
     function useMoney(cents, currency) {
         if (cents === null || cents === undefined) return t('Agreed with you');
         try {
+            // whole amounts without the two noughts: a plan priced at 1,197
+            // is not priced at 1,197.00, and the noughts are what the eye
+            // lands on in a column of prices
+            var whole = cents % 100 === 0;
             return new Intl.NumberFormat(navLang(), {
-                style: 'currency', currency: currency || 'EUR', maximumFractionDigits: 2
+                style: 'currency', currency: currency || 'EUR',
+                minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2
             }).format(cents / 100);
         } catch (err) {
             return (cents / 100).toFixed(2) + ' ' + (currency || 'EUR');
@@ -6580,6 +6591,101 @@
         return days.map(function (d) { return d[key] || 0; });
     }
 
+    // Where a count is heading by the end of its cycle, at the pace it has
+    // gone so far. Nothing under a day in: a pace set by one morning is a
+    // guess, and printing it as a forecast would be the page making it up.
+    function usePace(used, from, to) {
+        var a = new Date(from).getTime();
+        var b = new Date(to).getTime();
+        var now = Date.now();
+        if (!(b > a) || now <= a) return null;
+        var gone = Math.min(now, b) - a;
+        if (gone < 86400000) return null;
+        return Math.round(used * (b - a) / gone);
+    }
+
+    // A wait, in the unit a person would say it in.
+    function useWait(sec) {
+        if (sec < 3600) return fill('{n} min', { n: useNum(Math.max(1, Math.round(sec / 60))) });
+        if (sec < 172800) {
+            var h = Math.round(sec / 360) / 10;
+            var said;
+            try { said = h.toLocaleString(navLang(), { maximumFractionDigits: 1 }); } catch (err) { said = String(h); }
+            return fill('{n} h', { n: said });
+        }
+        return fill('{n} days', { n: useNum(Math.round(sec / 86400)) });
+    }
+
+    function useAddYears(iso, years) {
+        var d = new Date(iso);
+        d.setUTCFullYear(d.getUTCFullYear() + years);
+        return d.toISOString();
+    }
+
+    // Every file that left the organisation in a window: evidence packs and
+    // usage files, which spend the same export allowance.
+    function filesOut(ev) {
+        if (!ev) return 0;
+        return ((ev.exports && ev.exports.total) || 0) + ((ev.downloads && ev.downloads.total) || 0);
+    }
+    function filesDays(ev) {
+        var a = (ev.exports && ev.exports.days) || [];
+        var b = (ev.downloads && ev.downloads.days) || [];
+        return a.map(function (d, i) { return (d.n || 0) + ((b[i] && b[i].n) || 0); });
+    }
+
+    // The period on screen as a file, in the four shapes it is asked for.
+    //
+    // One CSV link was enough for a person reconciling a spreadsheet and no
+    // use to anybody else: an analyst wants a workbook that opens with its
+    // headings in place, an engineer wants something a script can read, and
+    // the compliance officer wants a page to print, sign and put in a file.
+    // All four come from one set of numbers on the server and carry the same
+    // reference, so a printed copy can be matched to the spreadsheet it came
+    // with.
+    function useExports(org, out) {
+        var box = document.createElement('div');
+        box.className = 'use-exp';
+        var q = '?period=' + encodeURIComponent(out.period.key) + '&scope=' + encodeURIComponent(out.scope) +
+            '&tz=' + encodeURIComponent(zoneNow());
+        [
+            ['html', 'Report for print', 'Laid out for A4, with a reference to match and two lines to sign.', 'Open'],
+            ['xlsx', 'Excel workbook', 'One sheet per table. Numbers stay numbers, so the sums add up.', 'Download'],
+            ['csv', 'CSV', 'Every table on this page, one under the other.', 'Download'],
+            ['json', 'JSON', 'The same tables for a system that reads them, with the reference inside.', 'Download']
+        ].forEach(function (f) {
+            var a = document.createElement('a');
+            a.className = 'use-exp-i';
+            a.href = '/v1/orgs/' + encodeURIComponent(org.id) + '/usage.' + f[0] + q;
+            if (f[0] === 'html') {
+                a.target = '_blank';
+                a.rel = 'noopener';
+            } else {
+                a.setAttribute('download', '');
+            }
+            var n = document.createElement('span');
+            n.className = 'use-exp-n';
+            n.textContent = f[1] === 'CSV' || f[1] === 'JSON' ? f[1] : t(f[1]);
+            a.appendChild(n);
+            var d = document.createElement('span');
+            d.className = 'use-exp-p';
+            d.textContent = t(f[2]);
+            a.appendChild(d);
+            var go = document.createElement('span');
+            go.className = 'use-exp-a';
+            go.textContent = t(f[3]);
+            a.appendChild(go);
+            box.appendChild(a);
+        });
+        var wrap = document.createDocumentFragment();
+        wrap.appendChild(box);
+        var note = document.createElement('p');
+        note.className = 'use-exp-note';
+        note.textContent = t('Each file carries the same SHA-256 reference over the same numbers, so any two copies can be matched.');
+        wrap.appendChild(note);
+        return wrap;
+    }
+
     // Included / used / left, as three lines rather than a sentence: a number
     // with a name beside it can be read off, and a sentence has to be unpicked.
     function useFacts(rows) {
@@ -6721,8 +6827,6 @@
         var pickedMonitor = 'alerts';
         var pickedList = 'added';
         var pickedApi = 'calls';
-        var pickedTeam = 'joined';
-        var pickedEvidence = 'sealed';
         var latest = null;
 
         // The title and the two controls are one band, and it stays at the top
@@ -7143,9 +7247,10 @@
                 { label: 'Projects', used: shape.projects || 0, of: inc.projects, series: useFlat(s.days), go: 'use-team' },
                 { label: 'SSO users', used: 0, of: inc.ssoSeats, series: useFlat(s.days), go: 'use-team' },
 
-                // ---- Evidence
-                { label: 'Evidence exports', used: out.evidence ? out.evidence.exports.total : 0, of: inc.exports,
-                  series: out.evidence ? useSeries(out.evidence.exports.days, 'n') : useFlat(s.days), go: 'use-evidence' }
+                // ---- Evidence: every file that left, evidence packs and
+                // usage files alike, against the one export allowance
+                { label: 'Files exported', used: filesOut(out.evidence), of: inc.exports,
+                  series: out.evidence ? filesDays(out.evidence) : useFlat(s.days), go: 'use-evidence' }
             ], 'is-lead'));
             body.appendChild(sum);
 
@@ -7190,10 +7295,19 @@
             // end of it.
             var meter = allow.rows.length ? allow.rows[0] : null;
             if (meter && !meter.unmetered && meter.of) {
+                // Where the cycle is heading at the pace it has gone so far,
+                // and the day that pace was set hardest. A third of a
+                // quarter gone and half the allowance with it is the thing
+                // somebody opens this page to find out before it happens.
+                var pace = out.cycle ? usePace(meter.used, out.cycle.from, out.cycle.to) : null;
                 smain.appendChild(useFacts([
                     ['Included', useNum(meter.of)],
                     ['Used', useNum(meter.used)],
-                    ['Left', useNum(Math.max(0, meter.of - meter.used))]
+                    ['Left', useNum(Math.max(0, meter.of - meter.used))],
+                    ['On pace for', pace === null ? '\u2014' : fill('{n} by {date}', {
+                        n: useNum(pace), date: whenText(new Date(new Date(out.cycle.to).getTime() - 1).toISOString())
+                    })],
+                    [out.period && out.period.grain === 'hour' ? 'Busiest hour' : 'Busiest day', busiest(s.days)]
                 ]));
             } else if (meter && meter.unmetered) {
                 smain.appendChild(useFacts([
@@ -7347,7 +7461,7 @@
                     if (y === -1) y = VERDICT_ORDER.length;
                     return x === y ? b.n - a.n : x - y;
                 });
-            if (vrows.length) {
+            if (vrows.length && !(s.byScore && s.byScore.length)) {
                 spent.push({
                     title: 'What came back',
                     node: useTally(vrows.map(function (r) {
@@ -7363,6 +7477,60 @@
                     }), s.total)
                 });
             }
+
+            // What came back, by the organisation's own risk bands rather than
+            // by the three verdicts. A verdict is the band a score fell into
+            // under the settings of the day, and four bands with their edges
+            // written beside them say what three words cannot: how close the
+            // medium ones came to high.
+            if (s.byScore && s.byScore.length) {
+                var rb = (org.risk && org.risk.mid && org.risk.high && org.risk.severe)
+                    ? org.risk : { mid: 51, high: 81, severe: 100 };
+                var inBand = { low: 0, mid: 0, high: 0, severe: 0 };
+                s.byScore.forEach(function (r) {
+                    var k = r.score >= rb.severe ? 'severe' : (r.score >= rb.high ? 'high' : (r.score >= rb.mid ? 'mid' : 'low'));
+                    inBand[k] += r.n;
+                });
+                var edge = function (a, b) { return a === b ? String(a) : a + '\u2013' + b; };
+                spent.push({
+                    title: 'By risk score',
+                    node: useTally([
+                        { label: t('Severe') + ', ' + edge(rb.severe, 100), n: inBand.severe, mark: 'severe' },
+                        { label: t('High') + ', ' + edge(rb.high, rb.severe - 1), n: inBand.high, mark: 'bad' },
+                        { label: t('Medium') + ', ' + edge(rb.mid, rb.high - 1), n: inBand.mid, mark: 'mid' },
+                        { label: t('Low') + ', ' + edge(0, rb.mid - 1), n: inBand.low, mark: 'ok' }
+                    ], s.total)
+                });
+            }
+
+            // What the flagged addresses were exposed to, the way an
+            // investigator asks it. Sanctions are the one category counted
+            // today; the rest are the categories the risk model is being
+            // built to name, in the order they turn up in real cases.
+            var severeN = (s.verdicts && s.verdicts.severe) || 0;
+            spent.push({
+                title: 'Exposure by category',
+                node: useTally([
+                    { label: t('Sanctioned entities'), n: severeN },
+                    { label: t('Darknet markets'), n: 0 },
+                    { label: t('Mixing services'), n: 0 },
+                    { label: t('Ransomware'), n: 0 },
+                    { label: t('Scams'), n: 0 },
+                    { label: t('Stolen funds'), n: 0 },
+                    { label: t('Gambling'), n: 0 }
+                ], s.total)
+            });
+            // How far the exposure sits from the address that was asked
+            // about. A listed address and an address that once received
+            // from one are different findings and are worked differently.
+            spent.push({
+                title: 'Direct or indirect',
+                node: useTally([
+                    { label: t('The address itself is listed'), n: severeN },
+                    { label: t('One hop from a listed address'), n: 0 },
+                    { label: t('Two to five hops away'), n: 0 }
+                ], s.total)
+            });
 
             // The work, by kind, over the window on screen.
             //
@@ -7438,10 +7606,19 @@
                 rev.body.className += ' is-wide';
                 var rmain = useMain();
                 var q = rv.queue || { open: 0, holding: 0, oldest: null, age: {} };
+                // How fast, as well as how much: the median wait between a
+                // finding and its conclusion, and the share settled inside a
+                // day, which is the service level an examiner asks a team to
+                // state and then to show.
+                var tk = rv.took || {};
+                var tkAll = (tk.hour || 0) + (tk.day || 0) + (tk.week || 0) + (tk.longer || 0);
                 rmain.appendChild(useFacts([
                     ['Open', useNum(q.open)],
                     ['On hold', useNum(q.holding)],
-                    ['Oldest open', q.oldest ? whenText(q.oldest) : '—']
+                    ['Oldest open', q.oldest ? whenText(q.oldest) : '—'],
+                    ['Median time to a decision', rv.medianSec === null || rv.medianSec === undefined
+                        ? '—' : useWait(rv.medianSec)],
+                    ['Decided within a day', tkAll ? pct((tk.hour || 0) + (tk.day || 0), tkAll) : '—']
                 ]));
 
                 // Findings are the screenings that came back flagged, drawn with
@@ -7537,6 +7714,18 @@
                         { label: t('Over thirty days'), n: age.older || 0, mark: 'bad' }
                     ], q.open || 0)]
                 ];
+                // Who concluded them. Four eyes means two named people, and
+                // a team where one reviewer signs off nearly everything has a
+                // key-person problem that no other number on this page shows.
+                var who = rv.byReviewer || [];
+                if (who.length) {
+                    parts.push(['Decisions, by reviewer', useTally(who.map(function (r) {
+                        return {
+                            label: r.name || (r.id ? t('A member') : t('A member who has left')),
+                            n: r.n
+                        };
+                    }), who.reduce(function (a, r) { return a + r.n; }, 0))]);
+                }
                 parts.forEach(function (part) {
                     var h = document.createElement('div');
                     h.className = 'use-spent-t';
@@ -7611,6 +7800,19 @@
                 into.appendChild(useTally(rows, total));
             };
 
+            // Cells with no card above them, for a section whose counts have
+            // no shape worth drawing over time. A member joining on a Tuesday
+            // is not a trend, and a chart of it was a line along the floor
+            // with one step in it. Each cell keeps its change against the
+            // window before, which is the part of a chart these needed.
+            var plain = function (cells, lineFor) {
+                return useGrid(cells.map(function (c) {
+                    var now = lineFor(c[0], 'now');
+                    var was = lineFor(c[0], 'was');
+                    return { label: c[1], used: now ? now.total : 0, was: was ? was.total : null };
+                }), 'is-kinds');
+            };
+
             // ---- monitoring
             //
             // Addresses watched after their first check, and what changed about
@@ -7625,11 +7827,16 @@
                     'Addresses watched after the first check, and what changed about them.');
                 monSec.body.className += ' is-wide';
                 var mmain = useMain();
+                var monEvery = out.lists && out.lists.state && out.lists.state.refreshEveryMs
+                    ? Math.round(out.lists.state.refreshEveryMs / 3600000) : 0;
                 var watchOf = function (n, of) { return of ? useNum(n) + ' / ' + useNum(of) : useNum(n); };
                 mmain.appendChild(useFacts([
                     ['Addresses watched', watchOf(mon.watched || 0, inc.addresses)],
                     ['Watchlist entries', watchOf(mon.watchlist || 0, inc.watchlist)],
-                    ['Last alert', mon.lastAlert ? whenText(mon.lastAlert) : '—']
+                    ['Last alert', mon.lastAlert ? whenText(mon.lastAlert) : '—'],
+                    // a watched address is checked again whenever the lists
+                    // are, so it is never further behind them than this
+                    ['Checked again', monEvery ? fill('Every {n} h', { n: useNum(monEvery) }) : '—']
                 ]));
                 mmain.appendChild(switched([
                     ['alerts', 'Alerts raised', 'Sanctioned'],
@@ -7699,6 +7906,7 @@
                 ['Lists screened against', st.lists ? useNum(st.lists) : '1'],
                 ['Designated addresses', useNum(st.addresses || c.addresses || 0)],
                 ['Sanctioned people and entities', useNum(st.entities || 0)],
+                ['Newest designation', st.newest ? whenText(st.newest) : '—'],
                 ['Attributed beyond the listing', useNum(st.attributed || 0)],
                 ['Checked for changes', hours ? fill('Every {n} h', { n: useNum(hours) }) : '—'],
                 ['Last refreshed', c.refreshedAt ? whenText(c.refreshedAt, true) : '—']
@@ -7792,6 +8000,9 @@
                     ['Screening limit', lim.screensPerHour ? fill('{n} an hour per IP', { n: useNum(lim.screensPerHour) }) : '—'],
                     ['Webhook endpoints', useNum(ap.webhooks || 0)],
                     ['Answer time, slowest in 20', ap.answerMs ? fill('{n} ms', { n: useNum(ap.answerMs) }) : t('Nothing measured yet')],
+                    ['Webhooks delivered first time', ap.deliveries && ap.deliveries.total
+                        ? pct(ap.deliveries.total - ((ap.failed && ap.failed.total) || 0), ap.deliveries.total)
+                        : t('Nothing delivered yet')],
                     ['API version', ap.version || 'v1']
                 ]));
                 amain.appendChild(switched([
@@ -7808,6 +8019,25 @@
                     var src = which === 'was' ? apWas : ap;
                     return src && src[key] ? src[key] : null;
                 }));
+                // What the calls came back as, and how long they took. A
+                // limit hit is not an error: it is the server doing what it
+                // says, and it is counted on its own so the two are not read
+                // as one problem.
+                var calls = (ap.calls && ap.calls.total) || 0;
+                var limited = (ap.limited && ap.limited.total) || 0;
+                var errors = (ap.errors && ap.errors.total) || 0;
+                tallied(amain, 'Responses, by outcome', [
+                    { label: t('Answered'), n: Math.max(0, calls - limited - errors), mark: 'ok' },
+                    { label: t('Turned away at the rate limit'), n: limited, mark: 'mid' },
+                    { label: t('Errors'), n: errors, mark: 'bad' }
+                ], calls);
+                var lat = ap.latency || {};
+                tallied(amain, 'Answer time', [
+                    { label: t('Under 100 ms'), n: lat.fast || 0 },
+                    { label: t('100 to 300 ms'), n: lat.ok || 0 },
+                    { label: t('300 ms to a second'), n: lat.slow || 0 },
+                    { label: t('Over a second'), n: lat.over || 0 }
+                ], calls);
                 // The route as a developer writes it, in the ordinary face: the
                 // monospace on this page is for addresses and nothing else.
                 var eps = ap.byEndpoint || [];
@@ -7850,20 +8080,31 @@
                 ['Projects archived', useNum(Math.max(0, (shape.projectsAll || 0) - (shape.projects || 0)))]
             ]));
             if (tm && !fresh) {
-                tmain.appendChild(switched([
-                    ['joined', 'Members joined', false],
-                    ['left', 'Members left', false],
-                    ['invited', 'Invites sent', 'Accepted'],
-                    ['accepted', 'Invites accepted', false],
-                    ['signins', 'Sign-ins', false],
-                    ['projects', 'Projects created', false]
-                ], {
-                    get: function () { return pickedTeam; },
-                    set: function (k) { pickedTeam = k; }
-                }, function (key, which) {
+                tmain.appendChild(plain([
+                    ['joined', 'Members joined'],
+                    ['left', 'Members left'],
+                    ['invited', 'Invites sent'],
+                    ['accepted', 'Invites accepted'],
+                    ['signins', 'Sign-ins'],
+                    ['projects', 'Projects created']
+                ], function (key, which) {
                     var src = which === 'was' ? tmWas : tm;
                     return src && src[key] ? src[key] : null;
                 }));
+                // The ways into this organisation that are weaker than they
+                // should be, worst first. Each is a count of people, marked
+                // when it is not nought, so a team with nothing to fix reads
+                // as a column of green.
+                var risky = function (n, kind) { return n > 0 ? kind : 'ok'; };
+                var noMfa = Math.max(0, members - (ts.mfa || 0));
+                var seenAt = ts.seen || {};
+                tallied(tmain, 'Access risks', [
+                    { label: t('Owners and admins without two-factor'), n: ts.bare || 0, mark: risky(ts.bare || 0, 'bad') },
+                    { label: t('Members without two-factor'), n: noMfa, mark: risky(noMfa, 'mid') },
+                    { label: t('Not signed in for 30 days'), n: seenAt.older || 0, mark: risky(seenAt.older || 0, 'mid') },
+                    { label: t('Never signed in'), n: seenAt.never || 0, mark: risky(seenAt.never || 0, 'mid') },
+                    { label: t('Invites waiting over a week'), n: ts.stale || 0, mark: risky(ts.stale || 0, 'mid') }
+                ], members);
                 // Roles widest first, the order the team page lists them in.
                 var roles = ts.roles || {};
                 tallied(tmain, 'By role', [
@@ -7910,22 +8151,22 @@
                 ['Sealed with a digest', useNum(es.sealed || 0) + ' / ' + useNum(es.checks || 0)],
                 ['Oldest record', es.oldest ? whenText(es.oldest) : '—'],
                 ['Kept for', es.retentionYears ? fill('{n} years', { n: useNum(es.retentionYears) }) : '—'],
-                ['Exports this cycle', useNum(ev && ev.exports ? ev.exports.total : 0) +
-                    (inc.exports ? ' / ' + useNum(inc.exports) : '')],
-                ['Last export', es.lastExport ? whenText(es.lastExport) : '—']
+                // the day the oldest record reaches the end of what is kept
+                ['Earliest due for deletion', es.oldest && es.retentionYears
+                    ? whenText(useAddYears(es.oldest, es.retentionYears)) : '—'],
+                ['Files exported', useNum(filesOut(ev)) +
+                    (inc.exports && onCycle ? ' / ' + useNum(inc.exports) : '')],
+                ['Last export', es.lastExport ? whenText(es.lastExport, true) : '—']
             ]));
             if (ev && !fresh) {
-                emain.appendChild(switched([
-                    ['sealed', 'Checks sealed', false],
-                    ['decisions', 'Decisions sealed', false],
-                    ['exports', 'Evidence exports', false],
-                    ['opened', 'Evidence files opened', false],
-                    ['downloads', 'Usage files downloaded', false],
-                    ['verified', 'Records verified', false]
-                ], {
-                    get: function () { return pickedEvidence; },
-                    set: function (k) { pickedEvidence = k; }
-                }, function (key, which) {
+                emain.appendChild(plain([
+                    ['sealed', 'Checks sealed'],
+                    ['decisions', 'Decisions sealed'],
+                    ['exports', 'Evidence exports'],
+                    ['opened', 'Evidence files opened'],
+                    ['downloads', 'Usage files downloaded'],
+                    ['verified', 'Records verified']
+                ], function (key, which) {
                     var src = which === 'was' ? evWas : ev;
                     return src && src[key] ? src[key] : null;
                 }));
@@ -7940,100 +8181,20 @@
                     { label: t('Checks'), n: es.sealed || 0 },
                     { label: t('Decisions'), n: es.decisions || 0 }
                 ], (es.sealed || 0) + (es.decisions || 0));
+                // Every file that has left, by shape, since the first one.
+                var fmt = es.byFormat || {};
+                var fmtAll = (fmt.csv || 0) + (fmt.xlsx || 0) + (fmt.json || 0) + (fmt.html || 0);
+                tallied(emain, 'Usage files, by format', [
+                    { label: t('Report for print'), n: fmt.html || 0 },
+                    { label: t('Excel workbook'), n: fmt.xlsx || 0 },
+                    { label: 'CSV', n: fmt.csv || 0 },
+                    { label: 'JSON', n: fmt.json || 0 }
+                ], fmtAll);
             }
-            // The period on screen as a file, the same chip the pickers at the
-            // top are made of, centred under the tables like the chain list's.
-            var get = document.createElement('a');
-            get.className = 'chip use-more use-get';
-            get.href = '/v1/orgs/' + encodeURIComponent(org.id) + '/usage.csv?period=' +
-                encodeURIComponent(out.period.key) + '&scope=' + encodeURIComponent(out.scope);
-            get.setAttribute('download', '');
-            get.textContent = t('Download this period as CSV');
-            emain.appendChild(get);
+            emain.appendChild(useGridTitle('Export this period'));
+            emain.appendChild(useExports(org, out));
             evSec.body.appendChild(emain);
             body.appendChild(evSec);
-
-            // ---- plan
-            //
-            // Last, where the summary's order puts nothing: the grid runs
-            // screenings, review, monitoring, coverage, the API, team and
-            // evidence, and the sections follow it, so clicking a cell and
-            // scrolling the page go the same way. What the plan allows is said
-            // cell by cell above; this is the plan itself, and most of it is
-            // also the billing page's.
-            if (!sandbox) {
-                var pl = useSection('use-plan', 'Plan', 'plan',
-                    'What this organisation is allowed, and how much of it is left.');
-                pl.body.appendChild(useSide(sub ? [
-                    'What is included is per period, so it starts again when the next one does.',
-                    'Running out stops further checks rather than adding to a bill: nothing here can charge you by surprise.'
-                ] : [
-                    'These are counted from the day the plan started, not from the day this period did, so they do not reset when a period does.',
-                    'Running out stops further checks rather than adding to a bill: nothing here can charge you by surprise.'
-                ]));
-                var pmain = useMain();
-                if (sub) {
-                    var rows = [
-                        ['Plan', sub.planName],
-                        ['Billing', t(useTermWord(sub.term))],
-                        ['Price', useMoney(sub.priceCents, sub.currency)],
-                        ['Started', whenText(sub.startedAt)]
-                    ];
-                    if (sub.termEndsAt) {
-                        rows.push([sub.cancelledAt ? 'Ends' : 'Renews', whenText(sub.termEndsAt)]);
-                    }
-                    rows.push(['This period', useSpan(out.period)]);
-                    if (sub.included) {
-                        rows.push(['Screenings included', useNum(sub.included.screenings)]);
-                        rows.push(['Seats included', useNum(sub.included.seats)]);
-                    }
-                    if (!sub.paid) rows.push(['Paid', t('Not paid yet')]);
-                    pmain.appendChild(useFacts(rows));
-                } else {
-                    var trows = [['Plan', orghPlan(plan.state)]];
-                    if (plan.devGrant) trows.push(['Ends', '\u221e  ' + t('Never')]);
-                    else if (plan.expiresAt) trows.push(['Ends', whenText(plan.expiresAt)]);
-                    pmain.appendChild(useFacts(trows.concat([
-                        ['Live checks included', plan.state === 'enterprise' ? t('Unmetered') : useNum(plan.liveIncluded)],
-                        // said in full, because the number above it counts a period
-                        // and this one does not: two counts that disagree are worse
-                        // than one that explains itself
-                        ['Live checks used since the plan started', useNum(plan.liveUsed)],
-                        ['History scans', plan.historyOpen ? t('Unmetered') : useNum(plan.historyUsed) + ' / ' + useNum(plan.historyIncluded)],
-                        ['This period', useSpan(out.period)]
-                    ])));
-                }
-                // and the half that is not a number, under the half that is
-                var carries = out.includes || [];
-                if (carries.length) {
-                    var ch = document.createElement('h3');
-                    ch.className = 'use-carries-t';
-                    ch.textContent = t('Also included');
-                    pmain.appendChild(ch);
-                    pmain.appendChild(useCarries(carries));
-                }
-
-                // And what this plan does not carry. Not a pitch: the lines
-                // say which plan each one is in and whether it exists yet, and
-                // a reader can see at a glance that most of what is above them
-                // is a debt rather than a shelf.
-                var further = out.beyond || [];
-                if (further.length) {
-                    var bh = document.createElement('h3');
-                    bh.className = 'use-carries-t';
-                    bh.textContent = t('Not in this plan');
-                    pmain.appendChild(bh);
-                    pmain.appendChild(useCarries(further, { muted: true, tier: true }));
-                    var seePlans = document.createElement('a');
-                    seePlans.className = 'chip use-open';
-                    seePlans.href = '/pricing';
-                    seePlans.textContent = t('See the plans');
-                    pmain.appendChild(seePlans);
-                }
-                pl.body.appendChild(pmain);
-                body.appendChild(pl);
-            }
-
 
             // the page is built; now it can be measured
             queueFold();
@@ -8739,35 +8900,410 @@
     // What the plan is and how it changes. There is no card on file to show,
     // because nothing here takes cards yet; saying where a change is agreed is
     // the honest version of this screen until there is.
+    // What this organisation is on, what it costs, how much of it is used and
+    // what the other plans would change.
+    //
+    // This used to be two small cards -- the trial's name and a link to the
+    // pricing page -- while the plan itself sat at the bottom of the usage
+    // page under seven sections of counts. A plan is the thing billing is
+    // about, so it lives here now, in the same parts the usage page is built
+    // from: what it is and when it renews, how much of each allowance the
+    // cycle has spent and where it is heading, what it includes, how it
+    // compares with the others, and what came before it.
     function viewBilling(me) {
         var page = document.createElement('div');
         page.className = 'pg';
-        var tr = me.trial || {};
+        var org = me.org || {};
         page.appendChild(pageHead('Billing', 'What this organisation pays, and when it pays it again.'));
-
-        var card = orghCard('Plan', 'plan');
-        card.appendChild(orghStat('Plan', orghPlan(tr.state)));
-        if (tr.daysLeft) card.appendChild(orghStat('Days left', String(tr.daysLeft)));
-        card.appendChild(orghStat('Live checks', tr.state === 'enterprise'
-            ? t('Unmetered')
-            : (Number(tr.liveUsed || 0) + ' / ' + Number(tr.liveIncluded || 0))));
-        page.appendChild(card);
-
-        var change = orghCard('Changing plan', 'swap');
         var body = document.createElement('div');
-        body.className = 'orgh-body';
-        var p2 = document.createElement('p');
-        p2.className = 'orgh-line';
-        p2.textContent = t('Plans are agreed with us directly, so the price matches what you screen.');
-        body.appendChild(p2);
-        var link = document.createElement('a');
-        link.className = 'btn btn-quiet orgh-act';
-        link.href = '/pricing';
-        link.textContent = t('See the plans');
-        body.appendChild(link);
-        change.appendChild(body);
-        page.appendChild(change);
+        body.className = 'use-body bill-body';
+        page.appendChild(body);
+        body.appendChild(waiting());
+        if (!org.id) return page;
+        var base = '/v1/orgs/' + encodeURIComponent(org.id);
+        var json = function (r) {
+            if (!r.ok) throw new Error('bad-status-' + r.status);
+            return r.json();
+        };
+        // The cycle's usage and the subscription with its history, side by
+        // side: the first is what the meters read, the second what the plan
+        // and the comparison are drawn from.
+        Promise.all([
+            fetch(base + '/usage?period=c0&scope=live&tz=' + encodeURIComponent(zoneNow()),
+                { credentials: 'same-origin' }).then(json),
+            fetch(base + '/subscription', { credentials: 'same-origin' }).then(json)
+        ]).then(function (r) {
+            body.textContent = '';
+            drawBilling(body, org, r[0] || {}, r[1] || {});
+        }).catch(function (err) {
+            console.error('[billing] ' + ((err && err.message) || 'failed'));
+            body.textContent = '';
+            body.appendChild(emptyState('That did not load.', 'Reload the page to try again.'));
+        });
         return page;
+    }
+
+    function drawBilling(body, org, u, b) {
+        var sub = u.subscription || b.subscription || null;
+        var trial = u.plan || {};
+        var inc = (sub && sub.included) || {};
+        var cycle = u.cycle || null;
+        var shape = u.org || {};
+        var cat = b.catalogue || { plans: [], terms: [] };
+
+        // ---- plan
+        var plan = useSection('bill-plan', 'Plan', 'plan',
+            'The plan this organisation is on, and the day it renews.');
+        plan.body.className += ' is-wide';
+        var pmain = useMain();
+        var hero = document.createElement('div');
+        hero.className = 'bill-hero';
+
+        var left = document.createElement('div');
+        left.className = 'bill-hero-l';
+        var nameRow = document.createElement('div');
+        nameRow.className = 'bill-name';
+        var name = document.createElement('h3');
+        name.textContent = sub ? sub.planName : orghPlan(trial.state || 'none');
+        nameRow.appendChild(name);
+        // what state it is in, in one word each, beside the name
+        if (sub) {
+            if (sub.cancelledAt) nameRow.appendChild(tag(t('Does not renew'), 'mid'));
+            else nameRow.appendChild(tag(t('Active'), 'ok'));
+            if (!sub.paid) nameRow.appendChild(tag(t('Not paid yet'), 'mid'));
+            if (sub.agreed) nameRow.appendChild(tag(t('Agreed terms'), ''));
+        } else if (trial.daysLeft) {
+            nameRow.appendChild(tag(trial.daysLeft + ' ' + t(trial.daysLeft === 1 ? 'day left' : 'days left'),
+                trial.daysLeft <= 3 ? 'mid' : ''));
+        }
+        left.appendChild(nameRow);
+
+        var price = document.createElement('div');
+        price.className = 'bill-price';
+        var priceLine = document.createElement('div');
+        priceLine.className = 'bill-price-v';
+        var per = document.createElement('div');
+        per.className = 'bill-price-p';
+        if (sub && sub.metered) {
+            var row = (cat.plans || []).filter(function (p) { return p.key === sub.plan; })[0];
+            priceLine.textContent = row ? useMoney(row.perScan, sub.currency) : useMoney(null);
+            per.textContent = t('a screening, billed for what was used');
+        } else if (sub) {
+            priceLine.textContent = useMoney(sub.priceCents, sub.currency);
+            var months = sub.termMonths || 1;
+            per.textContent = sub.priceCents
+                ? fill('{term}, billed in advance. {month} a month.', {
+                    term: t(termWord(sub.term)),
+                    month: useMoney(Math.round(sub.priceCents / months), sub.currency)
+                })
+                : t(termWord(sub.term));
+        } else {
+            priceLine.textContent = useMoney(0, 'EUR');
+            per.textContent = t('Nothing is charged while the trial runs.');
+        }
+        price.appendChild(priceLine);
+        price.appendChild(per);
+        left.appendChild(price);
+        hero.appendChild(left);
+
+        // How far through the cycle, as a bar and in days. The meters below
+        // are read against it: half the allowance gone a quarter of the way
+        // in is a different sentence from half of it gone at the end.
+        var span = cycle || (sub ? { from: sub.periodStart, to: sub.periodEnd } : null);
+        if (span && span.from && span.to) {
+            var from = new Date(span.from).getTime();
+            var to = new Date(span.to).getTime();
+            var dayMs = 86400000;
+            var all = Math.max(1, Math.round((to - from) / dayMs));
+            var gone = Math.min(all, Math.max(1, Math.ceil((Date.now() - from) / dayMs)));
+            var right = document.createElement('div');
+            right.className = 'bill-hero-r';
+            var lab = document.createElement('div');
+            lab.className = 'bill-prog-t';
+            lab.textContent = fill('Day {n} of {all}', { n: useNum(gone), all: useNum(all) });
+            right.appendChild(lab);
+            var bar = document.createElement('div');
+            bar.className = 'bill-bar';
+            var fillEl = document.createElement('i');
+            fillEl.style.width = Math.round((gone / all) * 100) + '%';
+            bar.appendChild(fillEl);
+            right.appendChild(bar);
+            var ends = document.createElement('div');
+            ends.className = 'bill-prog-p';
+            ends.textContent = useRange(span.from, new Date(to - 1).toISOString());
+            right.appendChild(ends);
+            hero.appendChild(right);
+        }
+        pmain.appendChild(hero);
+
+        var facts = [];
+        if (sub) {
+            facts.push(['Billing', t(useTermWord(sub.term))]);
+            facts.push(['Started', whenText(sub.startedAt)]);
+            if (sub.termEndsAt) facts.push([sub.cancelledAt ? 'Ends' : 'Renews', whenText(sub.termEndsAt)]);
+            else facts.push(['Renews', t('Runs until cancelled')]);
+            facts.push(['Paid', sub.paid && sub.paidAt ? whenText(sub.paidAt) : t('Not paid yet')]);
+            facts.push(['Terms', sub.agreed ? t('Agreed with us') : t('From the price list')]);
+        } else {
+            facts.push(['Plan', orghPlan(trial.state || 'none')]);
+            if (trial.devGrant) facts.push(['Ends', t('Never')]);
+            else if (trial.expiresAt) facts.push(['Ends', whenText(trial.expiresAt)]);
+            facts.push(['Live checks included', trial.state === 'enterprise' ? t('Unmetered') : useNum(trial.liveIncluded || 0)]);
+            facts.push(['History scans', trial.historyOpen ? t('Unmetered')
+                : useNum(trial.historyUsed || 0) + ' / ' + useNum(trial.historyIncluded || 0)]);
+        }
+        pmain.appendChild(useFacts(facts));
+        plan.body.appendChild(pmain);
+        body.appendChild(plan);
+
+        // ---- this cycle
+        //
+        // Every allowance the plan sets, with how much of it is spent. The
+        // ones that reset each cycle carry a forecast: at this pace, how much
+        // by the end, and the day it runs out if it would. The ones that do
+        // not reset -- seats, projects, keys -- are how much of a ceiling is
+        // taken, and have no pace to speak of.
+        var meters = useSection('bill-cycle', 'This cycle', 'meter',
+            'How much of each allowance this cycle has used, and where it is heading.');
+        meters.body.className += ' is-wide';
+        var mmain = useMain();
+        var api = u.api || {};
+        var ev = u.evidence || {};
+        var mon = u.monitoring || {};
+        var rows = sub ? [
+            { label: 'Screenings', used: cycle ? cycle.used : 0, of: inc.screenings, pace: true },
+            { label: 'History sweeps', used: cycle ? cycle.sweeps || 0 : 0, of: inc.sweeps, pace: true },
+            { label: 'API calls', used: (api.calls && api.calls.total) || 0, of: inc.apiCalls, pace: true },
+            { label: 'Webhook deliveries', used: (api.deliveries && api.deliveries.total) || 0, of: inc.webhooks, pace: true },
+            { label: 'Files exported', used: filesOut(ev), of: inc.exports, pace: true },
+            { label: 'Seats', used: shape.members || 0, of: inc.seats },
+            { label: 'Projects', used: shape.projects || 0, of: inc.projects },
+            { label: 'API tokens', used: shape.tokens || 0, of: inc.tokens },
+            { label: 'Addresses monitored', used: mon.watched || 0, of: inc.addresses },
+            { label: 'Custom watchlist', used: mon.watchlist || 0, of: inc.watchlist },
+            { label: 'SSO users', used: 0, of: inc.ssoSeats }
+        ] : [
+            { label: 'Live checks', used: trial.liveUsed || 0, of: trial.state === 'enterprise' ? null : trial.liveIncluded },
+            { label: 'History scans', used: trial.historyUsed || 0, of: trial.historyOpen ? null : trial.historyIncluded }
+        ];
+        var list = document.createElement('div');
+        list.className = 'bill-ms';
+        rows.forEach(function (r) { list.appendChild(billMeter(r, cycle)); });
+        mmain.appendChild(list);
+        meters.body.appendChild(mmain);
+        body.appendChild(meters);
+
+        // ---- what it includes
+        var carries = u.includes || [];
+        var further = u.beyond || [];
+        if (carries.length || further.length) {
+            var incl = useSection('bill-includes', 'What the plan includes', 'carries',
+                'Everything this plan carries, and what is only in the plans above it.');
+            incl.body.className += ' is-wide';
+            var imain = useMain();
+            if (carries.length) imain.appendChild(useCarries(carries));
+            if (further.length) {
+                var bh = document.createElement('h3');
+                bh.className = 'use-carries-t';
+                bh.textContent = t('Not in this plan');
+                imain.appendChild(bh);
+                imain.appendChild(useCarries(further, { muted: true, tier: true }));
+            }
+            incl.body.appendChild(imain);
+            body.appendChild(incl);
+        }
+
+        // ---- compare
+        //
+        // The three plans side by side, the one this organisation is on
+        // marked. Per month, whatever the term, because a quarter's price
+        // beside a year's is two numbers that cannot be compared by eye.
+        if ((cat.plans || []).length) {
+            var cmp = useSection('bill-compare', 'Compare plans', 'swap',
+                'What each plan allows in a month. Plans are agreed with us directly, so the price matches what you screen.');
+            cmp.body.className += ' is-wide';
+            var cmain = useMain();
+            cmain.appendChild(billCompare(cat, sub ? sub.plan : ''));
+            var seePlans = document.createElement('a');
+            seePlans.className = 'chip use-more';
+            seePlans.href = '/pricing';
+            seePlans.textContent = t('See the plans');
+            cmain.appendChild(seePlans);
+            cmp.body.appendChild(cmain);
+            body.appendChild(cmp);
+        }
+
+        // ---- history
+        var past = b.history || [];
+        var hist = useSection('bill-history', 'Plan history', 'history',
+            'Every plan this organisation has been on, newest first.');
+        hist.body.className += ' is-wide';
+        var hmain = useMain();
+        var all_ = (sub ? [sub] : []).concat(past.filter(function (h) { return !sub || String(h.id) !== String(sub.id); }));
+        if (!all_.length) {
+            var none = document.createElement('p');
+            none.className = 'use-exp-note';
+            none.textContent = t('No plan yet. The trial is not billed, so it has no history here.');
+            hmain.appendChild(none);
+        } else {
+            hmain.appendChild(billHistory(all_, sub));
+        }
+        hist.body.appendChild(hmain);
+        body.appendChild(hist);
+    }
+
+    // One allowance: its name, a bar, what is spent of it and, for the ones
+    // that reset, where the cycle is heading. The bar turns amber at four
+    // fifths and red when it is full, the same thresholds the usage page's
+    // meters used.
+    function billMeter(r, cycle) {
+        var line = document.createElement('div');
+        line.className = 'bill-m';
+        var k = document.createElement('div');
+        k.className = 'bill-m-k';
+        k.textContent = t(r.label);
+        line.appendChild(k);
+
+        var v = document.createElement('div');
+        v.className = 'bill-m-v';
+        var bar = document.createElement('div');
+        bar.className = 'bill-bar';
+        var note = document.createElement('div');
+        note.className = 'bill-m-n';
+        if (r.of === 0) {
+            v.textContent = t('Not in this plan');
+            v.className += ' is-none';
+            bar.className += ' is-empty';
+        } else if (r.of === null || r.of === undefined) {
+            v.textContent = useNum(r.used);
+            note.textContent = t('Unmetered');
+            bar.className += ' is-empty';
+        } else {
+            v.textContent = useNum(r.used) + ' / ' + useNum(r.of);
+            var share = r.of ? r.used / r.of : 0;
+            var fillEl = document.createElement('i');
+            fillEl.style.width = Math.min(100, share * 100).toFixed(1) + '%';
+            if (share >= 1) bar.className += ' is-bad';
+            else if (share >= 0.8) bar.className += ' is-mid';
+            bar.appendChild(fillEl);
+            var said = pct(r.used, r.of);
+            if (r.pace && cycle) {
+                var pace = usePace(r.used, cycle.from, cycle.to);
+                if (pace !== null && pace > r.of && r.used > 0) {
+                    // the day the allowance runs out at this rate
+                    var from = new Date(cycle.from).getTime();
+                    var rate = r.used / Math.max(1, Date.now() - from);
+                    var out = new Date(from + r.of / rate).toISOString();
+                    note.className += ' is-mid';
+                    said += ' · ' + fill('runs out {date}', { date: whenText(out) });
+                } else if (pace !== null) {
+                    said += ' · ' + fill('on pace for {n}', { n: useNum(pace) });
+                }
+            }
+            note.textContent = said;
+        }
+        line.appendChild(v);
+        line.appendChild(bar);
+        line.appendChild(note);
+        return line;
+    }
+
+    function billCompare(cat, current) {
+        var wrap = document.createElement('div');
+        wrap.className = 'bill-cmp-w';
+        var table = document.createElement('table');
+        table.className = 'bill-cmp';
+        var head = document.createElement('tr');
+        // what the prices under the names are, said once rather than three
+        // times, which is also what lets three plans fit across a phone
+        var corner = document.createElement('th');
+        corner.className = 'bill-cmp-c';
+        corner.textContent = t('A month, paid yearly');
+        head.appendChild(corner);
+        cat.plans.forEach(function (p) {
+            var th = document.createElement('th');
+            if (p.key === current) th.className = 'is-on';
+            var n = document.createElement('div');
+            n.className = 'bill-cmp-n';
+            n.textContent = p.name;
+            th.appendChild(n);
+            var pr = document.createElement('div');
+            pr.className = 'bill-cmp-p';
+            var yearly = p.price && p.price.yearly;
+            pr.textContent = p.negotiated ? t('Agreed with you')
+                : (yearly ? useMoney(Math.round(yearly / 12), cat.currency) : '');
+            th.appendChild(pr);
+            if (p.key === current) {
+                var on = document.createElement('div');
+                on.className = 'bill-cmp-on';
+                on.textContent = t('Your plan');
+                th.appendChild(on);
+            }
+            head.appendChild(th);
+        });
+        var thead = document.createElement('thead');
+        thead.appendChild(head);
+        table.appendChild(thead);
+        var tb = document.createElement('tbody');
+        [
+            ['Screenings', 'screeningsPerMonth'],
+            ['History sweeps', 'sweepsPerMonth'],
+            ['Addresses monitored', 'addresses'],
+            ['Custom watchlist', 'watchlist'],
+            ['Seats', 'seats'],
+            ['SSO users', 'ssoSeats'],
+            ['Projects', 'projects'],
+            ['API tokens', 'tokens'],
+            ['API calls', 'apiCallsPerMonth'],
+            ['Webhook deliveries', 'webhooksPerMonth'],
+            ['Files exported', 'exportsPerMonth'],
+            ['Per screening, on the per-scan term', 'perScan']
+        ].forEach(function (r) {
+            var tr = document.createElement('tr');
+            var th = document.createElement('th');
+            th.textContent = t(r[0]);
+            tr.appendChild(th);
+            cat.plans.forEach(function (p) {
+                var td = document.createElement('td');
+                if (p.key === current) td.className = 'is-on';
+                var v = p[r[1]];
+                if (r[1] === 'perScan') td.textContent = v ? useMoney(v, cat.currency) : '—';
+                else td.textContent = v === 0 ? '—' : useNum(v || 0);
+                tr.appendChild(td);
+            });
+            tb.appendChild(tr);
+        });
+        table.appendChild(tb);
+        wrap.appendChild(table);
+        return wrap;
+    }
+
+    function billHistory(list, sub) {
+        var box = document.createElement('div');
+        box.className = 'use-facts bill-hist';
+        list.forEach(function (h) {
+            var line = document.createElement('div');
+            line.className = 'use-fact';
+            var k = document.createElement('span');
+            k.className = 'bill-hist-k';
+            var n = document.createElement('span');
+            n.className = 'bill-hist-n';
+            n.textContent = (h.planName || h.plan || '') + ', ' + t(useTermWord(h.term));
+            k.appendChild(n);
+            var when = document.createElement('span');
+            when.className = 'bill-hist-d';
+            var end = h.endedAt || h.termEndsAt;
+            when.textContent = whenText(h.startedAt) + (end ? ' – ' + whenText(end) : '');
+            k.appendChild(when);
+            line.appendChild(k);
+            var v = document.createElement('span');
+            v.className = 'use-fact-v';
+            v.textContent = h.priceCents === null || h.priceCents === undefined ? t('Agreed with you') : useMoney(h.priceCents, h.currency);
+            if (sub && String(h.id) === String(sub.id)) v.appendChild(tag(t('Current'), 'ok'));
+            line.appendChild(v);
+            box.appendChild(line);
+        });
+        return box;
     }
 
     // The organisation's own settings: what it is called, what its address is,

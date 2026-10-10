@@ -359,7 +359,7 @@ async function screeningsIn(orgId, from, to, sandbox, zone, grain) {
     to = until(to);
     const g = grain || GRAIN.day;
     const args = [Number(orgId), from, to, Boolean(sandbox), zone];
-    const [sum, days, verdicts, assets, byProject, signed] = await Promise.all([
+    const [sum, days, verdicts, assets, byProject, signed, scores] = await Promise.all([
         db.query(
             `SELECT count(*)::int AS n,
                     count(*) FILTER (WHERE verdict <> 'clear')::int AS flagged,
@@ -431,6 +431,17 @@ async function screeningsIn(orgId, from, to, sandbox, zone, grain) {
            GROUP BY 1 ORDER BY 1`,
             args
         ),
+        // Every score the window produced, so the page can cut them by the
+        // organisation's own risk bands. The bands are a setting that can move,
+        // and counting by fixed buckets here would draw a line the reader's
+        // settings do not.
+        db.query(
+            `SELECT score, count(*)::int AS n
+               FROM screenings
+              WHERE org_id = $1 AND at >= $2 AND at < $3 AND sandbox = $4
+           GROUP BY 1`,
+            args.slice(0, 4)
+        ),
     ]);
 
     const head = sum.rows[0] || { n: 0, flagged: 0, addresses: 0, assets: 0 };
@@ -445,6 +456,7 @@ async function screeningsIn(orgId, from, to, sandbox, zone, grain) {
         days: fillDays(days.rows, from, to, zone, grain),
         decisionDays: fillDays(signed.rows, from, to, zone, grain),
         verdicts: byVerdict,
+        byScore: scores.rows.map((r) => ({ score: Number(r.score) || 0, n: r.n })),
         assets: assets.rows.map((r) => ({ asset: r.asset, n: r.n })),
         projects: byProject.rows.map((r) => ({
             id: r.id ? String(r.id) : '',
@@ -479,7 +491,7 @@ async function kindsIn(orgId, from, to, sandbox, zone, grain) {
     to = until(to);
     const g = grain || GRAIN.day;
     const rows = await db.query(
-        `SELECT ${g.column.replace(/\$5/g, '$4')} AS d, kind, sandbox,
+        `SELECT ${g.column.replace(/\$5/g, () => '$4')} AS d, kind, sandbox,
                 count(*)::int AS n,
                 count(*) FILTER (WHERE verdict <> 'clear')::int AS flagged
            FROM screenings
@@ -525,7 +537,7 @@ async function reviewIn(orgId, from, to, sandbox, zone, grain) {
     to = until(to);
     const g = grain || GRAIN.day;
     const args = [Number(orgId), from, to, Boolean(sandbox), zone];
-    const [days, took] = await Promise.all([
+    const [days, took, who] = await Promise.all([
         db.query(
             `SELECT ${g.column.replace(/\bat\b/g, 'd.at')} AS d, d.decision AS state, count(*)::int AS n
                FROM check_decisions d
@@ -540,11 +552,23 @@ async function reviewIn(orgId, from, to, sandbox, zone, grain) {
                                        AND d.at - s.at < interval '1 day')::int AS day,
                     count(*) FILTER (WHERE d.at - s.at >= interval '1 day'
                                        AND d.at - s.at < interval '7 days')::int AS week,
-                    count(*) FILTER (WHERE d.at - s.at >= interval '7 days')::int AS longer
+                    count(*) FILTER (WHERE d.at - s.at >= interval '7 days')::int AS longer,
+                    percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM d.at - s.at)) AS median
                FROM check_decisions d
                JOIN screenings s ON s.id = d.screening_id
               WHERE d.org_id = $1 AND d.at >= $2 AND d.at < $3 AND s.sandbox = $4
                 AND d.decision IN ('cleared', 'confirmed')`,
+            args.slice(0, 4)
+        ),
+        // Who made the decisions. A reviewer's name is sealed per account, so
+        // it is opened here, one row per person rather than per decision.
+        db.query(
+            `SELECT d.actor_id AS id, u.email_hash, u.name_enc, count(*)::int AS n
+               FROM check_decisions d
+               JOIN screenings s ON s.id = d.screening_id
+               LEFT JOIN users u ON u.id = d.actor_id
+              WHERE d.org_id = $1 AND d.at >= $2 AND d.at < $3 AND s.sandbox = $4
+           GROUP BY 1, 2, 3 ORDER BY 4 DESC LIMIT 12`,
             args.slice(0, 4)
         ),
     ]);
@@ -565,6 +589,14 @@ async function reviewIn(orgId, from, to, sandbox, zone, grain) {
     REVIEW_STATES.forEach((k) => { out[k] = series((r) => r.state === k); });
     const t = took.rows[0] || {};
     out.took = { hour: t.hour || 0, day: t.day || 0, week: t.week || 0, longer: t.longer || 0 };
+    out.medianSec = t.median === null || t.median === undefined ? null : Math.round(Number(t.median));
+    out.byReviewer = who.rows.map((r) => {
+        let name = '';
+        if (r.name_enc) {
+            try { name = db.open('signup-name:' + r.email_hash, r.name_enc) || ''; } catch (e) { name = ''; }
+        }
+        return { id: r.id ? String(r.id) : '', name, n: r.n };
+    });
     return out;
 }
 
@@ -670,7 +702,8 @@ async function listsIn(from, to, zone, grain) {
         db.query('SELECT programs, count(*)::int AS n FROM sanctioned_addresses GROUP BY 1'),
         db.query(
             `SELECT count(DISTINCT entity_uid)::int AS n,
-                    count(DISTINCT entity_uid) FILTER (WHERE entity_type = 'Individual')::int AS people
+                    count(DISTINCT entity_uid) FILTER (WHERE entity_type = 'Individual')::int AS people,
+                    max(added_at) AS newest
                FROM sanctioned_addresses`
         ),
     ]);
@@ -705,6 +738,7 @@ async function listsIn(from, to, zone, grain) {
         entities: w.n || 0,
         people: w.people || 0,
         attributed: 0,
+        newest: w.newest || null,
         refreshEveryMs: sanctions.refreshEveryMs(),
     };
     return out;
@@ -784,6 +818,11 @@ async function teamIn(orgId, from, to, zone, grain) {
                     AND revoked_at IS NULL AND expires_at > now())::int AS pending,
                 (SELECT count(*) FROM memberships m JOIN users u ON u.id = m.user_id
                     WHERE m.org_id = $1 AND u.totp_at IS NOT NULL)::int AS mfa,
+                (SELECT count(*) FROM memberships m JOIN users u ON u.id = m.user_id
+                    WHERE m.org_id = $1 AND m.role IN ('owner', 'admin') AND u.totp_at IS NULL)::int AS bare,
+                (SELECT count(*) FROM invites WHERE org_id = $1 AND accepted_at IS NULL
+                    AND revoked_at IS NULL AND expires_at > now()
+                    AND created_at < now() - interval '7 days')::int AS stale,
                 (SELECT json_object_agg(role, n) FROM (
                     SELECT role, count(*)::int AS n FROM memberships WHERE org_id = $1 GROUP BY role) r) AS roles,
                 (SELECT json_build_object(
@@ -813,6 +852,10 @@ async function teamIn(orgId, from, to, zone, grain) {
     out.state = {
         pending: st.pending || 0,
         mfa: st.mfa || 0,
+        // owners and admins with no second factor: the accounts that can
+        // change who decides, signing in with a password alone
+        bare: st.bare || 0,
+        stale: st.stale || 0,
         roles: st.roles || {},
         seen: st.seen || { today: 0, week: 0, month: 0, older: 0, never: 0 },
     };
@@ -839,7 +882,13 @@ async function evidenceIn(orgId, from, to, sandbox, zone, grain) {
     to = until(to);
     const g = grain || GRAIN.day;
     const args = [Number(orgId), from, to, Boolean(sandbox), zone];
-    const [checks, decided, now] = await Promise.all([
+    // Files of this organisation's usage that left it, from the audit trail
+    // the export route writes. The trail is created by the accounts module,
+    // so a database where it does not exist yet counts nothing rather than
+    // taking the page down.
+    const files = (sql, params) => db.query(sql, params).catch(() => ({ rows: [] }));
+    const subject = 'org:' + Number(orgId);
+    const [checks, decided, now, fileDays, fileKinds] = await Promise.all([
         db.query(
             `SELECT ${g.column} AS d, count(*)::int AS n
                FROM screenings
@@ -870,12 +919,33 @@ async function evidenceIn(orgId, from, to, sandbox, zone, grain) {
               WHERE org_id = $1 AND sandbox = $2`,
             [Number(orgId), Boolean(sandbox)]
         ),
+        files(
+            `SELECT ${g.column.replace(/\$5/g, () => '$4')} AS d, count(*)::int AS n
+               FROM audit_events
+              WHERE kind = 'usage-export' AND subject = $1 AND at >= $2 AND at < $3
+           GROUP BY 1`,
+            [subject, from, to, zone]
+        ),
+        files(
+            `SELECT split_part(detail, ' ', 1) AS format, count(*)::int AS n, max(at) AS last
+               FROM audit_events
+              WHERE kind = 'usage-export' AND subject = $1
+           GROUP BY 1`,
+            [subject]
+        ),
     ]);
     const line = (r) => ({ total: r.rows.reduce((a, x) => a + x.n, 0), days: fillDays(r.rows, from, to, zone, grain) });
     const out = {};
     EVIDENCE_LINES.forEach((k) => { out[k] = { total: 0, days: fillDays([], from, to, zone, grain) }; });
     out.sealed = line(checks);
     out.decisions = line(decided);
+    out.downloads = line(fileDays);
+    const byFormat = { csv: 0, xlsx: 0, json: 0, html: 0 };
+    let lastExport = null;
+    fileKinds.rows.forEach((r) => {
+        if (r.format in byFormat) byFormat[r.format] += r.n;
+        if (r.last && (!lastExport || r.last > lastExport)) lastExport = r.last;
+    });
     const n = now.rows[0] || {};
     out.state = {
         checks: n.checks || 0,
@@ -883,7 +953,8 @@ async function evidenceIn(orgId, from, to, sandbox, zone, grain) {
         decisions: n.decisions || 0,
         oldest: n.oldest || null,
         retentionYears: RETENTION_YEARS,
-        lastExport: null,
+        lastExport,
+        byFormat,
         age: { month: n.a30 || 0, quarter: n.a90 || 0, year: n.a365 || 0, older: n.older || 0 },
     };
     return out;
@@ -1136,46 +1207,11 @@ async function forOrg(orgId, opts) {
     }
 }
 
-function csvCell(value) {
-    const s = String(value === null || value === undefined ? '' : value);
-    // a cell that begins with one of these is run as a formula by a spreadsheet,
-    // which is how a file of numbers becomes something that does things
-    const safe = /^[=+\-@\t\r]/.test(s) ? "'" + s : s;
-    return /[",\n]/.test(safe) ? '"' + safe.replace(/"/g, '""') + '"' : safe;
-}
-
-// The same period as a file. This exists because on a compliance tool the usage
-// page is also evidence: somebody is asked how much was screened in March and
-// has to hand over something an auditor can keep.
-function csv(out, org) {
-    const lines = [];
-    const put = (a, b) => lines.push(csvCell(a) + ',' + csvCell(b));
-    lines.push('Sentinelpay usage');
-    put('Organisation', (org && org.name) || '');
-    put('From', out.period.from);
-    put('To', out.period.to);
-    put('Scope', out.scope === 'sandbox' ? 'sandbox' : 'production');
-    put('Generated', new Date().toISOString());
-    lines.push('');
-    put('Screenings', out.screenings.total);
-    put('Flagged', out.screenings.flagged);
-    put('Clear', out.screenings.clear);
-    put('Distinct addresses', out.screenings.addresses);
-    put('Assets seen', out.screenings.assetCount);
-    put('Members', out.org.members);
-    put('Projects', out.org.projects);
-    put('Tokens in use', out.org.tokensUsed);
-    lines.push('');
-    lines.push('Day,Screenings,Flagged');
-    out.screenings.days.forEach((d) => {
-        lines.push([csvCell(d.day), csvCell(d.n), csvCell(d.flagged)].join(','));
-    });
-    // a trailing newline, so the last row is a row and not the end of the file
-    return lines.join('\r\n') + '\r\n';
-}
+// The period as a file lives in exports.js: four formats from one set of
+// sheets, so they cannot disagree.
 
 module.exports = {
-    forOrg, cycles, periods, csv, addMonths, CYCLES_BACK,
+    forOrg, cycles, periods, addMonths, CYCLES_BACK,
     // the bucketing, so a test can hold it to what it claims without a
     // database: what a window is cut into is the part that has been wrong
     // before, and it is arithmetic over a calendar rather than a query

@@ -275,7 +275,7 @@ test('review is the section under screenings, and the summary opens it', () => {
     const scr = usage.indexOf('if (!fresh) body.appendChild(scr);');
     const rev = usage.indexOf("useSection('use-review', 'Review'");
     assert.ok(scr !== -1 && rev > scr, 'review is not built straight after screenings');
-    assert.ok(usage.indexOf("useSection('use-plan'") > rev, 'something is built between screenings and review');
+    assert.ok(usage.indexOf("useSection('use-monitoring'") > rev, 'something is built between screenings and review');
     assert.match(usage, /label: 'Findings to review'[\s\S]{0,260}go: 'use-review'/, 'findings do not open review');
     assert.match(usage, /label: 'Decisions recorded'[\s\S]{0,900}go: 'use-review'/, 'decisions do not open review');
     assert.match(usage, /out\.review \? out\.review\.decisions\.total/,
@@ -296,7 +296,7 @@ test('monitoring follows review, and the page runs in the summary\'s order', () 
     const at = SRC.indexOf('function viewUsage(');
     const usage = SRC.slice(at, SRC.indexOf('\n    function ', at + 40));
     const order = ["useSection('use-screenings'", "useSection('use-review'", "useSection('use-monitoring'",
-        "useSection('use-coverage'", "useSection('use-team'", "useSection('use-plan'"]
+        "useSection('use-coverage'", "useSection('use-api'", "useSection('use-team'", "useSection('use-evidence'"]
         .map((x) => usage.indexOf(x));
     assert.ok(order.every((x) => x !== -1), 'a section is missing');
     for (let i = 1; i < order.length; i++) {
@@ -387,7 +387,10 @@ test('team is the same shape, counted from the people in it', () => {
     const from = usage.indexOf("useSection('use-team'");
     const sec = usage.slice(from, usage.indexOf('body.appendChild(team);', from));
     assert.match(sec, /team\.body\.className \+= ' is-wide'/, 'team has a column of prose again');
-    assert.match(sec, /switched\(\[/, 'team is not built on the shared card and cells');
+    // counts with no shape over time get cells and no chart
+    assert.match(sec, /plain\(\[/, 'team is not built on the shared cells');
+    assert.doesNotMatch(sec, /switched\(\[/, 'team draws a chart of members joining again');
+    assert.match(sec, /'Access risks'/, 'team does not say where access is weak');
     assert.match(sec, /'Members with two-factor'/, 'team does not say how many members have a second factor');
     assert.match(sec, /'By role'/, 'team has no breakdown by role');
     assert.match(sec, /'Last signed in'/, 'team does not say who has been in lately');
@@ -408,16 +411,39 @@ test('evidence is the same shape, and its seals come from the rows', () => {
     const usage = SRC.slice(at, SRC.indexOf('\n    function ', at + 40));
     const ev = usage.indexOf("useSection('use-evidence'");
     assert.ok(ev > usage.indexOf("useSection('use-team'"), 'evidence is not after team');
-    assert.ok(ev < usage.indexOf("useSection('use-plan'"), 'evidence is not before the plan');
+    assert.doesNotMatch(usage, /useSection\('use-plan'/, 'the plan is back on the usage page; it lives on billing');
     const sec = usage.slice(ev, usage.indexOf('body.appendChild(evSec);', ev));
     assert.match(sec, /evSec\.body\.className \+= ' is-wide'/, 'evidence has a column of prose again');
-    assert.match(sec, /switched\(\[/, 'evidence is not built on the shared card and cells');
+    assert.match(sec, /plain\(\[/, 'evidence is not built on the shared cells');
+    assert.doesNotMatch(sec, /switched\(\[/, 'evidence draws a chart of the screenings chart again');
     assert.match(sec, /'Records, by age'/, 'evidence does not say how old the records are');
-    assert.match(sec, /usage\.csv\?period=/, 'the period cannot be downloaded from evidence');
+    assert.match(sec, /useExports\(org, out\)/, 'the period cannot be exported from evidence');
     assert.doesNotMatch(usage, /use-foot/, 'the footer the CSV sat in is back');
-    assert.match(usage, /label: 'Evidence exports'[^}]*go: 'use-evidence'/, 'Evidence exports does not open evidence');
+    assert.match(usage, /label: 'Files exported'[^}]*go: 'use-evidence'/, 'Files exported does not open evidence');
     const api = fs.readFileSync(path.join(__dirname, '..', 'usage.js'), 'utf8');
     assert.match(api, /async function evidenceIn\(/, 'the server does not count the evidence');
     assert.match(api, /sandbox = \$4 AND digest <> ''/, 'a check without a digest is counted as sealed');
     assert.match(api, /evidence,\s/, 'evidence does not reach the payload');
+});
+
+// The plan is billing's: what the organisation is on, every allowance against
+// the cycle, what it includes, the plans side by side and what came before.
+// The usage page links to it from the band and no longer carries a copy.
+test('billing carries the plan, and exports come in four shapes', () => {
+    const at = SRC.indexOf('function drawBilling(');
+    assert.notStrictEqual(at, -1, 'billing draws nothing of its own');
+    const bill = SRC.slice(at, SRC.indexOf('\n    function billMeter(', at));
+    const order = ["useSection('bill-plan'", "useSection('bill-cycle'", "useSection('bill-includes'",
+        "useSection('bill-compare'", "useSection('bill-history'"].map((x) => bill.indexOf(x));
+    assert.ok(order.every((x) => x !== -1), 'a billing section is missing');
+    for (let i = 1; i < order.length; i++) assert.ok(order[i] > order[i - 1], 'billing sections out of order');
+    assert.match(SRC, /\/subscription'/, 'billing does not read the subscription and its history');
+
+    const ex = SRC.slice(SRC.indexOf('function useExports('), SRC.indexOf('function useFacts('));
+    for (const f of ['html', 'xlsx', 'csv', 'json']) {
+        assert.match(ex, new RegExp("\\['" + f + "'"), f + ' cannot be exported');
+    }
+    const index = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
+    assert.match(index, /app\.get\('\/v1\/orgs\/:id\/usage\.:format'/, 'there is no export route');
+    assert.match(index, /subject: 'org:' \+ mine\.id/, 'exports are not filed under the organisation');
 });

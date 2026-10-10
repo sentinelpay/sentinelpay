@@ -215,7 +215,7 @@ test('what a plan does not carry is the tiers above it, and nothing else', () =>
 test('the dashboard draws the difference rather than hiding it', () => {
     const src = require('node:fs').readFileSync(
         require('node:path').join(__dirname, '..', 'public', 'dash-app.js'), 'utf8');
-    assert.match(src, /plans\.carries|out\.includes/, 'the plan list is gone');
+    assert.match(src, /plans\.carries|out\.includes|u\.includes/, 'the plan list is gone');
     assert.match(src, /r\.built \? '' : ' is-soon'/,
         'an unbuilt feature is drawn the same as a built one');
     assert.match(src, /t\('Coming'\)/, 'nothing says a feature is not here yet');

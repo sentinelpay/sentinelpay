@@ -188,7 +188,7 @@ test('the query and the walk agree on the shape of a key', () => {
 test('every measure under the chart has a series to draw', () => {
     const src = require('node:fs').readFileSync(
         require('node:path').join(__dirname, '..', 'usage.js'), 'utf8');
-    const at = src.indexOf('const [sum, days, verdicts, assets, byProject, signed]');
+    const at = src.indexOf('const [sum, days, verdicts, assets, byProject, signed, scores]');
     assert.notStrictEqual(at, -1, 'screeningsIn no longer reads its windows in one go');
     const query = src.slice(at, at + 3600);
     for (const column of ['AS n', 'AS flagged', 'AS severe', 'AS addresses', 'AS assets']) {
