@@ -55,6 +55,12 @@
         // the review section counts and nothing else on the page does.
         review: '<rect x="5.5" y="4.2" width="13" height="16.8" rx="2.2"/>' +
             '<path d="M9.2 4.2V3.5c0-.6.4-1 1-1h3.6c.6 0 1 .4 1 1v.7"/><path d="m9 12.9 2.2 2.2 4.3-4.4"/>',
+        // A page with a seal on its corner: a record sealed with a digest,
+        // which is what the evidence section counts. The nav's audit glyph is
+        // the log of who did what, and that is a different thing.
+        seal: '<path d="M13.6 20.4H6.6a1.2 1.2 0 0 1-1.2-1.2V4.8a1.2 1.2 0 0 1 1.2-1.2h10.8a1.2 1.2 0 0 1 1.2 1.2v4.8"/>' +
+            '<path d="M8.6 7.8h6.8M8.6 11.2h4"/><circle cx="17.2" cy="14.8" r="2.6"/>' +
+            '<path d="m15.7 17-.7 3.6 2.2-1.2 2.2 1.2-.7-3.6"/>',
         usage: '<path d="M4 20V4"/><path d="M4 20h16"/><rect x="7.4" y="12.6" width="2.9" height="4.6" rx="0.6"/>' +
             '<rect x="12" y="9" width="2.9" height="8.2" rx="0.6"/><rect x="16.6" y="5.6" width="2.9" height="11.6" rx="0.6"/>',
         billing: '<rect x="2.8" y="6" width="18.4" height="12" rx="2.2"/><path d="M2.8 10.4h18.4"/>' +
@@ -6716,6 +6722,7 @@
         var pickedList = 'added';
         var pickedApi = 'calls';
         var pickedTeam = 'joined';
+        var pickedEvidence = 'sealed';
         var latest = null;
 
         // The title and the two controls are one band, and it stays at the top
@@ -7137,7 +7144,8 @@
                 { label: 'SSO users', used: 0, of: inc.ssoSeats, series: useFlat(s.days), go: 'use-team' },
 
                 // ---- Evidence
-                { label: 'Evidence exports', used: 0, of: inc.exports, series: useFlat(s.days) }
+                { label: 'Evidence exports', used: out.evidence ? out.evidence.exports.total : 0, of: inc.exports,
+                  series: out.evidence ? useSeries(out.evidence.exports.days, 'n') : useFlat(s.days), go: 'use-evidence' }
             ], 'is-lead'));
             body.appendChild(sum);
 
@@ -7878,6 +7886,73 @@
             team.body.appendChild(tmain);
             body.appendChild(team);
 
+            // ---- evidence
+            //
+            // The record this organisation could hand to a regulator, and what
+            // has been done with it, in the shape of the sections above. Every
+            // check and every decision is sealed with a digest as it is
+            // written, so the table can say how much is on record, how much of
+            // it is sealed, the oldest of it and how long it is kept -- the
+            // four things an examiner asks before they ask for a file.
+            //
+            // The file itself is here now. It sat alone in a footer at the end
+            // of the page, under whatever section happened to be last, when
+            // it is the evidence and belongs with the rest of it.
+            var ev = out.evidence || null;
+            var evWas = (out.previous && out.previous.evidence) || null;
+            var evSec = useSection('use-evidence', 'Evidence', 'seal',
+                'What this organisation could hand to a regulator, and what has been done with it.');
+            evSec.body.className += ' is-wide';
+            var emain = useMain();
+            var es = (ev && ev.state) || {};
+            emain.appendChild(useFacts([
+                ['Checks on record', useNum(es.checks || 0)],
+                ['Sealed with a digest', useNum(es.sealed || 0) + ' / ' + useNum(es.checks || 0)],
+                ['Oldest record', es.oldest ? whenText(es.oldest) : '—'],
+                ['Kept for', es.retentionYears ? fill('{n} years', { n: useNum(es.retentionYears) }) : '—'],
+                ['Exports this cycle', useNum(ev && ev.exports ? ev.exports.total : 0) +
+                    (inc.exports ? ' / ' + useNum(inc.exports) : '')],
+                ['Last export', es.lastExport ? whenText(es.lastExport) : '—']
+            ]));
+            if (ev && !fresh) {
+                emain.appendChild(switched([
+                    ['sealed', 'Checks sealed', false],
+                    ['decisions', 'Decisions sealed', false],
+                    ['exports', 'Evidence exports', false],
+                    ['opened', 'Evidence files opened', false],
+                    ['downloads', 'Usage files downloaded', false],
+                    ['verified', 'Records verified', false]
+                ], {
+                    get: function () { return pickedEvidence; },
+                    set: function (k) { pickedEvidence = k; }
+                }, function (key, which) {
+                    var src = which === 'was' ? evWas : ev;
+                    return src && src[key] ? src[key] : null;
+                }));
+                var age = es.age || {};
+                tallied(emain, 'Records, by age', [
+                    { label: t('Under 30 days'), n: age.month || 0 },
+                    { label: t('30 to 90 days'), n: age.quarter || 0 },
+                    { label: t('90 days to a year'), n: age.year || 0 },
+                    { label: t('Over a year'), n: age.older || 0 }
+                ], es.checks || 0);
+                tallied(emain, 'Sealed records, by kind', [
+                    { label: t('Checks'), n: es.sealed || 0 },
+                    { label: t('Decisions'), n: es.decisions || 0 }
+                ], (es.sealed || 0) + (es.decisions || 0));
+            }
+            // The period on screen as a file, the same chip the pickers at the
+            // top are made of, centred under the tables like the chain list's.
+            var get = document.createElement('a');
+            get.className = 'chip use-more use-get';
+            get.href = '/v1/orgs/' + encodeURIComponent(org.id) + '/usage.csv?period=' +
+                encodeURIComponent(out.period.key) + '&scope=' + encodeURIComponent(out.scope);
+            get.setAttribute('download', '');
+            get.textContent = t('Download this period as CSV');
+            emain.appendChild(get);
+            evSec.body.appendChild(emain);
+            body.appendChild(evSec);
+
             // ---- plan
             //
             // Last, where the summary's order puts nothing: the grid runs
@@ -7959,20 +8034,6 @@
                 body.appendChild(pl);
             }
 
-            // ---- take it with you
-            var foot = document.createElement('div');
-            foot.className = 'use-foot';
-            var note = document.createElement('p');
-            note.textContent = t('A file of this period, to keep or to hand over.');
-            foot.appendChild(note);
-            var get = document.createElement('a');
-            get.className = 'btn btn-quiet';
-            get.href = '/v1/orgs/' + encodeURIComponent(org.id) + '/usage.csv?period=' +
-                encodeURIComponent(out.period.key) + '&scope=' + encodeURIComponent(out.scope);
-            get.setAttribute('download', '');
-            get.textContent = t('Download CSV');
-            foot.appendChild(get);
-            body.appendChild(foot);
 
             // the page is built; now it can be measured
             queueFold();

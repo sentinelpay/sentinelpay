@@ -295,17 +295,17 @@ async function main() {
         const args = [];
         const values = pending.map((r) => {
             const at = args.length;
-            args.push(r.at, r.asset, r.address, r.verdict, r.score);
+            args.push(r.at, r.asset, r.address, r.verdict, r.score, r.digest);
             return '($' + (at + 1) + '::timestamptz, $' + (at + 2) + ', $' + (at + 3) +
-                ', $' + (at + 4) + ', $' + (at + 5) + ')';
+                ', $' + (at + 4) + ', $' + (at + 5) + ', $' + (at + 6) + ')';
         }).join(', ');
         await db.query(
             `INSERT INTO screenings
-                (user_id, org_id, at, kind, asset, address, verdict, score, sources, list_date, sandbox)
+                (user_id, org_id, at, kind, asset, address, verdict, score, sources, list_date, sandbox, digest)
              SELECT $${args.length + 1}, $${args.length + 2}, v.at,
                     'live', v.asset, v.address, v.verdict, v.score::int,
-                    $${args.length + 3}, '2026-09-01', false
-               FROM (VALUES ${values}) AS v(at, asset, address, verdict, score)`,
+                    $${args.length + 3}, '2026-09-01', false, v.digest
+               FROM (VALUES ${values}) AS v(at, asset, address, verdict, score, digest)`,
             args.concat([userId, org.id, MARK])
         );
         wrote += pending.length;
@@ -340,17 +340,19 @@ async function main() {
             if (at === null) continue;
             const one = aCheck();
             const score = aScore();
-            pending.push({
-                at: new Date(at).toISOString(),
-                asset: one.asset,
-                address: one.address,
-                // The verdict follows the score rather than the other way
-                // round, so the two can never disagree inside one row: a
-                // hundred is a list match and is severe, and everything below
-                // it is clear until there is a middle for it to be in.
-                verdict: score >= 100 ? 'severe' : (VERDICTS.review && score >= 60 ? 'review' : 'clear'),
-                score,
-            });
+            // The verdict follows the score rather than the other way round,
+            // so the two can never disagree inside one row: a hundred is a
+            // list match and is severe, and everything below it is clear until
+            // there is a middle for it to be in.
+            const verdict = score >= 100 ? 'severe' : (VERDICTS.review && score >= 60 ? 'review' : 'clear');
+            const when = new Date(at).toISOString();
+            // Sealed the way a real check is. Without a digest every sample
+            // row reads as unsealed, and the evidence section said none of
+            // 4,508 checks were sealed when the product seals all of them.
+            const digest = 'sha256:' + crypto.createHash('sha256').update(JSON.stringify({
+                at: when, asset: one.asset, address: one.address, verdict, score, sample: true,
+            }), 'utf8').digest('hex');
+            pending.push({ at: when, asset: one.asset, address: one.address, verdict, score, digest });
             if (pending.length >= BATCH) await flush();
         }
     }

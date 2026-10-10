@@ -819,6 +819,76 @@ async function teamIn(orgId, from, to, zone, grain) {
     return out;
 }
 
+// The record this organisation could hand to a regulator, and what has been
+// done with it.
+//
+// Every check and every decision is sealed with a digest when it is written,
+// so what is sealed in a window is counted from the rows themselves, and so is
+// what is on record now: how many, the oldest, and how old the rest are. The
+// time it is kept for is the retention the product commits to -- five years,
+// the period the AML directives and the travel rule both ask a firm to keep
+// its customer due diligence for.
+//
+// What people did with it is the shape the screen is built against, at
+// nought: exports, evidence files opened and usage files downloaded are not
+// logged, and nothing re-verifies a digest on a schedule yet.
+const EVIDENCE_LINES = ['sealed', 'decisions', 'exports', 'opened', 'downloads', 'verified'];
+const RETENTION_YEARS = 5;
+
+async function evidenceIn(orgId, from, to, sandbox, zone, grain) {
+    to = until(to);
+    const g = grain || GRAIN.day;
+    const args = [Number(orgId), from, to, Boolean(sandbox), zone];
+    const [checks, decided, now] = await Promise.all([
+        db.query(
+            `SELECT ${g.column} AS d, count(*)::int AS n
+               FROM screenings
+              WHERE org_id = $1 AND at >= $2 AND at < $3 AND sandbox = $4 AND digest <> ''
+           GROUP BY 1`,
+            args
+        ),
+        db.query(
+            `SELECT ${g.column.replace(/\bat\b/g, 'd.at')} AS d, count(*)::int AS n
+               FROM check_decisions d JOIN screenings s ON s.id = d.screening_id
+              WHERE d.org_id = $1 AND d.at >= $2 AND d.at < $3 AND s.sandbox = $4 AND d.digest <> ''
+           GROUP BY 1`,
+            args
+        ),
+        db.query(
+            `SELECT count(*)::int AS checks,
+                    count(*) FILTER (WHERE digest <> '')::int AS sealed,
+                    min(at) AS oldest,
+                    count(*) FILTER (WHERE at >= now() - interval '30 days')::int AS a30,
+                    count(*) FILTER (WHERE at < now() - interval '30 days'
+                                       AND at >= now() - interval '90 days')::int AS a90,
+                    count(*) FILTER (WHERE at < now() - interval '90 days'
+                                       AND at >= now() - interval '365 days')::int AS a365,
+                    count(*) FILTER (WHERE at < now() - interval '365 days')::int AS older,
+                    (SELECT count(*) FROM check_decisions d JOIN screenings s2 ON s2.id = d.screening_id
+                      WHERE d.org_id = $1 AND s2.sandbox = $2 AND d.digest <> '')::int AS decisions
+               FROM screenings
+              WHERE org_id = $1 AND sandbox = $2`,
+            [Number(orgId), Boolean(sandbox)]
+        ),
+    ]);
+    const line = (r) => ({ total: r.rows.reduce((a, x) => a + x.n, 0), days: fillDays(r.rows, from, to, zone, grain) });
+    const out = {};
+    EVIDENCE_LINES.forEach((k) => { out[k] = { total: 0, days: fillDays([], from, to, zone, grain) }; });
+    out.sealed = line(checks);
+    out.decisions = line(decided);
+    const n = now.rows[0] || {};
+    out.state = {
+        checks: n.checks || 0,
+        sealed: n.sealed || 0,
+        decisions: n.decisions || 0,
+        oldest: n.oldest || null,
+        retentionYears: RETENTION_YEARS,
+        lastExport: null,
+        age: { month: n.a30 || 0, quarter: n.a90 || 0, year: n.a365 || 0, older: n.older || 0 },
+    };
+    return out;
+}
+
 async function shapeOf(orgId, from, to) {
     const [members, projects, tokens, invited, ever, decided] = await Promise.all([
         db.query('SELECT count(*)::int AS n FROM memberships WHERE org_id = $1', [Number(orgId)]),
@@ -959,7 +1029,7 @@ async function forOrg(orgId, opts) {
         const cycle = list.find((p) => p.current) || null;
         const sameWindow = cycle && cycle.key === period.key;
 
-        const [work, shape, shapeBefore, past, marks, ghost, spent, kinds, kindsBefore, review, reviewBefore, waiting, watching, watchingBefore, lists, listsBefore, api, apiBefore, team, teamBefore] = await Promise.all([
+        const [work, shape, shapeBefore, past, marks, ghost, spent, kinds, kindsBefore, review, reviewBefore, waiting, watching, watchingBefore, lists, listsBefore, api, apiBefore, team, teamBefore, evidence, evidenceBefore] = await Promise.all([
             screeningsIn(orgId, period.from, period.to, sandbox, zone, grain),
             shapeOf(orgId, period.from, period.to),
             // The same shape over the window before this one. Only the counted
@@ -1011,6 +1081,8 @@ async function forOrg(orgId, opts) {
             apiIn(orgId, before.from, before.to, zone, grain),
             teamIn(orgId, period.from, period.to, zone, grain),
             teamIn(orgId, before.from, before.to, zone, grain),
+            evidenceIn(orgId, period.from, period.to, sandbox, zone, grain),
+            evidenceIn(orgId, before.from, before.to, sandbox, zone, grain),
         ]);
         const head = past.rows[0] || null;
         return {
@@ -1026,6 +1098,7 @@ async function forOrg(orgId, opts) {
             lists,
             api,
             team,
+            evidence,
             marks,
             // what the plan's allowance is measured against, always the cycle
             cycle: cycle ? {
@@ -1050,6 +1123,7 @@ async function forOrg(orgId, opts) {
                 lists: listsBefore,
                 api: apiBefore,
                 team: teamBefore,
+                evidence: evidenceBefore,
                 // the same stretch of it, not all of it, while this one runs
                 partial: Boolean(before.partial),
                 days: ghost,
