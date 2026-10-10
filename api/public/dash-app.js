@@ -405,6 +405,26 @@
         if (pf && pf.parentNode && pf.parentNode.spSet) pf.parentNode.spSet(mode);
     }
 
+    // One popover open at a time, anywhere in the dashboard.
+    //
+    // Every menu and picker here closes on a click elsewhere on the page, and
+    // every one of them stops its own button's click from reaching the page,
+    // so that opening it does not close it again in the same breath. The two
+    // together meant a click on a second menu's button never reached the
+    // first one: the period picker, the scope picker and the export menu
+    // could all hang open at once, stacked on top of each other. Each now
+    // says when it opens and when it closes, and opening one shuts whichever
+    // was open before.
+    var popShut = null;
+    function popOpened(shut) {
+        var was = popShut;
+        popShut = shut;
+        if (was && was !== shut) was();
+    }
+    function popClosed(shut) {
+        if (popShut === shut) popShut = null;
+    }
+
     function setSideMode(mode) {
         try { localStorage.setItem(SIDE_KEY, mode); } catch (err) {  }
         applySideMode(mode);
@@ -458,7 +478,9 @@
             wrap.classList.toggle('is-open', on);
             btn.setAttribute('aria-expanded', on ? 'true' : 'false');
             pop.setAttribute('aria-hidden', on ? 'false' : 'true');
+            if (on) popOpened(shutPop); else popClosed(shutPop);
         }
+        function shutPop() { openPop(false); }
 
         btn.addEventListener('click', function (e) {
             e.stopPropagation();
@@ -945,10 +967,12 @@
         if (!wrap || !btn || !pop) return;
         acctBound = true;
 
+        var shutAcct = function () { open(false); };
         var open = function (on) {
             wrap.classList.toggle('is-open', on);
             btn.setAttribute('aria-expanded', on ? 'true' : 'false');
             pop.setAttribute('aria-hidden', on ? 'false' : 'true');
+            if (on) popOpened(shutAcct); else popClosed(shutAcct);
         };
         open(false);
 
@@ -1537,12 +1561,16 @@
 
         function isOpen() { return wrap.classList.contains('is-open'); }
 
+        function shutBox() { open(false); }
         function open(on) {
             if (on) {
                 draw('');
                 if (find) find.value = '';
                 document.body.appendChild(pop);
                 place();
+                popOpened(shutBox);
+            } else {
+                popClosed(shutBox);
             }
             wrap.classList.toggle('is-open', on);
             pop.classList.toggle('is-open', on);
@@ -6722,12 +6750,15 @@
             var w = pop.offsetWidth || 220;
             pop.style.left = Math.round(Math.max(8, Math.min(r.left, window.innerWidth - w - 8))) + 'px';
         }
+        function shutMenu() { open(false); }
         function open(on) {
             if (on) {
                 document.body.appendChild(pop);
                 pop.classList.add('is-open');
                 place();
+                popOpened(shutMenu);
             } else {
+                popClosed(shutMenu);
                 pop.classList.remove('is-open');
                 setTimeout(function () {
                     if (!isOpen() && pop.parentNode) pop.parentNode.removeChild(pop);
@@ -9903,7 +9934,9 @@
         function openSplit(on) {
             split.classList.toggle('is-open', on);
             more.setAttribute('aria-expanded', on ? 'true' : 'false');
+            if (on) popOpened(shutSplit); else popClosed(shutSplit);
         }
+        function shutSplit() { openSplit(false); }
         more.addEventListener('click', function (e) {
             e.stopPropagation();
             openSplit(!split.classList.contains('is-open'));
