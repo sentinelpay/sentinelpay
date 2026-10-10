@@ -2428,6 +2428,9 @@ app.get('/v1/orgs/:id/usage.:format', async (req, res) => {
     const embed = format === 'html' && String(req.query.embed || '') === '1';
     const meta = {
         embed,
+        // the paper it is laid out for; A4 unless another of the sizes it
+        // knows is asked for
+        paper: exportsFile.paperOf(req.query.paper),
         reference: exportsFile.reference(list),
         generated: new Date().toISOString(),
         organisation: mine.name || '',

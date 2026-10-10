@@ -182,3 +182,36 @@ test('a report counts one scope and says what it left out', () => {
     assert.doesNotMatch(html2, /used this cycle/, 'the sandbox report claims to have spent the allowance');
     assert.ok(!new Map(sheets2[0].rows.map((r) => [r[0], r])).has('Sandbox checks not included'));
 });
+
+// The paper: a cover on its own page, the statement and its signatures before
+// any figure, the figures after, and a page rule that sizes the paper and
+// runs the reference and the page count along every page but the cover.
+// A4 unless one of the other sizes it knows is asked for.
+test('the report is laid out on the paper asked for, A4 when none is', () => {
+    const out = {
+        period: { from: '2026-09-01T00:00:00.000Z', to: '2026-09-03T00:00:00.000Z' },
+        scope: 'live', zone: 'UTC',
+        screenings: { total: 1, verdicts: {}, assets: [], projects: [], days: [] },
+        org: {},
+    };
+    const list = exports_.sheets(out, { name: 'Acme "</style><b>' }, null);
+    const meta = { reference: exports_.reference(list), generated: '2026-09-03T00:00:00.000Z', organisation: 'Acme "</style><b>', back: '/' };
+    assert.equal(exports_.paperOf(''), 'a4');
+    assert.equal(exports_.paperOf('Letter'), 'letter');
+    assert.equal(exports_.paperOf('tabloid'), 'a4', 'a size it does not know is not passed through');
+    const html = exports_.report(list, meta, out);
+    assert.match(html, /@page \{ size:210mm 297mm;/, 'the default is not A4');
+    assert.match(html, /@bottom-right \{ content:"Page " counter\(page\) " of " counter\(pages\)/, 'pages are not numbered');
+    assert.match(html, /@page :first \{ @top-left \{ content:none; \}/, 'the cover carries the running head');
+    const cover = html.indexOf('class="sheet cover"');
+    const statement = html.indexOf('class="sheet statement"');
+    const figures = html.indexOf('<h2>At a glance</h2>');
+    assert.ok(cover !== -1 && cover < statement && statement < figures, 'the cover, the statement and the figures are out of order');
+    assert.ok(html.slice(statement, figures).includes('Reviewed by'), 'the signatures are not with the statement');
+    // a name cannot close the style it is quoted in
+    const style = html.slice(html.indexOf('<style>'), html.indexOf('</style>'));
+    assert.ok(!style.includes('</style><b>'), 'the organisation name broke out of the stylesheet');
+    for (const [key, w, h] of [['letter', 215.9, 279.4], ['legal', 215.9, 355.6], ['a3', 297, 420], ['a5', 148, 210]]) {
+        assert.match(exports_.report(list, { ...meta, paper: key }, out), new RegExp('size:' + w + 'mm ' + h + 'mm;'), key);
+    }
+});
