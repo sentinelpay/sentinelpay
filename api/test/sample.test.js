@@ -417,7 +417,9 @@ test('evidence is the same shape, and its seals come from the rows', () => {
     assert.match(sec, /plain\(\[/, 'evidence is not built on the shared cells');
     assert.doesNotMatch(sec, /switched\(\[/, 'evidence draws a chart of the screenings chart again');
     assert.match(sec, /'Records, by age'/, 'evidence does not say how old the records are');
-    assert.match(sec, /useExports\(org, out\)/, 'the period cannot be exported from evidence');
+    // the export sits in the band beside the period it exports, not here
+    assert.doesNotMatch(sec, /useExports|exportMenu/, 'the export block is back in the middle of evidence');
+    assert.match(usage, /left\.appendChild\(exportMenu\(org, /, 'the period cannot be exported from the band');
     assert.doesNotMatch(usage, /use-foot/, 'the footer the CSV sat in is back');
     assert.match(usage, /label: 'Files exported'[^}]*go: 'use-evidence'/, 'Files exported does not open evidence');
     const api = fs.readFileSync(path.join(__dirname, '..', 'usage.js'), 'utf8');
@@ -439,7 +441,7 @@ test('billing carries the plan, and exports come in four shapes', () => {
     for (let i = 1; i < order.length; i++) assert.ok(order[i] > order[i - 1], 'billing sections out of order');
     assert.match(SRC, /\/subscription'/, 'billing does not read the subscription and its history');
 
-    const ex = SRC.slice(SRC.indexOf('function useExports('), SRC.indexOf('function useFacts('));
+    const ex = SRC.slice(SRC.indexOf('function exportMenu('), SRC.indexOf('function useFacts('));
     for (const f of ['html', 'xlsx', 'csv', 'json']) {
         assert.match(ex, new RegExp("\\['" + f + "'"), f + ' cannot be exported');
     }

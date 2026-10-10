@@ -6634,55 +6634,135 @@
         return a.map(function (d, i) { return (d.n || 0) + ((b[i] && b[i].n) || 0); });
     }
 
-    // The period on screen as a file, in the four shapes it is asked for.
-    //
-    // One CSV link was enough for a person reconciling a spreadsheet and no
-    // use to anybody else: an analyst wants a workbook that opens with its
-    // headings in place, an engineer wants something a script can read, and
-    // the compliance officer wants a page to print, sign and put in a file.
-    // All four come from one set of numbers on the server and carry the same
-    // reference, so a printed copy can be matched to the spreadsheet it came
-    // with.
-    function useExports(org, out) {
-        var box = document.createElement('div');
-        box.className = 'use-exp';
-        var q = '?period=' + encodeURIComponent(out.period.key) + '&scope=' + encodeURIComponent(out.scope) +
-            '&tz=' + encodeURIComponent(zoneNow());
-        [
-            ['html', 'Report for print', 'Laid out for A4, with a reference to match and two lines to sign.', 'Open'],
-            ['xlsx', 'Excel workbook', 'One sheet per table. Numbers stay numbers, so the sums add up.', 'Download'],
-            ['csv', 'CSV', 'Every table on this page, one under the other.', 'Download'],
-            ['json', 'JSON', 'The same tables for a system that reads them, with the reference inside.', 'Download']
-        ].forEach(function (f) {
-            var a = document.createElement('a');
-            a.className = 'use-exp-i';
-            a.href = '/v1/orgs/' + encodeURIComponent(org.id) + '/usage.' + f[0] + q;
-            if (f[0] === 'html') {
-                a.target = '_blank';
-                a.rel = 'noopener';
-            } else {
+    // The period on screen as a file, in the four shapes it is asked for:
+    // a report to print and sign, a workbook, a CSV and JSON. The same chip as
+    // the period and scope pickers beside it, opening a short menu rather
+    // than a list to choose a value from, because picking one does something
+    // instead of setting something. All four are built on the server from one
+    // set of numbers and carry the same reference.
+    function exportMenu(org, current) {
+        var wrap = document.createElement('div');
+        wrap.className = 'pick use-x';
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'pick-btn';
+        btn.setAttribute('aria-haspopup', 'menu');
+        btn.setAttribute('aria-expanded', 'false');
+        btn.setAttribute('aria-label', t('Export'));
+        // On a phone the word gives way to an arrow into a tray, so the three
+        // controls stay on one line and the pinned band stays one row tall.
+        var ico = document.createElement('span');
+        ico.className = 'use-x-ico';
+        ico.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+            'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M12 4.5v10"/><path d="m7.8 10.6 4.2 4.2 4.2-4.2"/><path d="M5 19.5h14"/></svg>';
+        btn.appendChild(ico);
+        var label = document.createElement('span');
+        label.className = 'pick-val';
+        label.textContent = t('Export');
+        btn.appendChild(label);
+        var chev = document.createElement('span');
+        chev.className = 'pick-chev';
+        chev.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="m6 9 6 6 6-6"/></svg>';
+        btn.appendChild(chev);
+        wrap.appendChild(btn);
+
+        var pop = document.createElement('div');
+        pop.className = 'pick-pop use-x-pop';
+        pop.setAttribute('role', 'menu');
+        var FORMATS = [
+            ['html', 'Report for print', 'PDF'],
+            ['xlsx', 'Excel workbook', '.xlsx'],
+            ['csv', 'CSV', '.csv'],
+            ['json', 'JSON', '.json']
+        ];
+        FORMATS.forEach(function (f) {
+            var item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'pick-opt';
+            item.setAttribute('role', 'menuitem');
+            var tx = document.createElement('span');
+            tx.className = 'pick-t';
+            tx.textContent = f[1] === 'CSV' || f[1] === 'JSON' ? f[1] : t(f[1]);
+            item.appendChild(tx);
+            var m = document.createElement('span');
+            m.className = 'pick-meta';
+            m.textContent = f[2];
+            item.appendChild(m);
+            item.addEventListener('click', function () {
+                var out = current();
+                open(false);
+                if (!out || !out.period) return;
+                var url = '/v1/orgs/' + encodeURIComponent(org.id) +
+                    '/usage.' + f[0] + '?period=' + encodeURIComponent(out.period.key) +
+                    '&scope=' + encodeURIComponent(out.scope) + '&tz=' + encodeURIComponent(zoneNow());
+                // the report is a page to read and print; the rest are files
+                if (f[0] === 'html') {
+                    window.open(url, '_blank', 'noopener');
+                    return;
+                }
+                var a = document.createElement('a');
+                a.href = url;
                 a.setAttribute('download', '');
-            }
-            var n = document.createElement('span');
-            n.className = 'use-exp-n';
-            n.textContent = f[1] === 'CSV' || f[1] === 'JSON' ? f[1] : t(f[1]);
-            a.appendChild(n);
-            var d = document.createElement('span');
-            d.className = 'use-exp-p';
-            d.textContent = t(f[2]);
-            a.appendChild(d);
-            var go = document.createElement('span');
-            go.className = 'use-exp-a';
-            go.textContent = t(f[3]);
-            a.appendChild(go);
-            box.appendChild(a);
+                document.body.appendChild(a);
+                a.click();
+                a.parentNode.removeChild(a);
+            });
+            pop.appendChild(item);
         });
-        var wrap = document.createDocumentFragment();
-        wrap.appendChild(box);
-        var note = document.createElement('p');
-        note.className = 'use-exp-note';
-        note.textContent = t('Each file carries the same SHA-256 reference over the same numbers, so any two copies can be matched.');
-        wrap.appendChild(note);
+
+        function isOpen() { return wrap.classList.contains('is-open'); }
+        function place() {
+            var r = btn.getBoundingClientRect();
+            pop.style.top = Math.round(r.bottom + 6) + 'px';
+            pop.style.bottom = 'auto';
+            // under the button, and pulled back in where the screen ends
+            var w = pop.offsetWidth || 220;
+            pop.style.left = Math.round(Math.max(8, Math.min(r.left, window.innerWidth - w - 8))) + 'px';
+        }
+        function open(on) {
+            if (on) {
+                document.body.appendChild(pop);
+                pop.classList.add('is-open');
+                place();
+            } else {
+                pop.classList.remove('is-open');
+                setTimeout(function () {
+                    if (!isOpen() && pop.parentNode) pop.parentNode.removeChild(pop);
+                }, 200);
+            }
+            wrap.classList.toggle('is-open', on);
+            btn.setAttribute('aria-expanded', on ? 'true' : 'false');
+            if (on) {
+                var first = pop.querySelector('.pick-opt');
+                if (first) first.focus();
+            }
+        }
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            open(!isOpen());
+        });
+        pop.addEventListener('click', function (e) { e.stopPropagation(); });
+        document.addEventListener('click', function () { if (isOpen()) open(false); });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && isOpen()) { open(false); btn.focus(); }
+        });
+        pop.addEventListener('keydown', function (e) {
+            if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+            e.preventDefault();
+            var all = [].slice.call(pop.querySelectorAll('.pick-opt'));
+            var at = all.indexOf(document.activeElement);
+            var next = e.key === 'ArrowDown' ? at + 1 : at - 1;
+            if (next < 0) next = all.length - 1;
+            if (next >= all.length) next = 0;
+            all[next].focus();
+        });
+        var shut = function () { if (isOpen()) open(false); };
+        window.addEventListener('resize', shut);
+        var canvas = document.getElementById('canvas');
+        if (canvas) canvas.addEventListener('scroll', shut);
         return wrap;
     }
 
@@ -6905,6 +6985,11 @@
                     want.scope = v;
                     load(true);
                 }));
+
+                // The period on screen as a file, beside the two controls
+                // that choose the period. An export is always "this window,
+                // in this scope", so it sits where those are said.
+                left.appendChild(exportMenu(org, function () { return latest; }));
 
                 // Plan first, then the period it is being read in, divided by a
                 // rule. The two belong to the same sentence -- which plan, over
@@ -8191,8 +8276,6 @@
                     { label: 'JSON', n: fmt.json || 0 }
                 ], fmtAll);
             }
-            emain.appendChild(useGridTitle('Export this period'));
-            emain.appendChild(useExports(org, out));
             evSec.body.appendChild(emain);
             body.appendChild(evSec);
 
@@ -9142,7 +9225,7 @@
         var all_ = (sub ? [sub] : []).concat(past.filter(function (h) { return !sub || String(h.id) !== String(sub.id); }));
         if (!all_.length) {
             var none = document.createElement('p');
-            none.className = 'use-exp-note';
+            none.className = 'bill-none';
             none.textContent = t('No plan yet. The trial is not billed, so it has no history here.');
             hmain.appendChild(none);
         } else {

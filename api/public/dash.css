@@ -5335,34 +5335,19 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
    four, and it is the darker red the risk scale already has for it. */
 .use-tally-m.is-severe { background: var(--risk-severe); }
 
-/* Four ways out, side by side, sharing hairlines the way the cells above
-   them do. Each is a link to the file and says in a line who it is for. */
-.use-exp {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    overflow: hidden;
-    margin-top: 0.2rem;
+/* The export menu opens from a chip the width of one word, so it sets its
+   own width rather than taking the button's. */
+.use-x-pop { min-width: 13.5rem; }
+.use-x-pop .pick-meta { font-variant-numeric: tabular-nums; }
+.use-x-ico { display: none; width: 16px; height: 16px; color: var(--ink-2); }
+.use-x-ico svg { display: block; width: 100%; height: 100%; }
+@media (max-width: 720px) {
+    .use-bar-l { gap: 0.45rem; }
+    .use-x .pick-val, .use-x .pick-chev { display: none; }
+    .use-x-ico { display: block; }
+    .use-x { align-self: stretch; }
+    .use-x .pick-btn { height: 100%; justify-content: center; padding-left: 0.6rem; padding-right: 0.6rem; }
 }
-.use-exp-i {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    min-width: 0;
-    padding: 0.9rem 1rem 0.85rem;
-    border-right: 1px solid var(--line-2);
-    color: inherit;
-    text-decoration: none;
-}
-.use-exp-i:last-child { border-right: 0; }
-.use-exp-i:hover { background: var(--hover); }
-.use-exp-i:hover .use-exp-n { color: var(--link); }
-.use-exp-i:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
-.use-exp-n { font-size: 0.9rem; font-weight: 600; color: var(--ink); }
-.use-exp-p { font-size: 0.78rem; line-height: 1.45; color: var(--ink-3); }
-.use-exp-a { margin-top: auto; padding-top: 0.5rem; font-size: 0.78rem; font-weight: 600; color: var(--link); }
-.use-exp-note { margin: 0.65rem 0 0; font-size: 0.78rem; color: var(--ink-4); }
 
 /* ---- billing --------------------------------------------------------- */
 
@@ -5440,15 +5425,13 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
 .bill-cmp-on { margin-top: 0.3rem; font-size: 0.72rem; font-weight: 600; color: var(--link); }
 .bill-cmp thead .bill-cmp-c { text-align: left; font-size: 0.75rem; font-weight: 500; color: var(--ink-4); }
 
+.bill-none { margin: 0; font-size: 0.85rem; color: var(--ink-4); }
 .bill-hist-k { display: flex; flex-direction: column; gap: 0.1rem; }
 .bill-hist-n { color: var(--ink); font-weight: 500; }
 .bill-hist-d { font-size: 0.78rem; color: var(--ink-4); }
 .bill-hist .use-fact-v { display: inline-flex; align-items: center; gap: 0.5rem; }
 
 @media (max-width: 720px) {
-    .use-exp { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .use-exp-i:nth-child(2n) { border-right: 0; }
-    .use-exp-i:nth-child(-n+2) { border-bottom: 1px solid var(--line-2); }
     .bill-hero { grid-template-columns: minmax(0, 1fr); gap: 1rem; padding: 1rem; }
     .bill-m { grid-template-columns: minmax(0, 1fr) auto; gap: 0.35rem 0.8rem; }
     .bill-m .bill-bar { grid-column: 1 / -1; }
