@@ -147,3 +147,38 @@ test('a date from the database prints as its own day in every format', () => {
     const meta = { reference: exports_.reference(list), generated: '2026-09-02T00:00:00.000Z', organisation: 'Acme', back: '/' };
     assert.ok(exports_.report(list, meta, out).includes('12 June 2026'), 'the report printed the wrong year');
 });
+
+// The production report leaves the sandbox out and says how much it left out;
+// the sandbox report says on its face that it is not evidence. Neither counts
+// the other scope's work among the kinds of work done.
+test('a report counts one scope and says what it left out', () => {
+    const base = {
+        period: { from: '2026-09-01T00:00:00.000Z', to: '2026-09-03T00:00:00.000Z' },
+        zone: 'UTC',
+        screenings: { total: 3, flagged: 0, clear: 3, verdicts: { clear: 3 }, assets: [], projects: [], days: [] },
+        kinds: { live: { total: 3 }, other: { total: 7 } },
+        previous: { from: '2026-08-30T00:00:00.000Z', to: '2026-09-01T00:00:00.000Z', total: 2, flagged: 0, severe: 0 },
+        cycle: { used: 3 },
+        org: {},
+    };
+    const sub = { planName: 'Growth', included: { screenings: 1000 } };
+    const live = { ...base, scope: 'live' };
+    const sheets = exports_.sheets(live, { name: 'Acme' }, sub);
+    const sum = new Map(sheets[0].rows.map((r) => [r[0], r]));
+    assert.deepStrictEqual(sum.get('Screenings'), ['Screenings', 3, 2], 'the period before is not beside the figure');
+    assert.equal(sum.get('Sandbox checks not included')[1], 7);
+    const kinds = sheets.find((sh) => sh.name === 'Screenings').rows.filter((r) => r[0] === 'By kind').map((r) => r[1]);
+    assert.ok(!kinds.includes('Sandbox screens'), 'the sandbox is counted among the work on the production report');
+    const meta = { reference: exports_.reference(sheets), generated: '2026-09-03T00:00:00.000Z', organisation: 'Acme', back: '/' };
+    const html = exports_.report(sheets, meta, live);
+    assert.match(html, /7 sandbox checks were made in this period/);
+    assert.doesNotMatch(html, /class="sbx"/);
+
+    const sbx = { ...base, scope: 'sandbox' };
+    const sheets2 = exports_.sheets(sbx, { name: 'Acme' }, sub);
+    const html2 = exports_.report(sheets2, { ...meta, reference: exports_.reference(sheets2) }, sbx);
+    assert.match(html2, /class="sbx"/, 'a sandbox report does not say it is the sandbox');
+    assert.match(html2, /class="wm"/, 'a printed sandbox page carries no mark');
+    assert.doesNotMatch(html2, /used this cycle/, 'the sandbox report claims to have spent the allowance');
+    assert.ok(!new Map(sheets2[0].rows.map((r) => [r[0], r])).has('Sandbox checks not included'));
+});
