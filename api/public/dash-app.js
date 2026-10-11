@@ -6984,11 +6984,18 @@
         });
         langPick.classList.add('rep-paper', 'rep-lang');
         acts.insertBefore(langPick, paperPick);
+        // Printing from the browser is not offered next to the PDF. The PDF is
+        // the document: the same file for everybody, its paper size written
+        // into it, where the print dialog decides the paper, the scale and the
+        // corners for itself on every machine. Anyone who wants it on paper
+        // prints the PDF. This button appears only when the server could not
+        // make one, so the report can still leave the page.
         var print = document.createElement('button');
         print.type = 'button';
         print.className = 'btn btn-quiet';
-        print.textContent = t('Print');
+        print.textContent = t('Print from the browser');
         print.disabled = true;
+        print.hidden = true;
         acts.appendChild(print);
         var get = document.createElement('button');
         get.type = 'button';
@@ -7112,7 +7119,8 @@
                 })
                 .catch(function () {
                     done();
-                    toast(t('The PDF could not be made just now. Print still works.'), 'bad');
+                    print.hidden = false;
+                    toast(t('The PDF could not be made just now. You can print the report from the browser instead.'), 'bad');
                 });
         });
 
@@ -8651,7 +8659,9 @@
                     { label: t('Excel workbook'), n: fmt.xlsx || 0 },
                     { label: 'CSV', n: fmt.csv || 0 },
                     { label: 'JSON', n: fmt.json || 0 }
-                ], fmtAll);
+                // printed from the browser: only a fallback now, so its row is
+                // shown while there are prints to count and not as a standing zero
+                ].filter(function (r) { return r.label !== t('Report for print') || r.n > 0; }), fmtAll);
             }
             evSec.body.appendChild(emain);
             body.appendChild(evSec);
