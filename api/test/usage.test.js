@@ -288,3 +288,74 @@ test('the report is printed in the language asked for, every word of it', () => 
     assert.equal(exports_.langOf('HR'), 'hr');
     assert.equal(exports_.langOf('fr'), 'en', 'a language the dashboard does not speak is printed in English');
 });
+
+// The page the PDF is made from has to carry everything it needs: the server
+// renders it with every request refused. Its fonts are fixed weights, because
+// a variable font goes into a PDF as a drawing of each letter, and every
+// weight the report sets has its file.
+test('the page a PDF is made from needs nothing from outside it', () => {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const out = {
+        period: { from: '2026-09-01T00:00:00.000Z', to: '2026-09-03T00:00:00.000Z' },
+        scope: 'live', zone: 'UTC',
+        screenings: { total: 1, verdicts: {}, assets: [], projects: [], days: [] },
+        org: {},
+    };
+    const list = exports_.sheets(out, { name: 'Acme' }, null);
+    const meta = { reference: exports_.reference(list), generated: '2026-09-03T00:00:00.000Z', organisation: 'Acme', back: '/', forPdf: true };
+    const html = exports_.report(list, meta, out);
+    assert.doesNotMatch(html, /<script/, 'the PDF page runs a script');
+    assert.doesNotMatch(html, /(href|src)="\//, 'the PDF page links something from the site');
+    assert.doesNotMatch(html, /url\(['"]?\//, 'the PDF page loads a font from the site');
+    assert.doesNotMatch(html, /class="bar"/, 'the PDF carries the toolbar');
+    assert.match(html, /<body class="is-embed/, 'the PDF page is not the bare paper');
+    const faces = [...html.matchAll(/@font-face\{font-family:'([^']+)';font-style:normal;font-weight:(\d+);src:url\(data:font\/woff2;base64,/g)]
+        .map((m) => m[1] + ' ' + m[2]);
+    assert.ok(faces.length > 0, 'the PDF page has no fonts of its own');
+    assert.doesNotMatch(html, /font-weight:\s*\d+ \d+;/, 'a variable font is in the PDF page');
+    // every weight the stylesheet sets, in the family it sets it in
+    const css = html.slice(html.indexOf('<style>'), html.indexOf('</head>')).replace(/@font-face\{[^}]*\}/g, '');
+    const asked = new Set(['Inter 400']);
+    for (const m of css.matchAll(/font:(\d{3}) [^;]*?(?:\/[\d.]+)? ('Plus Jakarta Sans'|Inter)/g)) {
+        asked.add((m[2] === 'Inter' ? 'Inter' : 'Plus Jakarta Sans') + ' ' + m[1]);
+    }
+    for (const m of css.matchAll(/font-weight:(\d{3})/g)) asked.add('Inter ' + m[1]);
+    const have = new Set(faces);
+    const missing = [...asked].filter((f) => !have.has(f));
+    assert.deepStrictEqual(missing, [], 'set in a weight the PDF has no file for: ' + missing.join(', '));
+    assert.ok(fs.existsSync(path.join(__dirname, '..', 'print-fonts')), 'the fixed weights are not there');
+    // the usage page's own sheet rules are stronger than the print ones and
+    // printed: a shadow drawn as a picture on every page, and 4px that pushed
+    // the cover onto a second, empty one
+    const print = css.slice(css.indexOf('@media print'));
+    assert.match(print, /\.is-embed \.sheet \{ box-shadow:none; \}/, 'the embedded sheet prints its shadow');
+    assert.match(print, /\.is-embed \.doc \{ padding:0; \}/, 'the embedded page prints its padding');
+});
+
+// The PDF itself, where this machine has a browser to make it with: the
+// paper asked for, a page for the cover, real fonts rather than drawings of
+// them, and no picture anywhere.
+test('the PDF comes out on the paper asked for, set in real fonts', { timeout: 120000 }, async (t) => {
+    const pdf = require('../pdf.js');
+    if (!pdf.available()) { t.skip('no browser here to make a PDF with'); return; }
+    const out = {
+        period: { from: '2026-09-01T00:00:00.000Z', to: '2026-09-03T00:00:00.000Z' },
+        scope: 'live', zone: 'UTC',
+        screenings: { total: 1, verdicts: {}, assets: [], projects: [], days: [] },
+        org: {},
+    };
+    const list = exports_.sheets(out, { name: 'Acme' }, null);
+    const meta = { reference: exports_.reference(list), generated: '2026-09-03T00:00:00.000Z', organisation: 'Acme', back: '/', forPdf: true };
+    for (const [paper, w, h] of [['a4', 595, 842], ['letter', 612, 792]]) {
+        const bytes = await pdf.render(exports_.report(list, { ...meta, paper }, out));
+        const s = bytes.toString('latin1');
+        assert.ok(s.startsWith('%PDF-'), paper + ': not a PDF');
+        const box = /\/MediaBox \[0 0 ([\d.]+) ([\d.]+)\]/.exec(s);
+        assert.ok(box && Math.abs(Number(box[1]) - w) < 2 && Math.abs(Number(box[2]) - h) < 2, paper + ': the page is ' + (box ? box[1] + ' by ' + box[2] : 'missing'));
+        assert.doesNotMatch(s, /\/Type3/, paper + ': the letters are drawings, not a font');
+        assert.match(s, /\/BaseFont \/[A-Z]{6}\+Inter-Regular/, paper + ': the body is not set in Inter');
+        assert.doesNotMatch(s, /\/Subtype \/Image/, paper + ': a picture got into the PDF');
+        assert.ok(bytes.length < 400 * 1024, paper + ': ' + bytes.length + ' bytes');
+    }
+});

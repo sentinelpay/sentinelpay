@@ -940,7 +940,7 @@ async function evidenceIn(orgId, from, to, sandbox, zone, grain) {
     out.sealed = line(checks);
     out.decisions = line(decided);
     out.downloads = line(fileDays);
-    const byFormat = { csv: 0, xlsx: 0, json: 0, html: 0 };
+    const byFormat = { csv: 0, xlsx: 0, json: 0, html: 0, pdf: 0 };
     let lastExport = null;
     fileKinds.rows.forEach((r) => {
         if (r.format in byFormat) byFormat[r.format] += r.n;

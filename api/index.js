@@ -23,6 +23,7 @@ const live = require('./live');
 const invites = require('./invites');
 const usage = require('./usage.js');
 const exportsFile = require('./exports.js');
+const pdf = require('./pdf.js');
 const billing = require('./billing.js');
 const plans = require('./plans.js');
 
@@ -2404,16 +2405,35 @@ app.post('/v1/orgs/:id/checks/:check/decision', requireCloudflareOrigin, account
 });
 
 // asked what was screened in March and has to hand over something that can be
-// kept and read without an account. Four shapes of the same file: a CSV and a
+// kept and read without an account. Five shapes of the same file: a CSV and a
 // workbook for whoever reconciles it, JSON for a system that ingests it, and a
-// report laid out to be printed, signed and filed.
+// report laid out to be printed, signed and filed, as a page to print from or
+// as the PDF made from that page here.
 const EXPORT_TYPES = {
     csv: 'text/csv; charset=utf-8',
     xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     json: 'application/json; charset=utf-8',
     html: 'text/html; charset=utf-8',
+    pdf: 'application/pdf',
 };
-app.get('/v1/orgs/:id/usage.:format', async (req, res) => {
+// A PDF starts a browser on the server and holds it for a few seconds, which
+// none of the other shapes do. Sixty an hour is far more than anyone filing
+// reports needs and far less than it takes to keep that browser busy for
+// somebody else.
+const pdfLimiter = rateLimit({
+    handler: limitHandler,
+    windowMs: 60 * 60 * 1000,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => `usage-pdf:${ipKey(req.realIp)}`,
+    store: new PostgresStore(),
+    message: { error: 'Too many PDFs in an hour. Try again later.' }
+});
+app.get('/v1/orgs/:id/usage.:format', (req, res, next) => {
+    if (req.params.format === 'pdf') return pdfLimiter(req, res, next);
+    next();
+}, async (req, res) => {
     const format = String(req.params.format || '');
     if (!EXPORT_TYPES[format]) return res.status(404).send('Not a format this exports to.');
     const me = await requireSession(req, res);
@@ -2422,12 +2442,16 @@ app.get('/v1/orgs/:id/usage.:format', async (req, res) => {
     if (!mine) return res.status(404).send('You are not in that organisation.');
     const [out, sub] = await Promise.all([usageFor(req, mine), billing.get(mine.id)]);
     if (!out.ok) return res.status(503).send('Not available right now.');
+    // a server without a browser to print with says so, and the page falls
+    // back to printing from the reader's own
+    if (format === 'pdf' && !pdf.available()) return res.status(503).send('PDFs cannot be made here right now.');
     const list = exportsFile.sheets(out, mine, sub);
     // The report shown inside the usage page rather than on its own: the
     // paper without its toolbar, framed by our own pages and nobody else's.
     const embed = format === 'html' && String(req.query.embed || '') === '1';
     const meta = {
         embed,
+        forPdf: format === 'pdf',
         // the paper it is laid out for; A4 unless another of the sizes it
         // knows is asked for
         paper: exportsFile.paperOf(req.query.paper),
@@ -2443,6 +2467,14 @@ app.get('/v1/orgs/:id/usage.:format', async (req, res) => {
     if (format === 'csv') body = exportsFile.csv(list, meta);
     else if (format === 'xlsx') body = exportsFile.xlsx(list, meta);
     else if (format === 'json') body = exportsFile.json(list, meta, out);
+    else if (format === 'pdf') {
+        try {
+            body = await pdf.render(exportsFile.report(list, meta, out));
+        } catch (err) {
+            console.error('[usage] pdf: ' + err.message);
+            return res.status(503).send('The PDF could not be made right now.');
+        }
+    }
     else body = exportsFile.report(list, meta, out);
 
     res.set('Cache-Control', 'no-store, private');

@@ -6787,7 +6787,7 @@
         pop.className = 'pick-pop use-x-pop';
         pop.setAttribute('role', 'menu');
         var FORMATS = [
-            ['html', 'Report for print', 'PDF'],
+            ['html', 'PDF report', '.pdf'],
             ['xlsx', 'Excel workbook', '.xlsx'],
             ['csv', 'CSV', '.csv'],
             ['json', 'JSON', '.json']
@@ -6908,11 +6908,16 @@
     // It is the same report -- built by the server from the same sheets, under
     // the same reference as the files beside it -- shown on the paper it will
     // print on, in the dialog every other one on this dashboard is, with the
-    // print button above it.
+    // buttons above it.
+    //
+    // The PDF is made on the server from the page shown here, so it comes out
+    // the same whoever downloads it: no printer dialog choosing the paper, no
+    // browser writing its own date and address into the corners. Printing
+    // from the browser stays, for whoever wants paper now.
     //
     // Printing prints the frame and nothing around it. Safari on an iPhone or
     // an iPad prints the page a frame sits in rather than the frame, so there
-    // it opens on its own and goes straight to the print dialog, as before.
+    // the report opens on its own and goes straight to the print dialog.
     function reportOnItsOwn() {
         return /iP(hone|ad|od)/.test(navigator.userAgent) ||
             (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -6931,15 +6936,9 @@
         if (!/^(en|hr|de)$/.test(lang)) lang = 'en';
         q += '&lang=' + encodeURIComponent(lang);
         var alone = base + '/usage.html' + q;
-        if (reportOnItsOwn()) {
-            var kept = 'a4';
-            try { kept = localStorage.getItem('sp-report-paper') || 'a4'; } catch (err) { kept = 'a4'; }
-            window.open(alone + '&paper=' + encodeURIComponent(kept) + '&print=1', '_blank', 'noopener');
-            return;
-        }
 
-        var m = modalShell('Report for print',
-            'What you see here is what prints. Choose the paper, then print it or save it as a PDF.');
+        var m = modalShell('PDF report',
+            'This is the PDF, page for page. Choose the language and the paper, then download it.');
         m.box.classList.add('is-report');
 
         // The one thing to do here. The period, the scope and the reference
@@ -6987,10 +6986,16 @@
         acts.insertBefore(langPick, paperPick);
         var print = document.createElement('button');
         print.type = 'button';
-        print.className = 'btn btn-primary';
-        print.textContent = t('Print or save as PDF');
+        print.className = 'btn btn-quiet';
+        print.textContent = t('Print');
         print.disabled = true;
         acts.appendChild(print);
+        var get = document.createElement('button');
+        get.type = 'button';
+        get.className = 'btn btn-primary rep-get';
+        get.textContent = t('Download PDF');
+        get.disabled = true;
+        acts.appendChild(get);
         bar.appendChild(acts);
         m.body.appendChild(bar);
 
@@ -7014,7 +7019,7 @@
 
         var frame = document.createElement('iframe');
         frame.className = 'rep-frame';
-        frame.title = t('Report for print');
+        frame.title = t('PDF report');
         frame.setAttribute('loading', 'eager');
         frame.addEventListener('load', function () {
             var doc = null;
@@ -7030,12 +7035,14 @@
             }
             print.dataset.ref = got;
             print.disabled = false;
+            get.disabled = making;
             desk.classList.add('is-ready');
         });
         // drawn again on the paper chosen, with the sketch back over it until
         // the new one is in
         function load() {
             print.disabled = true;
+            get.disabled = true;
             desk.classList.remove('is-ready', 'is-bad');
             wait.hidden = false;
             frame.src = base + '/usage.html' + q + '&embed=1&paper=' + encodeURIComponent(paper);
@@ -7055,12 +7062,58 @@
                 credentials: 'same-origin',
                 body: JSON.stringify({ reference: print.dataset.ref, from: String(out.period.from).slice(0, 10) })
             }).catch(function () { /* the print still goes ahead */ });
+            var onItsOwn = alone + '&paper=' + encodeURIComponent(paper) + '&print=1';
+            if (reportOnItsOwn()) {
+                window.open(onItsOwn, '_blank', 'noopener');
+                return;
+            }
             try {
                 win.focus();
                 win.print();
             } catch (err) {
-                window.open(alone + '&paper=' + encodeURIComponent(paper) + '&print=1', '_blank', 'noopener');
+                window.open(onItsOwn, '_blank', 'noopener');
             }
+        });
+
+        // The PDF, fetched rather than linked, so the button can say it is
+        // being made -- a few seconds, longer for the first one after a quiet
+        // spell -- and say so plainly if it could not be. The server files it
+        // as an export when it makes it.
+        var making = false;
+        get.addEventListener('click', function () {
+            if (making) return;
+            making = true;
+            get.disabled = true;
+            get.classList.add('is-busy');
+            get.textContent = t('Preparing PDF…');
+            var done = function () {
+                making = false;
+                get.disabled = !desk.classList.contains('is-ready');
+                get.classList.remove('is-busy');
+                get.textContent = t('Download PDF');
+            };
+            fetch(base + '/usage.pdf' + q + '&paper=' + encodeURIComponent(paper), { credentials: 'same-origin' })
+                .then(function (r) {
+                    if (!r.ok) throw new Error(String(r.status));
+                    var cd = r.headers.get('Content-Disposition') || '';
+                    var name = (cd.match(/filename="([^"]+)"/) || [])[1] || 'sentinelpay-usage.pdf';
+                    return r.blob().then(function (b) { return { b: b, name: name }; });
+                })
+                .then(function (got) {
+                    var href = URL.createObjectURL(got.b);
+                    var a = document.createElement('a');
+                    a.href = href;
+                    a.download = got.name;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.parentNode.removeChild(a);
+                    setTimeout(function () { URL.revokeObjectURL(href); }, 60 * 1000);
+                    done();
+                })
+                .catch(function () {
+                    done();
+                    toast(t('The PDF could not be made just now. Print still works.'), 'bad');
+                });
         });
 
         // Escape pressed while reading the paper is pressed inside the frame,
@@ -8591,8 +8644,9 @@
                 ], (es.sealed || 0) + (es.decisions || 0));
                 // Every file that has left, by shape, since the first one.
                 var fmt = es.byFormat || {};
-                var fmtAll = (fmt.csv || 0) + (fmt.xlsx || 0) + (fmt.json || 0) + (fmt.html || 0);
+                var fmtAll = (fmt.pdf || 0) + (fmt.csv || 0) + (fmt.xlsx || 0) + (fmt.json || 0) + (fmt.html || 0);
                 tallied(emain, 'Usage files, by format', [
+                    { label: 'PDF', n: fmt.pdf || 0 },
                     { label: t('Report for print'), n: fmt.html || 0 },
                     { label: t('Excel workbook'), n: fmt.xlsx || 0 },
                     { label: 'CSV', n: fmt.csv || 0 },
