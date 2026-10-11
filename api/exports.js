@@ -758,7 +758,12 @@ function report(list, meta, out) {
         '--cols:' + paper.cols + '; --fs:' + paper.font + 'px; }';
 
     const sheetHead = '<div class="run" aria-hidden="true"><span>' + esc(running) + '</span><span>' + esc(whose) + '</span></div>';
-    const sheetFoot = '<div class="run is-foot" aria-hidden="true"><span>' + esc(refLine) + '</span></div>';
+    // The foot drawn on screen, with room for "Page 2 of 7". A sheet on screen
+    // cannot know where the paper will break, so the numbers are filled in by
+    // the usage page once the server has counted the PDF's pages; until then,
+    // and with no count, the reference stands alone.
+    const sheetFoot = (n) => '<div class="run is-foot" aria-hidden="true"><span>' + esc(refLine) + '</span>' +
+        '<span class="run-pg" data-n="' + n + '" data-tpl="' + esc(tr('Page {n} of {all}')) + '"></span></div>';
     const dt = (k, v) => '<div><dt>' + h(k) + '</dt><dd>' + v + '</dd></div>';
 
     return '<!doctype html><html lang="' + sp.lang + '"><head><meta charset="utf-8">' +
@@ -835,7 +840,7 @@ function report(list, meta, out) {
         '<div class="confirm"><div class="confirm-t">' + h('Confirmation by the organisation') + '</div>' +
         '<p>' + h('This report has been reviewed and matches the records of the organisation.') + '</p>' +
         '<div class="fields">' + ['Name and role', 'Date', 'Signature'].map((l) => '<div>' + h(l) + '</div>').join('') + '</div></div>' +
-        sheetFoot + '</section>' +
+        sheetFoot('2') + '</section>' +
 
         // ---- the figures
         '<section class="sheet body">' + sheetHead +
@@ -869,7 +874,7 @@ function report(list, meta, out) {
             rows: daily.rows.map((r) => [r[0], r[1], r[2], r[3], r[5], r[8]]),
         }, { keep: () => true }, sp) + '</div>' +
         '<p class="end">' + h('End of report') + ' · sha256:' + esc(ref) + '</p>' +
-        sheetFoot + '</section>' +
+        sheetFoot('last') + '</section>' +
         '</main>' +
         (meta.forPdf ? '' : '<script src="/report.js"></script>') + '</body></html>';
 }

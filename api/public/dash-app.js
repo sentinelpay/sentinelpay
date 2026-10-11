@@ -7044,10 +7044,31 @@
             print.disabled = false;
             get.disabled = making;
             desk.classList.add('is-ready');
+            numberPages(doc, got);
         });
+        // "Page 2 of 7" under each sheet. The sheet on screen is one long page
+        // and cannot know where the paper breaks, so the server counts the
+        // PDF it would make and this fills the numbers in, only for the
+        // figures the sheet shows, and only for the paper and language still
+        // chosen when the answer comes back.
+        var counting = 0;
+        function numberPages(doc, ref) {
+            var mine = ++counting;
+            fetch(base + '/usage/pages' + q + '&paper=' + encodeURIComponent(paper), { credentials: 'same-origin' })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (d) {
+                    if (mine !== counting || !d || d.reference !== ref || !(d.pages > 0)) return;
+                    [].forEach.call(doc.querySelectorAll('.run-pg'), function (el) {
+                        var n = el.getAttribute('data-n') === 'last' ? d.pages : el.getAttribute('data-n');
+                        el.textContent = String(el.getAttribute('data-tpl') || '').replace('{n}', n).replace('{all}', d.pages);
+                    });
+                })
+                .catch(function () { /* the reference stands alone */ });
+        }
         // drawn again on the paper chosen, with the sketch back over it until
         // the new one is in
         function load() {
+            counting++;
             print.disabled = true;
             get.disabled = true;
             desk.classList.remove('is-ready', 'is-bad');
