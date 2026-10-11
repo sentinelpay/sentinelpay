@@ -607,6 +607,16 @@ function lastDay(iso) {
 // module, the one bright thing on the page. Drawn in the paper's millimetres,
 // so the modules stay square on every size and only the space under them
 // changes.
+// The head of the statement: the mark and the name, as on the site. The mark
+// is the cover's, solid rather than glowing: a glow is a picture to a PDF.
+const LETTERHEAD = '<svg class="lh-mark" viewBox="0 0 120 120" aria-hidden="true">' +
+    '<defs><linearGradient id="lhInk" x1="0" y1="0" x2="1" y2="1">' +
+    '<stop offset="0" stop-color="#00e0ff"/><stop offset="1" stop-color="#a020f0"/></linearGradient></defs>' +
+    '<g fill="none" stroke="url(#lhInk)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/>' +
+    '<path d="M38 60 Q 60 40 82 60 Q 60 80 38 60 Z"/><circle cx="60" cy="60" r="6"/></g></svg>' +
+    '<span>Sentinelpay</span>';
+
 function coverArt(paper) {
     const W = paper.w;
     const H = paper.h;
@@ -692,7 +702,8 @@ function report(list, meta, out) {
     const to = date(lastDay(out.period.to));
     const span = tr('{from} to {to}', { from, to });
     const scopeName = tr(sandbox ? 'Sandbox' : 'Production');
-    const generated = meta.generated.replace('T', ' ').slice(0, 16) + ' UTC';
+    // when it was made, as a reader says it: "11 October 2026 at 22:22 UTC"
+    const generated = tr('{date} at {time} UTC', { date: date(meta.generated), time: meta.generated.slice(11, 16) });
 
     // A figure, what it was the period before, and a line of its own where it
     // has one. The earlier figure is set back: it is context for the number
@@ -738,6 +749,8 @@ function report(list, meta, out) {
         '@bottom-left { content:' + cssStr(refLine) + '; ' + box + ' } ' +
         '@bottom-right { content:' + counted + '; ' + box + ' text-align:right; } } ' +
         // the cover is the whole sheet, with no margin and nothing running
+        // the statement carries its own letterhead, so nothing runs over it
+        '@page letter { @top-left { content:none; } @top-right { content:none; } } ' +
         '@page :first { margin:0; @top-left { content:none; } @top-right { content:none; } ' +
         '@bottom-left { content:none; } @bottom-right { content:none; } } ' +
         ':root { --pw:' + paper.w + 'mm; --ph:' + paper.h + 'mm; --mx:' + paper.mx + 'mm; --my:' + paper.my + 'mm; ' +
@@ -746,8 +759,6 @@ function report(list, meta, out) {
 
     const sheetHead = '<div class="run" aria-hidden="true"><span>' + esc(running) + '</span><span>' + esc(whose) + '</span></div>';
     const sheetFoot = '<div class="run is-foot" aria-hidden="true"><span>' + esc(refLine) + '</span></div>';
-    const signer = (title) => '<div class="signer"><div class="signer-t">' + h(title) + '</div>' +
-        ['Name', 'Role', 'Date', 'Signature'].map((l) => '<div class="line"><span></span>' + h(l) + '</div>').join('') + '</div>';
     const dt = (k, v) => '<div><dt>' + h(k) + '</dt><dd>' + v + '</dd></div>';
 
     return '<!doctype html><html lang="' + sp.lang + '"><head><meta charset="utf-8">' +
@@ -787,11 +798,16 @@ function report(list, meta, out) {
         (sandbox ? '<div class="c-sbx">' + h('Sandbox. Test data, not evidence of screening.') + '</div>' : '') +
         '</section>' +
 
-        // ---- the details the cover leaves out, at the head of the statement
-        '<section class="sheet statement">' + sheetHead +
-        '<dl class="meta">' +
-        dt('Organisation', esc(org)) +
-        dt('Period', esc(span)) +
+        // ---- the statement, as a letter: our name at the head, whose report
+        // it is and what it covers, what the figures are, our name under it
+        // with the reference that seals it, and room at the foot for the
+        // organisation to put its own name to it. Before any figure: what the
+        // numbers are, then the numbers.
+        '<section class="sheet statement">' +
+        '<div class="lh">' + LETTERHEAD + '</div>' +
+        '<div class="to"><div class="to-org">' + esc(org) + '</div>' +
+        '<div>' + h('Usage and evidence report') + '</div><div>' + esc(span) + '</div></div>' +
+        '<dl class="facts">' +
         dt('Scope', esc(scopeName)) +
         (sum.get('Plan') ? dt('Plan', esc(sum.get('Plan'))) : '') +
         dt('Time zone', esc(sum.get('Time zone'))) +
@@ -799,10 +815,8 @@ function report(list, meta, out) {
         // A4 is A4 in every language; only the American sizes have a name to say
         dt('Paper', esc(/^US /.test(paper.name) ? tr(paper.name) : paper.name)) +
         '</dl>' +
-
-        // ---- the statement, and the two people who put their names to it,
-        // before any figure: what the numbers are, then the numbers
-        '<h2 class="big">' + h('Statement') + '</h2>' +
+        '<div class="l-rule"></div>' +
+        '<h2 class="big">' + h('Statement on screening') + '</h2>' +
         '<p>' + h(sandbox
             ? 'This report sets out the screening {org} carried out through Sentinelpay between {from} and {to}, in the sandbox scope. It was generated on {generated} from the records as they stood at that moment.'
             : 'This report sets out the screening {org} carried out through Sentinelpay between {from} and {to}, in the production scope. It was generated on {generated} from the records as they stood at that moment.',
@@ -811,9 +825,16 @@ function report(list, meta, out) {
         '<p>' + h(sandbox
             ? 'This is the sandbox scope. Its checks are test work and are not evidence of screening.'
             : 'Sandbox checks are test work. They spend no allowance and are left out of every figure here.') + '</p>' +
-        '<p>' + h('Any export of the same period carries the reference below, so a copy in any format can be matched to this one.') + '</p>' +
-        '<p class="ref">sha256:' + esc(ref) + '</p>' +
-        '<div class="sign">' + signer('Prepared by') + signer('Reviewed by') + '</div>' +
+        // at the foot of the page, whatever the length of the text above:
+        // who made it, its seal, and the organisation's confirmation
+        '<div class="l-end"><div class="l-by"><b>Sentinelpay</b><span>' +
+        h('Made automatically from the records, {when}', { when: generated }) + '</span></div>' +
+        '<div class="seal"><div class="seal-k">' + h('Report reference') + '</div>' +
+        '<div class="seal-h">sha256:' + esc(ref) + '</div>' +
+        '<div class="seal-n">' + h('Every export of this period carries the same reference, CSV, Excel and JSON alike, so a copy in any format can be matched to this one.') + '</div></div></div>' +
+        '<div class="confirm"><div class="confirm-t">' + h('Confirmation by the organisation') + '</div>' +
+        '<p>' + h('This report has been reviewed and matches the records of the organisation.') + '</p>' +
+        '<div class="fields">' + ['Name and role', 'Date', 'Signature'].map((l) => '<div>' + h(l) + '</div>').join('') + '</div></div>' +
         sheetFoot + '</section>' +
 
         // ---- the figures
@@ -902,22 +923,38 @@ body { margin:0; color:var(--ink); font:var(--fs, 13px)/1.5 Inter, system-ui, sa
 .c-meta span:last-child { text-align:right; }
 .c-sbx { position:absolute; left:7.6cqw; right:7.6cqw; bottom:calc(var(--foot) + 4.1cqw); font:600 1.6cqw/1.4 Inter, sans-serif; color:#f0b45a; }
 
-/* the details the cover leaves out, opening the statement */
-.statement .meta { margin:0 0 22px; padding:0 0 14px; border:0; border-bottom:1px solid var(--line);
-  display:grid; grid-template-columns:max-content 1fr; gap:4px 28px; font-size:.88em; }
-.meta div { display:contents; }
-.meta dt { color:var(--ink-3); }
-.meta dd { margin:0; font-weight:600; }
+/* ---- statement, laid out as a letter */
+.lh { display:flex; align-items:center; gap:.7em; padding-bottom:1.2em; border-bottom:1px solid var(--line);
+  font:700 1.3em 'Plus Jakarta Sans', Inter, sans-serif; letter-spacing:-.01em; }
+.lh-mark { width:1.75em; height:1.75em; flex:none; }
+.to { margin-top:1.7em; color:var(--ink-2); }
+.to-org { font:700 1.15em 'Plus Jakarta Sans', Inter, sans-serif; color:var(--ink); margin-bottom:2px; }
+/* the details, in the rows the usage page sets its own in */
+.facts { margin:1.2em 0 0; font-size:.88em; }
+.facts div { display:flex; justify-content:space-between; align-items:baseline; gap:16px; padding:.45em 0;
+  border-bottom:1px solid rgba(14,35,88,.08); }
+.facts div:last-child { border-bottom:0; }
+.facts dt { color:var(--ink-4); }
+.facts dd { margin:0; font-weight:600; color:var(--ink-2); text-align:right; }
+.statement > * { flex-shrink:0; }
+.l-rule { width:44px; height:3px; border-radius:2px; background:linear-gradient(90deg, #00e0ff, #a020f0); margin:2.2em 0 .9em; }
 
 /* ---- statement */
 h2 { font:700 14px 'Plus Jakarta Sans', Inter, sans-serif; margin:0 0 8px; padding-bottom:6px; border-bottom:1px solid var(--line); break-after:avoid; }
 h2.big { font-size:20px; border:0; padding:0; margin:0 0 14px; }
 .statement p { margin:0 0 10px; color:var(--ink-2); max-width:150mm; }
-.statement .ref { margin-top:16px; color:var(--ink); font-weight:600; word-break:break-all; font-size:11.5px; }
-.sign { display:grid; grid-template-columns:1fr 1fr; gap:10mm; margin-top:auto; padding-top:18mm; }
-.signer-t { font:700 12px 'Plus Jakarta Sans', Inter, sans-serif; margin-bottom:6px; }
-.signer .line { font-size:10px; color:var(--ink-3); margin-top:14px; }
-.signer .line span { display:block; height:22px; border-bottom:1px solid var(--ink); margin-bottom:3px; }
+.l-end { margin-top:auto; padding-top:1.6em; }
+.l-by b { display:block; font:700 1em 'Plus Jakarta Sans', Inter, sans-serif; }
+.l-by span { color:var(--ink-3); font-size:.88em; }
+.seal { margin:1.2em 0 2em; border:1px solid var(--line); border-radius:6px; padding:.9em 1.1em; background:var(--soft); }
+.seal-k { font-size:.8em; color:var(--ink-3); text-transform:uppercase; letter-spacing:.06em; font-weight:600; }
+.seal-h { font-weight:600; font-size:.88em; word-break:break-all; margin:.25em 0 .3em; }
+.seal-n { font-size:.85em; color:var(--ink-3); }
+.confirm { padding-top:1.2em; border-top:1px solid var(--line); }
+.confirm-t { font:700 .96em 'Plus Jakarta Sans', Inter, sans-serif; }
+.statement .confirm p { font-size:.88em; margin:.2em 0 0; }
+.fields { display:grid; grid-template-columns:2fr 1fr 1.3fr; gap:14px; margin-top:2.6em; }
+.fields div { border-top:1px solid var(--ink); padding-top:5px; font-size:.77em; color:var(--ink-3); }
 
 /* ---- figures */
 .part { margin-top:22px; }
@@ -945,14 +982,25 @@ tr { break-inside:avoid; }
   transform:rotate(-30deg); letter-spacing:.06em; text-transform:uppercase; }
 
 /* small paper and narrow screens: two figures to a row, the meta under itself */
-.paper-a5 .sign { gap:6mm; padding-top:8mm; }
-.paper-a5 .signer .line { margin-top:9px; }
-.paper-a5 .signer .line span { height:16px; }
-@media (max-width: 700px) {
+/* A5 has the same letter in two thirds of the room: every gap a little less,
+   so the longest of it, German with a plan named, still ends on its page */
+.paper-a5 .lh { padding-bottom:.8em; }
+.paper-a5 .to { margin-top:1em; }
+.paper-a5 .facts { margin-top:.8em; }
+.paper-a5 .facts div { padding:.25em 0; }
+.paper-a5 .l-rule { margin:1.2em 0 .6em; }
+.paper-a5 .statement p { margin-bottom:7px; }
+.paper-a5 .l-end { padding-top:1em; }
+.paper-a5 .seal { margin:.8em 0 1.2em; }
+.paper-a5 .confirm { padding-top:.9em; }
+.paper-a5 .fields { margin-top:1.7em; gap:10px; }
+/* screens only: A5 is narrower than 700px too, and printed it took the
+   phone's layout, its signature fields stacked off the foot of the page */
+@media screen and (max-width: 700px) {
   .sheet { padding:22px 16px; }
   .statement { min-height:0; }
   .figs { grid-template-columns:repeat(2, 1fr); }
-  .sign { grid-template-columns:1fr; gap:6mm; padding-top:24px; }
+  .fields { grid-template-columns:1fr; gap:22px; }
   .run { display:none; }
 }
 
@@ -976,7 +1024,7 @@ html:has(body.is-embed) { background:transparent; }
   .is-embed .doc { padding:0; }
   /* a page each, the height of the page less its margins, less a hair so a
      rounding never spills a cover onto a blank second page */
-  .statement { min-height:0; height:calc(var(--ph) - 2 * var(--my) - 2mm); break-after:page; }
+  .statement { page:letter; min-height:0; height:calc(var(--ph) - 2 * var(--my) - 2mm); break-after:page; }
   /* the cover is the whole sheet, its margin taken off by the first page's
      rule, less a hair so it never spills onto a blank second page */
   /* the page's own width rather than the nominal one: A5 comes out a fifth
