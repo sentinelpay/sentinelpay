@@ -215,3 +215,29 @@ test('the report is laid out on the paper asked for, A4 when none is', () => {
         assert.match(exports_.report(list, { ...meta, paper: key }, out), new RegExp('size:' + w + 'mm ' + h + 'mm;'), key);
     }
 });
+
+// The cover is the brand's: the grid of shapes taken from the logo, the logo
+// itself in the middle, and under it the title, whose report it is and the
+// period. The grid is drawn in the paper's own millimetres, so its modules
+// stay square on every size.
+test('the cover is the brand grid on every paper', () => {
+    const out = {
+        period: { from: '2026-09-01T00:00:00.000Z', to: '2026-09-03T00:00:00.000Z' },
+        scope: 'live', zone: 'UTC',
+        screenings: { total: 1, verdicts: {}, assets: [], projects: [], days: [] },
+        org: {},
+    };
+    const list = exports_.sheets(out, { name: 'Acme' }, null);
+    const meta = { reference: exports_.reference(list), generated: '2026-09-03T00:00:00.000Z', organisation: 'Acme', back: '/' };
+    for (const key of Object.keys(exports_.PAPERS)) {
+        const paper = exports_.PAPERS[key];
+        const html = exports_.report(list, { ...meta, paper: key }, out);
+        const cover = html.slice(html.indexOf('class="sheet cover"'), html.indexOf('class="sheet statement"'));
+        assert.match(cover, new RegExp('class="c-art" viewBox="0 0 ' + paper.w + ' ' + paper.h + '"'), key + ': the art is not drawn to the paper');
+        assert.match(cover, /class="c-title">Usage and<br>evidence report</, key + ': no title');
+        assert.match(cover, /<b>Acme<\/b>/, key + ': the organisation is not on the cover');
+        // three modules across the width: the first row's middle square starts a third in
+        const m = Math.round(paper.w / 3 * 100) / 100;
+        assert.ok(cover.includes('<rect x="' + m + '" y="0" width="' + m + '" height="' + m + '"'), key + ': the grid is not three across');
+    }
+});

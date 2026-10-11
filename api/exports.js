@@ -488,6 +488,74 @@ function lastDay(iso) {
     return new Date(new Date(iso).getTime() - 1).toISOString();
 }
 
+// The cover's art: a grid of three modules across the paper's width and three
+// down, each filled with one shape taken from the logo -- the shield's lower
+// half, the iris of the eye, and the quarters and halves of that circle -- in
+// two blues on the dashboard's own dark. The logo itself sits in the middle
+// module, the one bright thing on the page. Drawn in the paper's millimetres,
+// so the modules stay square on every size and only the space under them
+// changes.
+function coverArt(paper) {
+    const W = paper.w;
+    const H = paper.h;
+    const m = W / 3;
+    const n = (v) => Math.round(v * 100) / 100;
+    const A = '#131d4f';
+    const B = '#1b2a72';
+    const at = (c, r) => [n(c * m), n(r * m)];
+    const quarter = (c, r, corner, fill) => {
+        const [x, y] = at(c, r);
+        const x2 = n(x + m);
+        const y2 = n(y + m);
+        const d = {
+            tl: `M${x} ${y} H${x2} A${n(m)} ${n(m)} 0 0 1 ${x} ${y2} Z`,
+            br: `M${x2} ${y2} H${x} A${n(m)} ${n(m)} 0 0 1 ${x2} ${y} Z`,
+        }[corner];
+        return `<path d="${d}" fill="${fill}"/>`;
+    };
+    const dee = (c, r, side, fill) => {
+        const [x, y] = at(c, r);
+        const h = n(m / 2);
+        const d = side === 'r'
+            ? `M${x} ${y} H${n(x + h)} A${h} ${h} 0 0 1 ${n(x + h)} ${n(y + m)} H${x} Z`
+            : `M${n(x + m)} ${y} H${n(x + h)} A${h} ${h} 0 0 0 ${n(x + h)} ${n(y + m)} H${n(x + m)} Z`;
+        return `<path d="${d}" fill="${fill}"/>`;
+    };
+    const shield = (c, r, fill) => {
+        const [x, y] = at(c, r);
+        const k = m / 70;
+        const X = (v) => n(x + v * k);
+        const Y = (v) => n(y + v * k);
+        return `<path d="M${X(0)} ${Y(0)} H${X(70)} V${Y(22)} C${X(70)} ${Y(48)} ${X(48)} ${Y(63)} ${X(35)} ${Y(70)} ` +
+            `C${X(22)} ${Y(63)} ${X(0)} ${Y(48)} ${X(0)} ${Y(22)} Z" fill="${fill}"/>`;
+    };
+    const disc = (c, r, fill) => {
+        const [x, y] = at(c, r);
+        return `<circle cx="${n(x + m / 2)}" cy="${n(y + m / 2)}" r="${n(m / 2)}" fill="${fill}"/>`;
+    };
+    const full = (c, r, fill) => {
+        const [x, y] = at(c, r);
+        return `<rect x="${x}" y="${y}" width="${n(m)}" height="${n(m)}" fill="${fill}"/>`;
+    };
+    // the logo, centred in the middle module at the size it had on A4
+    const k = m / 70;
+    const lx = n(m + m / 2 - 60 * 0.37 * k);
+    const ly = n(m + m / 2 - 60 * 0.37 * k);
+    return `<svg class="c-art" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">` +
+        '<defs><linearGradient id="coverInk" x1="0" y1="0" x2="1" y2="1">' +
+        '<stop offset="0" stop-color="#00e0ff"/><stop offset="1" stop-color="#a020f0"/></linearGradient></defs>' +
+        `<rect width="${W}" height="${H}" fill="#0b1020"/>` +
+        quarter(0, 0, 'tl', B) + full(1, 0, A) + dee(2, 0, 'l', B) +
+        shield(0, 1, A) + disc(1, 1, B) + shield(2, 1, A) +
+        disc(0, 2, B) + dee(1, 2, 'r', A) + quarter(2, 2, 'br', B) +
+        `<g transform="translate(${lx} ${ly}) scale(${n(0.37 * k)})" fill="none" stroke="url(#coverInk)" ` +
+        'stroke-width="6" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/>' +
+        '<path d="M38 60 Q 60 40 82 60 Q 60 80 38 60 Z"/><circle cx="60" cy="60" r="6"/></g>' +
+        `<circle cx="${n(lx + 60 * 0.37 * k)}" cy="${n(ly + 60 * 0.37 * k)}" r="${n(0.9 * k)}" fill="url(#coverInk)"/>` +
+        '</svg>';
+}
+
 function report(list, meta, out) {
     const by = (name) => list.find((sh) => sh.name === name);
     const rows = new Map(by('Summary').rows.map((r) => [r[0], r]));
@@ -497,6 +565,14 @@ function report(list, meta, out) {
     const paperKey = paperOf(meta.paper);
     const paper = PAPERS[paperKey];
     const ref = meta.reference;
+    // The room under the grid, in shares of the width: 41 on A4, 29 on
+    // Letter, which is shorter for its width. The gap over the rule and the
+    // margin under the last line are 14mm and 15mm on A4 and shrink with that
+    // room, so on Letter the title does not run into the line beneath it.
+    const room = (paper.h / paper.w - 1) * 100;
+    const r2 = (v) => Math.round(v * 100) / 100;
+    const coverBelow = r2(Math.min(14 / 210 * 100, room * 0.161));
+    const coverFoot = r2(Math.min(15 / 210 * 100, room * 0.17));
     const org = meta.organisation || '';
     const from = longDate(out.period.from);
     const to = longDate(lastDay(out.period.to));
@@ -571,31 +647,19 @@ function report(list, meta, out) {
         // across every printed page, so a copy cannot be mistaken for evidence
         (sandbox ? '<div class="wm" aria-hidden="true">Sandbox</div>' : '') +
 
-        // ---- the cover, on a page alone and laid out the way Apple lays out
-        // its own: the mark small in the corner, the title in two lines on a
-        // column a little left of centre, the eye large under it, and at the
-        // foot of that column whose report it is and the period it covers.
-        // Every measure is a share of the paper's width, so the cover is the
-        // same composition on A5 as on A3.
+        // ---- the cover, a page of its own: the brand's shapes over the top
+        // two thirds, and under them what the document is, whose, and for
+        // which period. The title block sits a fixed share below the grid, so
+        // a shorter sheet like Letter keeps the same gap rather than running
+        // the title into the shapes.
         '<main class="doc">' +
-        '<section class="sheet cover">' +
-        // The mark for paper. The site's logo is a neon outline with a glow,
-        // drawn for a dark screen; on white it prints pale and soft. This is
-        // the same shield and eye solid in the brand's ink, the way a
-        // company's logo is set on its own documents.
-        '<svg class="c-mark" viewBox="22 12 76 96" role="img" aria-label="Sentinelpay">' +
-        '<path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z" fill="currentColor"/>' +
-        '<path d="M38 60 Q 60 40 82 60 Q 60 80 38 60 Z" fill="#fff"/>' +
-        '<circle cx="60" cy="60" r="6.5" fill="currentColor"/></svg>' +
-        '<h1 class="c-title">Usage and Evidence<br>Report</h1>' +
-        // the eye alone, large and solid, the one image on the page
-        '<svg class="c-eye" viewBox="0 0 100 56" aria-hidden="true">' +
-        '<path d="M2 28 Q 50 -18 98 28 Q 50 74 2 28 Z" fill="currentColor"/>' +
-        '<circle cx="50" cy="28" r="15.5" fill="#fff"/>' +
-        '<circle cx="50" cy="28" r="9" fill="currentColor"/></svg>' +
-        '<div class="c-foot"><div class="c-org">' + esc(org) + '</div>' +
-        '<div class="c-period">' + from + ' to ' + to + '</div>' +
-        (sandbox ? '<div class="c-sbx">Sandbox. Test data, not evidence.</div>' : '') + '</div>' +
+        '<section class="sheet cover" style="--below:' + coverBelow + 'cqw; --foot:' + coverFoot + 'cqw">' +
+        coverArt(paper) +
+        '<div class="c-rule"></div>' +
+        '<h1 class="c-title">Usage and<br>evidence report</h1>' +
+        '<div class="c-meta"><span><b>' + esc(org) + '</b><i>·</i>' + esc(sum.get('Scope')) + '</span>' +
+        '<span>' + from + ' to ' + to + '</span></div>' +
+        (sandbox ? '<div class="c-sbx">Sandbox. Test data, not evidence of screening.</div>' : '') +
         '</section>' +
 
         // ---- the details the cover leaves out, at the head of the statement
@@ -688,21 +752,24 @@ body { margin:0; color:var(--ink); font:var(--fs, 13px)/1.5 Inter, system-ui, sa
 .body .run.is-foot { margin-top:28px; }
 
 /* ---- cover
-   Measured off Apple's own cover and kept as shares of the sheet: the column
-   starts 39% in, the title's top at 29% down, the eye from 46%, the foot at
-   89%. Sizes are shares of the width too, through the sheet's own container
-   units, so A5 is A3 made smaller rather than laid out again. */
-.cover { position:relative; padding:0; aspect-ratio:var(--ar); min-height:0; container-type:inline-size; overflow:hidden; }
-.c-mark { position:absolute; top:4.8%; right:9%; width:4.6cqw; height:auto; color:var(--ink); }
-.c-title { position:absolute; top:29%; left:39%; right:8%; margin:0;
-  font:600 5.1cqw/1.14 'Plus Jakarta Sans', Inter, sans-serif; letter-spacing:-.02em; color:var(--ink); }
-/* the eye is wider than it is tall, so it is given the width that makes
-   it weigh what Apple's square mark weighs on the same page */
-.c-eye { position:absolute; top:46.5%; left:39%; width:24cqw; height:auto; color:var(--ink); }
-.c-foot { position:absolute; top:88.5%; left:39%; right:8%; }
-.c-org { font:600 2.6cqw/1.3 'Plus Jakarta Sans', Inter, sans-serif; color:var(--ink); overflow-wrap:anywhere; }
-.c-period { font:500 2.1cqw/1.4 Inter, sans-serif; color:var(--ink-2); margin-top:.3cqw; }
-.c-sbx { font:600 1.8cqw/1.4 Inter, sans-serif; color:#a06000; margin-top:.8cqw; }
+   The art fills the sheet; everything on it is measured in shares of the
+   sheet's width through its container units, so A5 is A3 made smaller rather
+   than laid out again. The grid is as tall as the sheet is wide, so the type
+   is placed from there: 100cqw down, then --below, set per paper. */
+.cover { position:relative; padding:0; aspect-ratio:var(--ar); min-height:0; container-type:inline-size;
+  overflow:hidden; background:#0b1020; color:#fff; }
+.c-art { position:absolute; inset:0; width:100%; height:100%; display:block; }
+.c-rule { position:absolute; left:7.6cqw; top:calc(100cqw + var(--below)); width:14.3cqw; height:.55cqw;
+  background:linear-gradient(90deg, #00e0ff, #a020f0); }
+.c-title { position:absolute; left:7.6cqw; right:7.6cqw; top:calc(100cqw + var(--below) + 3.8cqw); margin:0;
+  font:600 4.7cqw/1.04 'Plus Jakarta Sans', Inter, sans-serif; letter-spacing:-.01em; text-transform:uppercase;
+  color:#fff; overflow-wrap:anywhere; }
+.c-meta { position:absolute; left:7.6cqw; right:7.6cqw; bottom:var(--foot); display:flex; justify-content:space-between;
+  gap:4cqw; font:500 1.76cqw/1.4 Inter, sans-serif; color:rgba(255,255,255,.82); }
+.c-meta b { font:600 1.76cqw/1.4 'Plus Jakarta Sans', Inter, sans-serif; color:#fff; }
+.c-meta i { font-style:normal; margin:0 1.2cqw; color:rgba(255,255,255,.55); }
+.c-meta span:last-child { text-align:right; }
+.c-sbx { position:absolute; left:7.6cqw; right:7.6cqw; bottom:calc(var(--foot) + 4.1cqw); font:600 1.6cqw/1.4 Inter, sans-serif; color:#f0b45a; }
 
 /* the details the cover leaves out, opening the statement */
 .statement .meta { margin:0 0 22px; padding:0 0 14px; border:0; border-bottom:1px solid var(--line);
@@ -774,7 +841,10 @@ html:has(body.is-embed) { background:transparent; }
   .statement { min-height:0; height:calc(var(--ph) - 2 * var(--my) - 2mm); break-after:page; }
   /* the cover is the whole sheet, its margin taken off by the first page's
      rule, less a hair so it never spills onto a blank second page */
-  .cover { width:var(--pw); height:calc(var(--ph) - 1mm); aspect-ratio:auto; break-after:page; }
+  /* the page's own width rather than the nominal one: A5 comes out a fifth
+     of a millimetre wider than 148mm, and a cover drawn to the number left
+     a hairline of white down its edge */
+  .cover { width:100%; height:var(--ph); aspect-ratio:auto; break-after:page; }
   .part.is-days { break-before:page; }
 }
 `;
