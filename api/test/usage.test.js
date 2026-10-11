@@ -213,8 +213,16 @@ test('the report is laid out on the paper asked for, A4 when none is', () => {
     assert.ok(letter.includes('Confirmation by the organisation'), 'the confirmation is not with the statement');
     assert.ok(letter.indexOf('class="seal"') < letter.indexOf('class="confirm"'), 'the seal is not above the confirmation');
     assert.equal((letter.match(/class="fields"/g) || []).length, 1, 'the statement asks for more than one signature');
-    assert.match(html, /@page letter \{ @top-left \{ content:none; \}/, 'the running head prints over the letterhead');
-    assert.match(html, /\.statement \{ page:letter;/, 'the statement is not on its own named page');
+    // every page after the cover carries our head, the mark and the name as
+    // one picture so they line up, with a line under it across the page
+    assert.match(html, /@top-left \{ content:url\("data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+"\); vertical-align:bottom;[^}]*border-bottom:1px solid/, 'the pages have no head');
+    assert.match(html, /@top-center \{ content:""; [^}]*border-bottom/, 'the line under the head stops short');
+    assert.match(html, /@page :first \{ margin:0; @top-left \{ content:none; \} @top-center \{ content:none; \} @top-right \{ content:none; \}/, 'the head prints on the cover');
+    const head = Buffer.from(/@top-left \{ content:url\("data:image\/svg\+xml;base64,([^"]+)"/.exec(html)[1], 'base64').toString();
+    assert.match(head, /<path transform="translate\(190 [\d.]+\)" fill="#0e2358" d="M/, 'the name is not drawn beside the mark');
+    // on screen each sheet draws the same head, and on paper it leaves that to the page
+    assert.match(letter, /<div class="lh sheet-lh">/, 'the statement has no head on screen');
+    assert.match(html, /\.sheet-lh \{ display:none; \}/, 'the head prints twice on paper');
     // A5 is narrower than a phone breakpoint: the phone's layout is for screens
     assert.match(html, /@media screen and \(max-width: 700px\)/, 'the phone layout applies to printed A5');
     // under the statement and the last sheet, a place for "Page 2 of 7" in
