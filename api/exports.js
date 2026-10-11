@@ -579,11 +579,11 @@ function table(sh, opts, sp) {
 // is whatever the reader's printer was last set to. Each size carries the
 // margins that suit it, so a page of A5 is not laid out with A3's.
 const PAPERS = {
-    a4: { name: 'A4', w: 210, h: 297, mx: 16, my: 18, cols: 4, font: 13 },
-    letter: { name: 'US Letter', w: 215.9, h: 279.4, mx: 16, my: 17, cols: 4, font: 13 },
-    legal: { name: 'US Legal', w: 215.9, h: 355.6, mx: 16, my: 18, cols: 4, font: 13 },
-    a3: { name: 'A3', w: 297, h: 420, mx: 22, my: 24, cols: 4, font: 14 },
-    a5: { name: 'A5', w: 148, h: 210, mx: 11, my: 13, cols: 2, font: 11 },
+    a4: { name: 'A4', w: 210, h: 297, mx: 16, my: 18, mt: 26, head: 22, cols: 4, font: 13 },
+    letter: { name: 'US Letter', w: 215.9, h: 279.4, mx: 16, my: 17, mt: 25, head: 22, cols: 4, font: 13 },
+    legal: { name: 'US Legal', w: 215.9, h: 355.6, mx: 16, my: 18, mt: 26, head: 22, cols: 4, font: 13 },
+    a3: { name: 'A3', w: 297, h: 420, mx: 22, my: 24, mt: 33, head: 26, cols: 4, font: 14 },
+    a5: { name: 'A5', w: 148, h: 210, mx: 11, my: 13, mt: 16, head: 16, cols: 2, font: 11 },
 };
 function paperOf(key) {
     return PAPERS[String(key || '').toLowerCase()] ? String(key).toLowerCase() : 'a4';
@@ -620,7 +620,8 @@ const CHAPTERS = ['Overview of the period', 'Screenings and review', 'Sanctions 
 // the end has every figure the columns are drawn from.
 function periodChart(daily, hourly, sp, low) {
     const rows = daily.rows;
-    // lower on A5, where the overview has the least room to end on its page
+    // lower on A5 and Letter, the two sheets that are short for their width,
+    // where the overview has the least room to end on its page
     const W = 1000, H = low ? 200 : 250, L = 52, R = 8, T = 30, B = 32;
     const pw = W - L - R, ph = H - T - B;
     const top = Math.max(1, ...rows.map((r) => Number(r[1]) || 0));
@@ -678,7 +679,28 @@ function periodChart(daily, hourly, sp, low) {
         esc(sp.tr(hourly ? 'Checks by hour' : 'Checks by day')) + '">' + out.join('') + '</svg>';
 }
 
-// The head of the statement: the mark and the name, as on the site. The mark
+// The head of every page after the cover, as one picture: the mark and the
+// name side by side. It is printed in the page's top margin, where a picture
+// can only sit on the line of text, so a mark and a word set separately came
+// out with the mark riding higher than the word. Drawn together they line up.
+// The name is Plus Jakarta Sans at 700, its letters taken out of that font as
+// outlines (from print-fonts/jakarta-latin-700.woff2, 100 units to the em).
+const WORDMARK = { w: 581.2, cap: 74.5, d: 'M33.8 75.7Q26.7 75.7 20.7 73.1Q14.6 70.5 10.2 65.8Q5.9 61.2 3.9 55L15.2 50.1Q17.9 56.5 23 60.1Q28.1 63.8 34.5 63.8Q38.1 63.8 40.8 62.6Q43.4 61.5 44.9 59.5Q46.3 57.5 46.3 54.7Q46.3 51.4 44.4 49.2Q42.4 47.1 38.5 45.9L24.2 41.3Q15.5 38.6 11.1 33.2Q6.7 27.8 6.7 20.5Q6.7 14.1 9.8 9.2Q13 4.3 18.6 1.5Q24.3 -1.2 31.6 -1.2Q38.3 -1.2 43.9 1.1Q49.5 3.5 53.5 7.6Q57.6 11.8 59.6 17.4L48.4 22.4Q46.2 16.8 41.8 13.7Q37.4 10.7 31.6 10.7Q28.2 10.7 25.6 11.8Q23 13 21.6 15Q20.1 17.1 20.1 19.9Q20.1 23 22.1 25.3Q24.1 27.7 28.2 29L41.9 33.3Q50.8 36.2 55.2 41.3Q59.7 46.4 59.7 53.9Q59.7 60.3 56.4 65.2Q53.1 70.1 47.3 72.9Q41.5 75.7 33.8 75.7ZM96.6 75.7Q88.2 75.7 81.9 71.9Q75.6 68.1 72.1 61.6Q68.6 55.1 68.6 47.2Q68.6 39 72.2 32.6Q75.7 26.3 81.8 22.6Q88 18.9 95.6 18.9Q102 18.9 106.8 21Q111.7 23.1 115.1 26.8Q118.5 30.5 120.3 35.2Q122.1 40 122.1 45.5Q122.1 46.9 122 48.4Q121.8 49.9 121.4 51H79.4V41H114L107.8 45.7Q108.7 41.1 107.3 37.5Q106 33.9 103 31.8Q99.9 29.7 95.6 29.7Q91.5 29.7 88.3 31.7Q85.1 33.8 83.5 37.8Q81.8 41.7 82.2 47.3Q81.8 52.3 83.6 56.1Q85.3 60 88.8 62.1Q92.2 64.2 96.7 64.2Q101.2 64.2 104.3 62.3Q107.5 60.4 109.3 57.2L119.9 62.4Q118.3 66.3 114.9 69.3Q111.5 72.3 106.8 74Q102.2 75.7 96.6 75.7ZM132 74.5V20.1H144.3V30.8L143.3 28.9Q145.2 24 149.6 21.4Q153.9 18.9 159.7 18.9Q165.7 18.9 170.4 21.5Q175 24.1 177.6 28.7Q180.2 33.4 180.2 39.5V74.5H167.1V42.6Q167.1 39 165.7 36.4Q164.3 33.8 161.9 32.3Q159.4 30.9 156.1 30.9Q152.9 30.9 150.4 32.3Q147.9 33.8 146.5 36.4Q145.1 39 145.1 42.6V74.5ZM216.1 75.1Q206.9 75.1 201.9 70Q196.8 65 196.8 55.8V31.8H187.4V20.1H188.4Q192.4 20.1 194.6 18Q196.8 15.9 196.8 11.9V7.7H209.9V20.1H222.4V31.8H209.9V55.1Q209.9 57.8 210.9 59.7Q211.8 61.6 213.9 62.6Q215.9 63.6 219.1 63.6Q219.8 63.6 220.8 63.5Q221.7 63.4 222.6 63.3V74.5Q221.2 74.7 219.4 74.9Q217.6 75.1 216.1 75.1ZM232.6 74.5V20.1H245.7V74.5ZM232.6 14V0H245.7V14ZM257.8 74.5V20.1H270.1V30.8L269.1 28.9Q271 24 275.4 21.4Q279.7 18.9 285.5 18.9Q291.5 18.9 296.2 21.5Q300.8 24.1 303.4 28.7Q306 33.4 306 39.5V74.5H292.9V42.6Q292.9 39 291.5 36.4Q290.1 33.8 287.7 32.3Q285.2 30.9 281.9 30.9Q278.7 30.9 276.2 32.3Q273.7 33.8 272.3 36.4Q270.9 39 270.9 42.6V74.5ZM342.9 75.7Q334.5 75.7 328.2 71.9Q321.9 68.1 318.4 61.6Q314.9 55.1 314.9 47.2Q314.9 39 318.5 32.6Q322 26.3 328.2 22.6Q334.3 18.9 341.9 18.9Q348.3 18.9 353.2 21Q358 23.1 361.4 26.8Q364.8 30.5 366.6 35.2Q368.4 40 368.4 45.5Q368.4 46.9 368.3 48.4Q368.1 49.9 367.7 51H325.7V41H360.3L354.1 45.7Q355 41.1 353.7 37.5Q352.3 33.9 349.3 31.8Q346.2 29.7 341.9 29.7Q337.8 29.7 334.6 31.7Q331.4 33.8 329.8 37.8Q328.1 41.7 328.5 47.3Q328.1 52.3 329.9 56.1Q331.6 60 335.1 62.1Q338.5 64.2 343 64.2Q347.5 64.2 350.7 62.3Q353.8 60.4 355.6 57.2L366.2 62.4Q364.6 66.3 361.2 69.3Q357.8 72.3 353.2 74Q348.5 75.7 342.9 75.7ZM378.3 74.5V-1.2H391.4V74.5ZM403.5 94.5V20.1H415.8V30.9L414.6 28.2Q417.4 23.8 422.2 21.3Q427 18.9 433.3 18.9Q441 18.9 447.2 22.7Q453.4 26.5 457.1 32.9Q460.7 39.3 460.7 47.3Q460.7 55.2 457.1 61.7Q453.5 68.2 447.3 72Q441.1 75.7 433.2 75.7Q427.3 75.7 422.4 73.3Q417.4 71 414.5 66.6L416.6 64V94.5ZM431.7 63.7Q436.2 63.7 439.7 61.6Q443.2 59.5 445.2 55.8Q447.1 52.1 447.1 47.3Q447.1 42.5 445.2 38.8Q443.2 35.2 439.7 33Q436.2 30.9 431.7 30.9Q427.4 30.9 424 33Q420.5 35.1 418.6 38.8Q416.6 42.6 416.6 47.3Q416.6 52.1 418.6 55.8Q420.5 59.5 424 61.6Q427.4 63.7 431.7 63.7ZM487.2 75.7Q481.5 75.7 477.3 73.8Q473.1 71.9 470.8 68.3Q468.5 64.8 468.5 60.1Q468.5 55.6 470.5 52Q472.5 48.5 476.7 46.1Q480.9 43.7 487.3 42.7L505.1 39.8V49.8L489.8 52.4Q485.9 53.1 484 54.9Q482.1 56.7 482.1 59.6Q482.1 62.4 484.2 64Q486.4 65.7 489.6 65.7Q493.7 65.7 496.9 64Q500 62.2 501.8 59.1Q503.5 56 503.5 52.3V38.3Q503.5 34.8 500.8 32.4Q498 30.1 493.5 30.1Q489.3 30.1 486.1 32.3Q482.8 34.6 481.3 38.3L470.6 33.1Q472.2 28.8 475.7 25.6Q479.1 22.5 483.8 20.7Q488.5 18.9 494 18.9Q500.7 18.9 505.8 21.3Q510.9 23.8 513.8 28.1Q516.6 32.5 516.6 38.3V74.5H504.2V65.2L507 65Q504.9 68.5 502 70.8Q499.1 73.2 495.4 74.5Q491.7 75.7 487.2 75.7ZM535.3 96.5Q533.1 96.5 531 96.2Q528.9 95.8 527.2 94.9V84Q528.5 84.3 530.4 84.6Q532.2 84.9 533.8 84.9Q538.3 84.9 540.4 82.8Q542.4 80.8 544 77.4L547.6 69L547.4 80L523.7 20.1H537.8L554.4 64.3H549.4L565.9 20.1H580.1L556.4 80Q554.3 85.2 551.3 88.9Q548.3 92.6 544.4 94.5Q540.4 96.5 535.3 96.5Z' };
+function headPicture(px) {
+    const H = 150, gap = 40, w = Math.round(H + gap + WORDMARK.w);
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + w + ' ' + H + '" ' +
+        'width="' + Math.round(px * w / H) + '" height="' + px + '">' +
+        '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">' +
+        '<stop offset="0" stop-color="#00e0ff"/><stop offset="1" stop-color="#a020f0"/></linearGradient></defs>' +
+        '<g transform="scale(1.25)" fill="none" stroke="url(#g)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/>' +
+        '<path d="M38 60 Q 60 40 82 60 Q 60 80 38 60 Z"/><circle cx="60" cy="60" r="6"/></g>' +
+        '<path transform="translate(' + (H + gap) + ' ' + ((H - WORDMARK.cap) / 2).toFixed(1) + ')" fill="#0e2358" d="' + WORDMARK.d + '"/></svg>';
+    return 'data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64');
+}
+
+// The same head on screen, where the sheet draws it itself: the mark and the
+// name in the page's own face. The mark
 // is the cover's, solid rather than glowing: a glow is a picture to a PDF.
 const LETTERHEAD = '<svg class="lh-mark" viewBox="0 0 120 120" aria-hidden="true">' +
     '<defs><linearGradient id="lhInk" x1="0" y1="0" x2="1" y2="1">' +
@@ -786,9 +808,8 @@ function report(list, meta, out) {
         : '';
 
     // What runs along the top and the bottom of every printed page after the
-    // cover: what the document is and whose, and where it sits in itself.
-    const running = tr('Sentinelpay · Usage and evidence report');
-    const whose = org + ' · ' + span;
+    // cover: our head with a line under it, and at the foot the reference and
+    // where the page sits in the document.
     const refLine = tr('Reference {ref}', { ref: ref.slice(0, 16) });
     // "Page 2 of 7" in the paper's language, its two numbers counted by the
     // page rule itself
@@ -798,22 +819,26 @@ function report(list, meta, out) {
     // browser prints these in its default serif at the size of body text
     const box = 'font-family:Inter, system-ui, sans-serif; font-size:' + (paperKey === 'a5' ? '6.5pt' : '7.5pt') +
         '; color:#6b7898; vertical-align:middle;';
+    // the line under the head runs the width of the page: each of the three
+    // boxes along the top draws its part of it
+    const rule = 'vertical-align:bottom; padding-bottom:' + (paperKey === 'a5' ? 2 : 3) + 'mm; margin-bottom:' +
+        (paperKey === 'a5' ? 3 : 6) + 'mm; border-bottom:1px solid rgba(14,35,88,.14);';
     const pageCss =
-        '@page { size:' + paper.w + 'mm ' + paper.h + 'mm; margin:' + paper.my + 'mm ' + paper.mx + 'mm; ' +
-        '@top-left { content:' + cssStr(running) + '; ' + box + ' } ' +
-        '@top-right { content:' + cssStr(whose) + '; ' + box + ' text-align:right; } ' +
+        '@page { size:' + paper.w + 'mm ' + paper.h + 'mm; margin:' + paper.mt + 'mm ' + paper.mx + 'mm ' + paper.my + 'mm; ' +
+        '@top-left { content:url("' + headPicture(paper.head) + '"); ' + rule + ' } ' +
+        '@top-center { content:""; ' + rule + ' } ' +
+        '@top-right { content:""; ' + rule + ' } ' +
         '@bottom-left { content:' + cssStr(refLine) + '; ' + box + ' } ' +
         '@bottom-right { content:' + counted + '; ' + box + ' text-align:right; } } ' +
         // the cover is the whole sheet, with no margin and nothing running
-        // the statement carries its own letterhead, so nothing runs over it
-        '@page letter { @top-left { content:none; } @top-right { content:none; } } ' +
-        '@page :first { margin:0; @top-left { content:none; } @top-right { content:none; } ' +
+        '@page :first { margin:0; @top-left { content:none; } @top-center { content:none; } @top-right { content:none; } ' +
         '@bottom-left { content:none; } @bottom-right { content:none; } } ' +
-        ':root { --pw:' + paper.w + 'mm; --ph:' + paper.h + 'mm; --mx:' + paper.mx + 'mm; --my:' + paper.my + 'mm; ' +
+        ':root { --pw:' + paper.w + 'mm; --ph:' + paper.h + 'mm; --mx:' + paper.mx + 'mm; --my:' + paper.my + 'mm; --mt:' + paper.mt + 'mm; ' +
         '--ar:' + paper.w + ' / ' + paper.h + '; ' +
         '--cols:' + paper.cols + '; --fs:' + paper.font + 'px; }';
 
-    const sheetHead = '<div class="run" aria-hidden="true"><span>' + esc(running) + '</span><span>' + esc(whose) + '</span></div>';
+    // on screen the sheet draws the head itself; on paper the page rule does
+    const sheetHead = '<div class="lh sheet-lh">' + LETTERHEAD + '</div>';
     // The foot drawn on screen, with room for "Page 2 of 7". A sheet on screen
     // cannot know where the paper will break, so the numbers are filled in by
     // the usage page once the server has counted the PDF's pages; until then,
@@ -889,7 +914,7 @@ function report(list, meta, out) {
         // no columns to draw for a period with no days in it
         (total && daily.rows.length ? '<div class="figure"><div class="fig-t"><b>' + h(out.period && out.period.grain === 'hour' ? 'Checks by hour' : 'Checks by day') + '</b>' +
             '<span class="key"><span><i class="k-flag"></i>' + h('Flagged') + '</span><span><i class="k-clear"></i>' + h('Clear') + '</span></span></div>' +
-            periodChart(daily, out.period && out.period.grain === 'hour', sp, paperKey === 'a5') + '</div>' : '') +
+            periodChart(daily, out.period && out.period.grain === 'hour', sp, paperKey === 'a5' || paperKey === 'letter') + '</div>' : '') +
         '<table class="sum"><thead><tr><th></th>' +
         '<th class="n">' + h('This period') + '<small>' + esc(span) + '</small></th>' +
         '<th class="n">' + h('The period before') + (prevSpan ? '<small>' + esc(prevSpan) + '</small>' : '') + '</th>' +
@@ -955,8 +980,7 @@ function report(list, meta, out) {
         // with the reference that seals it, and room at the foot for the
         // organisation to put its own name to it. Before any figure: what the
         // numbers are, then the numbers.
-        '<section class="sheet statement">' +
-        '<div class="lh">' + LETTERHEAD + '</div>' +
+        '<section class="sheet statement">' + sheetHead +
         '<div class="to"><div class="to-org">' + esc(org) + '</div>' +
         '<div>' + h('Usage and evidence report') + '</div><div>' + esc(span) + '</div></div>' +
         '<dl class="facts">' +
@@ -1103,6 +1127,7 @@ h3 { font:700 14px 'Plus Jakarta Sans', Inter, sans-serif; margin:0 0 8px; paddi
 .part { margin-top:26px; }
 .part:first-of-type { margin-top:0; }
 .chapter .l-rule { margin-top:0; }
+.chapter .sheet-lh { margin-bottom:1.7em; }
 .chapter .run.is-foot { margin-top:28px; }
 
 /* ---- the overview */
@@ -1207,7 +1232,9 @@ html:has(body.is-embed) { background:transparent; }
   .is-embed .doc { padding:0; }
   /* a page each, the height of the page less its margins, less a hair so a
      rounding never spills a cover onto a blank second page */
-  .statement { page:letter; min-height:0; height:calc(var(--ph) - 2 * var(--my) - 2mm); break-after:page; }
+  .statement { min-height:0; height:calc(var(--ph) - var(--mt) - var(--my) - 2mm); break-after:page; }
+  .sheet-lh { display:none; }
+  .statement .to { margin-top:0; }
   /* the cover is the whole sheet, its margin taken off by the first page's
      rule, less a hair so it never spills onto a blank second page */
   /* the page's own width rather than the nominal one: A5 comes out a fifth
