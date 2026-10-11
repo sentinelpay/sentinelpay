@@ -63,3 +63,16 @@ Unlike the public endpoint, this refuses an address with no account. The public
 one cannot, or it would tell the world who has an account; but `finishReset`
 creates an account when none exists, so here a typo would quietly make a second
 empty one instead of letting you back into the one you meant.
+
+# print fonts
+
+Cuts fixed weights out of the variable fonts in `api/public/fonts` into
+`api/print-fonts`, for the PDF report. Chromium writes a variable font into a
+PDF as a drawing of every letter, which made a seven page report 933 KB; with
+fixed weights it is about 160 KB and the PDF lists its fonts by name.
+
+    pip install fonttools brotli
+    python3 tools/print-fonts.py
+
+Run it again when the site's fonts change or the report starts setting a weight
+it did not before. A test fails if the report asks for a weight that has no file.

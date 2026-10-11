@@ -520,7 +520,28 @@ test('the report for print opens in a dialog and is counted when printed', () =>
     const exp = fs.readFileSync(path.join(__dirname, '..', 'exports.js'), 'utf8');
     // the embedded paper opens straight onto the sheet; the toolbar is only in
     // the report opened on its own
-    const embedded = /meta\.embed\s*\?\s*([^:]+):/.exec(exp);
+    const embedded = /meta\.embed \|\| meta\.forPdf\s*\?\s*([^:]+):/.exec(exp);
     assert.ok(embedded && /<body class="is-embed/.test(embedded[1]), 'the embedded report has no body of its own');
     assert.doesNotMatch(embedded[1], /class="bar"/, 'the embedded report still carries its own toolbar');
+});
+
+// The PDF is made on the server and downloaded from the same dialog, as the
+// button that does the most; printing from the browser stays beside it. A
+// server that cannot make one says so with a 503 the page turns into a line
+// of its own, and a PDF that left is counted in the evidence tally as one.
+test('the dialog downloads the PDF the server makes, and prints as well', () => {
+    const open = SRC.slice(SRC.indexOf('function openReport('), SRC.indexOf('// Included / used / left'));
+    assert.match(open, /fetch\(base \+ '\/usage\.pdf' \+ q/, 'the dialog does not ask the server for the PDF');
+    assert.match(open, /className = 'btn btn-primary rep-get'/, 'the download is not the main button');
+    assert.match(open, /t\('Preparing PDF…'\)/, 'the button does not say the PDF is being made');
+    assert.match(open, /win\.print\(\)/, 'printing from the browser is gone');
+    assert.doesNotMatch(open, /if \(reportOnItsOwn\(\)\) \{\s*var kept/, 'an iPhone is sent past the dialog again');
+    assert.match(SRC, /\{ label: 'PDF', n: fmt\.pdf \|\| 0 \}/, 'a downloaded PDF is not in the evidence tally');
+
+    const index = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
+    assert.match(index, /pdf: 'application\/pdf',/, 'pdf is not a format the usage route knows');
+    assert.match(index, /if \(format === 'pdf' && !pdf\.available\(\)\) return res\.status\(503\)/, 'a server without a browser does not say so');
+    assert.match(index, /if \(req\.params\.format === 'pdf'\) return pdfLimiter\(req, res, next\);/, 'PDFs are not limited');
+    const usage = fs.readFileSync(path.join(__dirname, '..', 'usage.js'), 'utf8');
+    assert.match(usage, /const byFormat = \{[^}]*\bpdf: 0/, 'the evidence section does not count PDFs');
 });

@@ -5594,9 +5594,10 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
     .rep-acts { width: 100%; }
     .rep-acts .btn { flex: 1 1 auto; justify-content: center; }
     .rep-paper .pick-btn { min-width: 0; }
-    /* the two pickers share the first line and the button has the second */
+    /* the pickers and Print share the first line, and the download has the
+       second to itself, the width of the thumb that presses it */
     .rep-acts { flex-wrap: wrap; }
     .rep-acts .rep-paper { flex: 1 1 0; }
-    .rep-acts .btn { flex: 1 1 100%; }
+    .rep-acts .rep-get { flex-basis: 100%; }
     .rep-wait { padding: 20px 16px; }
 }

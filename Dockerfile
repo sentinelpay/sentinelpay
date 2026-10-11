@@ -7,14 +7,29 @@
 # slim is the same debian and the same glibc with the build tools and the
 # extras stripped out, and it takes the push down by roughly a factor of five.
 #
-# it is safe here because nothing we install needs to be compiled: all eight
+# it is safe here because nothing we install needs to be compiled: all nine
 # runtime dependencies are pure javascript, the only package in the lockfile
 # with an install script is fsevents, which is macos-only and a dependency of
-# nodemon that --omit=dev leaves out anyway, and the app never shells out to a
-# binary. if a dependency that needs node-gyp is ever added, this line is where
-# it will show up, and the answer then is to build on the full image and copy
-# node_modules into a slim one rather than to go back to shipping a compiler.
+# nodemon that --omit=dev leaves out anyway. if a dependency that needs
+# node-gyp is ever added, this line is where it will show up, and the answer
+# then is to build on the full image and copy node_modules into a slim one
+# rather than to go back to shipping a compiler.
 FROM node:22-slim
+
+# chromium, for the usage report as a pdf.
+#
+# the one binary the app drives: api/pdf.js starts it to print the report the
+# dashboard shows, so the pdf comes out the same whoever downloads it. debian's
+# own package rather than the copy puppeteer downloads, because that download
+# runs as an install script and fetches whatever build it was pinned to from
+# google's servers at build time; this one comes from the same signed archive
+# as the rest of the image and is patched with it. it adds about three hundred
+# megabytes to the image and nothing to memory until somebody asks for a pdf.
+# the fonts the report is set in travel inside the page, so no font packages.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends chromium \
+    && rm -rf /var/lib/apt/lists/*
+ENV CHROMIUM_PATH=/usr/bin/chromium
 
 WORKDIR /app
 

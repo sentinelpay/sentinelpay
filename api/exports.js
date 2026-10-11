@@ -503,6 +503,44 @@ function speaker(lang) {
     return { lang, tr, h, num, date };
 }
 
+// The fonts, inside the page rather than linked from it. A PDF is rendered
+// with every request refused, so what the page needs it has to carry.
+//
+// Not the files fonts.css serves, though. Those are variable fonts, and
+// Chromium puts a variable font into a PDF as a drawing of each letter rather
+// than as a font: a seven page report came to 933 KB. print-fonts holds the
+// same letters cut at the fixed weights the report uses (tools/print-fonts.py
+// makes them), each declared here with the character range fonts.css gives
+// its file, so a page in Croatian or German reaches for the same second file
+// the site does.
+let FONTS = null;
+function inlineFonts() {
+    if (FONTS !== null) return FONTS;
+    try {
+        const css = fs.readFileSync(path.join(__dirname, 'public', 'fonts.css'), 'utf8');
+        const dir = path.join(__dirname, 'print-fonts');
+        const have = fs.readdirSync(dir);
+        FONTS = '';
+        for (const block of css.split('@font-face').slice(1)) {
+            const family = (block.match(/font-family:\s*'([^']+)'/) || [])[1];
+            const file = (block.match(/\/fonts\/([a-z-]+)\.woff2/) || [])[1];
+            const range = (block.match(/unicode-range:\s*([^;]+);/) || [])[1];
+            if (!family || !file) continue;
+            for (const name of have) {
+                const m = name.match(/^(.+)-(\d{3})\.woff2$/);
+                if (!m || m[1] !== file) continue;
+                FONTS += "@font-face{font-family:'" + family + "';font-style:normal;font-weight:" + m[2] + ';' +
+                    'src:url(data:font/woff2;base64,' + fs.readFileSync(path.join(dir, name)).toString('base64') + ") format('woff2');" +
+                    (range ? 'unicode-range:' + range.trim() + ';' : '') + '}';
+            }
+        }
+    } catch (err) {
+        console.error('[exports] could not inline the fonts: ' + err.message);
+        FONTS = '';
+    }
+    return FONTS;
+}
+
 function esc(v) {
     return String(v === null || v === undefined ? '' : v)
         .replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
@@ -716,13 +754,16 @@ function report(list, meta, out) {
         '<meta name="viewport" content="width=device-width,initial-scale=1">' +
         '<meta name="robots" content="noindex,nofollow">' +
         '<title>' + h('Usage report {from} to {to}', { from: day(out.period.from), to: day(out.period.to) }) + ' · ' + esc(org) + '</title>' +
-        '<link rel="icon" type="image/svg+xml" href="/logo.svg">' +
-        '<link rel="stylesheet" href="/fonts.css">' +
+        // for a PDF the page is self-contained; in the browser it links what
+        // the site already serves
+        (meta.forPdf
+            ? '<style>' + inlineFonts() + '</style>'
+            : '<link rel="icon" type="image/svg+xml" href="/logo.svg"><link rel="stylesheet" href="/fonts.css">') +
         '<style>' + REPORT_CSS + pageCss + '</style></head>' +
         // Shown inside the usage page, the page around it carries the controls
         // and the way back, so the report is the paper alone. The reference is
         // on the body for that page to read and print under.
-        (meta.embed
+        (meta.embed || meta.forPdf
             ? '<body class="is-embed' + (sandbox ? ' is-sandbox' : '') + ' paper-' + paperKey + '" data-ref="' + esc(ref) + '">'
             : '<body class="paper-' + paperKey + (sandbox ? ' is-sandbox' : '') + '" data-ref="' + esc(ref) + '">' +
               '<div class="bar"><a href="' + esc(meta.back) + '">' + h('Back to usage') + '</a>' +
@@ -809,7 +850,7 @@ function report(list, meta, out) {
         '<p class="end">' + h('End of report') + ' · sha256:' + esc(ref) + '</p>' +
         sheetFoot + '</section>' +
         '</main>' +
-        '<script src="/report.js"></script></body></html>';
+        (meta.forPdf ? '' : '<script src="/report.js"></script>') + '</body></html>';
 }
 
 const REPORT_CSS = `
@@ -926,6 +967,13 @@ html:has(body.is-embed) { background:transparent; }
   .bar, .run { display:none; }
   .doc { padding:0; }
   .sheet { width:auto; max-width:none; margin:0; padding:0; box-shadow:none; border-radius:0; }
+  /* the usage page's own rules for its sheets are the stronger ones, and
+     they printed. The shadow: a blurred edge on every page, drawn as a picture the size of the
+     page, four of them in each PDF */
+  .is-embed .sheet { box-shadow:none; }
+  /* and its padding: 4px above the cover pushed the cover's last two points
+     onto a second page of their own, a dark line on an empty sheet */
+  .is-embed .doc { padding:0; }
   /* a page each, the height of the page less its margins, less a hair so a
      rounding never spills a cover onto a blank second page */
   .statement { min-height:0; height:calc(var(--ph) - 2 * var(--my) - 2mm); break-after:page; }
