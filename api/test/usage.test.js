@@ -217,6 +217,10 @@ test('the report is laid out on the paper asked for, A4 when none is', () => {
     assert.match(html, /\.statement \{ page:letter;/, 'the statement is not on its own named page');
     // A5 is narrower than a phone breakpoint: the phone's layout is for screens
     assert.match(html, /@media screen and \(max-width: 700px\)/, 'the phone layout applies to printed A5');
+    // under the statement and the last sheet, a place for "Page 2 of 7" in
+    // the paper's own language, filled once the PDF's pages are counted
+    assert.match(letter, /class="run-pg" data-n="2" data-tpl="Page \{n\} of \{all\}"/, 'the statement has no page number on screen');
+    assert.match(html.slice(figures), /class="run-pg" data-n="last"/, 'the last sheet has no page number on screen');
     // a name cannot close the style it is quoted in
     const style = html.slice(html.indexOf('<style>'), html.indexOf('</style>'));
     assert.ok(!style.includes('</style><b>'), 'the organisation name broke out of the stylesheet');
@@ -366,5 +370,9 @@ test('the PDF comes out on the paper asked for, set in real fonts', { timeout: 1
         assert.match(s, /\/BaseFont \/[A-Z]{6}\+Inter-Regular/, paper + ': the body is not set in Inter');
         assert.doesNotMatch(s, /\/Subtype \/Image/, paper + ': a picture got into the PDF');
         assert.ok(bytes.length < 400 * 1024, paper + ': ' + bytes.length + ' bytes');
+        // the count the preview shows is the PDF's own page tree
+        const count = /\/Type \/Pages[^>]*\/Count (\d+)/.exec(s) || /\/Count (\d+)[^>]*\/Type \/Pages/.exec(s);
+        assert.ok(count, paper + ': no page tree');
+        assert.equal(pdf.pages(bytes), Number(count[1]), paper + ': counted the pages wrong');
     }
 });

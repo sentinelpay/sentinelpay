@@ -2430,28 +2430,12 @@ const pdfLimiter = rateLimit({
     store: new PostgresStore(),
     message: { error: 'Too many PDFs in an hour. Try again later.' }
 });
-app.get('/v1/orgs/:id/usage.:format', (req, res, next) => {
-    if (req.params.format === 'pdf') return pdfLimiter(req, res, next);
-    next();
-}, async (req, res) => {
-    const format = String(req.params.format || '');
-    if (!EXPORT_TYPES[format]) return res.status(404).send('Not a format this exports to.');
-    const me = await requireSession(req, res);
-    if (!me) return;
-    const mine = await orgs.membership(me.userId, req.params.id);
-    if (!mine) return res.status(404).send('You are not in that organisation.');
+// The period's figures as sheets, and what a report of them is laid out as.
+async function usageReport(req, mine, extra) {
     const [out, sub] = await Promise.all([usageFor(req, mine), billing.get(mine.id)]);
-    if (!out.ok) return res.status(503).send('Not available right now.');
-    // a server without a browser to print with says so, and the page falls
-    // back to printing from the reader's own
-    if (format === 'pdf' && !pdf.available()) return res.status(503).send('PDFs cannot be made here right now.');
+    if (!out.ok) return null;
     const list = exportsFile.sheets(out, mine, sub);
-    // The report shown inside the usage page rather than on its own: the
-    // paper without its toolbar, framed by our own pages and nobody else's.
-    const embed = format === 'html' && String(req.query.embed || '') === '1';
-    const meta = {
-        embed,
-        forPdf: format === 'pdf',
+    const meta = Object.assign({
         // the paper it is laid out for; A4 unless another of the sizes it
         // knows is asked for
         paper: exportsFile.paperOf(req.query.paper),
@@ -2462,7 +2446,82 @@ app.get('/v1/orgs/:id/usage.:format', (req, res, next) => {
         generated: new Date().toISOString(),
         organisation: mine.name || '',
         back: '/dashboard/org/' + encodeURIComponent(mine.slug || '') + '/usage',
-    };
+    }, extra);
+    return { out, list, meta };
+}
+
+// How many pages the PDF of a report comes to, by the figures it holds, the
+// paper and the language. The same figures on the same paper come to the
+// same pages, so it is counted once and remembered; the newest few hundred
+// are kept and the oldest let go.
+const PAGE_COUNTS = new Map();
+function countedPages(orgId, meta, n) {
+    const key = orgId + '|' + meta.reference + '|' + meta.paper + '|' + meta.lang;
+    if (n === undefined) return PAGE_COUNTS.get(key);
+    PAGE_COUNTS.delete(key);
+    PAGE_COUNTS.set(key, n);
+    if (PAGE_COUNTS.size > 500) PAGE_COUNTS.delete(PAGE_COUNTS.keys().next().value);
+    return n;
+}
+const pagesLimiter = rateLimit({
+    handler: limitHandler,
+    windowMs: 60 * 60 * 1000,
+    max: 240,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => `usage-pages:${ipKey(req.realIp)}`,
+    store: new PostgresStore(),
+    message: { error: 'Too many requests, please try again later' }
+});
+
+// The page count for the preview inside the usage page. A page on screen is
+// one long sheet and cannot know where the paper will break, so the count is
+// the PDF's own: the server lays the report out the way it does for the
+// download and says how many pages that came to, under the reference it was
+// counted for, so the preview only takes a count for the figures it shows.
+app.get('/v1/orgs/:id/usage/pages', pagesLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const mine = await orgs.membership(me.userId, req.params.id);
+    if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
+    res.set('Cache-Control', 'no-store, private');
+    if (!pdf.available()) return res.status(503).json({ error: 'The pages could not be counted right now.' });
+    const got = await usageReport(req, mine, { forPdf: true });
+    if (!got) return res.status(503).json({ error: 'The pages could not be counted right now.' });
+    let pages = countedPages(mine.id, got.meta);
+    if (!pages) {
+        try {
+            pages = countedPages(mine.id, got.meta, pdf.pages(await pdf.render(exportsFile.report(got.list, got.meta, got.out))));
+        } catch (err) {
+            console.error('[usage] pages: ' + err.message);
+            return res.status(503).json({ error: 'The pages could not be counted right now.' });
+        }
+    }
+    res.json({ ok: true, pages, reference: got.meta.reference });
+});
+
+app.get('/v1/orgs/:id/usage.:format', (req, res, next) => {
+    if (req.params.format === 'pdf') return pdfLimiter(req, res, next);
+    next();
+}, async (req, res) => {
+    const format = String(req.params.format || '');
+    if (!EXPORT_TYPES[format]) return res.status(404).send('Not a format this exports to.');
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const mine = await orgs.membership(me.userId, req.params.id);
+    if (!mine) return res.status(404).send('You are not in that organisation.');
+    // a server without a browser to print with says so, and the page falls
+    // back to printing from the reader's own
+    if (format === 'pdf' && !pdf.available()) return res.status(503).send('PDFs cannot be made here right now.');
+    const got = await usageReport(req, mine, {
+        // The report shown inside the usage page rather than on its own: the
+        // paper without its toolbar, framed by our own pages and nobody else's.
+        embed: format === 'html' && String(req.query.embed || '') === '1',
+        forPdf: format === 'pdf',
+    });
+    if (!got) return res.status(503).send('Not available right now.');
+    const { out, list, meta } = got;
+    const embed = meta.embed;
     let body;
     if (format === 'csv') body = exportsFile.csv(list, meta);
     else if (format === 'xlsx') body = exportsFile.xlsx(list, meta);
@@ -2470,6 +2529,7 @@ app.get('/v1/orgs/:id/usage.:format', (req, res, next) => {
     else if (format === 'pdf') {
         try {
             body = await pdf.render(exportsFile.report(list, meta, out));
+            countedPages(mine.id, meta, pdf.pages(body));
         } catch (err) {
             console.error('[usage] pdf: ' + err.message);
             return res.status(503).send('The PDF could not be made right now.');

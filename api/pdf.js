@@ -134,4 +134,10 @@ async function render(html) {
     }
 }
 
-module.exports = { available, render, executable };
+// How many pages a PDF made here has: one page object for each, and the one
+// object listing them all is /Pages, which this leaves out.
+function pages(bytes) {
+    return (Buffer.from(bytes).toString('latin1').match(/\/Type\s*\/Page(?![a-zA-Z])/g) || []).length;
+}
+
+module.exports = { available, render, executable, pages };

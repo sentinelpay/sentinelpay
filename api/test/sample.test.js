@@ -545,6 +545,12 @@ test('the dialog downloads the PDF the server makes, and prints only when it can
     assert.match(index, /pdf: 'application\/pdf',/, 'pdf is not a format the usage route knows');
     assert.match(index, /if \(format === 'pdf' && !pdf\.available\(\)\) return res\.status\(503\)/, 'a server without a browser does not say so');
     assert.match(index, /if \(req\.params\.format === 'pdf'\) return pdfLimiter\(req, res, next\);/, 'PDFs are not limited');
+    // the preview's page numbers come from the PDF the server would make, and
+    // only for the figures the preview shows
+    assert.match(open, /fetch\(base \+ '\/usage\/pages' \+ q/, 'the preview does not ask for the page count');
+    assert.match(open, /d\.reference !== ref/, 'the preview takes a page count for other figures');
+    assert.match(index, /app\.get\('\/v1\/orgs\/:id\/usage\/pages', pagesLimiter,/, 'page counts are not limited');
+    assert.match(index, /countedPages\(mine\.id, meta, pdf\.pages\(body\)\)/, 'a downloaded PDF does not remember its count');
     const usage = fs.readFileSync(path.join(__dirname, '..', 'usage.js'), 'utf8');
     assert.match(usage, /const byFormat = \{[^}]*\bpdf: 0/, 'the evidence section does not count PDFs');
 });
