@@ -525,16 +525,19 @@ test('the report for print opens in a dialog and is counted when printed', () =>
     assert.doesNotMatch(embedded[1], /class="bar"/, 'the embedded report still carries its own toolbar');
 });
 
-// The PDF is made on the server and downloaded from the same dialog, as the
-// button that does the most; printing from the browser stays beside it. A
-// server that cannot make one says so with a 503 the page turns into a line
-// of its own, and a PDF that left is counted in the evidence tally as one.
-test('the dialog downloads the PDF the server makes, and prints as well', () => {
+// The PDF is made on the server and downloaded from the same dialog, the one
+// thing to do there; printing from the browser is offered only when the
+// server could not make one, which it says with a 503. A PDF that left is
+// counted in the evidence tally as one.
+test('the dialog downloads the PDF the server makes, and prints only when it cannot', () => {
     const open = SRC.slice(SRC.indexOf('function openReport('), SRC.indexOf('// Included / used / left'));
     assert.match(open, /fetch\(base \+ '\/usage\.pdf' \+ q/, 'the dialog does not ask the server for the PDF');
     assert.match(open, /className = 'btn btn-primary rep-get'/, 'the download is not the main button');
     assert.match(open, /t\('Preparing PDF…'\)/, 'the button does not say the PDF is being made');
-    assert.match(open, /win\.print\(\)/, 'printing from the browser is gone');
+    // printing from the browser is only the way out when the PDF failed
+    assert.match(open, /print\.hidden = true;/, 'printing from the browser is offered beside the PDF again');
+    assert.match(open, /\.catch\(function \(\) \{\s*done\(\);\s*print\.hidden = false;/, 'a failed PDF leaves no way to print');
+    assert.match(open, /win\.print\(\)/, 'printing from the browser is gone, even as the fallback');
     assert.doesNotMatch(open, /if \(reportOnItsOwn\(\)\) \{\s*var kept/, 'an iPhone is sent past the dialog again');
     assert.match(SRC, /\{ label: 'PDF', n: fmt\.pdf \|\| 0 \}/, 'a downloaded PDF is not in the evidence tally');
 
