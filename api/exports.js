@@ -12,6 +12,9 @@
 
 const crypto = require('crypto');
 const zlib = require('zlib');
+const fs = require('fs');
+const path = require('path');
+const vm = require('vm');
 
 const FORMATS = ['csv', 'xlsx', 'json', 'html'];
 
@@ -425,24 +428,95 @@ function xlsx(list, meta) {
 // with the reference on every page and room at the end for the two people who
 // put their names to it, which is how a report like this is handed over.
 
+// ---- the language the paper is printed in
+//
+// The dashboard's own dictionary, read from the file the browser loads, so the
+// report and the screen around it say the same thing in the same words and one
+// set of translations is kept. Only what is printed changes with the language:
+// the sheets, and the reference taken over them, are the same in every one, so
+// a Croatian copy and an English copy of one period carry one reference.
+const LANGS = ['en', 'hr', 'de'];
+const LOCALES = { en: 'en-GB', hr: 'hr-HR', de: 'de-DE' };
+let DICT = null;
+function dictionary() {
+    if (DICT) return DICT;
+    try {
+        const src = fs.readFileSync(path.join(__dirname, 'public', 'i18n.js'), 'utf8');
+        // the object literal after "var T =", found by its own closing brace:
+        // braces are counted and quoted strings stepped over, so a brace
+        // inside a translation does not end it early
+        const start = src.indexOf('{', src.indexOf('var T = '));
+        let depth = 0;
+        let end = -1;
+        for (let i = start; i < src.length; i++) {
+            const c = src[i];
+            if (c === '"' || c === "'") {
+                for (i++; i < src.length && src[i] !== c; i++) if (src[i] === '\\') i++;
+                continue;
+            }
+            if (c === '{') depth++;
+            else if (c === '}' && --depth === 0) { end = i; break; }
+        }
+        DICT = vm.runInNewContext('(' + src.slice(start, end + 1) + ')', Object.create(null), { timeout: 2000 });
+    } catch (err) {
+        console.error('[exports] could not read the dictionary: ' + err.message);
+        DICT = { hr: {}, de: {} };
+    }
+    return DICT;
+}
+function langOf(v) {
+    const l = String(v || '').toLowerCase().slice(0, 2);
+    return LANGS.includes(l) ? l : 'en';
+}
+// The strings a report asked for that the dictionary does not have, for the
+// test that holds every printed word to a translation.
+const MISSED = new Set();
+function speaker(lang) {
+    const d = lang === 'en' ? null : (dictionary()[lang] || {});
+    const locale = LOCALES[lang];
+    // a phrase in the language, with its {holes} filled; plain text
+    const tr = (s, vals) => {
+        let t = s;
+        if (d) {
+            if (Object.prototype.hasOwnProperty.call(d, s)) t = d[s];
+            else MISSED.add(lang + ': ' + s);
+        }
+        return vals ? t.replace(/\{(\w+)\}/g, (m, k) => (k in vals ? String(vals[k]) : m)) : t;
+    };
+    // the same, escaped for the page, with the values escaped too and {br} a
+    // line break where the language wants one
+    const h = (s, vals) => {
+        let t = s;
+        if (d) {
+            if (Object.prototype.hasOwnProperty.call(d, s)) t = d[s];
+            else MISSED.add(lang + ': ' + s);
+        }
+        return esc(t).replace(/\{(\w+)\}/g, (m, k) => (k === 'br' ? '<br>' : (vals && k in vals ? esc(vals[k]) : m)));
+    };
+    const num = (v) => (typeof v === 'number' ? v.toLocaleString(locale) : esc(v));
+    const date = (iso) => {
+        if (!iso) return '';
+        const x = new Date(iso);
+        return Number.isNaN(x.getTime()) ? esc(iso)
+            : x.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+    };
+    return { lang, tr, h, num, date };
+}
+
 function esc(v) {
     return String(v === null || v === undefined ? '' : v)
         .replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
 }
-function num(v) {
-    return typeof v === 'number' ? v.toLocaleString('en-GB') : esc(v);
-}
-function longDate(iso) {
-    if (!iso) return '';
-    const d = new Date(iso);
-    return Number.isNaN(d.getTime()) ? esc(iso)
-        : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
-}
 
-function table(sh, opts) {
+// A sheet as a table on the paper. The headings and the names of the rows are
+// the sheet's own words in English, said in the paper's language here; a name
+// the dictionary does not know -- a chain, a route, a project somebody named --
+// is printed as it is.
+function table(sh, opts, sp) {
     const o = opts || {};
+    const label = (x) => (typeof x === 'string' && /[a-z]/.test(x) && !/^(GET|POST) \//.test(x) && !o.raw ? sp.tr(x) : x);
     const rows = o.skipEmpty ? sh.rows.filter((r) => r.slice(2).some((x) => typeof x === 'number' && x > 0)) : sh.rows;
-    if (!rows.length) return '<p class="none">Nothing in this period.</p>';
+    if (!rows.length) return '<p class="none">' + sp.h('Nothing in this period.') + '</p>';
     // rows grouped by their first column print as one table with a heading
     // line for each group, which reads the way the page's own breakdowns do
     let last = null;
@@ -450,16 +524,16 @@ function table(sh, opts) {
         let pre = '';
         if (o.grouped && r[0] !== last) {
             last = r[0];
-            pre = '<tr class="grp"><th colspan="' + (r.length - 1) + '">' + esc(r[0]) + '</th></tr>';
+            pre = '<tr class="grp"><th colspan="' + (r.length - 1) + '">' + esc(label(r[0])) + '</th></tr>';
         }
         const cells = o.grouped ? r.slice(1) : r;
         return pre + '<tr>' + cells.map((x, i) => (i === 0
-            ? '<td>' + esc(x) + '</td>'
-            : '<td class="n">' + num(x) + (o.pct && i === cells.length - 1 ? '%' : '') + '</td>')).join('') + '</tr>';
+            ? '<td>' + esc(o.keep && o.keep(r) ? x : label(x)) + '</td>'
+            : '<td class="n">' + sp.num(x) + (o.pct && i === cells.length - 1 ? '%' : '') + '</td>')).join('') + '</tr>';
     }).join('');
     const head = (o.grouped ? sh.head.slice(1) : sh.head);
-    return '<table><thead><tr>' + head.map((h, i) => '<th' + (i ? ' class="n"' : '') + '>' +
-        esc(i === 0 && o.grouped ? '' : h) + '</th>').join('') + '</tr></thead><tbody>' + body + '</tbody></table>';
+    return '<table><thead><tr>' + head.map((x, i) => '<th' + (i ? ' class="n"' : '') + '>' +
+        esc(i === 0 && o.grouped ? '' : sp.tr(x)) + '</th>').join('') + '</tr></thead><tbody>' + body + '</tbody></table>';
 }
 
 // The paper sizes a report can be printed on. A4 unless asked otherwise: it is
@@ -565,6 +639,8 @@ function report(list, meta, out) {
     const paperKey = paperOf(meta.paper);
     const paper = PAPERS[paperKey];
     const ref = meta.reference;
+    const sp = speaker(langOf(meta.lang));
+    const { tr, h, num, date } = sp;
     // The room under the grid, in shares of the width: 41 on A4, 29 on
     // Letter, which is shorter for its width. The gap over the rule and the
     // margin under the last line are 14mm and 15mm on A4 and shrink with that
@@ -574,38 +650,45 @@ function report(list, meta, out) {
     const coverBelow = r2(Math.min(14 / 210 * 100, room * 0.161));
     const coverFoot = r2(Math.min(15 / 210 * 100, room * 0.17));
     const org = meta.organisation || '';
-    const from = longDate(out.period.from);
-    const to = longDate(lastDay(out.period.to));
-    const scopeWord = sandbox ? 'sandbox' : 'production';
+    const from = date(out.period.from);
+    const to = date(lastDay(out.period.to));
+    const span = tr('{from} to {to}', { from, to });
+    const scopeName = tr(sandbox ? 'Sandbox' : 'Production');
     const generated = meta.generated.replace('T', ' ').slice(0, 16) + ' UTC';
 
     // A figure, what it was the period before, and a line of its own where it
     // has one. The earlier figure is set back: it is context for the number
     // above it, not a second number competing with it.
-    const fig = (label, key, foot) => {
+    const fig = (key, foot) => {
         const b = before(key);
-        return '<div class="fig"><div class="k">' + esc(label) + '</div><div class="v">' +
+        return '<div class="fig"><div class="k">' + h(key) + '</div><div class="v">' +
             num(sum.get(key)) + '</div>' +
-            (b !== '' && b !== undefined ? '<div class="w">' + num(b) + ' the period before</div>' : '') +
-            (foot ? '<div class="f">' + esc(foot) + '</div>' : '') + '</div>';
+            (b !== '' && b !== undefined ? '<div class="w">' + h('{n} the period before', { n: num(b) }) + '</div>' : '') +
+            (foot ? '<div class="f">' + foot + '</div>' : '') + '</div>';
     };
     const incl = sum.get('Screenings included this cycle');
     const daily = by('Daily');
     const compared = before('Period from')
-        ? '<p class="cmp">Each figure is shown beside the same number of days before this period, ' +
-          longDate(before('Period from')) + ' to ' + longDate(lastDay(before('Period to'))) + '.</p>'
+        ? '<p class="cmp">' + h('Each figure is shown beside the same number of days before this period, {from} to {to}.', {
+            from: date(before('Period from')), to: date(lastDay(before('Period to'))),
+        }) + '</p>'
         : '';
+    const left = sum.get('Sandbox checks not included');
     const excluded = sum.has('Sandbox checks not included')
-        ? '<p class="cmp">' + (sum.get('Sandbox checks not included')
-            ? num(sum.get('Sandbox checks not included')) + ' sandbox checks were made in this period. ' +
-              'They are test work, spend nothing and are not counted anywhere in this report.'
-            : 'No sandbox checks were made in this period.') + '</p>'
+        ? '<p class="cmp">' + (left
+            ? h('{n} sandbox checks were made in this period. They are test work, spend nothing and are not counted anywhere in this report.', { n: num(left) })
+            : h('No sandbox checks were made in this period.')) + '</p>'
         : '';
 
     // What runs along the top and the bottom of every printed page after the
     // cover: what the document is and whose, and where it sits in itself.
-    const running = 'Sentinelpay · Usage and evidence report';
-    const whose = org + ' · ' + from + ' to ' + to;
+    const running = tr('Sentinelpay · Usage and evidence report');
+    const whose = org + ' · ' + span;
+    const refLine = tr('Reference {ref}', { ref: ref.slice(0, 16) });
+    // "Page 2 of 7" in the paper's language, its two numbers counted by the
+    // page rule itself
+    const pageOf = tr('Page {n} of {all}').split(/\{n\}|\{all\}/);
+    const counted = cssStr(pageOf[0] || '') + ' counter(page) ' + cssStr(pageOf[1] || '') + ' counter(pages) ' + cssStr(pageOf[2] || '');
     // set in the document's own face, small and set back: without it the
     // browser prints these in its default serif at the size of body text
     const box = 'font-family:Inter, system-ui, sans-serif; font-size:' + (paperKey === 'a5' ? '6.5pt' : '7.5pt') +
@@ -614,8 +697,8 @@ function report(list, meta, out) {
         '@page { size:' + paper.w + 'mm ' + paper.h + 'mm; margin:' + paper.my + 'mm ' + paper.mx + 'mm; ' +
         '@top-left { content:' + cssStr(running) + '; ' + box + ' } ' +
         '@top-right { content:' + cssStr(whose) + '; ' + box + ' text-align:right; } ' +
-        '@bottom-left { content:' + cssStr('Reference ' + ref.slice(0, 16)) + '; ' + box + ' } ' +
-        '@bottom-right { content:"Page " counter(page) " of " counter(pages); ' + box + ' text-align:right; } } ' +
+        '@bottom-left { content:' + cssStr(refLine) + '; ' + box + ' } ' +
+        '@bottom-right { content:' + counted + '; ' + box + ' text-align:right; } } ' +
         // the cover is the whole sheet, with no margin and nothing running
         '@page :first { margin:0; @top-left { content:none; } @top-right { content:none; } ' +
         '@bottom-left { content:none; } @bottom-right { content:none; } } ' +
@@ -624,14 +707,15 @@ function report(list, meta, out) {
         '--cols:' + paper.cols + '; --fs:' + paper.font + 'px; }';
 
     const sheetHead = '<div class="run" aria-hidden="true"><span>' + esc(running) + '</span><span>' + esc(whose) + '</span></div>';
-    const sheetFoot = '<div class="run is-foot" aria-hidden="true"><span>Reference ' + esc(ref.slice(0, 16)) + '</span></div>';
-    const signer = (title) => '<div class="signer"><div class="signer-t">' + esc(title) + '</div>' +
-        ['Name', 'Role', 'Date', 'Signature'].map((l) => '<div class="line"><span></span>' + l + '</div>').join('') + '</div>';
+    const sheetFoot = '<div class="run is-foot" aria-hidden="true"><span>' + esc(refLine) + '</span></div>';
+    const signer = (title) => '<div class="signer"><div class="signer-t">' + h(title) + '</div>' +
+        ['Name', 'Role', 'Date', 'Signature'].map((l) => '<div class="line"><span></span>' + h(l) + '</div>').join('') + '</div>';
+    const dt = (k, v) => '<div><dt>' + h(k) + '</dt><dd>' + v + '</dd></div>';
 
-    return '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+    return '<!doctype html><html lang="' + sp.lang + '"><head><meta charset="utf-8">' +
         '<meta name="viewport" content="width=device-width,initial-scale=1">' +
         '<meta name="robots" content="noindex,nofollow">' +
-        '<title>Usage report ' + esc(day(out.period.from)) + ' to ' + esc(day(out.period.to)) + ' · ' + esc(org) + '</title>' +
+        '<title>' + h('Usage report {from} to {to}', { from: day(out.period.from), to: day(out.period.to) }) + ' · ' + esc(org) + '</title>' +
         '<link rel="icon" type="image/svg+xml" href="/logo.svg">' +
         '<link rel="stylesheet" href="/fonts.css">' +
         '<style>' + REPORT_CSS + pageCss + '</style></head>' +
@@ -641,11 +725,11 @@ function report(list, meta, out) {
         (meta.embed
             ? '<body class="is-embed' + (sandbox ? ' is-sandbox' : '') + ' paper-' + paperKey + '" data-ref="' + esc(ref) + '">'
             : '<body class="paper-' + paperKey + (sandbox ? ' is-sandbox' : '') + '" data-ref="' + esc(ref) + '">' +
-              '<div class="bar"><a href="' + esc(meta.back) + '">Back to usage</a>' +
-              '<button type="button" id="print">Print or save as PDF</button></div>') +
+              '<div class="bar"><a href="' + esc(meta.back) + '">' + h('Back to usage') + '</a>' +
+              '<button type="button" id="print">' + h('Print or save as PDF') + '</button></div>') +
         // a sandbox report says what it is before anything else, and again
         // across every printed page, so a copy cannot be mistaken for evidence
-        (sandbox ? '<div class="wm" aria-hidden="true">Sandbox</div>' : '') +
+        (sandbox ? '<div class="wm" aria-hidden="true">' + h('Sandbox') + '</div>' : '') +
 
         // ---- the cover, a page of its own: the brand's shapes over the top
         // two thirds, and under them what the document is, whose, and for
@@ -656,67 +740,73 @@ function report(list, meta, out) {
         '<section class="sheet cover" style="--below:' + coverBelow + 'cqw; --foot:' + coverFoot + 'cqw">' +
         coverArt(paper) +
         '<div class="c-rule"></div>' +
-        '<h1 class="c-title">Usage and<br>evidence report</h1>' +
-        '<div class="c-meta"><span><b>' + esc(org) + '</b><i>·</i>' + esc(sum.get('Scope')) + '</span>' +
-        '<span>' + from + ' to ' + to + '</span></div>' +
-        (sandbox ? '<div class="c-sbx">Sandbox. Test data, not evidence of screening.</div>' : '') +
+        '<h1 class="c-title">' + h('Usage and{br}evidence report') + '</h1>' +
+        '<div class="c-meta"><span><b>' + esc(org) + '</b><i>·</i>' + esc(scopeName) + '</span>' +
+        '<span>' + esc(span) + '</span></div>' +
+        (sandbox ? '<div class="c-sbx">' + h('Sandbox. Test data, not evidence of screening.') + '</div>' : '') +
         '</section>' +
 
         // ---- the details the cover leaves out, at the head of the statement
         '<section class="sheet statement">' + sheetHead +
         '<dl class="meta">' +
-        '<div><dt>Organisation</dt><dd>' + esc(org) + '</dd></div>' +
-        '<div><dt>Period</dt><dd>' + from + ' to ' + to + '</dd></div>' +
-        '<div><dt>Scope</dt><dd>' + esc(sum.get('Scope')) + '</dd></div>' +
-        (sum.get('Plan') ? '<div><dt>Plan</dt><dd>' + esc(sum.get('Plan')) + '</dd></div>' : '') +
-        '<div><dt>Time zone</dt><dd>' + esc(sum.get('Time zone')) + '</dd></div>' +
-        '<div><dt>Generated</dt><dd>' + esc(generated) + '</dd></div>' +
-        '<div><dt>Paper</dt><dd>' + esc(paper.name) + '</dd></div>' +
+        dt('Organisation', esc(org)) +
+        dt('Period', esc(span)) +
+        dt('Scope', esc(scopeName)) +
+        (sum.get('Plan') ? dt('Plan', esc(sum.get('Plan'))) : '') +
+        dt('Time zone', esc(sum.get('Time zone'))) +
+        dt('Generated', esc(generated)) +
+        // A4 is A4 in every language; only the American sizes have a name to say
+        dt('Paper', esc(/^US /.test(paper.name) ? tr(paper.name) : paper.name)) +
         '</dl>' +
 
         // ---- the statement, and the two people who put their names to it,
         // before any figure: what the numbers are, then the numbers
-        '<h2 class="big">Statement</h2>' +
-        '<p>This report sets out the screening ' + esc(org) + ' carried out through Sentinelpay between ' +
-        from + ' and ' + to + ', in the ' + scopeWord + ' scope. It was generated on ' + esc(generated) +
-        ' from the records as they stood at that moment.</p>' +
-        '<p>Every check and every decision counted here was sealed with a SHA-256 digest when it was written. ' +
-        'Each one can be opened from its evidence file and its digest checked on its own, without this report ' +
-        'and without access to Sentinelpay.</p>' +
-        (sandbox
-            ? '<p>This is the sandbox scope. Its checks are test work and are not evidence of screening.</p>'
-            : '<p>Sandbox checks are test work. They spend no allowance and are left out of every figure here.</p>') +
-        '<p>Any export of the same period carries the reference below, so a copy in any format can be matched to this one.</p>' +
+        '<h2 class="big">' + h('Statement') + '</h2>' +
+        '<p>' + h(sandbox
+            ? 'This report sets out the screening {org} carried out through Sentinelpay between {from} and {to}, in the sandbox scope. It was generated on {generated} from the records as they stood at that moment.'
+            : 'This report sets out the screening {org} carried out through Sentinelpay between {from} and {to}, in the production scope. It was generated on {generated} from the records as they stood at that moment.',
+        { org, from, to, generated }) + '</p>' +
+        '<p>' + h('Every check and every decision counted here was sealed with a SHA-256 digest when it was written. Each one can be opened from its evidence file and its digest checked on its own, without this report and without access to Sentinelpay.') + '</p>' +
+        '<p>' + h(sandbox
+            ? 'This is the sandbox scope. Its checks are test work and are not evidence of screening.'
+            : 'Sandbox checks are test work. They spend no allowance and are left out of every figure here.') + '</p>' +
+        '<p>' + h('Any export of the same period carries the reference below, so a copy in any format can be matched to this one.') + '</p>' +
         '<p class="ref">sha256:' + esc(ref) + '</p>' +
         '<div class="sign">' + signer('Prepared by') + signer('Reviewed by') + '</div>' +
         sheetFoot + '</section>' +
 
         // ---- the figures
         '<section class="sheet body">' + sheetHead +
-        '<div class="part"><h2>At a glance</h2>' + compared + '<div class="figs">' +
+        '<div class="part"><h2>' + h('At a glance') + '</h2>' + compared + '<div class="figs">' +
         // the allowance is spent by production alone; a sandbox report saying
         // how much of it went would be saying something that never happened
-        fig('Screenings', 'Screenings', !sandbox && incl !== '' && incl !== undefined
-            ? num(sum.get('Screenings used this cycle')) + ' of ' + num(incl) + ' used this cycle' : '') +
-        fig('Sanctioned', 'Sanctioned') +
-        fig('Worth a look', 'Worth a look') +
-        fig('Distinct addresses', 'Distinct addresses') +
-        fig('Decisions recorded', 'Decisions recorded') +
-        fig('Findings open now', 'Findings open now', sum.get('Oldest open finding') ? 'oldest from ' + longDate(sum.get('Oldest open finding')) : '') +
-        fig('Checks on record', 'Checks on record') +
-        fig('Sealed with a digest', 'Sealed with a digest', 'kept for ' + sum.get('Kept for (years)') + ' years') +
+        fig('Screenings', !sandbox && incl !== '' && incl !== undefined
+            ? h('{used} of {included} used this cycle', { used: num(sum.get('Screenings used this cycle')), included: num(incl) }) : '') +
+        fig('Sanctioned') +
+        fig('Worth a look') +
+        fig('Distinct addresses') +
+        fig('Decisions recorded') +
+        fig('Findings open now', sum.get('Oldest open finding') ? h('oldest from {date}', { date: date(sum.get('Oldest open finding')) }) : '') +
+        fig('Checks on record') +
+        fig('Sealed with a digest', h('kept for {n} years', { n: num(sum.get('Kept for (years)')) })) +
         '</div>' + excluded + '</div>' +
-        '<div class="part"><h2>Screenings</h2>' + table(by('Screenings'), { grouped: true, pct: true, skipEmpty: true }) + '</div>' +
-        '<div class="part"><h2>Review</h2>' + table(by('Review'), { grouped: true, pct: true }) + '</div>' +
-        '<div class="part"><h2>Sanctions coverage</h2>' + table(by('Coverage'), { grouped: true, pct: true, skipEmpty: true }) + '</div>' +
-        '<div class="part"><h2>API</h2>' + table(by('API'), { pct: true }) + '</div>' +
-        '<div class="part"><h2>Team</h2>' + table(by('Team'), { grouped: true, pct: true }) + '</div>' +
-        '<div class="part"><h2>Evidence</h2>' + table(by('Evidence'), { grouped: true, pct: true }) + '</div>' +
-        '<div class="part is-days"><h2>Day by day</h2>' + table({
+        '<div class="part"><h2>' + h('Screenings') + '</h2>' + table(by('Screenings'), {
+            grouped: true, pct: true, skipEmpty: true,
+            // chains and the names people gave their projects are printed as they are
+            keep: (r) => r[0] === 'By chain' || (r[0] === 'By project' && r[1] !== 'No project' && r[1] !== 'Unnamed project'),
+        }, sp) + '</div>' +
+        '<div class="part"><h2>' + h('Review') + '</h2>' + table(by('Review'), { grouped: true, pct: true }, sp) + '</div>' +
+        '<div class="part"><h2>' + h('Sanctions coverage') + '</h2>' + table(by('Coverage'), {
+            grouped: true, pct: true, skipEmpty: true, keep: (r) => r[0] === 'By chain' || (r[0] === 'By list' && /^OFAC SDN$/.test(r[1])),
+        }, sp) + '</div>' +
+        '<div class="part"><h2>' + h('API') + '</h2>' + table(by('API'), { pct: true, keep: () => true }, sp) + '</div>' +
+        '<div class="part"><h2>' + h('Team') + '</h2>' + table(by('Team'), { grouped: true, pct: true }, sp) + '</div>' +
+        '<div class="part"><h2>' + h('Evidence') + '</h2>' + table(by('Evidence'), { grouped: true, pct: true }, sp) + '</div>' +
+        '<div class="part is-days"><h2>' + h('Day by day') + '</h2>' + table({
             head: ['Day', 'Screenings', 'Flagged', 'Sanctioned', 'Decisions', 'API calls'],
             rows: daily.rows.map((r) => [r[0], r[1], r[2], r[3], r[5], r[8]]),
-        }) + '</div>' +
-        '<p class="end">End of report · sha256:' + esc(ref) + '</p>' +
+        }, { keep: () => true }, sp) + '</div>' +
+        '<p class="end">' + h('End of report') + ' · sha256:' + esc(ref) + '</p>' +
         sheetFoot + '</section>' +
         '</main>' +
         '<script src="/report.js"></script></body></html>';
@@ -854,4 +944,4 @@ function filename(out, format) {
         (out.scope === 'sandbox' ? '-sandbox' : '') + '.' + format;
 }
 
-module.exports = { FORMATS, PAPERS, paperOf, sheets, reference, csv, json, xlsx, report, filename, crc32, csvCell };
+module.exports = { FORMATS, PAPERS, paperOf, langOf, MISSED, dictionary, sheets, reference, csv, json, xlsx, report, filename, crc32, csvCell };

@@ -241,3 +241,50 @@ test('the cover is the brand grid on every paper', () => {
         assert.ok(cover.includes('<rect x="' + m + '" y="0" width="' + m + '" height="' + m + '"'), key + ': the grid is not three across');
     }
 });
+
+// Every word a report can print, in every language the dashboard speaks, and
+// one reference for all of them: the language changes what is printed and
+// nothing about the figures.
+test('the report is printed in the language asked for, every word of it', () => {
+    const line = (n) => ({ total: n, days: [{ day: '2026-09-01', n }, { day: '2026-09-02', n: 0 }] });
+    const full = {
+    period: { from: '2026-09-01T00:00:00.000Z', to: '2026-09-03T00:00:00.000Z' },
+    scope: 'live', zone: 'Europe/Zagreb',
+    screenings: { total: 10, flagged: 3, clear: 7, addresses: 9, assetCount: 2,
+        verdicts: { severe: 1, review: 2, clear: 7 }, assets: [{ asset: 'XBT', n: 6 }, { asset: 'ETH', n: 4 }],
+        projects: [{ id: '1', name: 'Card program', n: 6 }, { id: '', name: '', n: 4 }],
+        days: [{ day: '2026-09-01', n: 6, flagged: 2, severe: 1, addresses: 5 }, { day: '2026-09-02', n: 4, flagged: 1, severe: 0, addresses: 4 }] },
+    kinds: { live: line(8), history: line(1), rescreen: line(1), transaction: line(0), bulk: line(0), other: line(5) },
+    review: { decisions: line(3), cleared: line(2), confirmed: line(1), holding: line(0),
+        took: { hour: 1, day: 1, week: 1, longer: 0 }, queue: { open: 4, holding: 0, oldest: '2026-08-01T00:00:00Z', age: { day: 1, week: 1, month: 1, older: 1 } } },
+    lists: { byList: { ofac: 100, ofacOther: 0, eu: 0, uk: 0, un: 0, ca: 0, au: 0, ch: 0, jp: 0 },
+        byTheme: { cyber: 10, drugs: 10, terror: 10, dprk: 10, crime: 10, russia: 10, iran: 10, weapons: 10, other: 20 },
+        byChain: [{ asset: 'XBT', n: 60 }, { asset: 'TRX', n: 40 }] },
+    api: { calls: line(5), deliveries: line(2), byEndpoint: [{ path: 'POST /v1/screen', n: 5 }] },
+    team: { state: { mfa: 1, roles: { owner: 1, admin: 1, analyst: 1, viewer: 1 }, seen: { today: 1, week: 1, month: 1, older: 1, never: 0 } } },
+    evidence: { state: { checks: 100, sealed: 100, decisions: 10, oldest: '2026-06-01T00:00:00Z', retentionYears: 5, age: { month: 25, quarter: 25, year: 25, older: 25 } } },
+    previous: { from: '2026-08-30T00:00:00.000Z', to: '2026-09-01T00:00:00.000Z', total: 8, flagged: 2, severe: 1, addresses: 7, assetCount: 2,
+        kinds: { history: line(0), other: line(2) }, review: { decisions: line(2), cleared: line(1), confirmed: line(1) }, api: { calls: line(1), deliveries: line(0) } },
+    cycle: { used: 10 },
+    org: { members: 4, projects: 1, tokens: 1 },
+};
+    const sub = { planName: 'Growth', included: { screenings: 30000 } };
+    exports_.MISSED.clear();
+    for (const scope of ['live', 'sandbox']) {
+        const o = { ...full, scope };
+        const list = exports_.sheets(o, { name: 'Acme' }, sub);
+        const refs = new Set();
+        for (const lang of ['en', 'hr', 'de']) {
+            for (const paper of Object.keys(exports_.PAPERS)) {
+                const meta = { reference: exports_.reference(list), generated: '2026-09-03T00:00:00.000Z', organisation: 'Acme', back: '/', lang, paper };
+                const html = exports_.report(list, meta, o);
+                assert.match(html, new RegExp('<html lang="' + lang + '">'), lang + ': the page does not say its language');
+                refs.add(meta.reference);
+            }
+        }
+        assert.strictEqual(refs.size, 1, 'the reference changes with the language');
+    }
+    assert.deepStrictEqual([...exports_.MISSED], [], 'printed without a translation: ' + [...exports_.MISSED].join(' | '));
+    assert.equal(exports_.langOf('HR'), 'hr');
+    assert.equal(exports_.langOf('fr'), 'en', 'a language the dashboard does not speak is printed in English');
+});

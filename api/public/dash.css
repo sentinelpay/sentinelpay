@@ -5593,6 +5593,10 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
     .rep-desk { margin: 0 -1rem; }
     .rep-acts { width: 100%; }
     .rep-acts .btn { flex: 1 1 auto; justify-content: center; }
-    .rep-paper .pick-btn { min-width: 7.5rem; }
+    .rep-paper .pick-btn { min-width: 0; }
+    /* the two pickers share the first line and the button has the second */
+    .rep-acts { flex-wrap: wrap; }
+    .rep-acts .rep-paper { flex: 1 1 0; }
+    .rep-acts .btn { flex: 1 1 100%; }
     .rep-wait { padding: 20px 16px; }
 }

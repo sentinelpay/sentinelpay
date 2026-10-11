@@ -6922,6 +6922,14 @@
         var base = '/v1/orgs/' + encodeURIComponent(org.id);
         var q = '?period=' + encodeURIComponent(out.period.key) + '&scope=' + encodeURIComponent(out.scope) +
             '&tz=' + encodeURIComponent(zoneNow());
+        // The language the paper is printed in: the dashboard's to begin with.
+        // The person reading it is often not the person printing it -- a bank
+        // abroad, a regulator at home -- so it can be changed here; the
+        // figures and the reference are the same in every language.
+        var lang = 'en';
+        try { lang = (window.SentinelI18n && window.SentinelI18n.lang()) || 'en'; } catch (err) { lang = 'en'; }
+        if (!/^(en|hr|de)$/.test(lang)) lang = 'en';
+        q += '&lang=' + encodeURIComponent(lang);
         var alone = base + '/usage.html' + q;
         if (reportOnItsOwn()) {
             var kept = 'a4';
@@ -6962,6 +6970,21 @@
         });
         paperPick.classList.add('rep-paper');
         acts.appendChild(paperPick);
+        // Each language in its own name, which is how a reader finds theirs,
+        // and so never translated: "Deutsch" stays "Deutsch" on a Croatian
+        // screen.
+        var langPick = selectBox('rep-lang', [{
+            options: [['en', 'English'], ['hr', 'Hrvatski'], ['de', 'Deutsch']].map(function (l) {
+                return { value: l[0], label: l[1] };
+            })
+        }], lang, function (v) {
+            lang = v;
+            q = q.replace(/&lang=[a-z]+/, '&lang=' + encodeURIComponent(v));
+            alone = base + '/usage.html' + q;
+            load();
+        });
+        langPick.classList.add('rep-paper', 'rep-lang');
+        acts.insertBefore(langPick, paperPick);
         var print = document.createElement('button');
         print.type = 'button';
         print.className = 'btn btn-primary';

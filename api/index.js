@@ -2431,6 +2431,9 @@ app.get('/v1/orgs/:id/usage.:format', async (req, res) => {
         // the paper it is laid out for; A4 unless another of the sizes it
         // knows is asked for
         paper: exportsFile.paperOf(req.query.paper),
+        // the language it is printed in; the figures and the reference are the
+        // same in each
+        lang: exportsFile.langOf(req.query.lang),
         reference: exportsFile.reference(list),
         generated: new Date().toISOString(),
         organisation: mine.name || '',
