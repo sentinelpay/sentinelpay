@@ -207,7 +207,16 @@ test('the report is laid out on the paper asked for, A4 when none is', () => {
     const statement = html.indexOf('class="sheet statement"');
     const figures = html.indexOf('<h2>At a glance</h2>');
     assert.ok(cover !== -1 && cover < statement && statement < figures, 'the cover, the statement and the figures are out of order');
-    assert.ok(html.slice(statement, figures).includes('Reviewed by'), 'the signatures are not with the statement');
+    // the statement is a letter: our name and seal under it, and one place for
+    // the organisation to confirm it, at the foot of the same page
+    const letter = html.slice(statement, figures);
+    assert.ok(letter.includes('Confirmation by the organisation'), 'the confirmation is not with the statement');
+    assert.ok(letter.indexOf('class="seal"') < letter.indexOf('class="confirm"'), 'the seal is not above the confirmation');
+    assert.equal((letter.match(/class="fields"/g) || []).length, 1, 'the statement asks for more than one signature');
+    assert.match(html, /@page letter \{ @top-left \{ content:none; \}/, 'the running head prints over the letterhead');
+    assert.match(html, /\.statement \{ page:letter;/, 'the statement is not on its own named page');
+    // A5 is narrower than a phone breakpoint: the phone's layout is for screens
+    assert.match(html, /@media screen and \(max-width: 700px\)/, 'the phone layout applies to printed A5');
     // a name cannot close the style it is quoted in
     const style = html.slice(html.indexOf('<style>'), html.indexOf('</style>'));
     assert.ok(!style.includes('</style><b>'), 'the organisation name broke out of the stylesheet');
