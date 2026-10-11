@@ -125,6 +125,11 @@ async function render(html) {
             preferCSSPageSize: true,
             printBackground: true,
             displayHeaderFooter: false,
+            // the headings become the PDF's bookmarks, the contents a reader
+            // opens in the side panel, and its structure tags let a screen
+            // reader follow the document
+            outline: true,
+            tagged: true,
             timeout: RENDER_MS,
         });
         return Buffer.from(bytes);
@@ -140,4 +145,41 @@ function pages(bytes) {
     return (Buffer.from(bytes).toString('latin1').match(/\/Type\s*\/Page(?![a-zA-Z])/g) || []).length;
 }
 
-module.exports = { available, render, executable, pages };
+// The PDF's bookmarks, each with the page it points at, in the order they
+// come. Read straight from the file: every bookmark names its page by object
+// number, and the page tree lists the pages' objects in order.
+function outline(bytes) {
+    const s = Buffer.from(bytes).toString('latin1');
+    const objects = new Map();
+    for (const m of s.matchAll(/(?:^|[\r\n])(\d+) 0 obj\s*<<([\s\S]*?)>>\s*endobj/g)) objects.set(m[1], m[2]);
+    const root = [...objects.entries()].find(([, d]) => /\/Type\s*\/Pages\b/.test(d) && !/\/Parent\s/.test(d));
+    const order = [];
+    const walk = (num, depth) => {
+        const d = objects.get(num) || '';
+        if (depth > 20) return;
+        if (/\/Type\s*\/Pages\b/.test(d)) {
+            const kids = /\/Kids\s*\[([^\]]*)\]/.exec(d);
+            for (const k of (kids ? kids[1].match(/\d+(?= 0 R)/g) || [] : [])) walk(k, depth + 1);
+        } else order.push(num);
+    };
+    if (root) walk(root[0], 0);
+    const text = (raw) => {
+        if (raw[0] === '<') {
+            const hex = raw.slice(1, -1).replace(/\s+/g, '');
+            const b = Buffer.from(hex, 'hex');
+            if (b[0] === 0xfe && b[1] === 0xff) return b.slice(2).swap16().toString('utf16le');
+            return b.toString('latin1');
+        }
+        return raw.slice(1, -1).replace(/\\([()\\])/g, '$1');
+    };
+    const out = [];
+    for (const d of objects.values()) {
+        const t = /\/Title\s*(\((?:\\.|[^\\)])*\)|<[0-9A-Fa-f\s]*>)/.exec(d);
+        const dest = /\/Dest\s*\[\s*(\d+) 0 R/.exec(d);
+        if (!t || !dest) continue;
+        out.push({ title: text(t[1]), page: order.indexOf(dest[1]) + 1 });
+    }
+    return out.sort((a, b) => a.page - b.page);
+}
+
+module.exports = { available, render, executable, pages, outline };

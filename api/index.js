@@ -2450,18 +2450,26 @@ async function usageReport(req, mine, extra) {
     return { out, list, meta };
 }
 
-// How many pages the PDF of a report comes to, by the figures it holds, the
-// paper and the language. The same figures on the same paper come to the
-// same pages, so it is counted once and remembered; the newest few hundred
-// are kept and the oldest let go.
+// How many pages the PDF of a report comes to, and the page each chapter
+// starts on, by the figures it holds, the paper and the language. The same
+// figures on the same paper come to the same pages, so it is counted once and
+// remembered; the newest few hundred are kept and the oldest let go.
 const PAGE_COUNTS = new Map();
-function countedPages(orgId, meta, n) {
+function pagesOf(bytes, lang) {
+    const marks = pdf.outline(bytes);
+    const flat = (t) => String(t).replace(/\s+/g, ' ').trim();
+    return {
+        pages: pdf.pages(bytes),
+        starts: exportsFile.chapterTitles(lang).map((t) => (marks.find((m) => flat(m.title) === flat(t)) || {}).page || null),
+    };
+}
+function countedPages(orgId, meta, count) {
     const key = orgId + '|' + meta.reference + '|' + meta.paper + '|' + meta.lang;
-    if (n === undefined) return PAGE_COUNTS.get(key);
+    if (count === undefined) return PAGE_COUNTS.get(key);
     PAGE_COUNTS.delete(key);
-    PAGE_COUNTS.set(key, n);
+    PAGE_COUNTS.set(key, count);
     if (PAGE_COUNTS.size > 500) PAGE_COUNTS.delete(PAGE_COUNTS.keys().next().value);
-    return n;
+    return count;
 }
 const pagesLimiter = rateLimit({
     handler: limitHandler,
@@ -2488,16 +2496,16 @@ app.get('/v1/orgs/:id/usage/pages', pagesLimiter, async (req, res) => {
     if (!pdf.available()) return res.status(503).json({ error: 'The pages could not be counted right now.' });
     const got = await usageReport(req, mine, { forPdf: true });
     if (!got) return res.status(503).json({ error: 'The pages could not be counted right now.' });
-    let pages = countedPages(mine.id, got.meta);
-    if (!pages) {
+    let count = countedPages(mine.id, got.meta);
+    if (!count) {
         try {
-            pages = countedPages(mine.id, got.meta, pdf.pages(await pdf.render(exportsFile.report(got.list, got.meta, got.out))));
+            count = countedPages(mine.id, got.meta, pagesOf(await pdf.render(exportsFile.report(got.list, got.meta, got.out)), got.meta.lang));
         } catch (err) {
             console.error('[usage] pages: ' + err.message);
             return res.status(503).json({ error: 'The pages could not be counted right now.' });
         }
     }
-    res.json({ ok: true, pages, reference: got.meta.reference });
+    res.json({ ok: true, pages: count.pages, starts: count.starts, reference: got.meta.reference });
 });
 
 app.get('/v1/orgs/:id/usage.:format', (req, res, next) => {
@@ -2529,7 +2537,7 @@ app.get('/v1/orgs/:id/usage.:format', (req, res, next) => {
     else if (format === 'pdf') {
         try {
             body = await pdf.render(exportsFile.report(list, meta, out));
-            countedPages(mine.id, meta, pdf.pages(body));
+            countedPages(mine.id, meta, pagesOf(body, meta.lang));
         } catch (err) {
             console.error('[usage] pdf: ' + err.message);
             return res.status(503).send('The PDF could not be made right now.');

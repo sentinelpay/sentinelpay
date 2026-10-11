@@ -549,8 +549,9 @@ test('the dialog downloads the PDF the server makes, and prints only when it can
     // only for the figures the preview shows
     assert.match(open, /fetch\(base \+ '\/usage\/pages' \+ q/, 'the preview does not ask for the page count');
     assert.match(open, /d\.reference !== ref/, 'the preview takes a page count for other figures');
+    assert.match(open, /\/\^ch\\d\+\$\/\.test\(at\)/, 'a chapter sheet is not numbered by where the next one starts');
     assert.match(index, /app\.get\('\/v1\/orgs\/:id\/usage\/pages', pagesLimiter,/, 'page counts are not limited');
-    assert.match(index, /countedPages\(mine\.id, meta, pdf\.pages\(body\)\)/, 'a downloaded PDF does not remember its count');
+    assert.match(index, /countedPages\(mine\.id, meta, pagesOf\(body, meta\.lang\)\)/, 'a downloaded PDF does not remember its count');
     const usage = fs.readFileSync(path.join(__dirname, '..', 'usage.js'), 'utf8');
     assert.match(usage, /const byFormat = \{[^}]*\bpdf: 0/, 'the evidence section does not count PDFs');
 });

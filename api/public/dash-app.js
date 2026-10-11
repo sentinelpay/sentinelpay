@@ -7058,8 +7058,20 @@
                 .then(function (r) { return r.ok ? r.json() : null; })
                 .then(function (d) {
                     if (mine !== counting || !d || d.reference !== ref || !(d.pages > 0)) return;
+                    // a chapter's sheet ends on the page before the next
+                    // chapter starts, the last one on the last page
+                    var starts = d.starts || [];
                     [].forEach.call(doc.querySelectorAll('.run-pg'), function (el) {
-                        var n = el.getAttribute('data-n') === 'last' ? d.pages : el.getAttribute('data-n');
+                        var at = el.getAttribute('data-n') || '';
+                        var n = at;
+                        if (at === 'last') n = d.pages;
+                        else if (/^ch\d+$/.test(at)) {
+                            var i = Number(at.slice(2));
+                            var next = null;
+                            for (var j = i + 1; j < starts.length && next === null; j++) next = starts[j];
+                            n = next ? next - 1 : d.pages;
+                        }
+                        if (!(Number(n) > 0)) return;
                         el.textContent = String(el.getAttribute('data-tpl') || '').replace('{n}', n).replace('{all}', d.pages);
                     });
                 })

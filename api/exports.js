@@ -500,7 +500,7 @@ function speaker(lang) {
         return Number.isNaN(x.getTime()) ? esc(iso)
             : x.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
     };
-    return { lang, tr, h, num, date };
+    return { lang, locale, tr, h, num, date };
 }
 
 // The fonts, inside the page rather than linked from it. A PDF is rendered
@@ -607,6 +607,77 @@ function lastDay(iso) {
 // module, the one bright thing on the page. Drawn in the paper's millimetres,
 // so the modules stay square on every size and only the space under them
 // changes.
+// The chapters after the statement, each starting a page of its own, in the
+// order they print. The PDF's outline is built from these headings, and the
+// page each one starts on is read back from it to number the preview.
+const CHAPTERS = ['Overview of the period', 'Screenings and review', 'Sanctions coverage', 'API, team and evidence', 'Day by day'];
+
+// The period as columns, one for each day (or hour, for a day's report): the
+// flagged checks at the foot of each column in the darker blue and the clear
+// ones above them in the lighter, so how much of a day was flagged reads off
+// the column itself. The two blues pass the colour-blindness checks against
+// the white of the page; the legend names them, and the day-by-day table at
+// the end has every figure the columns are drawn from.
+function periodChart(daily, hourly, sp, low) {
+    const rows = daily.rows;
+    // lower on A5, where the overview has the least room to end on its page
+    const W = 1000, H = low ? 200 : 250, L = 52, R = 8, T = 30, B = 32;
+    const pw = W - L - R, ph = H - T - B;
+    const top = Math.max(1, ...rows.map((r) => Number(r[1]) || 0));
+    // a round step for three or four lines: 1, 2 or 5 times a power of ten
+    const raw = top / 3;
+    const pow = Math.pow(10, Math.floor(Math.log10(raw)));
+    const step = [1, 2, 5, 10].map((k) => k * pow).find((v) => v >= raw);
+    const max = Math.ceil(top / step) * step;
+    const y = (v) => T + ph - ph * v / max;
+    // never wider than a fourteenth of the width: the first days of a cycle
+    // stand as columns from the left, not as blocks across the whole page
+    const bw = Math.min(pw / rows.length, pw / 14);
+    const gap = Math.min(4, bw * 0.22);
+    const n2 = (v) => Math.round(v * 10) / 10;
+    const out = [];
+    for (let v = 0; v <= max; v += step) {
+        out.push('<line x1="' + L + '" x2="' + (W - R) + '" y1="' + n2(y(v)) + '" y2="' + n2(y(v)) + '" class="' + (v ? 'grid' : 'base') + '"/>' +
+            '<text x="' + (L - 10) + '" y="' + n2(y(v) + 5) + '" text-anchor="end">' + sp.num(v) + '</text>');
+    }
+    // a column: flat at the baseline, its top corners rounded, the two parts
+    // parted by a hairline of the page's white
+    const col = (x, w, y0, y1, cls, round) => {
+        const r = round ? Math.min(4, w / 2, y0 - y1) : 0;
+        return '<path class="' + cls + '" d="M' + n2(x) + ' ' + n2(y0) + 'V' + n2(y1 + r) +
+            (r ? 'Q' + n2(x) + ' ' + n2(y1) + ' ' + n2(x + r) + ' ' + n2(y1) : '') + 'H' + n2(x + w - r) +
+            (r ? 'Q' + n2(x + w) + ' ' + n2(y1) + ' ' + n2(x + w) + ' ' + n2(y1 + r) : '') + 'V' + n2(y0) + 'Z"/>';
+    };
+    let peak = 0;
+    rows.forEach((r, i) => {
+        const n = Number(r[1]) || 0, f = Math.min(n, Number(r[2]) || 0);
+        if (n > (Number(rows[peak][1]) || 0)) peak = i;
+        const x = L + i * bw + gap / 2, w = Math.max(1, bw - gap);
+        const yb = y(0), yf = y(f), yn = y(n);
+        if (f) out.push(col(x, w, yb, yf, 'flag', f === n));
+        if (n > f) out.push(col(x, w, f ? yf - 1.5 : yb, yn, 'clear', true));
+    });
+    const when = (v) => (hourly ? String(v).slice(11, 16)
+        : new Date(String(v).slice(0, 10) + 'T12:00:00Z').toLocaleDateString(sp.locale, { day: 'numeric', month: 'short', timeZone: 'UTC' }));
+    const ticks = rows.length <= 5 ? rows.map((r, i) => i) : [0, 1, 2, 3, 4].map((k) => Math.round(k * (rows.length - 1) / 4));
+    // a date under its column, held inside the chart at either edge
+    ticks.forEach((i) => {
+        const mid = L + i * bw + bw / 2;
+        const [x, anchor] = mid < L + 45 ? [L + i * bw, 'start'] : mid > W - R - 45 ? [L + (i + 1) * bw, 'end'] : [mid, 'middle'];
+        out.push('<text x="' + n2(x) + '" y="' + (H - 8) + '" text-anchor="' + anchor + '">' + esc(when(rows[i][0])) + '</text>');
+    });
+    // the busiest day, named on its column
+    const pn = Number(rows[peak][1]) || 0;
+    if (pn) {
+        const px = L + peak * bw + bw / 2;
+        const anchor = px < L + 120 ? 'start' : px > W - R - 120 ? 'end' : 'middle';
+        out.push('<text class="peak" x="' + n2(px) + '" y="' + n2(y(pn) - 9) + '" text-anchor="' + anchor + '">' +
+            sp.h(hourly ? '{n} · busiest hour' : '{n} · busiest day', { n: sp.num(pn) }) + '</text>');
+    }
+    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' +
+        esc(sp.tr(hourly ? 'Checks by hour' : 'Checks by day')) + '">' + out.join('') + '</svg>';
+}
+
 // The head of the statement: the mark and the name, as on the site. The mark
 // is the cover's, solid rather than glowing: a glow is a picture to a PDF.
 const LETTERHEAD = '<svg class="lh-mark" viewBox="0 0 120 120" aria-hidden="true">' +
@@ -705,23 +776,8 @@ function report(list, meta, out) {
     // when it was made, as a reader says it: "11 October 2026 at 22:22 UTC"
     const generated = tr('{date} at {time} UTC', { date: date(meta.generated), time: meta.generated.slice(11, 16) });
 
-    // A figure, what it was the period before, and a line of its own where it
-    // has one. The earlier figure is set back: it is context for the number
-    // above it, not a second number competing with it.
-    const fig = (key, foot) => {
-        const b = before(key);
-        return '<div class="fig"><div class="k">' + h(key) + '</div><div class="v">' +
-            num(sum.get(key)) + '</div>' +
-            (b !== '' && b !== undefined ? '<div class="w">' + h('{n} the period before', { n: num(b) }) + '</div>' : '') +
-            (foot ? '<div class="f">' + foot + '</div>' : '') + '</div>';
-    };
     const incl = sum.get('Screenings included this cycle');
     const daily = by('Daily');
-    const compared = before('Period from')
-        ? '<p class="cmp">' + h('Each figure is shown beside the same number of days before this period, {from} to {to}.', {
-            from: date(before('Period from')), to: date(lastDay(before('Period to'))),
-        }) + '</p>'
-        : '';
     const left = sum.get('Sandbox checks not included');
     const excluded = sum.has('Sandbox checks not included')
         ? '<p class="cmp">' + (left
@@ -766,6 +822,95 @@ function report(list, meta, out) {
         '<span class="run-pg" data-n="' + n + '" data-tpl="' + esc(tr('Page {n} of {all}')) + '"></span></div>';
     const dt = (k, v) => '<div><dt>' + h(k) + '</dt><dd>' + v + '</dd></div>';
 
+    // A chapter: a sheet of its own on screen and a fresh page on paper, its
+    // title in the outline the PDF carries, and under it the number of the
+    // page it ends on, filled in once the PDF has been counted.
+    const chapter = (i, inner) => '<section class="sheet chapter">' + sheetHead +
+        '<div class="l-rule"></div><h2 class="big">' + h(CHAPTERS[i]) + '</h2>' + inner + sheetFoot('ch' + i) + '</section>';
+
+    // ---- the overview
+    const n0 = (v) => Number(v) || 0;
+    const has = (v) => v !== '' && v !== undefined && v !== null;
+    const one = (v) => Math.round(v * 10) / 10;
+    const total = n0(sum.get('Screenings'));
+    const severe = n0(sum.get('Sanctioned'));
+    const review = n0(sum.get('Worth a look'));
+    const prevTotal = before('Screenings');
+    let lede;
+    if (!total) lede = h('No checks were made between {from} and {to}.', { from, to });
+    else {
+        const d = has(prevTotal) && n0(prevTotal) ? one((total - n0(prevTotal)) / n0(prevTotal) * 100) : null;
+        const args = { from, to, n: num(total), pct: d === null ? '' : num(Math.abs(d)) + '%' };
+        lede = h(d === null ? 'The total number of checks between {from} and {to} was {n}.'
+            : d > 0 ? 'The total number of checks between {from} and {to} was {n}, {pct} more than in the period before.'
+                : d < 0 ? 'The total number of checks between {from} and {to} was {n}, {pct} fewer than in the period before.'
+                    : 'The total number of checks between {from} and {to} was {n}, the same as in the period before.', args) + ' ' +
+            (severe + review
+                ? h('The number flagged was {flagged}: {severe} on a sanctions list and {review} worth a look.',
+                    { flagged: num(severe + review), severe: num(severe), review: num(review) })
+                : h('None of them was flagged.'));
+    }
+    // a figure beside the same figure the period before, and the change
+    const prevSpan = has(before('Period from'))
+        ? tr('{from} to {to}', { from: date(before('Period from')), to: date(lastDay(before('Period to'))) }) : '';
+    const change = (key) => {
+        const a = sum.get(key), b = before(key);
+        if (!has(a) || !has(b)) return '—';
+        if (!n0(b)) return n0(a) ? '—' : '0%';
+        const d = one((n0(a) - n0(b)) / n0(b) * 100);
+        return (d > 0 ? '+' : d < 0 ? '−' : '') + num(Math.abs(d)) + '%';
+    };
+    const sup = (k) => '<sup>' + k + '</sup>';
+    const line = (label, mark, key, note, value) => '<tr><td>' + h(label) + (mark ? sup(mark) : '') +
+        (note ? '<small>' + note + '</small>' : '') + '</td>' +
+        '<td class="n">' + (value !== undefined ? value : num(sum.get(key))) + '</td>' +
+        '<td class="n was">' + (value !== undefined || !has(before(key)) ? '—' : num(before(key))) + '</td>' +
+        '<td class="n">' + (value !== undefined ? '—' : change(key)) + '</td></tr>';
+    const now = (label, mark, key, note) => '<tr><td>' + h(label) + (mark ? sup(mark) : '') +
+        (note ? '<small>' + note + '</small>' : '') + '</td><td class="n">' + num(sum.get(key)) + '</td>' +
+        '<td class="n was">—</td><td class="n">—</td></tr>';
+    const group = (label, note) => '<tr class="grp"><th colspan="4">' + h(label) +
+        (note ? ' <span>· ' + h(note) + '</span>' : '') + '</th></tr>';
+    // the allowance is spent by production alone; a sandbox report saying
+    // how much of it went would be saying something that never happened
+    const used = n0(sum.get('Screenings used this cycle'));
+    const planRow = !sandbox && has(incl) && n0(incl)
+        ? line('Share of the plan used', 0, '', h('{used} of {included} used this cycle', { used: num(used), included: num(n0(incl)) }) +
+            (sum.get('Plan') ? ', ' + esc(sum.get('Plan')) : ''), num(one(used / n0(incl) * 100)) + '%')
+        : '';
+    const notes = [
+        ['Sanctioned', 'the address was on a sanctions list when it was checked.'],
+        ['Worth a look', 'the address is on no list, but its risk score fell in the middle or high band the organisation has set.'],
+        ['Distinct addresses', 'each address counted once, however many times it was checked.'],
+        ['Findings open now', 'flagged checks with no decision recorded, as they stood when the report was made.'],
+        ['Sealed with a digest', 'a record given a SHA-256 digest when it was written, which can be checked without this report.'],
+    ];
+    const overview = '<p class="lede">' + lede + '</p>' +
+        // no columns to draw for a period with no days in it
+        (total && daily.rows.length ? '<div class="figure"><div class="fig-t"><b>' + h(out.period && out.period.grain === 'hour' ? 'Checks by hour' : 'Checks by day') + '</b>' +
+            '<span class="key"><span><i class="k-flag"></i>' + h('Flagged') + '</span><span><i class="k-clear"></i>' + h('Clear') + '</span></span></div>' +
+            periodChart(daily, out.period && out.period.grain === 'hour', sp, paperKey === 'a5') + '</div>' : '') +
+        '<table class="sum"><thead><tr><th></th>' +
+        '<th class="n">' + h('This period') + '<small>' + esc(span) + '</small></th>' +
+        '<th class="n">' + h('The period before') + (prevSpan ? '<small>' + esc(prevSpan) + '</small>' : '') + '</th>' +
+        '<th class="n">' + h('Change') + '</th></tr></thead><tbody>' +
+        group('Screenings') +
+        line('Total', 0, 'Screenings') +
+        line('Sanctioned', 1, 'Sanctioned') +
+        line('Worth a look', 2, 'Worth a look') +
+        line('Distinct addresses', 3, 'Distinct addresses') +
+        planRow +
+        group('Review') +
+        line('Decisions recorded', 0, 'Decisions recorded') +
+        now('Findings open now', 4, 'Findings open now',
+            sum.get('Oldest open finding') ? h('oldest from {date}', { date: date(sum.get('Oldest open finding')) }) : '') +
+        group('Evidence', 'as it stood when the report was made') +
+        now('Checks on record', 0, 'Checks on record') +
+        now('Sealed with a digest', 5, 'Sealed with a digest',
+            has(sum.get('Kept for (years)')) ? h('kept for {n} years', { n: num(sum.get('Kept for (years)')) }) : '') +
+        '</tbody></table>' + excluded +
+        '<div class="notes">' + notes.map((x, i) => '<div><span>' + (i + 1) + '</span><span>' + h(x[0]) + ': ' + h(x[1]) + '</span></div>').join('') + '</div>';
+
     return '<!doctype html><html lang="' + sp.lang + '"><head><meta charset="utf-8">' +
         '<meta name="viewport" content="width=device-width,initial-scale=1">' +
         '<meta name="robots" content="noindex,nofollow">' +
@@ -797,7 +942,9 @@ function report(list, meta, out) {
         '<section class="sheet cover" style="--below:' + coverBelow + 'cqw; --foot:' + coverFoot + 'cqw">' +
         coverArt(paper) +
         '<div class="c-rule"></div>' +
-        '<h1 class="c-title">' + h('Usage and{br}evidence report') + '</h1>' +
+        // set in capitals and broken across two lines, which is how it would
+        // read as a bookmark, so the PDF's contents start at the statement
+        '<p class="c-title">' + h('Usage and{br}evidence report') + '</p>' +
         '<div class="c-meta"><span><b>' + esc(org) + '</b><i>·</i>' + esc(scopeName) + '</span>' +
         '<span>' + esc(span) + '</span></div>' +
         (sandbox ? '<div class="c-sbx">' + h('Sandbox. Test data, not evidence of screening.') + '</div>' : '') +
@@ -842,39 +989,31 @@ function report(list, meta, out) {
         '<div class="fields">' + ['Name and role', 'Date', 'Signature'].map((l) => '<div>' + h(l) + '</div>').join('') + '</div></div>' +
         sheetFoot('2') + '</section>' +
 
-        // ---- the figures
-        '<section class="sheet body">' + sheetHead +
-        '<div class="part"><h2>' + h('At a glance') + '</h2>' + compared + '<div class="figs">' +
-        // the allowance is spent by production alone; a sandbox report saying
-        // how much of it went would be saying something that never happened
-        fig('Screenings', !sandbox && incl !== '' && incl !== undefined
-            ? h('{used} of {included} used this cycle', { used: num(sum.get('Screenings used this cycle')), included: num(incl) }) : '') +
-        fig('Sanctioned') +
-        fig('Worth a look') +
-        fig('Distinct addresses') +
-        fig('Decisions recorded') +
-        fig('Findings open now', sum.get('Oldest open finding') ? h('oldest from {date}', { date: date(sum.get('Oldest open finding')) }) : '') +
-        fig('Checks on record') +
-        fig('Sealed with a digest', h('kept for {n} years', { n: num(sum.get('Kept for (years)')) })) +
-        '</div>' + excluded + '</div>' +
-        '<div class="part"><h2>' + h('Screenings') + '</h2>' + table(by('Screenings'), {
-            grouped: true, pct: true, skipEmpty: true,
-            // chains and the names people gave their projects are printed as they are
-            keep: (r) => r[0] === 'By chain' || (r[0] === 'By project' && r[1] !== 'No project' && r[1] !== 'Unnamed project'),
-        }, sp) + '</div>' +
-        '<div class="part"><h2>' + h('Review') + '</h2>' + table(by('Review'), { grouped: true, pct: true }, sp) + '</div>' +
-        '<div class="part"><h2>' + h('Sanctions coverage') + '</h2>' + table(by('Coverage'), {
+        // ---- the period on one page: what happened in two sentences, the
+        // days as columns, the figures beside the period before, and what the
+        // words in them mean. Someone who reads one page reads this one.
+        chapter(0, overview) +
+
+        // ---- the detail, a chapter to a page
+        chapter(1,
+            '<div class="part"><h3>' + h('Screenings') + '</h3>' + table(by('Screenings'), {
+                grouped: true, pct: true, skipEmpty: true,
+                // chains and the names people gave their projects are printed as they are
+                keep: (r) => r[0] === 'By chain' || (r[0] === 'By project' && r[1] !== 'No project' && r[1] !== 'Unnamed project'),
+            }, sp) + '</div>' +
+            '<div class="part"><h3>' + h('Review') + '</h3>' + table(by('Review'), { grouped: true, pct: true }, sp) + '</div>') +
+        chapter(2, table(by('Coverage'), {
             grouped: true, pct: true, skipEmpty: true, keep: (r) => r[0] === 'By chain' || (r[0] === 'By list' && /^OFAC SDN$/.test(r[1])),
-        }, sp) + '</div>' +
-        '<div class="part"><h2>' + h('API') + '</h2>' + table(by('API'), { pct: true, keep: () => true }, sp) + '</div>' +
-        '<div class="part"><h2>' + h('Team') + '</h2>' + table(by('Team'), { grouped: true, pct: true }, sp) + '</div>' +
-        '<div class="part"><h2>' + h('Evidence') + '</h2>' + table(by('Evidence'), { grouped: true, pct: true }, sp) + '</div>' +
-        '<div class="part is-days"><h2>' + h('Day by day') + '</h2>' + table({
+        }, sp)) +
+        chapter(3,
+            '<div class="part"><h3>' + h('API') + '</h3>' + table(by('API'), { pct: true, keep: () => true }, sp) + '</div>' +
+            '<div class="part"><h3>' + h('Team') + '</h3>' + table(by('Team'), { grouped: true, pct: true }, sp) + '</div>' +
+            '<div class="part"><h3>' + h('Evidence') + '</h3>' + table(by('Evidence'), { grouped: true, pct: true }, sp) + '</div>') +
+        chapter(4, table({
             head: ['Day', 'Screenings', 'Flagged', 'Sanctioned', 'Decisions', 'API calls'],
             rows: daily.rows.map((r) => [r[0], r[1], r[2], r[3], r[5], r[8]]),
-        }, { keep: () => true }, sp) + '</div>' +
-        '<p class="end">' + h('End of report') + ' · sha256:' + esc(ref) + '</p>' +
-        sheetFoot('last') + '</section>' +
+        }, { keep: () => true }, sp) +
+        '<p class="end">' + h('End of report') + ' · sha256:' + esc(ref) + '</p>') +
         '</main>' +
         (meta.forPdf ? '' : '<script src="/report.js"></script>') + '</body></html>';
 }
@@ -906,7 +1045,6 @@ body { margin:0; color:var(--ink); font:var(--fs, 13px)/1.5 Inter, system-ui, sa
 .run { display:flex; justify-content:space-between; gap:16px; margin:calc(var(--my) * -0.55) 0 calc(var(--my) * 0.45);
   font-size:9.5px; color:var(--ink-4); }
 .run.is-foot { margin:auto 0 calc(var(--my) * -0.55); padding-top:calc(var(--my) * 0.45); }
-.body .run.is-foot { margin-top:28px; }
 
 /* ---- cover
    The art fills the sheet; everything on it is measured in shares of the
@@ -945,8 +1083,8 @@ body { margin:0; color:var(--ink); font:var(--fs, 13px)/1.5 Inter, system-ui, sa
 .l-rule { width:44px; height:3px; border-radius:2px; background:linear-gradient(90deg, #00e0ff, #a020f0); margin:2.2em 0 .9em; }
 
 /* ---- statement */
-h2 { font:700 14px 'Plus Jakarta Sans', Inter, sans-serif; margin:0 0 8px; padding-bottom:6px; border-bottom:1px solid var(--line); break-after:avoid; }
-h2.big { font-size:20px; border:0; padding:0; margin:0 0 14px; }
+h2.big { font:700 20px 'Plus Jakarta Sans', Inter, sans-serif; margin:0 0 14px; break-after:avoid; }
+h3 { font:700 14px 'Plus Jakarta Sans', Inter, sans-serif; margin:0 0 8px; padding-bottom:6px; border-bottom:1px solid var(--line); break-after:avoid; }
 .statement p { margin:0 0 10px; color:var(--ink-2); max-width:150mm; }
 .l-end { margin-top:auto; padding-top:1.6em; }
 .l-by b { display:block; font:700 1em 'Plus Jakarta Sans', Inter, sans-serif; }
@@ -962,15 +1100,51 @@ h2.big { font-size:20px; border:0; padding:0; margin:0 0 14px; }
 .fields div { border-top:1px solid var(--ink); padding-top:5px; font-size:.77em; color:var(--ink-3); }
 
 /* ---- figures */
-.part { margin-top:22px; }
+.part { margin-top:26px; }
 .part:first-of-type { margin-top:0; }
-.figs { display:grid; grid-template-columns:repeat(var(--cols), 1fr); border:1px solid var(--line); border-radius:6px; overflow:hidden; break-inside:avoid; }
-.fig { padding:10px 12px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); margin:0 -1px -1px 0; }
-.fig .k { color:var(--ink-3); font-size:.85em; }
-.fig .v { font-size:1.4em; font-weight:700; margin-top:2px; font-variant-numeric:tabular-nums; }
-.fig .f, .fig .w { color:var(--ink-3); font-size:.8em; margin-top:1px; font-variant-numeric:tabular-nums; }
-.cmp { margin:0 0 8px; color:var(--ink-3); font-size:.88em; }
-.figs + .cmp { margin:8px 0 0; }
+.chapter .l-rule { margin-top:0; }
+.chapter .run.is-foot { margin-top:28px; }
+
+/* ---- the overview */
+.lede { margin:0 0 18px; color:var(--ink-2); max-width:150mm; }
+.figure { margin:0 0 22px; break-inside:avoid; }
+.fig-t { display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin:0 0 4px; }
+.fig-t b { font:700 .92em 'Plus Jakarta Sans', Inter, sans-serif; }
+.key { display:flex; gap:14px; font-size:.8em; color:var(--ink-3); }
+.key i { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; vertical-align:-1px; }
+.k-flag { background:#3a50b0; }
+.k-clear { background:#7f9be0; }
+.chart { display:block; width:100%; height:auto; font:15px Inter, sans-serif; fill:#7a86a6; }
+.chart .grid { stroke:rgba(14,35,88,.08); stroke-width:1.5; }
+.chart .base { stroke:rgba(14,35,88,.3); stroke-width:1.5; }
+.chart .flag { fill:#3a50b0; }
+.chart .clear { fill:#7f9be0; }
+.chart .peak { fill:var(--ink-2); font-weight:600; }
+/* the figures beside the period before: every number in one face and weight,
+   the earlier ones set back in colour only */
+table.sum thead th { vertical-align:bottom; line-height:1.35; padding-bottom:6px; border-bottom:1px solid var(--ink); }
+table.sum th small { display:block; font-weight:400; color:var(--ink-4); }
+table.sum th.n { width:19%; }
+table.sum th.n:last-child { width:13%; }
+table.sum td { padding:3px 0; }
+table.sum tr.grp th { padding:9px 0 3px; }
+table.sum td small { display:block; color:var(--ink-4); font-size:.82em; line-height:1.3; }
+table.sum td.n { font-weight:500; }
+table.sum td.was { color:var(--ink-3); }
+table.sum tr.grp th span { font-weight:400; color:var(--ink-4); }
+sup { font-size:.62em; color:var(--ink-4); margin-left:1px; }
+.cmp { margin:10px 0 0; color:var(--ink-3); font-size:.88em; }
+.notes { margin:16px 0 0; padding:10px 0 0; border-top:1px solid var(--line); font-size:.77em; color:var(--ink-3); line-height:1.5; }
+.notes div { display:grid; grid-template-columns:14px 1fr; }
+/* A5 has the overview in half the room: smaller type in the table and the
+   notes, and less air between them, so it still ends on its page */
+.paper-a5 .lede { margin-bottom:10px; }
+.paper-a5 .figure { margin-bottom:10px; }
+.paper-a5 table.sum { font-size:.84em; }
+.paper-a5 table.sum tr.grp th { padding:6px 0 2px; }
+.paper-a5 table.sum td { padding:2px 0; }
+.paper-a5 .cmp { margin-top:6px; font-size:.8em; }
+.paper-a5 .notes { margin-top:8px; padding-top:6px; font-size:.7em; line-height:1.4; }
 table { width:100%; border-collapse:collapse; font-size:.92em; }
 thead th { text-align:left; font-weight:600; color:var(--ink-3); font-size:.85em; padding:4px 0; border-bottom:1px solid var(--line); }
 td { padding:4px 0; border-bottom:1px solid var(--line); }
@@ -1004,8 +1178,12 @@ tr { break-inside:avoid; }
 @media screen and (max-width: 700px) {
   .sheet { padding:22px 16px; }
   .statement { min-height:0; }
-  .figs { grid-template-columns:repeat(2, 1fr); }
   .fields { grid-template-columns:1fr; gap:22px; }
+  /* a phone's width: the dates under the column heads may wrap, and the
+     numbers keep a gap between them */
+  .n { padding-left:10px; }
+  table { font-size:.86em; }
+  table.sum th.n { white-space:normal; }
   .run { display:none; }
 }
 
@@ -1036,7 +1214,13 @@ html:has(body.is-embed) { background:transparent; }
      of a millimetre wider than 148mm, and a cover drawn to the number left
      a hairline of white down its edge */
   .cover { width:100%; height:var(--ph); aspect-ratio:auto; break-after:page; }
-  .part.is-days { break-before:page; }
+  /* every chapter from the overview on starts a page of its own */
+  .chapter { break-before:page; }
+  /* and a section in it goes to the next page whole rather than leave two
+     rows of its table alone at the top of one; a section longer than a page
+     breaks where it must */
+  .chapter .part { break-inside:avoid; }
+  tr.grp { break-after:avoid; }
 }
 `;
 
@@ -1045,4 +1229,10 @@ function filename(out, format) {
         (out.scope === 'sandbox' ? '-sandbox' : '') + '.' + format;
 }
 
-module.exports = { FORMATS, PAPERS, paperOf, langOf, MISSED, dictionary, sheets, reference, csv, json, xlsx, report, filename, crc32, csvCell };
+// The chapter titles in a language, in order, as the PDF's bookmarks name them.
+function chapterTitles(lang) {
+    const sp = speaker(langOf(lang));
+    return CHAPTERS.map((k) => sp.tr(k));
+}
+
+module.exports = { chapterTitles, FORMATS, PAPERS, paperOf, langOf, MISSED, dictionary, sheets, reference, csv, json, xlsx, report, filename, crc32, csvCell };

@@ -205,7 +205,7 @@ test('the report is laid out on the paper asked for, A4 when none is', () => {
     assert.match(html, /@page :first \{ margin:0; @top-left \{ content:none; \}/, 'the cover carries the running head');
     const cover = html.indexOf('class="sheet cover"');
     const statement = html.indexOf('class="sheet statement"');
-    const figures = html.indexOf('<h2>At a glance</h2>');
+    const figures = html.indexOf('class="sheet chapter"');
     assert.ok(cover !== -1 && cover < statement && statement < figures, 'the cover, the statement and the figures are out of order');
     // the statement is a letter: our name and seal under it, and one place for
     // the organisation to confirm it, at the foot of the same page
@@ -220,7 +220,24 @@ test('the report is laid out on the paper asked for, A4 when none is', () => {
     // under the statement and the last sheet, a place for "Page 2 of 7" in
     // the paper's own language, filled once the PDF's pages are counted
     assert.match(letter, /class="run-pg" data-n="2" data-tpl="Page \{n\} of \{all\}"/, 'the statement has no page number on screen');
-    assert.match(html.slice(figures), /class="run-pg" data-n="last"/, 'the last sheet has no page number on screen');
+    // after the statement, the overview and the chapters, each a sheet of its
+    // own and a page of its own, each with the number of the page it ends on
+    const chapters = html.split('class="sheet chapter"').slice(1);
+    assert.deepEqual(chapters.map((c) => (/<h2 class="big">([^<]*)<\/h2>/.exec(c) || [])[1]),
+        ['Overview of the period', 'Screenings and review', 'Sanctions coverage', 'API, team and evidence', 'Day by day'], 'the chapters are not the ones the outline is read for');
+    chapters.forEach((c, i) => assert.match(c, new RegExp('class="run-pg" data-n="ch' + i + '"'), 'chapter ' + i + ' has no page number on screen'));
+    assert.match(html, /\.chapter \{ break-before:page; \}/, 'a chapter does not start a page of its own');
+    assert.match(html, /\.chapter \.part \{ break-inside:avoid; \}/, 'a section can leave two rows alone at the top of a page');
+    // the overview: two sentences, the days as columns, the figures beside the
+    // period before, and what the words in them mean
+    const overview = chapters[0];
+    assert.match(overview, /<p class="lede">The total number of checks between/, 'the overview does not say what happened');
+    // a period with no days in it draws no columns rather than failing
+    assert.doesNotMatch(overview, /<svg class="chart"/, 'columns drawn for a period with no days');
+    assert.doesNotMatch(overview, /kept for  years/, 'a retention nobody gave is printed as a blank');
+    assert.match(overview, /<table class="sum">[\s\S]*This period[\s\S]*The period before[\s\S]*Change/, 'the figures are not set beside the period before');
+    assert.equal((overview.match(/<sup>\d<\/sup>/g) || []).length, 5, 'the figures do not point to their notes');
+    assert.equal((overview.match(/<div><span>\d<\/span>/g) || []).length, 5, 'the notes are not there');
     // a name cannot close the style it is quoted in
     const style = html.slice(html.indexOf('<style>'), html.indexOf('</style>'));
     assert.ok(!style.includes('</style><b>'), 'the organisation name broke out of the stylesheet');
@@ -292,6 +309,7 @@ test('the report is printed in the language asked for, every word of it', () => 
                 const meta = { reference: exports_.reference(list), generated: '2026-09-03T00:00:00.000Z', organisation: 'Acme', back: '/', lang, paper };
                 const html = exports_.report(list, meta, o);
                 assert.match(html, new RegExp('<html lang="' + lang + '">'), lang + ': the page does not say its language');
+                assert.match(html, /<svg class="chart"[^>]*role="img"/, lang + ': the overview has no chart of the days');
                 refs.add(meta.reference);
             }
         }
@@ -370,6 +388,14 @@ test('the PDF comes out on the paper asked for, set in real fonts', { timeout: 1
         assert.match(s, /\/BaseFont \/[A-Z]{6}\+Inter-Regular/, paper + ': the body is not set in Inter');
         assert.doesNotMatch(s, /\/Subtype \/Image/, paper + ': a picture got into the PDF');
         assert.ok(bytes.length < 400 * 1024, paper + ': ' + bytes.length + ' bytes');
+        // the outline: a bookmark for the statement and for every chapter, in
+        // order, each on a later page than the one before
+        const titles = ['Statement on screening', 'Overview of the period', 'Screenings and review', 'Sanctions coverage', 'API, team and evidence', 'Day by day'];
+        const marks = pdf.outline(bytes);
+        const at = titles.map((t) => (marks.find((m) => m.title === t) || {}).page);
+        assert.ok(at.every((n) => n > 1), paper + ': bookmarks missing: ' + JSON.stringify(marks));
+        assert.ok(at.every((n, i) => !i || n > at[i - 1]), paper + ': chapters out of order: ' + at.join(', '));
+        assert.deepEqual(exports_.chapterTitles('en'), titles.slice(1), 'the route reads the outline for other titles');
         // the count the preview shows is the PDF's own page tree
         const count = /\/Type \/Pages[^>]*\/Count (\d+)/.exec(s) || /\/Count (\d+)[^>]*\/Type \/Pages/.exec(s);
         assert.ok(count, paper + ': no page tree');
