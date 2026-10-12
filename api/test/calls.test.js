@@ -51,6 +51,8 @@ const GIVEN = new Set([
     'if', 'for', 'while', 'switch', 'catch', 'return', 'typeof', 'function',
     'do', 'else', 'try', 'finally', 'new', 'delete', 'void', 'in', 'of',
     'await', 'yield', 'case', 'throw', 'with', 'super', 'this', 'async',
+    // loading a module when it is first needed, which is the language's own
+    'import',
 ]);
 
 // A name is declared if the file names it anywhere a name can be introduced:

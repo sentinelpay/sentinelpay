@@ -229,15 +229,11 @@ test('the report is laid out on the paper asked for, A4 when none is', () => {
     assert.match(html, /\.sheet-lh \{ display:none; \}/, 'the head prints twice on paper');
     // A5 is narrower than a phone breakpoint: the phone's layout is for screens
     assert.match(html, /@media screen and \(max-width: 700px\)/, 'the phone layout applies to printed A5');
-    // under the statement and the last sheet, a place for "Page 2 of 7" in
-    // the paper's own language, filled once the PDF's pages are counted
-    assert.match(letter, /class="run-pg" data-n="2" data-tpl="Page \{n\} of \{all\}"/, 'the statement has no page number on screen');
     // after the statement, the overview and the chapters, each a sheet of its
-    // own and a page of its own, each with the number of the page it ends on
+    // own and a page of its own
     const chapters = html.split('class="sheet chapter"').slice(1);
     assert.deepEqual(chapters.map((c) => (/<h2 class="big">([^<]*)<\/h2>/.exec(c) || [])[1]),
-        ['Overview of the period', 'Screenings and review', 'Sanctions coverage', 'API, team and evidence', 'Day by day'], 'the chapters are not the ones the outline is read for');
-    chapters.forEach((c, i) => assert.match(c, new RegExp('class="run-pg" data-n="ch' + i + '"'), 'chapter ' + i + ' has no page number on screen'));
+        ['Overview of the period', 'Screenings and review', 'Sanctions coverage', 'API, team and evidence', 'Day by day'], 'the chapters are not the ones they were');
     assert.match(html, /\.chapter \{ break-before:page; \}/, 'a chapter does not start a page of its own');
     assert.match(html, /\.chapter \.part \{ break-inside:avoid; \}/, 'a section can leave two rows alone at the top of a page');
     // the overview: two sentences, the days as columns, the figures beside the
@@ -376,6 +372,42 @@ test('the page a PDF is made from needs nothing from outside it', () => {
     assert.match(print, /\.is-embed \.doc \{ padding:0; \}/, 'the embedded page prints its padding');
 });
 
+// The PDF's bookmarks, each with the page it points at: every bookmark names
+// its page by object number, and the page tree lists the pages in order.
+function outline(bytes) {
+    const s = Buffer.from(bytes).toString('latin1');
+    const objects = new Map();
+    // a dictionary ends at endobj, or at stream where binary data follows
+    for (const m of s.matchAll(/(?:^|[\r\n])(\d+) 0 obj\s*<<([\s\S]*?)>>\s*(endobj|stream)/g)) {
+        if (m[3] === 'endobj') objects.set(m[1], m[2]);
+    }
+    const root = [...objects.entries()].find(([, d]) => /\/Type\s*\/Pages\b/.test(d) && !/\/Parent\s/.test(d));
+    const order = [];
+    const walk = (num, depth) => {
+        const d = objects.get(num) || '';
+        if (depth > 20) return;
+        if (/\/Type\s*\/Pages\b/.test(d)) {
+            const kids = /\/Kids\s*\[([^\]]*)\]/.exec(d);
+            for (const k of (kids ? kids[1].match(/\d+(?= 0 R)/g) || [] : [])) walk(k, depth + 1);
+        } else order.push(num);
+    };
+    if (root) walk(root[0], 0);
+    const text = (raw) => {
+        if (raw[0] === '<') {
+            const b = Buffer.from(raw.slice(1, -1).replace(/\s+/g, ''), 'hex');
+            return b[0] === 0xfe && b[1] === 0xff ? b.slice(2).swap16().toString('utf16le') : b.toString('latin1');
+        }
+        return raw.slice(1, -1).replace(/\\([()\\])/g, '$1');
+    };
+    const out = [];
+    for (const d of objects.values()) {
+        const t = /\/Title\s*(\((?:\\.|[^\\)])*\)|<[0-9A-Fa-f\s]*>)/.exec(d);
+        const dest = /\/Dest\s*\[\s*(\d+) 0 R/.exec(d);
+        if (t && dest) out.push({ title: text(t[1]), page: order.indexOf(dest[1]) + 1 });
+    }
+    return out.sort((a, b) => a.page - b.page);
+}
+
 // The PDF itself, where this machine has a browser to make it with: the
 // paper asked for, a page for the cover, real fonts rather than drawings of
 // them, and no picture anywhere.
@@ -390,8 +422,8 @@ test('the PDF comes out on the paper asked for, set in real fonts', { timeout: 1
     };
     const list = exports_.sheets(out, { name: 'Acme' }, null);
     const meta = { reference: exports_.reference(list), generated: '2026-09-03T00:00:00.000Z', organisation: 'Acme', back: '/', forPdf: true };
-    for (const [paper, w, h] of [['a4', 595, 842], ['letter', 612, 792]]) {
-        const bytes = await pdf.render(exports_.report(list, { ...meta, paper }, out));
+    for (const [paper, w, h, mended] of [['a4', 595, 842, false], ['letter', 612, 792, false], ['a5', 420, 595, true], ['a3', 842, 1191, true]]) {
+        const bytes = await pdf.render(exports_.report(list, { ...meta, paper }, out), exports_.PAPERS[paper]);
         const s = bytes.toString('latin1');
         assert.ok(s.startsWith('%PDF-'), paper + ': not a PDF');
         const box = /\/MediaBox \[0 0 ([\d.]+) ([\d.]+)\]/.exec(s);
@@ -403,14 +435,19 @@ test('the PDF comes out on the paper asked for, set in real fonts', { timeout: 1
         // the outline: a bookmark for the statement and for every chapter, in
         // order, each on a later page than the one before
         const titles = ['Statement on screening', 'Overview of the period', 'Screenings and review', 'Sanctions coverage', 'API, team and evidence', 'Day by day'];
-        const marks = pdf.outline(bytes);
+        const marks = outline(bytes);
         const at = titles.map((t) => (marks.find((m) => m.title === t) || {}).page);
         assert.ok(at.every((n) => n > 1), paper + ': bookmarks missing: ' + JSON.stringify(marks));
         assert.ok(at.every((n, i) => !i || n > at[i - 1]), paper + ': chapters out of order: ' + at.join(', '));
-        assert.deepEqual(exports_.chapterTitles('en'), titles.slice(1), 'the route reads the outline for other titles');
-        // the count the preview shows is the PDF's own page tree
-        const count = /\/Type \/Pages[^>]*\/Count (\d+)/.exec(s) || /\/Count (\d+)[^>]*\/Type \/Pages/.exec(s);
-        assert.ok(count, paper + ': no page tree');
-        assert.equal(pdf.pages(bytes), Number(count[1]), paper + ': counted the pages wrong');
+        // On A5 and A3 the page Chromium writes is a fraction of a point larger
+        // than the one it lays out, which left white along the cover's edge;
+        // the cover is stretched to the page in an update to the file. On A4
+        // and Letter the two agree, and the file is left as it was written.
+        if (mended) {
+            assert.match(s, /\/Prev \d+>>\nstartxref\n\d+\n%%EOF\n$/, paper + ': the cover was not stretched to its page');
+            assert.match(s, /stream\nq 1\.\d+ 0 0 1\.\d+ 0 -?[\d.]+ cm\nendstream/, paper + ': the stretch is not drawn first');
+        } else {
+            assert.doesNotMatch(s, /\/Prev \d+>>\nstartxref/, paper + ': mended when there was nothing to mend');
+        }
     }
 });

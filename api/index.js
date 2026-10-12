@@ -907,6 +907,9 @@ app.use(express.static(path.join(__dirname, 'public'), {
     setHeaders: (res, filePath) => {
         if (/\.(png|jpe?g|webp|gif|svg|ico|avif|woff2?)$/i.test(filePath)) {
             res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        } else if (/\/vendor\/[^/]+-\d[^/]*\//.test(filePath.replace(/\\/g, '/'))) {
+            // a library at a version fixed in its path never changes under it
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
         } else if (/\.(css|js)$/i.test(filePath)) {
             res.setHeader('Cache-Control', 'public, max-age=86400');
         } else if (/\.html$/i.test(filePath)) {
@@ -2450,66 +2453,25 @@ async function usageReport(req, mine, extra) {
     return { out, list, meta };
 }
 
-// How many pages the PDF of a report comes to, and the page each chapter
-// starts on, by the figures it holds, the paper and the language. The same
-// figures on the same paper come to the same pages, so it is counted once and
-// remembered; the newest few hundred are kept and the oldest let go.
-const PAGE_COUNTS = new Map();
-function pagesOf(bytes, lang) {
-    const marks = pdf.outline(bytes);
-    const flat = (t) => String(t).replace(/\s+/g, ' ').trim();
-    return {
-        pages: pdf.pages(bytes),
-        starts: exportsFile.chapterTitles(lang).map((t) => (marks.find((m) => flat(m.title) === flat(t)) || {}).page || null),
-    };
-}
-function countedPages(orgId, meta, count) {
-    const key = orgId + '|' + meta.reference + '|' + meta.paper + '|' + meta.lang;
-    if (count === undefined) return PAGE_COUNTS.get(key);
-    PAGE_COUNTS.delete(key);
-    PAGE_COUNTS.set(key, count);
-    if (PAGE_COUNTS.size > 500) PAGE_COUNTS.delete(PAGE_COUNTS.keys().next().value);
-    return count;
-}
-const pagesLimiter = rateLimit({
+// The PDF drawn in the report dialog: one for every change of paper or
+// language while somebody looks, so more of them than are ever downloaded.
+const previewLimiter = rateLimit({
     handler: limitHandler,
     windowMs: 60 * 60 * 1000,
     max: 240,
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => `usage-pages:${ipKey(req.realIp)}`,
+    keyGenerator: (req) => `usage-preview:${ipKey(req.realIp)}`,
     store: new PostgresStore(),
     message: { error: 'Too many requests, please try again later' }
 });
 
-// The page count for the preview inside the usage page. A page on screen is
-// one long sheet and cannot know where the paper will break, so the count is
-// the PDF's own: the server lays the report out the way it does for the
-// download and says how many pages that came to, under the reference it was
-// counted for, so the preview only takes a count for the figures it shows.
-app.get('/v1/orgs/:id/usage/pages', pagesLimiter, async (req, res) => {
-    const me = await requireSession(req, res);
-    if (!me) return;
-    const mine = await orgs.membership(me.userId, req.params.id);
-    if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
-    res.set('Cache-Control', 'no-store, private');
-    if (!pdf.available()) return res.status(503).json({ error: 'The pages could not be counted right now.' });
-    const got = await usageReport(req, mine, { forPdf: true });
-    if (!got) return res.status(503).json({ error: 'The pages could not be counted right now.' });
-    let count = countedPages(mine.id, got.meta);
-    if (!count) {
-        try {
-            count = countedPages(mine.id, got.meta, pagesOf(await pdf.render(exportsFile.report(got.list, got.meta, got.out)), got.meta.lang));
-        } catch (err) {
-            console.error('[usage] pages: ' + err.message);
-            return res.status(503).json({ error: 'The pages could not be counted right now.' });
-        }
-    }
-    res.json({ ok: true, pages: count.pages, starts: count.starts, reference: got.meta.reference });
-});
-
+// The PDF shown in the report dialog rather than downloaded. It is the same
+// file, made the same way, but looking at a period is not an export: it is
+// counted when it is saved, below, under the reference it carries.
+const preview = (req) => req.params.format === 'pdf' && String(req.query.preview || '') === '1';
 app.get('/v1/orgs/:id/usage.:format', (req, res, next) => {
-    if (req.params.format === 'pdf') return pdfLimiter(req, res, next);
+    if (req.params.format === 'pdf') return (preview(req) ? previewLimiter : pdfLimiter)(req, res, next);
     next();
 }, async (req, res) => {
     const format = String(req.params.format || '');
@@ -2536,8 +2498,7 @@ app.get('/v1/orgs/:id/usage.:format', (req, res, next) => {
     else if (format === 'json') body = exportsFile.json(list, meta, out);
     else if (format === 'pdf') {
         try {
-            body = await pdf.render(exportsFile.report(list, meta, out));
-            countedPages(mine.id, meta, pagesOf(body, meta.lang));
+            body = await pdf.render(exportsFile.report(list, meta, out), exportsFile.PAPERS[meta.paper]);
         } catch (err) {
             console.error('[usage] pdf: ' + err.message);
             return res.status(503).send('The PDF could not be made right now.');
@@ -2565,7 +2526,7 @@ app.get('/v1/orgs/:id/usage.:format', (req, res, next) => {
     // filed under the organisation, so the evidence section can count what
     // left it and in which shape. A report previewed inside the usage page has
     // not left yet: it is counted when it is printed, below.
-    if (!embed) {
+    if (!embed && !preview(req)) {
         await accounts.audit('usage-export', {
             actor: String(me.userId), subject: 'org:' + mine.id, ip: req.realIp,
             detail: format + ' ' + out.period.from.slice(0, 10) + ' ' + meta.reference.slice(0, 16),
@@ -2574,24 +2535,27 @@ app.get('/v1/orgs/:id/usage.:format', (req, res, next) => {
     res.send(body);
 });
 
-// A report printed from the preview inside the usage page. The preview itself
-// is not an export -- somebody looked at a period -- but sending it to a
-// printer or a PDF is, and it is filed the way the other formats are, under
-// the reference the preview showed.
-app.post('/v1/orgs/:id/usage/printed', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+// A report saved or printed from the dialog inside the usage page. Looking
+// at it is not an export -- somebody looked at a period -- but saving the PDF
+// it showed, or printing the page from the browser where no PDF could be
+// made, is, and it is filed the way the other formats are, under the
+// reference the dialog showed.
+app.post('/v1/orgs/:id/usage/printed', requireCloudflareOrigin, pdfLimiter, async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
     const mine = await orgs.membership(me.userId, req.params.id);
     if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
     const body = req.body || {};
-    const ref = String(body.reference || '');
+    const ref = String(body.reference || '').replace(/^sha256:/, '');
     const from = String(body.from || '').slice(0, 10);
+    // printed from the browser, or the PDF the dialog showed, saved
+    const format = body.format === 'pdf' ? 'pdf' : 'html';
     if (!/^[0-9a-f]{64}$/.test(ref) || !/^\d{4}-\d{2}-\d{2}$/.test(from)) {
         return res.status(400).json({ error: 'That is not a report this page showed.' });
     }
     await accounts.audit('usage-export', {
         actor: String(me.userId), subject: 'org:' + mine.id, ip: req.realIp,
-        detail: 'html ' + from + ' ' + ref.slice(0, 16),
+        detail: format + ' ' + from + ' ' + ref.slice(0, 16),
     });
     res.set('Cache-Control', 'no-store, private');
     res.json({ ok: true });

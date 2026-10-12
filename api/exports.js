@@ -608,8 +608,7 @@ function lastDay(iso) {
 // so the modules stay square on every size and only the space under them
 // changes.
 // The chapters after the statement, each starting a page of its own, in the
-// order they print. The PDF's outline is built from these headings, and the
-// page each one starts on is read back from it to number the preview.
+// order they print. The PDF's bookmarks are built from these headings.
 const CHAPTERS = ['Overview of the period', 'Screenings and review', 'Sanctions coverage', 'API, team and evidence', 'Day by day'];
 
 // The period as columns, one for each day (or hour, for a day's report): the
@@ -839,19 +838,16 @@ function report(list, meta, out) {
 
     // on screen the sheet draws the head itself; on paper the page rule does
     const sheetHead = '<div class="lh sheet-lh">' + LETTERHEAD + '</div>';
-    // The foot drawn on screen, with room for "Page 2 of 7". A sheet on screen
-    // cannot know where the paper will break, so the numbers are filled in by
-    // the usage page once the server has counted the PDF's pages; until then,
-    // and with no count, the reference stands alone.
-    const sheetFoot = (n) => '<div class="run is-foot" aria-hidden="true"><span>' + esc(refLine) + '</span>' +
-        '<span class="run-pg" data-n="' + n + '" data-tpl="' + esc(tr('Page {n} of {all}')) + '"></span></div>';
+    // The foot drawn on screen, where the page rule cannot be. The dialog
+    // shows the PDF itself; this is for the paper opened on its own, which
+    // cannot know where its pages will break, so it carries the reference.
+    const sheetFoot = () => '<div class="run is-foot" aria-hidden="true"><span>' + esc(refLine) + '</span></div>';
     const dt = (k, v) => '<div><dt>' + h(k) + '</dt><dd>' + v + '</dd></div>';
 
     // A chapter: a sheet of its own on screen and a fresh page on paper, its
-    // title in the outline the PDF carries, and under it the number of the
-    // page it ends on, filled in once the PDF has been counted.
+    // title a bookmark in the PDF.
     const chapter = (i, inner) => '<section class="sheet chapter">' + sheetHead +
-        '<div class="l-rule"></div><h2 class="big">' + h(CHAPTERS[i]) + '</h2>' + inner + sheetFoot('ch' + i) + '</section>';
+        '<div class="l-rule"></div><h2 class="big">' + h(CHAPTERS[i]) + '</h2>' + inner + sheetFoot() + '</section>';
 
     // ---- the overview
     const n0 = (v) => Number(v) || 0;
@@ -1009,7 +1005,7 @@ function report(list, meta, out) {
         '<div class="confirm"><div class="confirm-t">' + h('Confirmation by the organisation') + '</div>' +
         '<p>' + h('This report has been reviewed and matches the records of the organisation.') + '</p>' +
         '<div class="fields">' + ['Name and role', 'Date', 'Signature'].map((l) => '<div>' + h(l) + '</div>').join('') + '</div></div>' +
-        sheetFoot('2') + '</section>' +
+        sheetFoot() + '</section>' +
 
         // ---- the period on one page: what happened in two sentences, the
         // days as columns, the figures beside the period before, and what the
@@ -1258,10 +1254,4 @@ function filename(out, format) {
         (out.scope === 'sandbox' ? '-sandbox' : '') + '.' + format;
 }
 
-// The chapter titles in a language, in order, as the PDF's bookmarks name them.
-function chapterTitles(lang) {
-    const sp = speaker(langOf(lang));
-    return CHAPTERS.map((k) => sp.tr(k));
-}
-
-module.exports = { chapterTitles, FORMATS, PAPERS, paperOf, langOf, MISSED, dictionary, sheets, reference, csv, json, xlsx, report, filename, crc32, csvCell };
+module.exports = { FORMATS, PAPERS, paperOf, langOf, MISSED, dictionary, sheets, reference, csv, json, xlsx, report, filename, crc32, csvCell };
