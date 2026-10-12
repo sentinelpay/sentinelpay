@@ -550,6 +550,11 @@ test('the dialog downloads the PDF the server makes, and prints only when it can
     assert.match(open, /fetch\(base \+ '\/usage\/pages' \+ q/, 'the preview does not ask for the page count');
     assert.match(open, /d\.reference !== ref/, 'the preview takes a page count for other figures');
     assert.match(open, /\/\^ch\\d\+\$\/\.test\(at\)/, 'a chapter sheet is not numbered by where the next one starts');
+    // the paper in the frame scrolls with the dashboard's scrollbar, in its theme
+    assert.match(open, /doc\.documentElement\.setAttribute\('data-theme', document\.documentElement\.getAttribute\('data-theme'\)/, 'the paper is not told the theme');
+    assert.match(open, /themeWatch\.disconnect\(\)/, 'the theme is watched after the dialog has gone');
+    const exp2 = fs.readFileSync(path.join(__dirname, '..', 'exports.js'), 'utf8');
+    assert.match(exp2, /html\[data-theme="dark"\]:has\(body\.is-embed\) \{\s*--sb-track:#131a33;/, 'the paper has no dark scrollbar');
     assert.match(index, /app\.get\('\/v1\/orgs\/:id\/usage\/pages', pagesLimiter,/, 'page counts are not limited');
     assert.match(index, /countedPages\(mine\.id, meta, pagesOf\(body, meta\.lang\)\)/, 'a downloaded PDF does not remember its count');
     const usage = fs.readFileSync(path.join(__dirname, '..', 'usage.js'), 'utf8');
