@@ -6923,6 +6923,24 @@
             (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     }
 
+    // Mozilla's PDF reader, the one Firefox shows PDFs with, served from here
+    // at a version fixed in its path. Loaded the first time a report is
+    // opened and kept for the next.
+    var PDF_READER = '/vendor/pdfjs-4.10.38/';
+    var pdfLoading = null;
+    function pdfReader() {
+        if (!pdfLoading) {
+            pdfLoading = import(PDF_READER + 'pdf.min.mjs').then(function (lib) {
+                lib.GlobalWorkerOptions.workerSrc = PDF_READER + 'pdf.worker.min.mjs';
+                return lib;
+            }, function (err) {
+                pdfLoading = null;
+                throw err;
+            });
+        }
+        return pdfLoading;
+    }
+
     function openReport(org, out) {
         var base = '/v1/orgs/' + encodeURIComponent(org.id);
         var q = '?period=' + encodeURIComponent(out.period.key) + '&scope=' + encodeURIComponent(out.scope) +
@@ -7024,36 +7042,172 @@
         });
         desk.appendChild(wait);
 
-        var frame = document.createElement('iframe');
-        frame.className = 'rep-frame';
-        frame.title = t('PDF report');
-        frame.setAttribute('loading', 'eager');
-        frame.addEventListener('load', function () {
-            var doc = null;
-            try { doc = frame.contentDocument; } catch (err) { doc = null; }
-            var got = doc && doc.body && doc.body.getAttribute('data-ref');
-            if (!got) {
-                // not the report: a sign-in page, an error. say so rather than
-                // offering to print it
-                desk.classList.add('is-bad');
-                wait.hidden = true;
-                desk.appendChild(emptyState('That did not load.', 'Close this and try again.'));
-                return;
-            }
-            print.dataset.ref = got;
-            print.disabled = false;
-            get.disabled = making;
+        // The pages are the PDF's own. The server makes the PDF for the paper
+        // and language chosen, and each of its pages is drawn here at its own
+        // size, so what is on screen is the file page for page, and what
+        // Download saves is the very file that was looked at.
+        var pages = document.createElement('div');
+        pages.className = 'rep-pages';
+        pages.setAttribute('role', 'document');
+        pages.setAttribute('aria-label', t('PDF report'));
+        desk.appendChild(pages);
+        m.body.appendChild(desk);
+
+        var shown = null;     // { blob, name, ref } of the PDF on screen
+        var loading = 0;      // the newest load; an older one that finishes late is dropped
+        var drawn = [];       // [{ page, canvas, box, width }] for every page on screen
+        var seen = null;
+
+        function ready() {
+            wait.hidden = true;
+            desk.classList.remove('is-bad');
             desk.classList.add('is-ready');
-            paintScrollbar();
-            numberPages(doc, got);
-        });
-        // The paper is a page of its own inside the frame and cannot see this
+            var gone = desk.querySelector('.empty');
+            if (gone) gone.parentNode.removeChild(gone);
+        }
+        function failed() {
+            desk.classList.add('is-bad');
+            wait.hidden = true;
+        }
+
+        // a page drawn at the width it is shown at, sharp on a dense screen,
+        // and drawn again if that width changes
+        function draw(d) {
+            var w = d.box.clientWidth;
+            if (!w || d.width === w) return;
+            d.width = w;
+            var ratio = Math.min(window.devicePixelRatio || 1, 3);
+            var view = d.page.getViewport({ scale: w / d.page.getViewport({ scale: 1 }).width * ratio });
+            d.canvas.width = Math.round(view.width);
+            d.canvas.height = Math.round(view.height);
+            d.page.render({ canvasContext: d.canvas.getContext('2d'), viewport: view });
+        }
+
+        function load() {
+            var mine = ++loading;
+            shown = null;
+            get.disabled = true;
+            print.hidden = true;
+            desk.classList.remove('is-ready', 'is-bad');
+            wait.hidden = false;
+            pages.textContent = '';
+            drawn = [];
+            if (seen) { seen.disconnect(); seen = null; }
+            var head = null;
+            fetch(base + '/usage.pdf' + q + '&paper=' + encodeURIComponent(paper) + '&preview=1', { credentials: 'same-origin' })
+                .then(function (r) {
+                    if (!r.ok) throw new Error(String(r.status));
+                    head = r;
+                    return r.arrayBuffer();
+                })
+                .then(function (bytes) {
+                    if (mine !== loading) return null;
+                    var cd = head.headers.get('Content-Disposition') || '';
+                    shown = {
+                        blob: new Blob([bytes], { type: 'application/pdf' }),
+                        name: (cd.match(/filename="([^"]+)"/) || [])[1] || 'sentinelpay-usage.pdf',
+                        ref: (head.headers.get('X-Report-Reference') || '').replace(/^sha256:/, '')
+                    };
+                    // the reader is handed a copy: it keeps the bytes it is given
+                    return pdfReader().then(function (lib) {
+                        return lib.getDocument({ data: new Uint8Array(bytes.slice(0)), isEvalSupported: false }).promise;
+                    });
+                })
+                .then(function (doc) {
+                    if (!doc || mine !== loading) return;
+                    var all = [];
+                    for (var i = 1; i <= doc.numPages; i++) all.push(doc.getPage(i));
+                    return Promise.all(all).then(function (list) {
+                        if (mine !== loading) return;
+                        seen = new IntersectionObserver(function (entries) {
+                            entries.forEach(function (e) {
+                                if (e.isIntersecting) draw(drawn[Number(e.target.getAttribute('data-i'))]);
+                            });
+                        }, { root: pages, rootMargin: '600px 0px' });
+                        list.forEach(function (page, i) {
+                            var size = page.getViewport({ scale: 1 });
+                            var box = document.createElement('div');
+                            box.className = 'rep-sheet';
+                            box.setAttribute('data-i', String(i));
+                            // the paper at its real size on screen, 96 to the
+                            // inch, and narrower only where the screen is
+                            box.style.maxWidth = Math.round(size.width * 96 / 72) + 'px';
+                            box.style.aspectRatio = size.width + ' / ' + size.height;
+                            var canvas = document.createElement('canvas');
+                            canvas.setAttribute('aria-hidden', 'true');
+                            box.appendChild(canvas);
+                            pages.appendChild(box);
+                            drawn.push({ page: page, canvas: canvas, box: box, width: 0 });
+                            seen.observe(box);
+                        });
+                        get.disabled = making;
+                        ready();
+                    });
+                })
+                .catch(function () {
+                    if (mine !== loading) return;
+                    fallBack();
+                });
+        }
+
+        // a change of width draws the pages in view again at the new one
+        var resized = null;
+        var onResize = function () {
+            clearTimeout(resized);
+            resized = setTimeout(function () {
+                drawn.forEach(function (d) {
+                    var r = d.box.getBoundingClientRect();
+                    var p = pages.getBoundingClientRect();
+                    if (r.bottom > p.top - 600 && r.top < p.bottom + 600) draw(d);
+                    else d.width = 0;
+                });
+            }, 150);
+        };
+        window.addEventListener('resize', onResize);
+
+        // Where no PDF could be made, the paper is shown the way it was before
+        // there was one: the page itself in a frame, with printing from the
+        // browser the way to take it away.
+        var frame = null;
+        function fallBack() {
+            if (!frame) {
+                frame = document.createElement('iframe');
+                frame.className = 'rep-frame';
+                frame.title = t('PDF report');
+                frame.addEventListener('load', function () {
+                    var doc = null;
+                    try { doc = frame.contentDocument; } catch (err) { doc = null; }
+                    // the empty page a frame starts with is not an answer
+                    if (doc && doc.location && doc.location.href === 'about:blank') return;
+                    var got = doc && doc.body && doc.body.getAttribute('data-ref');
+                    if (!got) {
+                        // not the report either: a sign-in page, an error
+                        failed();
+                        if (!desk.querySelector('.empty')) desk.appendChild(emptyState('That did not load.', 'Close this and try again.'));
+                        return;
+                    }
+                    print.dataset.ref = got;
+                    print.disabled = false;
+                    print.hidden = false;
+                    // Download asks the server again, which may answer now
+                    get.disabled = making;
+                    desk.classList.add('is-framed');
+                    paintScrollbar();
+                    ready();
+                });
+                frame.src = base + '/usage.html' + q + '&embed=1&paper=' + encodeURIComponent(paper);
+                desk.appendChild(frame);
+            } else {
+                frame.src = base + '/usage.html' + q + '&embed=1&paper=' + encodeURIComponent(paper);
+            }
+            toast(t('The PDF could not be made just now. You can print the report from the browser instead.'), 'bad');
+        }
+        // The paper in the frame is a page of its own and cannot see this
         // page's theme, so it is told, and told again if the theme changes
-        // while the dialog is open: its scrollbar is the dashboard's, light or
-        // dark, not the browser's.
+        // while the dialog is open: its scrollbar is the dashboard's.
         function paintScrollbar() {
             var doc = null;
-            try { doc = frame.contentDocument; } catch (err) { doc = null; }
+            try { doc = frame && frame.contentDocument; } catch (err) { doc = null; }
             if (doc && doc.documentElement) {
                 doc.documentElement.setAttribute('data-theme', document.documentElement.getAttribute('data-theme') || 'light');
             }
@@ -7061,62 +7215,23 @@
         var themeWatch = new MutationObserver(paintScrollbar);
         themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
-        // "Page 2 of 7" under each sheet. The sheet on screen is one long page
-        // and cannot know where the paper breaks, so the server counts the
-        // PDF it would make and this fills the numbers in, only for the
-        // figures the sheet shows, and only for the paper and language still
-        // chosen when the answer comes back.
-        var counting = 0;
-        function numberPages(doc, ref) {
-            var mine = ++counting;
-            fetch(base + '/usage/pages' + q + '&paper=' + encodeURIComponent(paper), { credentials: 'same-origin' })
-                .then(function (r) { return r.ok ? r.json() : null; })
-                .then(function (d) {
-                    if (mine !== counting || !d || d.reference !== ref || !(d.pages > 0)) return;
-                    // a chapter's sheet ends on the page before the next
-                    // chapter starts, the last one on the last page
-                    var starts = d.starts || [];
-                    [].forEach.call(doc.querySelectorAll('.run-pg'), function (el) {
-                        var at = el.getAttribute('data-n') || '';
-                        var n = at;
-                        if (at === 'last') n = d.pages;
-                        else if (/^ch\d+$/.test(at)) {
-                            var i = Number(at.slice(2));
-                            var next = null;
-                            for (var j = i + 1; j < starts.length && next === null; j++) next = starts[j];
-                            n = next ? next - 1 : d.pages;
-                        }
-                        if (!(Number(n) > 0)) return;
-                        el.textContent = String(el.getAttribute('data-tpl') || '').replace('{n}', n).replace('{all}', d.pages);
-                    });
-                })
-                .catch(function () { /* the reference stands alone */ });
-        }
-        // drawn again on the paper chosen, with the sketch back over it until
-        // the new one is in
-        function load() {
-            counting++;
-            print.disabled = true;
-            get.disabled = true;
-            desk.classList.remove('is-ready', 'is-bad');
-            wait.hidden = false;
-            frame.src = base + '/usage.html' + q + '&embed=1&paper=' + encodeURIComponent(paper);
-        }
         load();
-        desk.appendChild(frame);
-        m.body.appendChild(desk);
 
-        print.addEventListener('click', function () {
-            var win = frame.contentWindow;
-            if (!win) return;
-            // filed as an export the moment it is sent to a printer, under the
-            // reference the paper carries
+        // filed as an export when it leaves the page, under the reference the
+        // paper carries, in the shape it left in
+        function record(ref, format) {
             fetch(base + '/usage/printed', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'same-origin',
-                body: JSON.stringify({ reference: print.dataset.ref, from: String(out.period.from).slice(0, 10) })
-            }).catch(function () { /* the print still goes ahead */ });
+                body: JSON.stringify({ reference: ref, from: String(out.period.from).slice(0, 10), format: format })
+            }).catch(function () { /* it has left all the same */ });
+        }
+
+        print.addEventListener('click', function () {
+            var win = frame && frame.contentWindow;
+            if (!win) return;
+            record(print.dataset.ref, 'html');
             var onItsOwn = alone + '&paper=' + encodeURIComponent(paper) + '&print=1';
             if (reportOnItsOwn()) {
                 window.open(onItsOwn, '_blank', 'noopener');
@@ -7130,20 +7245,34 @@
             }
         });
 
-        // The PDF, fetched rather than linked, so the button can say it is
-        // being made -- a few seconds, longer for the first one after a quiet
-        // spell -- and say so plainly if it could not be. The server files it
-        // as an export when it makes it.
+        // Download saves the PDF on screen. Where there is none -- the preview
+        // could not be made -- it asks the server for one, says it is being
+        // made, and says plainly if it could not be.
         var making = false;
+        function save(blob, name) {
+            var href = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = href;
+            a.download = name;
+            document.body.appendChild(a);
+            a.click();
+            a.parentNode.removeChild(a);
+            setTimeout(function () { URL.revokeObjectURL(href); }, 60 * 1000);
+        }
         get.addEventListener('click', function () {
             if (making) return;
+            if (shown) {
+                save(shown.blob, shown.name);
+                record(shown.ref, 'pdf');
+                return;
+            }
             making = true;
             get.disabled = true;
             get.classList.add('is-busy');
             get.textContent = t('Preparing PDF…');
             var done = function () {
                 making = false;
-                get.disabled = !desk.classList.contains('is-ready');
+                get.disabled = false;
                 get.classList.remove('is-busy');
                 get.textContent = t('Download PDF');
             };
@@ -7152,22 +7281,10 @@
                     if (!r.ok) throw new Error(String(r.status));
                     var cd = r.headers.get('Content-Disposition') || '';
                     var name = (cd.match(/filename="([^"]+)"/) || [])[1] || 'sentinelpay-usage.pdf';
-                    return r.blob().then(function (b) { return { b: b, name: name }; });
-                })
-                .then(function (got) {
-                    var href = URL.createObjectURL(got.b);
-                    var a = document.createElement('a');
-                    a.href = href;
-                    a.download = got.name;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.parentNode.removeChild(a);
-                    setTimeout(function () { URL.revokeObjectURL(href); }, 60 * 1000);
-                    done();
+                    return r.blob().then(function (b) { save(b, name); done(); });
                 })
                 .catch(function () {
                     done();
-                    print.hidden = false;
                     toast(t('The PDF could not be made just now. You can print the report from the browser instead.'), 'bad');
                 });
         });
@@ -7183,6 +7300,8 @@
         var watch = new MutationObserver(function () {
             if (document.body.contains(m.box)) return;
             window.removeEventListener('message', onMsg);
+            window.removeEventListener('resize', onResize);
+            if (seen) seen.disconnect();
             themeWatch.disconnect();
             watch.disconnect();
         });

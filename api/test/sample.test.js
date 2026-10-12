@@ -514,7 +514,7 @@ test('the report for print opens in a dialog and is counted when printed', () =>
 
     const index = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
     assert.match(index, /'frame-ancestors ' \+ \(embed \? "'self'" : "'none'"\)/, 'the report can be framed by anyone, or by nobody');
-    assert.match(index, /if \(!embed\) \{\s*await accounts\.audit\('usage-export'/, 'a preview is counted as an export');
+    assert.match(index, /if \(!embed && !preview\(req\)\) \{\s*await accounts\.audit\('usage-export'/, 'a preview is counted as an export');
     assert.match(index, /\/\^\[0-9a-f\]\{64\}\$\/\.test\(ref\)/, 'the print record takes any reference it is handed');
 
     const exp = fs.readFileSync(path.join(__dirname, '..', 'exports.js'), 'utf8');
@@ -525,18 +525,23 @@ test('the report for print opens in a dialog and is counted when printed', () =>
     assert.doesNotMatch(embedded[1], /class="bar"/, 'the embedded report still carries its own toolbar');
 });
 
-// The PDF is made on the server and downloaded from the same dialog, the one
-// thing to do there; printing from the browser is offered only when the
-// server could not make one, which it says with a 503. A PDF that left is
-// counted in the evidence tally as one.
-test('the dialog downloads the PDF the server makes, and prints only when it cannot', () => {
+// The dialog shows the PDF the server makes, its own pages drawn by the PDF
+// reader, and Download saves those same bytes; printing from the browser is
+// offered only when the server could not make one, which it says with a 503.
+// Looking is not an export; a PDF that left is, and the tally counts it.
+test('the dialog shows the PDF itself, saves it, and prints only when it cannot', () => {
     const open = SRC.slice(SRC.indexOf('function openReport('), SRC.indexOf('// Included / used / left'));
-    assert.match(open, /fetch\(base \+ '\/usage\.pdf' \+ q/, 'the dialog does not ask the server for the PDF');
+    assert.match(open, /fetch\(base \+ '\/usage\.pdf' \+ q \+ '&paper=' \+ encodeURIComponent\(paper\) \+ '&preview=1'/, 'the dialog does not show the PDF itself');
+    assert.match(SRC, /var PDF_READER = '\/vendor\/pdfjs-[\d.]+\/';/, 'the PDF reader is not served from here at a fixed version');
+    assert.match(open, /getDocument\(\{ data: [^}]*isEvalSupported: false \}\)/, 'the PDF reader may evaluate code');
+    assert.match(open, /if \(shown\) \{\s*save\(shown\.blob, shown\.name\);\s*record\(shown\.ref, 'pdf'\);/, 'Download does not save the PDF on screen, or does not file it');
+    assert.match(open, /fetch\(base \+ '\/usage\.pdf' \+ q \+ '&paper=' \+ encodeURIComponent\(paper\), \{/, 'with no PDF on screen, Download has nothing to fall back on');
     assert.match(open, /className = 'btn btn-primary rep-get'/, 'the download is not the main button');
     assert.match(open, /t\('Preparing PDF…'\)/, 'the button does not say the PDF is being made');
     // printing from the browser is only the way out when the PDF failed
     assert.match(open, /print\.hidden = true;/, 'printing from the browser is offered beside the PDF again');
-    assert.match(open, /\.catch\(function \(\) \{\s*done\(\);\s*print\.hidden = false;/, 'a failed PDF leaves no way to print');
+    assert.match(open, /print\.hidden = false;/, 'a failed PDF leaves no way to print');
+    assert.match(open, /\.catch\(function \(\) \{\s*if \(mine !== loading\) return;\s*fallBack\(\);/, 'a PDF that could not be made leaves an empty dialog');
     assert.match(open, /win\.print\(\)/, 'printing from the browser is gone, even as the fallback');
     assert.doesNotMatch(open, /if \(reportOnItsOwn\(\)\) \{\s*var kept/, 'an iPhone is sent past the dialog again');
     assert.match(SRC, /\{ label: 'PDF', n: fmt\.pdf \|\| 0 \}/, 'a downloaded PDF is not in the evidence tally');
@@ -544,19 +549,16 @@ test('the dialog downloads the PDF the server makes, and prints only when it can
     const index = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
     assert.match(index, /pdf: 'application\/pdf',/, 'pdf is not a format the usage route knows');
     assert.match(index, /if \(format === 'pdf' && !pdf\.available\(\)\) return res\.status\(503\)/, 'a server without a browser does not say so');
-    assert.match(index, /if \(req\.params\.format === 'pdf'\) return pdfLimiter\(req, res, next\);/, 'PDFs are not limited');
-    // the preview's page numbers come from the PDF the server would make, and
-    // only for the figures the preview shows
-    assert.match(open, /fetch\(base \+ '\/usage\/pages' \+ q/, 'the preview does not ask for the page count');
-    assert.match(open, /d\.reference !== ref/, 'the preview takes a page count for other figures');
-    assert.match(open, /\/\^ch\\d\+\$\/\.test\(at\)/, 'a chapter sheet is not numbered by where the next one starts');
+    assert.match(index, /if \(req\.params\.format === 'pdf'\) return \(preview\(req\) \? previewLimiter : pdfLimiter\)\(req, res, next\);/, 'PDFs are not limited');
+    assert.match(index, /if \(!embed && !preview\(req\)\) \{\s*await accounts\.audit\('usage-export'/, 'a PDF looked at is filed as an export');
+    assert.match(index, /const format = body\.format === 'pdf' \? 'pdf' : 'html';/, 'a saved PDF is filed as a print');
+    // the paper's pages are no longer counted and numbered on screen
+    assert.doesNotMatch(index, /usage\/pages/, 'the page counting route is still there');
     // the paper in the frame scrolls with the dashboard's scrollbar, in its theme
     assert.match(open, /doc\.documentElement\.setAttribute\('data-theme', document\.documentElement\.getAttribute\('data-theme'\)/, 'the paper is not told the theme');
     assert.match(open, /themeWatch\.disconnect\(\)/, 'the theme is watched after the dialog has gone');
     const exp2 = fs.readFileSync(path.join(__dirname, '..', 'exports.js'), 'utf8');
     assert.match(exp2, /html\[data-theme="dark"\]:has\(body\.is-embed\) \{\s*--sb-track:#131a33;/, 'the paper has no dark scrollbar');
-    assert.match(index, /app\.get\('\/v1\/orgs\/:id\/usage\/pages', pagesLimiter,/, 'page counts are not limited');
-    assert.match(index, /countedPages\(mine\.id, meta, pagesOf\(body, meta\.lang\)\)/, 'a downloaded PDF does not remember its count');
     const usage = fs.readFileSync(path.join(__dirname, '..', 'usage.js'), 'utf8');
     assert.match(usage, /const byFormat = \{[^}]*\bpdf: 0/, 'the evidence section does not count PDFs');
 });

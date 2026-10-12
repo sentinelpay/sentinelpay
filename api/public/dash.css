@@ -5563,6 +5563,34 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
 .rep-desk.is-bad .rep-frame { display: none; }
 .rep-desk .empty { position: absolute; inset: 0; display: grid; place-content: center; }
 
+/* The PDF's own pages, each at its paper's shape and no wider than the paper
+   is at its real size, one under another on the desk, scrolled with the
+   dashboard's own scrollbar. */
+.rep-pages {
+    position: absolute;
+    inset: 0;
+    overflow-y: auto;
+    padding: 20px 16px 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    opacity: 0;
+    transition: opacity 0.24s ease;
+}
+.rep-desk.is-ready .rep-pages { opacity: 1; }
+.rep-desk.is-framed .rep-pages,
+.rep-desk.is-bad .rep-pages { display: none; }
+.rep-sheet {
+    flex: none;
+    width: 100%;
+    background: #fff;
+    border-radius: 3px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(14, 35, 88, 0.1), 0 10px 32px rgba(0, 0, 0, 0.18);
+}
+.rep-sheet canvas { display: block; width: 100%; height: 100%; }
+
 /* A sheet sketched where the paper will be, the paper's width and shape. */
 .rep-wait {
     position: absolute;
@@ -5606,4 +5634,5 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
     .rep-acts .rep-paper { flex: 1 1 0; }
     .rep-acts .rep-get { flex-basis: 100%; }
     .rep-wait { padding: 20px 16px; }
+    .rep-pages { padding: 12px 10px 24px; gap: 12px; }
 }
