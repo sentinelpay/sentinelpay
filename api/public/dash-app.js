@@ -7044,8 +7044,23 @@
             print.disabled = false;
             get.disabled = making;
             desk.classList.add('is-ready');
+            paintScrollbar();
             numberPages(doc, got);
         });
+        // The paper is a page of its own inside the frame and cannot see this
+        // page's theme, so it is told, and told again if the theme changes
+        // while the dialog is open: its scrollbar is the dashboard's, light or
+        // dark, not the browser's.
+        function paintScrollbar() {
+            var doc = null;
+            try { doc = frame.contentDocument; } catch (err) { doc = null; }
+            if (doc && doc.documentElement) {
+                doc.documentElement.setAttribute('data-theme', document.documentElement.getAttribute('data-theme') || 'light');
+            }
+        }
+        var themeWatch = new MutationObserver(paintScrollbar);
+        themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
         // "Page 2 of 7" under each sheet. The sheet on screen is one long page
         // and cannot know where the paper breaks, so the server counts the
         // PDF it would make and this fills the numbers in, only for the
@@ -7168,6 +7183,7 @@
         var watch = new MutationObserver(function () {
             if (document.body.contains(m.box)) return;
             window.removeEventListener('message', onMsg);
+            themeWatch.disconnect();
             watch.disconnect();
         });
         watch.observe(document.body, { childList: true });

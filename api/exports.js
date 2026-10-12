@@ -1215,6 +1215,18 @@ tr { break-inside:avoid; }
 /* inside the usage page: the sheets on whatever is behind the frame, not on a
    grey desk of their own */
 html:has(body.is-embed) { background:transparent; }
+/* and the dashboard's own scrollbar rather than the browser's: the same thin
+   bar in the same blues, in the theme the usage page passes in, which the
+   frame cannot read for itself */
+html:has(body.is-embed) {
+  --sb-track:#f0f0f2; --sb-thumb:rgba(0,145,200,.25); --sb-thumb-edge:rgba(0,145,200,.15); --sb-thumb-hover:rgba(0,145,200,.5);
+  scrollbar-width:thin; scrollbar-color:var(--sb-thumb) var(--sb-track); }
+html[data-theme="dark"]:has(body.is-embed) {
+  --sb-track:#131a33; --sb-thumb:rgba(0,200,230,.28); --sb-thumb-edge:rgba(0,200,230,.16); --sb-thumb-hover:rgba(0,200,230,.55); }
+.is-embed ::-webkit-scrollbar, html:has(body.is-embed)::-webkit-scrollbar { width:6px; height:6px; }
+html:has(body.is-embed)::-webkit-scrollbar-track { background:var(--sb-track); }
+html:has(body.is-embed)::-webkit-scrollbar-thumb { background:var(--sb-thumb); border-radius:10px; border:1px solid var(--sb-thumb-edge); }
+html:has(body.is-embed)::-webkit-scrollbar-thumb:hover { background:var(--sb-thumb-hover); }
 .is-embed .doc { padding:4px 0 28px; }
 .is-embed .sheet { box-shadow:0 1px 2px rgba(14,35,88,.1), 0 10px 32px rgba(0,0,0,.18); }
 
