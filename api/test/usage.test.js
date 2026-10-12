@@ -211,7 +211,11 @@ test('the report is laid out on the paper asked for, A4 when none is', () => {
     // the organisation to confirm it, at the foot of the same page
     const letter = html.slice(statement, figures);
     assert.ok(letter.includes('Confirmation by the organisation'), 'the confirmation is not with the statement');
-    assert.ok(letter.indexOf('class="seal"') < letter.indexOf('class="confirm"'), 'the seal is not above the confirmation');
+    // the reference is a sentence of the statement, not a box of its own,
+    // and the confirmation sits at the foot of the page
+    assert.match(letter, /<p>Every export of this period, CSV, Excel or JSON, carries the same reference, <span class="ref">sha256:[0-9a-f]{64}<\/span>, so a copy/, 'the reference is not in the statement');
+    assert.doesNotMatch(letter, /class="seal"|Made automatically from the records/, 'the closing block is back');
+    assert.match(html, /\.confirm \{ margin-top:auto;/, 'the confirmation is not held at the foot of the page');
     assert.equal((letter.match(/class="fields"/g) || []).length, 1, 'the statement asks for more than one signature');
     // every page after the cover carries our head, the mark and the name as
     // one picture so they line up, with a line under it across the page

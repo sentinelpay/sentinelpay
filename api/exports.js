@@ -1001,13 +1001,11 @@ function report(list, meta, out) {
         '<p>' + h(sandbox
             ? 'This is the sandbox scope. Its checks are test work and are not evidence of screening.'
             : 'Sandbox checks are test work. They spend no allowance and are left out of every figure here.') + '</p>' +
-        // at the foot of the page, whatever the length of the text above:
-        // who made it, its seal, and the organisation's confirmation
-        '<div class="l-end"><div class="l-by"><b>Sentinelpay</b><span>' +
-        h('Made automatically from the records, {when}', { when: generated }) + '</span></div>' +
-        '<div class="seal"><div class="seal-k">' + h('Report reference') + '</div>' +
-        '<div class="seal-h">sha256:' + esc(ref) + '</div>' +
-        '<div class="seal-n">' + h('Every export of this period carries the same reference, CSV, Excel and JSON alike, so a copy in any format can be matched to this one.') + '</div></div></div>' +
+        // the reference in the sentence that says what it is for, set so a
+        // reader copying it by eye can find where it starts and ends
+        '<p>' + h('Every export of this period, CSV, Excel or JSON, carries the same reference, {ref}, so a copy in any format can be matched to this one.',
+            { ref: '\u0001' }).replace('\u0001', '<span class="ref">sha256:' + esc(ref) + '</span>') + '</p>' +
+        // at the foot of the page, whatever the length of the text above
         '<div class="confirm"><div class="confirm-t">' + h('Confirmation by the organisation') + '</div>' +
         '<p>' + h('This report has been reviewed and matches the records of the organisation.') + '</p>' +
         '<div class="fields">' + ['Name and role', 'Date', 'Signature'].map((l) => '<div>' + h(l) + '</div>').join('') + '</div></div>' +
@@ -1110,14 +1108,8 @@ body { margin:0; color:var(--ink); font:var(--fs, 13px)/1.5 Inter, system-ui, sa
 h2.big { font:700 20px 'Plus Jakarta Sans', Inter, sans-serif; margin:0 0 14px; break-after:avoid; }
 h3 { font:700 14px 'Plus Jakarta Sans', Inter, sans-serif; margin:0 0 8px; padding-bottom:6px; border-bottom:1px solid var(--line); break-after:avoid; }
 .statement p { margin:0 0 10px; color:var(--ink-2); max-width:150mm; }
-.l-end { margin-top:auto; padding-top:1.6em; }
-.l-by b { display:block; font:700 1em 'Plus Jakarta Sans', Inter, sans-serif; }
-.l-by span { color:var(--ink-3); font-size:.88em; }
-.seal { margin:1.2em 0 2em; border:1px solid var(--line); border-radius:6px; padding:.9em 1.1em; background:var(--soft); }
-.seal-k { font-size:.8em; color:var(--ink-3); text-transform:uppercase; letter-spacing:.06em; font-weight:600; }
-.seal-h { font-weight:600; font-size:.88em; word-break:break-all; margin:.25em 0 .3em; }
-.seal-n { font-size:.85em; color:var(--ink-3); }
-.confirm { padding-top:1.2em; border-top:1px solid var(--line); }
+.statement .ref { color:var(--ink); font-weight:600; word-break:break-all; }
+.confirm { margin-top:auto; padding-top:1.2em; border-top:1px solid var(--line); }
 .confirm-t { font:700 .96em 'Plus Jakarta Sans', Inter, sans-serif; }
 .statement .confirm p { font-size:.88em; margin:.2em 0 0; }
 .fields { display:grid; grid-template-columns:2fr 1fr 1.3fr; gap:14px; margin-top:2.6em; }
@@ -1194,8 +1186,6 @@ tr { break-inside:avoid; }
 .paper-a5 .facts div { padding:.25em 0; }
 .paper-a5 .l-rule { margin:1.2em 0 .6em; }
 .paper-a5 .statement p { margin-bottom:7px; }
-.paper-a5 .l-end { padding-top:1em; }
-.paper-a5 .seal { margin:.8em 0 1.2em; }
 .paper-a5 .confirm { padding-top:.9em; }
 .paper-a5 .fields { margin-top:1.7em; gap:10px; }
 /* screens only: A5 is narrower than 700px too, and printed it took the
