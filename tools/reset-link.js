@@ -16,6 +16,15 @@
 //
 // It refuses to run against production, because on production the email works
 // and that is the path that should be used.
+//
+// On staging it can also let somebody in who has no account yet. Signing up
+// sends a code by email, which staging cannot do, so a new colleague could
+// not get an account of their own there at all. With --create the same link
+// is issued for an address nobody has; opening it asks for a name and a
+// password and makes the account, the way the reset page already does for an
+// address it does not know. Only where APP_ENV is staging:
+//
+//   railway run --environment staging node tools/reset-link.js them@example.com --create --site https://staging.sentinelpay.org
 
 const path = require('path');
 const db = require(path.join(__dirname, '..', 'api', 'db.js'));
@@ -32,7 +41,7 @@ const email = (plain[0] || '').trim();
 
 (async () => {
     if (!email) {
-        console.error('usage: node tools/reset-link.js <email> [--site https://staging.sentinelpay.org] [--lang hr]');
+        console.error('usage: node tools/reset-link.js <email> [--create] [--site https://staging.sentinelpay.org] [--lang hr]');
         process.exit(1);
     }
     if (process.env.NODE_ENV === 'production') {
@@ -62,10 +71,13 @@ const email = (plain[0] || '').trim();
         process.exit(1);
     }
     const who = await db.query('SELECT id FROM users WHERE email_hash = $1', [hash]);
-    if (!who.rowCount) {
+    const create = args.includes('--create');
+    if (!who.rowCount && !(create && String(process.env.APP_ENV || '').toLowerCase() === 'staging')) {
         console.error('no account with that address in this database.');
         console.error('check the address, and check that DATABASE_URL and SUBMISSIONS_KEY are the pair this site runs on:');
         console.error('a mismatched key hashes the address to something nobody has.');
+        if (create) console.error('--create only works where APP_ENV is staging.');
+        else console.error('to let a new colleague make an account on staging, add --create.');
         process.exit(1);
     }
 
@@ -81,7 +93,7 @@ const email = (plain[0] || '').trim();
         process.exit(1);
     }
 
-    console.log('account   ' + who.rows[0].id);
+    console.log('account   ' + (who.rowCount ? who.rows[0].id : 'none yet: opening the link makes one, asking for a name and a password'));
     console.log('expires   in ' + started.expiresInMin + ' minutes');
     console.log('');
     console.log(site + '/reset-password?token=' + encodeURIComponent(started.token));
