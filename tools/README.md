@@ -54,6 +54,15 @@ email works and is the path to use.
 `--site` is the site that database belongs to. Get it wrong and the link points
 at a deployment where the token does not exist.
 
+`--create` lets a new colleague into staging. Signing up sends a code by email,
+which staging cannot do, so there was no way to make a second account there.
+With `--create` the link is issued for an address that has no account, and
+opening it asks for a name and a password and makes one. It only works where
+`APP_ENV=staging`:
+
+    railway run --environment staging node tools/reset-link.js them@example.com \
+        --create --site https://staging.sentinelpay.org
+
 `DATABASE_URL` and `SUBMISSIONS_KEY` have to be the pair the site runs on. The
 address is stored hashed, so the wrong key hashes it to something nobody has and
 the tool reports no such account rather than a key mismatch -- the message says
