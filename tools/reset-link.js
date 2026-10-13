@@ -44,7 +44,11 @@ const email = (plain[0] || '').trim();
         console.error('usage: node tools/reset-link.js <email> [--create] [--site https://staging.sentinelpay.org] [--lang hr]');
         process.exit(1);
     }
-    if (process.env.NODE_ENV === 'production') {
+    // Staging runs with NODE_ENV=production too, for the secure cookie it
+    // needs behind https, so that alone does not say this is production:
+    // APP_ENV does.
+    const staging = String(process.env.APP_ENV || '').toLowerCase() === 'staging';
+    if (process.env.NODE_ENV === 'production' && !staging) {
         console.error('refusing to run against production: there the reset email works, so use it');
         process.exit(1);
     }
@@ -72,7 +76,7 @@ const email = (plain[0] || '').trim();
     }
     const who = await db.query('SELECT id FROM users WHERE email_hash = $1', [hash]);
     const create = args.includes('--create');
-    if (!who.rowCount && !(create && String(process.env.APP_ENV || '').toLowerCase() === 'staging')) {
+    if (!who.rowCount && !(create && staging)) {
         console.error('no account with that address in this database.');
         console.error('check the address, and check that DATABASE_URL and SUBMISSIONS_KEY are the pair this site runs on:');
         console.error('a mismatched key hashes the address to something nobody has.');

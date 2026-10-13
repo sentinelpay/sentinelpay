@@ -48,8 +48,9 @@ account can get back in.
 
 It writes the row the normal forgot-password path writes: same table, same
 hashed token, same expiry, same single use. Nobody types a password anywhere --
-the link asks for one. It refuses to run when `NODE_ENV=production`, where the
-email works and is the path to use.
+the link asks for one. It refuses to run on production, where the email works
+and is the path to use: when `NODE_ENV=production` and `APP_ENV` is not
+`staging` (staging runs with `NODE_ENV=production` too, for its secure cookie).
 
 `--site` is the site that database belongs to. Get it wrong and the link points
 at a deployment where the token does not exist.
