@@ -142,4 +142,15 @@ function full(now, plan) {
     };
 }
 
-module.exports = { full, NAME };
+// Where the sample may be served. On a deployed server only when it says it
+// is staging, in so many words; on a laptop only in development or a test
+// run, never on anything Railway started. Anything else, a production
+// server, a server that does not say what it is, gets none.
+function enabled(env) {
+    const e = env || {};
+    if (String(e.APP_ENV || '').toLowerCase() === 'staging') return true;
+    const deployed = Boolean(e.RAILWAY_ENVIRONMENT || e.RAILWAY_ENVIRONMENT_NAME || e.RAILWAY_PROJECT_ID);
+    return !deployed && ['development', 'test'].includes(e.NODE_ENV);
+}
+
+module.exports = { full, enabled, NAME };

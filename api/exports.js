@@ -745,23 +745,26 @@ const LETTERHEAD = '<svg class="lh-mark" viewBox="0 0 120 120" aria-hidden="true
 // the shapes on the grid. Starter is the dashboard's navy, Growth a deep
 // teal, Enterprise a violet near black. A report with no plan behind it, a
 // trial or a lapsed one, takes Starter's. The back of the report is the same
-// grid turned over, its shapes in the other order, and closes the document
-// the way the cover opens it.
+// shapes over the whole sheet, five rows of them in another order, with the
+// eye at its centre: nothing written on it, the way a book's back is.
 const COVERS = {
     starter: {
         bg: '#0b1020', a: '#131d4f', b: '#1b2a72', ink: ['#00e0ff', '#a020f0'],
         front: [['q-tl b', 'full a', 'dee-l b'], ['shield a', 'disc b', 'shield a'], ['disc b', 'dee-r a', 'q-br b']],
-        back: [['q-bl b', 'dee-l a', 'disc b'], ['shield a', 'disc b', 'shield a'], ['dee-r b', 'full a', 'q-tr b']],
+        back: [['dee-r a', 'q-bl b', 'full a'], ['q-bl b', 'dee-l a', 'disc b'], ['shield a', 'disc b', 'shield a'],
+            ['dee-r b', 'full a', 'q-tr b'], ['full a', 'q-tr b', 'dee-l a']],
     },
     growth: {
         bg: '#04161b', a: '#0a3440', b: '#0e4f5e', ink: ['#4cf0c2', '#00b4e6'],
         front: [['shield b', 'disc a', 'q-tr b'], ['dee-r a', 'disc b', 'dee-l a'], ['q-bl b', 'full a', 'shield b']],
-        back: [['q-tl b', 'full a', 'shield b'], ['dee-r a', 'disc b', 'dee-l a'], ['shield b', 'disc a', 'q-br b']],
+        back: [['disc a', 'shield b', 'q-br a'], ['q-tl b', 'full a', 'shield b'], ['dee-r a', 'disc b', 'dee-l a'],
+            ['shield b', 'disc a', 'q-br b'], ['q-tr a', 'dee-l b', 'disc a']],
     },
     enterprise: {
         bg: '#0b0716', a: '#1d1240', b: '#2c1a5e', ink: ['#b07cff', '#ff6ad5'],
         front: [['full a', 'shield b', 'full a'], ['disc b', 'disc a', 'disc b'], ['q-br a', 'dee-r b', 'q-bl a']],
-        back: [['q-tr a', 'dee-l b', 'q-tl a'], ['disc b', 'disc a', 'disc b'], ['full a', 'shield b', 'full a']],
+        back: [['dee-r b', 'full a', 'dee-l b'], ['q-tr a', 'dee-l b', 'q-tl a'], ['disc b', 'disc a', 'disc b'],
+            ['full a', 'shield b', 'full a'], ['q-br b', 'disc a', 'q-bl b']],
     },
 };
 const coverOf = (plan) => COVERS[String(plan || '').toLowerCase()] || COVERS.starter;
@@ -771,14 +774,17 @@ const coverOf = (plan) => COVERS[String(plan || '').toLowerCase()] || COVERS.sta
 // half, the iris of the eye, and the quarters and halves of that circle -- in
 // the plan's two colours on its dark. On the front the logo sits in the middle
 // module, the one bright thing on the page. Drawn in the paper's millimetres,
-// so the modules stay square on every size and only the space beside them
-// changes: under the grid on the front, over it on the back.
+// so the modules stay square on every size and only the space under the grid
+// changes. The back has five rows, centred on the sheet and cut at its top
+// and foot, so the eye in the middle row is in the middle of the page.
 function coverArt(paper, theme, back) {
     const W = paper.w;
     const H = paper.h;
     const m = W / 3;
     const n = (v) => Math.round(v * 100) / 100;
-    const top = back ? H - W : 0;
+    const rows = back ? theme.back.length : 3;
+    const top = back ? (H - rows * m) / 2 : 0;
+    const mid = (rows - 1) / 2;
     const id = back ? 'backInk' : 'coverInk';
     const at = (c, r) => [n(c * m), n(top + r * m)];
     const fill = (k) => theme[k];
@@ -830,8 +836,8 @@ function coverArt(paper, theme, back) {
     // the logo, centred in the middle module at the size it had on A4
     const k = m / 70;
     const lx = n(m + m / 2 - 60 * 0.37 * k);
-    const ly = n(m + m / 2 - 60 * 0.37 * k);
-    const logo = back ? '' :
+    const ly = n(top + mid * m + m / 2 - 60 * 0.37 * k);
+    const logo =
         `<g transform="translate(${lx} ${ly}) scale(${n(0.37 * k)})" fill="none" stroke="url(#${id})" ` +
         'stroke-width="6" stroke-linecap="round" stroke-linejoin="round">' +
         '<path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/>' +
@@ -841,19 +847,6 @@ function coverArt(paper, theme, back) {
         `<defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1">` +
         `<stop offset="0" stop-color="${theme.ink[0]}"/><stop offset="1" stop-color="${theme.ink[1]}"/></linearGradient></defs>` +
         `<rect width="${W}" height="${H}" fill="${theme.bg}"/>` + grid + logo + '</svg>';
-}
-
-// Our mark and name on the back, white on the plan's dark, the mark in the
-// plan's ink: the same letters as the head of every page.
-function backMark(theme) {
-    const H = 150, gap = 40, w = Math.round(H + gap + WORDMARK.w);
-    return '<svg class="b-mark" viewBox="0 0 ' + w + ' ' + H + '" aria-hidden="true">' +
-        '<defs><linearGradient id="bmInk" x1="0" y1="0" x2="1" y2="1">' +
-        '<stop offset="0" stop-color="' + theme.ink[0] + '"/><stop offset="1" stop-color="' + theme.ink[1] + '"/></linearGradient></defs>' +
-        '<g transform="scale(1.25)" fill="none" stroke="url(#bmInk)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">' +
-        '<path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/>' +
-        '<path d="M38 60 Q 60 40 82 60 Q 60 80 38 60 Z"/><circle cx="60" cy="60" r="6"/></g>' +
-        '<path transform="translate(' + (H + gap) + ' ' + ((H - WORDMARK.cap) / 2) + ')" fill="#fff" d="' + WORDMARK.d + '"/></svg>';
 }
 
 function report(list, meta, out) {
@@ -1250,13 +1243,9 @@ function report(list, meta, out) {
             return '<div class="part apx"><h3>' + h(a.title) + '</h3><div class="apx-cols">' +
                 table({ head: [a.what, a.unit, 'Share'], rows: a.rows }, { pct: true, keep: () => true, raw: true }, sp) + '</div></div>';
         }).join('') + tail) : '') +
-        // ---- the back: the cover's grid turned over, our name over it, and
-        // the reference again, so the last sheet of a printed copy still says
-        // which report it closes
-        '<section class="sheet cover back" style="' + coverVars + '">' + coverArt(paper, theme, true) +
-        '<div class="b-meta"><span>sentinelpay.org</span><span>' + esc(refLine) + '</span></div>' +
-        '<div class="b-end">' + backMark(theme) + '<p class="b-line">' + h('Sanctions screening for crypto.') + '</p></div>' +
-        '</section>' +
+        // ---- the back: the cover's shapes over the whole sheet and the eye
+        // at its centre, closing the report the way the cover opens it
+        '<section class="sheet cover back" style="' + coverVars + '">' + coverArt(paper, theme, true) + '</section>' +
         '</main>' +
         (meta.forPdf ? '' : '<script src="/report.js"></script>') + '</body></html>';
 }
@@ -1307,13 +1296,6 @@ body { margin:0; color:var(--ink); font:var(--fs, 13px)/1.5 Inter, system-ui, sa
 .c-meta b { font:600 1.76cqw/1.4 'Plus Jakarta Sans', Inter, sans-serif; color:#fff; }
 .c-meta i { font-style:normal; margin:0 1.2cqw; color:rgba(255,255,255,.55); }
 .c-meta span:last-child { text-align:right; }
-/* the back: the grid at the foot, our name over it, the address and the
-   reference at the head, where the front has its own at the foot */
-.b-meta { position:absolute; left:7.6cqw; right:7.6cqw; top:var(--foot); display:flex; justify-content:space-between;
-  gap:4cqw; font:500 1.5cqw/1.4 Inter, sans-serif; color:rgba(255,255,255,.62); }
-.b-end { position:absolute; left:7.6cqw; right:7.6cqw; bottom:calc(100cqw + var(--below)); }
-.b-mark { display:block; width:26cqw; height:auto; }
-.b-line { margin:1.6cqw 0 0; font:500 1.76cqw/1.4 Inter, sans-serif; color:rgba(255,255,255,.82); }
 .c-sbx { position:absolute; left:7.6cqw; right:7.6cqw; bottom:calc(var(--foot) + 4.1cqw); font:600 1.6cqw/1.4 Inter, sans-serif; color:#f0b45a; }
 
 /* ---- statement, laid out as a letter */
