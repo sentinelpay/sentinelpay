@@ -613,7 +613,8 @@ test('each plan has its own cover, and the report closes on the back of it', () 
         const html = exports_.report(list, { ...meta, plan }, sample.out);
         const covers = html.match(/<section class="sheet cover( back)?"/g) || [];
         assert.deepEqual(covers, ['<section class="sheet cover"', '<section class="sheet cover back"'], plan + ': not one cover at each end');
-        assert.ok(html.lastIndexOf('class="sheet cover back"') > html.lastIndexOf('End of report'), plan + ': the back is not last');
+        assert.ok(html.lastIndexOf('class="sheet cover back"') > html.lastIndexOf('<h3>Report details</h3>'), plan + ': the back is not last');
+        assert.doesNotMatch(html, /End of report/, plan + ': the report still says it has ended before its back cover');
         assert.notEqual(art(html), art(html, true), plan + ': the back is the front again');
         // the back is the shapes and the eye, and nothing written on it
         assert.match(art(html, true), /stroke="url\(#backInk\)"/, plan + ': the back has no eye at its centre');
