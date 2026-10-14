@@ -2494,7 +2494,10 @@ app.get('/v1/orgs/:id/usage.:format', (req, res, next) => {
     if (!EXPORT_TYPES[format]) return res.status(404).send('Not a format this exports to.');
     const me = await requireSession(req, res);
     if (!me) return;
-    const mine = await orgs.membership(me.userId, req.params.id);
+    // the sample reads nothing of any organisation's, so whoever is signed in
+    // can look at it under any number: nobody has to look up their own first
+    const mine = sampleReport(req) ? { id: String(req.params.id), name: '', slug: '' }
+        : await orgs.membership(me.userId, req.params.id);
     if (!mine) return res.status(404).send('You are not in that organisation.');
     // a server without a browser to print with says so, and the page falls
     // back to printing from the reader's own
