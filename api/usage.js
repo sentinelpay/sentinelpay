@@ -397,9 +397,12 @@ async function screeningsIn(orgId, from, to, sandbox, zone, grain) {
             `SELECT COALESCE(NULLIF(asset, ''), 'other') AS asset, count(*)::int AS n
                FROM screenings
               WHERE org_id = $1 AND at >= $2 AND at < $3 AND sandbox = $4
-           GROUP BY 1 ORDER BY n DESC, 1 LIMIT 12`,
+           GROUP BY 1 ORDER BY n DESC, 1`,
             args.slice(0, 4)
         ),
+        // Every chain and every project, not the first twelve: the same rows
+        // go into the report and the exports, which have to hold all of them,
+        // and the dashboard's own count of chains is the length of this list.
         // Which part of the business did the work. A company running an
         // exchange and a card product has one bill and two sets of rules, and
         // "who is spending the allowance" is the question they ask first when
@@ -410,7 +413,7 @@ async function screeningsIn(orgId, from, to, sandbox, zone, grain) {
                FROM screenings s
                LEFT JOIN projects p ON p.id = s.project_id
               WHERE s.org_id = $1 AND s.at >= $2 AND s.at < $3 AND s.sandbox = $4
-           GROUP BY 1, 2 ORDER BY n DESC LIMIT 12`,
+           GROUP BY 1, 2 ORDER BY n DESC`,
             args.slice(0, 4)
         ),
         // Decisions, bucketed the same way as the screenings they conclude.

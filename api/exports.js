@@ -625,7 +625,7 @@ function lastDay(iso) {
 // changes.
 // The chapters after the statement, each starting a page of its own, in the
 // order they print. The PDF's bookmarks are built from these headings.
-const CHAPTERS = ['Overview of the period', 'Screenings and review', 'Sanctions coverage', 'API, team and evidence', 'Day by day'];
+const CHAPTERS = ['Overview of the period', 'Screenings and review', 'Sanctions coverage', 'API, team and evidence', 'Day by day', 'Appendix'];
 
 // The period as columns, one for each day (or hour, for a day's report): the
 // flagged checks at the foot of each column in the darker blue and the clear
@@ -862,17 +862,73 @@ function report(list, meta, out) {
 
     // one group of a sheet's rows, as a sheet of its own
     const rowsOf = (sh, name) => ({ head: sh.head, rows: sh.rows.filter((r) => r[0] === name) });
+
+    // A list that can run long -- chains, projects, endpoints -- shows its ten
+    // largest in the chapter and the rest as one row, so the table answers
+    // where the work went in a glance. Every row is still in the report: the
+    // whole list goes to the appendix at the end, largest first.
+    const CAP = 10;
+    const appendix = [];
+    const cap = (sh, name, other, title, what, unit, at) => {
+        const i = at === undefined ? 2 : at;
+        const mine = sh.rows.filter((r) => name === null || r[0] === name);
+        if (mine.length <= CAP) return { sh, capped: false };
+        const sorted = mine.slice().sort((a, b) => (Number(b[i]) || 0) - (Number(a[i]) || 0));
+        const kept = sorted.slice(0, CAP);
+        const rest = sorted.slice(CAP);
+        const n = rest.reduce((a, r) => a + (Number(r[i]) || 0), 0);
+        const whole = sorted.reduce((a, r) => a + (Number(r[i]) || 0), 0);
+        const pct = whole ? Math.round(n / whole * 1000) / 10 : 0;
+        const otherRow = name === null ? [tr(other, { n: num(rest.length) }), n, pct] : [name, tr(other, { n: num(rest.length) }), n, pct];
+        // the names we gave rows translate; the ones people gave do not
+        const named = (x) => (x === 'No project' || x === 'Unnamed project' ? tr(x) : x);
+        appendix.push({ title, what, unit, rows: sorted.map((r) => (name === null ? r : r.slice(1))).map((r) => [named(r[0])].concat(r.slice(1))) });
+        const rows = [];
+        let placed = false;
+        for (const r of sh.rows) {
+            if (name !== null && r[0] !== name) { rows.push(r); continue; }
+            if (!placed) { rows.push(...kept, otherRow); placed = true; }
+        }
+        return { sh: { head: sh.head, rows }, capped: true };
+    };
+    const fullList = '<p class="part-note">' + h('The full list is in the appendix at the end of this report.') + '</p>';
     // Projects only when somebody used them: a period with every check outside
     // any project says so in a line rather than a table of one row at 100%.
     const projectless = !by('Screenings').rows.some((r) => r[0] === 'By project' && r[1] !== 'No project');
-    const screenings = projectless
+    const screens0 = projectless
         ? { head: by('Screenings').head, rows: by('Screenings').rows.filter((r) => r[0] !== 'By project') }
         : by('Screenings');
+    const byChainCut = cap(screens0, 'By chain', 'Other chains ({n})', 'Checks by chain', 'Chain', 'Checks');
+    const byProjectCut = cap(byChainCut.sh, 'By project', 'Other projects ({n})', 'Checks by project', 'Project', 'Checks');
+    const screenings = byProjectCut.sh;
+    const coverageCut = cap(by('Coverage'), 'By chain', 'Other chains ({n})', 'Designated addresses by chain', 'Chain', 'Designated addresses');
+    const apiCut = cap(by('API'), null, 'Other endpoints ({n})', 'API calls by endpoint', 'Endpoint', 'Calls', 1);
+
+    // the particulars of the report itself, last, the way an audit report
+    // keeps them after the findings rather than ahead of them
+    const tail = '<div class="part about"><h3>' + h('Report details') + '</h3><dl class="facts">' +
+        dt('Organisation', esc(org)) +
+        dt('Period', esc(span)) +
+        dt('Scope', esc(scopeName)) +
+        (sum.get('Plan') ? dt('Plan', esc(sum.get('Plan'))) : '') +
+        dt('Time zone', esc(sum.get('Time zone'))) +
+        dt('Generated', esc(generated)) +
+        // A4 is A4 in every language; only the American sizes have a name to say
+        dt('Paper', esc(/^US /.test(paper.name) ? tr(paper.name) : paper.name)) +
+        dt('Reference', '<span class="ref">sha256:' + esc(ref) + '</span>') +
+        '</dl></div>' +
+        '<p class="end">' + h('End of report') + '</p>';
+
+    // A short part goes to the next page whole rather than leave two rows of
+    // its table behind; a long one would leave an empty page doing that, so
+    // it breaks between rows like any table longer than a page.
+    const keepShort = (inner) => inner.split('<div class="part').map((seg, i) =>
+        (i && (seg.match(/<tr/g) || []).length <= 18 ? ' keep' : '') + seg).join('<div class="part');
 
     // A chapter: a sheet of its own on screen and a fresh page on paper, its
     // title a bookmark in the PDF.
     const chapter = (i, inner) => '<section class="sheet chapter">' + sheetHead +
-        '<div class="l-rule"></div><h2 class="big">' + h(CHAPTERS[i]) + '</h2>' + inner + sheetFoot() + '</section>';
+        '<div class="l-head"><div class="l-rule"></div><h2 class="big">' + h(CHAPTERS[i]) + '</h2></div>' + keepShort(inner) + sheetFoot() + '</section>';
 
     // ---- the overview
     const n0 = (v) => Number(v) || 0;
@@ -1005,8 +1061,8 @@ function report(list, meta, out) {
         // else: whose report it is and for when is in its first sentence, and
         // the rest of the particulars are at the end of the report.
         '<section class="sheet statement">' + sheetHead +
-        '<div class="l-rule"></div>' +
-        '<h2 class="big">' + h('Statement on screening') + '</h2>' +
+        '<div class="l-head"><div class="l-rule"></div>' +
+        '<h2 class="big">' + h('Statement on screening') + '</h2></div>' +
         '<p>' + h(sandbox
             ? 'This report sets out the screening {org} carried out through Sentinelpay between {from} and {to}, in the sandbox scope. It was generated on {generated} from the records as they stood at that moment.'
             : 'This report sets out the screening {org} carried out through Sentinelpay between {from} and {to}, in the production scope. It was generated on {generated} from the records as they stood at that moment.',
@@ -1039,7 +1095,8 @@ function report(list, meta, out) {
                 // chains and the names people gave their projects are printed as they are
                 keep: (r) => r[0] === 'By chain' || (r[0] === 'By project' && r[1] !== 'No project' && r[1] !== 'Unnamed project'),
             }, sp) +
-            (projectless ? '<p class="part-note">' + h('No check was assigned to a project.') + '</p>' : '') + '</div>' +
+            (projectless ? '<p class="part-note">' + h('No check was assigned to a project.') + '</p>' : '') +
+            (byChainCut.capped || byProjectCut.capped ? fullList : '') + '</div>' +
             '<div class="part"><h3>' + h('Review') + '</h3>' +
             '<p class="part-what">' + h('How long it took for a decision to be recorded on a flagged check, and how old the findings still waiting are.') + '</p>' +
             '<div class="pair">' +
@@ -1048,31 +1105,24 @@ function report(list, meta, out) {
             '<div><h4 class="pair-t">' + h('Still open, by age') + '</h4>' +
             table(rowsOf(by('Review'), 'Still open, by age'), { grouped: true, pct: true, bars: true, noGroupHead: true, heads: ['Findings', 'Share'] }, sp) + '</div>' +
             '</div></div>') +
-        chapter(2, table(by('Coverage'), {
+        chapter(2, table(coverageCut.sh, {
             grouped: true, pct: true, skipEmpty: true, keep: (r) => r[0] === 'By chain' || (r[0] === 'By list' && /^OFAC SDN$/.test(r[1])),
-        }, sp)) +
+        }, sp) + (coverageCut.capped ? fullList : '')) +
         chapter(3,
-            '<div class="part"><h3>' + h('API') + '</h3>' + table(by('API'), { pct: true, keep: () => true }, sp) + '</div>' +
+            '<div class="part"><h3>' + h('API') + '</h3>' + table(apiCut.sh, { pct: true, keep: () => true }, sp) +
+            (apiCut.capped ? fullList : '') + '</div>' +
             '<div class="part"><h3>' + h('Team') + '</h3>' + table(by('Team'), { grouped: true, pct: true }, sp) + '</div>' +
             '<div class="part"><h3>' + h('Evidence') + '</h3>' + table(by('Evidence'), { grouped: true, pct: true }, sp) + '</div>') +
         chapter(4, table({
             head: ['Day', 'Screenings', 'Flagged', 'Sanctioned', 'Decisions', 'API calls'],
             rows: daily.rows.map((r) => [r[0], r[1], r[2], r[3], r[5], r[8]]),
         }, { keep: () => true }, sp) +
-        // the particulars of the report itself, last, the way an audit report
-        // keeps them after the findings rather than ahead of them
-        '<div class="part about"><h3>' + h('Report details') + '</h3><dl class="facts">' +
-        dt('Organisation', esc(org)) +
-        dt('Period', esc(span)) +
-        dt('Scope', esc(scopeName)) +
-        (sum.get('Plan') ? dt('Plan', esc(sum.get('Plan'))) : '') +
-        dt('Time zone', esc(sum.get('Time zone'))) +
-        dt('Generated', esc(generated)) +
-        // A4 is A4 in every language; only the American sizes have a name to say
-        dt('Paper', esc(/^US /.test(paper.name) ? tr(paper.name) : paper.name)) +
-        dt('Reference', '<span class="ref">sha256:' + esc(ref) + '</span>') +
-        '</dl></div>' +
-        '<p class="end">' + h('End of report') + '</p>') +
+        (appendix.length ? '' : tail)) +
+        // ---- the appendix: every row of a list the chapters cut at ten
+        (appendix.length ? chapter(5, appendix.map((a) => {
+            return '<div class="part apx"><h3>' + h(a.title) + '</h3><div class="apx-cols">' +
+                table({ head: [a.what, a.unit, 'Share'], rows: a.rows }, { pct: true, keep: () => true, raw: true }, sp) + '</div></div>';
+        }).join('') + tail) : '') +
         '</main>' +
         (meta.forPdf ? '' : '<script src="/report.js"></script>') + '</body></html>';
 }
@@ -1159,6 +1209,11 @@ h3 { font:700 14px 'Plus Jakarta Sans', Inter, sans-serif; margin:0 0 8px; paddi
 .chapter .sheet-lh, .statement .sheet-lh { margin-bottom:1.7em; }
 .statement .l-rule { margin-top:0; }
 .about { margin-top:30px; break-inside:avoid; }
+/* the appendix lists run down the left column and on into the right, a page
+   at a time like a newspaper's; one column on A5 and narrow screens */
+.apx-cols { columns:2; column-gap:28px; }
+.apx table td:first-child { word-break:break-word; }
+.paper-a5 .apx-cols { columns:1; }
 .about .ref { word-break:break-all; font-weight:600; }
 .about .facts dd { max-width:70%; }
 .chapter .run.is-foot { margin-top:28px; }
@@ -1263,6 +1318,7 @@ tr { break-inside:avoid; }
   .statement { min-height:0; }
   .fields { grid-template-columns:1fr; gap:22px; }
   .pair { grid-template-columns:1fr; gap:16px; }
+  .apx-cols { columns:1; }
   td.sh-bar { width:28%; padding-left:8px; }
   /* a phone's width: the dates under the column heads may wrap, and the
      numbers keep a gap between them */
@@ -1318,7 +1374,9 @@ html:has(body.is-embed)::-webkit-scrollbar-thumb:hover { background:var(--sb-thu
   /* and a section in it goes to the next page whole rather than leave two
      rows of its table alone at the top of one; a section longer than a page
      breaks where it must */
-  .chapter .part { break-inside:avoid; }
+  .chapter .part.keep { break-inside:avoid; }
+  /* the title and the rule over it are one */
+  .l-head { break-inside:avoid; break-after:avoid; }
   tr.grp { break-after:avoid; }
 }
 `;

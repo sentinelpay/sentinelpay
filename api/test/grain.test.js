@@ -190,7 +190,8 @@ test('every measure under the chart has a series to draw', () => {
         require('node:path').join(__dirname, '..', 'usage.js'), 'utf8');
     const at = src.indexOf('const [sum, days, verdicts, assets, byProject, signed, scores]');
     assert.notStrictEqual(at, -1, 'screeningsIn no longer reads its windows in one go');
-    const query = src.slice(at, at + 3600);
+    // the window reaches the decisions query past the comments in between
+    const query = src.slice(at, at + 4400);
     for (const column of ['AS n', 'AS flagged', 'AS severe', 'AS addresses', 'AS assets']) {
         assert.ok(query.includes(column),
             'the bucket query no longer returns ' + column.replace('AS ', ''));
