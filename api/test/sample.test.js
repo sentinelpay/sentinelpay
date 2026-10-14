@@ -562,3 +562,16 @@ test('the dialog shows the PDF itself, saves it, and prints only when it cannot'
     const usage = fs.readFileSync(path.join(__dirname, '..', 'usage.js'), 'utf8');
     assert.match(usage, /const byFormat = \{[^}]*\bpdf: 0/, 'the evidence section does not count PDFs');
 });
+
+// A summary cell with a ceiling draws how much of it is used, the way a
+// meter reads; a plain count keeps the shape of its window. Empty at nothing,
+// the meters' warning colours near and at the limit, and the figure keeps its
+// line while the bar gives way.
+test('a figure against a limit draws a bar, a plain count its line', () => {
+    assert.match(SRC, /if \(c\.of && c\.used !== null\) \{\s*row\.appendChild\(useLimit\(c\.used, c\.of\)\);\s*\} else if \(c\.series\)/, 'a limited cell still draws a line');
+    const lim = SRC.slice(SRC.indexOf('function useLimit('), SRC.indexOf('function useSpark('));
+    assert.match(lim, /if \(used > 0\)/, 'nothing used draws a stub');
+    assert.match(lim, /pct >= 100\) bar\.className = 'is-full'/, 'a full allowance is not marked');
+    assert.match(lim, /pct >= 80\) bar\.className = 'is-near'/, 'a nearly full allowance is not marked');
+    assert.match(CSS, /\.use-mc-r:has\(\.use-mc-lim\) \.use-mc-v \{ flex: none; white-space: nowrap; \}/, 'the figure breaks to make room for the bar');
+});
