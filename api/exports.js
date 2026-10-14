@@ -559,24 +559,32 @@ function table(sh, opts, sp) {
     // its group, so what dominates reads before any number does. A muted row
     // -- the ordinary outcome, Clear -- is drawn in grey, and the eye goes to
     // the ones that are not.
+    // without groups the whole table is one: the count is the second column
+    const key = (r) => (o.grouped ? r[0] : '');
+    const count = (r) => Number(o.grouped ? r[2] : r[1]) || 0;
     const most = new Map();
     if (o.bars) {
-        for (const r of rows) most.set(r[0], Math.max(most.get(r[0]) || 0, Number(r[2]) || 0));
+        for (const r of rows) most.set(key(r), Math.max(most.get(key(r)) || 0, count(r)));
     }
     const bar = (r) => {
-        const top = most.get(r[0]) || 0;
-        const w = top ? Math.round((Number(r[2]) || 0) / top * 1000) / 10 : 0;
-        return '<td class="sh-bar">' + (w ? '<i' + (o.mute && o.mute.includes(r[1]) ? ' class="is-mute"' : '') +
+        const top = most.get(key(r)) || 0;
+        const w = top ? Math.round(count(r) / top * 1000) / 10 : 0;
+        return '<td class="sh-bar">' + (w ? '<i' + (o.mute && o.mute.includes(o.grouped ? r[1] : r[0]) ? ' class="is-mute"' : '') +
             ' style="width:' + w + '%"></i>' : '') + '</td>';
     };
     // rows grouped by their first column print as one table with a heading
-    // line for each group, which reads the way the page's own breakdowns do
+    // line for each group, which reads the way the page's own breakdowns do.
+    // Each group is a body of its own, and a short one is kept whole on paper:
+    // the last two chains of a list do not go over to a page by themselves.
+    const size = new Map();
+    for (const r of rows) size.set(key(r), (size.get(key(r)) || 0) + 1);
     let last = null;
     const body = rows.map((r) => {
         let pre = '';
         if (o.grouped && r[0] !== last) {
+            pre = (last === null ? '' : '</tbody>') + '<tbody' + (size.get(r[0]) <= 14 ? ' class="g-keep"' : '') + '>';
             last = r[0];
-            if (!o.noGroupHead) pre = '<tr class="grp"><th colspan="' + (r.length - 1 + (o.bars ? 1 : 0)) + '">' + esc(label(r[0])) + '</th></tr>';
+            if (!o.noGroupHead) pre += '<tr class="grp"><th colspan="' + (r.length - 1 + (o.bars ? 1 : 0)) + '">' + esc(label(r[0])) + '</th></tr>';
         }
         const cells = o.grouped ? r.slice(1) : r;
         return pre + '<tr>' + cells.map((x, i) => (i === 0
@@ -587,7 +595,7 @@ function table(sh, opts, sp) {
     if (o.heads) head = [head[0]].concat(o.heads);
     const ths = head.map((x, i) => '<th' + (i ? ' class="n"' : '') + '>' + esc(i === 0 && o.grouped ? '' : sp.tr(x)) + '</th>');
     if (o.bars) ths.splice(1, 0, '<th></th>');
-    return '<table' + (o.bars ? ' class="has-bars"' : '') + '><thead><tr>' + ths.join('') + '</tr></thead><tbody>' + body + '</tbody></table>';
+    return '<table' + (o.bars ? ' class="has-bars"' : '') + '><thead><tr>' + ths.join('') + '</tr></thead>' + (o.grouped ? '' : '<tbody>') + body + '</tbody></table>';
 }
 
 // The paper sizes a report can be printed on. A4 unless asked otherwise: it is
@@ -919,6 +927,47 @@ function report(list, meta, out) {
         '</dl></div>' +
         '<p class="end">' + h('End of report') + '</p>';
 
+    // two groups of a sheet side by side, each under its own small title
+    const pairOf = (sh, left, right, unit) => '<div class="pair">' + [left, right].map((g) =>
+        '<div><h4 class="pair-t">' + h(g) + '</h4>' +
+        table(rowsOf(sh, g), { grouped: true, pct: true, bars: true, noGroupHead: true, heads: [unit, 'Share'] }, sp) + '</div>').join('') + '</div>';
+
+    // Day by day: every day under its month (every hour under its day, for a
+    // day's report), the days with nothing on them set back so the busy ones
+    // read first, and the period's totals at the foot.
+    const dayTable = () => {
+        const hourly = out.period && out.period.grain === 'hour';
+        const head = [hourly ? 'Hour' : 'Day', 'Screenings', 'Flagged', 'Sanctioned', 'Decisions', 'API calls'];
+        const rows = daily.rows.map((r) => [r[0], r[1], r[2], r[3], r[5], r[8]]);
+        if (!rows.length) return '<p class="none">' + h('Nothing in this period.') + '</p>';
+        const whenOf = (v) => {
+            const d = new Date(String(v).slice(0, 10) + 'T12:00:00Z');
+            return hourly
+                ? { group: date(String(v).slice(0, 10)), label: String(v).slice(11, 16) }
+                : { group: d.toLocaleDateString(sp.locale, { month: 'long', year: 'numeric', timeZone: 'UTC' }),
+                    label: d.toLocaleDateString(sp.locale, { weekday: 'short', day: 'numeric', timeZone: 'UTC' }) };
+        };
+        // a month short enough to share a page with the one before stays in
+        // one piece; a whole month on A5 runs on over the page like any ledger
+        const size = new Map();
+        for (const r of rows) { const g = whenOf(r[0]).group; size.set(g, (size.get(g) || 0) + 1); }
+        let last = null;
+        const totals = [0, 0, 0, 0, 0];
+        const body = rows.map((r) => {
+            const w = whenOf(r[0]);
+            const vals = r.slice(1).map((x) => Number(x) || 0);
+            vals.forEach((x, i) => { totals[i] += x; });
+            const pre = w.group !== last ? (last === null ? '' : '</tbody>') +
+                '<tbody' + (size.get(w.group) <= 20 ? ' class="g-keep"' : '') + '><tr class="grp"><th colspan="6">' + esc(w.group) + '</th></tr>' : '';
+            last = w.group;
+            return pre + '<tr' + (vals.every((x) => !x) ? ' class="is-zero"' : '') + '><td>' + esc(w.label) + '</td>' +
+                vals.map((x) => '<td class="n">' + num(x) + '</td>').join('') + '</tr>';
+        }).join('');
+        return '<table class="days"><thead><tr>' + head.map((x, i) => '<th' + (i ? ' class="n"' : '') + '>' + h(x) + '</th>').join('') +
+            '</tr></thead>' + body + '</tbody><tfoot><tr class="tot"><td>' + h('Total') + '</td>' +
+            totals.map((x) => '<td class="n">' + num(x) + '</td>').join('') + '</tr></tfoot></table>';
+    };
+
     // A short part goes to the next page whole rather than leave two rows of
     // its table behind; a long one would leave an empty page doing that, so
     // it breaks between rows like any table longer than a page.
@@ -1105,21 +1154,33 @@ function report(list, meta, out) {
             '<div><h4 class="pair-t">' + h('Still open, by age') + '</h4>' +
             table(rowsOf(by('Review'), 'Still open, by age'), { grouped: true, pct: true, bars: true, noGroupHead: true, heads: ['Findings', 'Share'] }, sp) + '</div>' +
             '</div></div>') +
-        chapter(2, table(coverageCut.sh, {
-            grouped: true, pct: true, skipEmpty: true, keep: (r) => r[0] === 'By chain' || (r[0] === 'By list' && /^OFAC SDN$/.test(r[1])),
-        }, sp) + (coverageCut.capped ? fullList : '')) +
+        chapter(2,
+            '<p class="part-what">' + h('What the checks are matched against: the addresses on the sanctions lists, by list, by programme and by chain, as the lists stood when the report was made.') + '</p>' +
+            table(coverageCut.sh, {
+                grouped: true, pct: true, skipEmpty: true, bars: true, heads: ['Designated addresses', 'Share'],
+                keep: (r) => r[0] === 'By chain' || (r[0] === 'By list' && /^OFAC SDN$/.test(r[1])),
+            }, sp) + (coverageCut.capped ? fullList : '')) +
         chapter(3,
-            '<div class="part"><h3>' + h('API') + '</h3>' + table(apiCut.sh, { pct: true, keep: () => true }, sp) +
+            '<div class="part"><h3>' + h('API') + '</h3>' +
+            '<p class="part-what">' + h('Calls to the API in the period, by endpoint.') + '</p>' +
+            table(apiCut.sh, { pct: true, keep: () => true, bars: true, heads: ['Calls', 'Share'] }, sp) +
             (apiCut.capped ? fullList : '') + '</div>' +
-            '<div class="part"><h3>' + h('Team') + '</h3>' + table(by('Team'), { grouped: true, pct: true }, sp) + '</div>' +
-            '<div class="part"><h3>' + h('Evidence') + '</h3>' + table(by('Evidence'), { grouped: true, pct: true }, sp) + '</div>') +
-        chapter(4, table({
-            head: ['Day', 'Screenings', 'Flagged', 'Sanctioned', 'Decisions', 'API calls'],
-            rows: daily.rows.map((r) => [r[0], r[1], r[2], r[3], r[5], r[8]]),
-        }, { keep: () => true }, sp) +
+            '<div class="part"><h3>' + h('Team') + '</h3>' +
+            '<p class="part-what">' + h('The people in the organisation, by role and by when they last signed in, and how many sign in with a second factor.') + '</p>' +
+            pairOf(by('Team'), 'By role', 'Last signed in', 'Members') +
+            '<div class="pair-after"><h4 class="pair-t">' + h('Security') + '</h4>' +
+            table(rowsOf(by('Team'), 'Security'), { grouped: true, pct: true, bars: true, noGroupHead: true, heads: ['Members', 'Share'] }, sp) + '</div></div>' +
+            '<div class="part"><h3>' + h('Evidence') + '</h3>' +
+            '<p class="part-what">' + h('The sealed records the organisation holds, by age and by kind, as they stood when the report was made.') + '</p>' +
+            pairOf(by('Evidence'), 'Records, by age', 'Sealed, by kind', 'Records') + '</div>') +
+        chapter(4,
+            '<p class="part-what">' + h(out.period && out.period.grain === 'hour'
+                ? 'Every hour in the period, in the organisation’s time zone, {zone}.'
+                : 'Every day in the period, in the organisation’s time zone, {zone}.', { zone: sum.get('Time zone') || 'UTC' }) + '</p>' +
+            dayTable() +
         (appendix.length ? '' : tail)) +
         // ---- the appendix: every row of a list the chapters cut at ten
-        (appendix.length ? chapter(5, appendix.map((a) => {
+        (appendix.length ? chapter(5, '<p class="part-what">' + h('Every row of the lists the chapters show ten of, largest first.') + '</p>' + appendix.map((a) => {
             return '<div class="part apx"><h3>' + h(a.title) + '</h3><div class="apx-cols">' +
                 table({ head: [a.what, a.unit, 'Share'], rows: a.rows }, { pct: true, keep: () => true, raw: true }, sp) + '</div></div>';
         }).join('') + tail) : '') +
@@ -1270,6 +1331,15 @@ td.sh-bar i { display:block; height:7px; background:linear-gradient(90deg, #00b4
 td.sh-bar i.is-mute { background:rgba(14,35,88,.14); }
 .pair { display:grid; grid-template-columns:1fr 1fr; gap:30px; }
 .pair-t { font:700 .92em 'Plus Jakarta Sans', Inter, sans-serif; margin:0 0 6px; }
+.pair-after { margin-top:18px; }
+/* day by day: the empty days set back, the totals ruled off at the foot */
+/* a ledger: tighter than the other tables, so a month of days stands on one page of A4 */
+table.days td { padding:1.5px 0; line-height:1.35; }
+table.days tr.grp th { padding:8px 0 3px; }
+table.days tr.is-zero td { color:var(--ink-4); }
+table.days tr.grp th { color:var(--ink); text-transform:capitalize; }
+table.days tfoot td { font-weight:600; border-top:1px solid var(--ink); border-bottom:0; padding-top:6px; }
+table.days tfoot { display:table-row-group; }
 h3:has(+ .part-what) { border:0; padding-bottom:0; margin-bottom:6px; }
 table.has-bars tr.grp th { color:var(--ink); }
 /* side by side the labels keep to one line and the bar takes what is left */
@@ -1378,6 +1448,13 @@ html:has(body.is-embed)::-webkit-scrollbar-thumb:hover { background:var(--sb-thu
   /* the title and the rule over it are one */
   .l-head { break-inside:avoid; break-after:avoid; }
   tr.grp { break-after:avoid; }
+  tbody.g-keep { break-inside:avoid; }
+  table.days tbody:last-of-type tr:last-child { break-after:avoid; }
+  /* on A5 the two halves of a pair stand one over the other, and a part as
+     tall as that may break between them rather than leave a page half empty */
+  .paper-a5 .chapter .part.keep:has(.pair) { break-inside:auto; }
+  .paper-a5 .pair > div, .paper-a5 .pair-after { break-inside:avoid; }
+  .chapter .part h3, .chapter .part .part-what, h4.pair-t { break-after:avoid; break-inside:avoid; }
 }
 `;
 
