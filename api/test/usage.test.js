@@ -249,6 +249,15 @@ test('the report is laid out on the paper asked for, A4 when none is', () => {
     assert.match(detail, /<table class="has-bars">/, 'the breakdowns have no bars');
     assert.match(detail, /<div class="pair"><div><h4 class="pair-t">Time to a decision<\/h4>/, 'the review tables are not side by side');
     assert.doesNotMatch(html, /\.sh-bar i \{[^}]*border-radius/, 'a rounded gradient bar goes into the PDF as a picture');
+    // coverage, the API, the team and the evidence read the way the
+    // screenings do: what each measures in a line, and a bar beside every count
+    const [coverage, rest] = [chapters[2], chapters[3]];
+    assert.match(coverage, /<p class="part-what">What the checks are matched against/, 'the coverage does not say what it measures');
+    for (const what of ['Calls to the API in the period', 'The people in the organisation', 'The sealed records the organisation holds']) {
+        assert.match(rest, new RegExp('<p class="part-what">' + what), what + ' is not said');
+    }
+    assert.match(rest, /<div class="pair"><div><h4 class="pair-t">By role<\/h4>/, 'the team tables are not side by side');
+    assert.match(rest, /<div class="pair"><div><h4 class="pair-t">Records, by age<\/h4>/, 'the evidence tables are not side by side');
     // the overview: two sentences, the days as columns, the figures beside the
     // period before, and what the words in them mean
     const overview = chapters[0];
@@ -515,7 +524,7 @@ test('a long list shows its ten largest and keeps every row in the appendix', { 
         period: { from: '2026-09-01T00:00:00.000Z', to: '2026-09-03T00:00:00.000Z' }, scope: 'live', zone: 'UTC',
         screenings: { total: chains.reduce((a, c) => a + c.n, 0), flagged: 0, clear: 1, addresses: 1, assetCount: 64, verdicts: { clear: 1 },
             assets: chains, projects: Array.from({ length: 200 }, (_, i) => ({ id: String(i + 1), name: 'Project ' + (i + 1), n: 1000 - i })),
-            days: [{ day: '2026-09-01', n: 1, flagged: 0, severe: 0, addresses: 1 }] },
+            days: [{ day: '2026-09-01', n: 1, flagged: 0, severe: 0, addresses: 1 }, { day: '2026-09-02', n: 0, flagged: 0, severe: 0, addresses: 0 }] },
         kinds: { live: line(1) },
         api: { calls: line(1), deliveries: line(0), byEndpoint: Array.from({ length: 15 }, (_, i) => ({ path: 'GET /v1/e' + i, n: 100 - i })) },
         lists: { byList: { ofac: 1 }, byTheme: {}, byChain: chains.slice(0, 24) },
@@ -530,6 +539,18 @@ test('a long list shows its ten largest and keeps every row in the appendix', { 
     assert.match(detail, /<td>Other chains \(54\)<\/td>/, 'the rest of the chains are not one row');
     assert.match(detail, /<td>Other projects \(190\)<\/td>/, 'the rest of the projects are not one row');
     assert.match(chapters[3], /<td>Other endpoints \(5\)<\/td>/, 'the rest of the endpoints are not one row');
+    assert.match(chapters[2], /<table class="has-bars">/, 'the coverage has no bars');
+    // a group of a breakdown short enough to keep is kept whole on paper, so
+    // its last two rows never go over to a page of their own
+    assert.match(chapters[2], /<tbody class="g-keep"><tr class="grp">/, 'a short group can be split over two pages');
+    assert.match(html, /tbody\.g-keep \{ break-inside:avoid; \}/, 'a short group can be split over two pages');
+    // day by day: every day under its month, the quiet ones set back, the
+    // period's totals at the foot
+    const days = chapters[4];
+    assert.match(days, /<p class="part-what">Every day in the period, in the organisation’s time zone, UTC\.<\/p>/, 'the days do not say whose clock they keep');
+    assert.match(days, /<table class="days">[\s\S]*<tr class="grp"><th colspan="6">September 2026<\/th><\/tr>/, 'the days are not under their month');
+    assert.match(days, /<tr class="is-zero"><td>Wed 2<\/td>/, 'a day with nothing on it is not set back');
+    assert.match(days, /<tfoot><tr class="tot"><td>Total<\/td><td class="n">1<\/td>/, 'the days have no total');
     assert.match(detail, /The full list is in the appendix at the end of this report\./, 'the chapter does not say where the rest is');
     const appendix = chapters[5] || '';
     assert.match(appendix, /<h2 class="big">Appendix<\/h2>/, 'there is no appendix');
