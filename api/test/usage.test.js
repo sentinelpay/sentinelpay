@@ -573,3 +573,28 @@ test('a long list shows its ten largest and keeps every row in the appendix', { 
         .map((x) => (marks.find((m) => m.title === x) || {}).page);
     assert.ok(order.every((n, i) => n && (!i || n > order[i - 1])), 'the chapters are out of order: ' + order.join(', '));
 });
+
+// The sample a whole year fills: every chapter full, the appendix holding
+// what the chapters cut, and an axis wide enough for numbers in the tens of
+// thousands. A fixed one printed a day's 60.000 as "0.000".
+test('the full sample fills every chapter, and the chart has room for its numbers', { timeout: 120000 }, async (t) => {
+    const sample = require('../report-sample.js').full(new Date('2026-10-14T10:00:00Z'));
+    const list = exports_.sheets(sample.out, sample.org, sample.sub);
+    for (const lang of ['en', 'de', 'hr']) {
+        const meta = { reference: exports_.reference(list), generated: '2026-10-14T10:00:00Z', organisation: sample.org.name, back: '/', forPdf: true, lang, paper: 'a5' };
+        const html = exports_.report(list, meta, sample.out);
+        const chapters = html.split('class="sheet chapter"').slice(1);
+        assert.equal(chapters.length, 6, lang + ': a chapter is missing');
+        const days = chapters[4].match(/<table class="days">[\s\S]*?<\/table>/)[0];
+        assert.equal((days.match(/<tr( class="is-zero")?><td>/g) || []).length, 365, lang + ': a day of the year is missing');
+        assert.equal((days.match(/<tr class="grp">/g) || []).length, 13, lang + ': the days are not under their months');
+        for (const [, x, label] of chapters[0].matchAll(/<text x="([\d.]+)" y="[\d.]+" text-anchor="end">([^<]+)<\/text>/g)) {
+            assert.ok(Number(x) >= label.length * 8, lang + ': "' + label + '" has ' + x + ' units to stand in');
+        }
+        // a group breaks over a page only with three rows on either side:
+        // its head and first three are one body, its last three another
+        assert.doesNotMatch(html, /<tbody( class="g-keep")?><\/tbody>/, lang + ': an empty body in a table');
+        assert.match(days, /<tbody class="g-keep"><tr class="grp"><th colspan="6">[^<]+<\/th><\/tr>(<tr[^>]*>(?:(?!<\/tr>)[\s\S])*<\/tr>){3}<\/tbody><tbody>/, lang + ': a month does not hold its first three days');
+    }
+    assert.equal(sample.org.name.length, 80, 'the sample name is not the longest one allowed');
+});
