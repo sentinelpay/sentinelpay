@@ -2513,7 +2513,7 @@ app.get('/v1/orgs/:id/usage.:format', (req, res, next) => {
     const embed = meta.embed;
     let body;
     if (format === 'csv') body = exportsFile.csv(list, meta);
-    else if (format === 'xlsx') body = exportsFile.xlsx(list, meta);
+    else if (format === 'xlsx') body = exportsFile.xlsx(list, meta, out);
     else if (format === 'json') body = exportsFile.json(list, meta, out);
     else if (format === 'pdf') {
         try {
@@ -2541,7 +2541,7 @@ app.get('/v1/orgs/:id/usage.:format', (req, res, next) => {
         res.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
     } else {
         // the sample opens in the browser to be looked at; it is nobody's file
-        res.set('Content-Disposition', (sampleReport(req) ? 'inline' : 'attachment') + '; filename="' + exportsFile.filename(out, format) + '"');
+        res.set('Content-Disposition', (sampleReport(req) ? 'inline' : 'attachment') + '; filename="' + exportsFile.filename(out, format, meta) + '"');
     }
     // filed under the organisation, so the evidence section can count what
     // left it and in which shape. A report previewed inside the usage page has
