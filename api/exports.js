@@ -986,8 +986,7 @@ function report(list, meta, out) {
         // A4 is A4 in every language; only the American sizes have a name to say
         dt('Paper', esc(/^US /.test(paper.name) ? tr(paper.name) : paper.name)) +
         dt('Reference', '<span class="ref">sha256:' + esc(ref) + '</span>') +
-        '</dl></div>' +
-        '<p class="end">' + h('End of report') + '</p>';
+        '</dl></div>';
 
     // two groups of a sheet side by side, each under its own small title
     const pairOf = (sh, left, right, unit) => '<div class="pair">' + [left, right].map((g) =>
@@ -1423,7 +1422,6 @@ td { padding:4px 0; border-bottom:1px solid var(--line); }
 tr.grp th { text-align:left; font-weight:700; padding:12px 0 4px; border-bottom:1px solid var(--line); }
 tr { break-inside:avoid; }
 .none { color:var(--ink-3); margin:0; }
-.end { margin:24px 0 0; font-size:10px; color:var(--ink-3); word-break:break-all; }
 
 /* the sandbox: a band on the cover and the word across every page, faint
    enough to read through and impossible to miss */
