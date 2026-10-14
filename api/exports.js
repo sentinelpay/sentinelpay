@@ -432,44 +432,115 @@ function excelDate(v) {
     return { serial: Math.round((t - EXCEL_EPOCH) / 60000) / 1440, timed: Boolean(m[4]) };
 }
 
-// The cell styles, by their place in styles.xml below.
-const XS = { text: 0, head: 1, count: 2, share: 3, date: 4, totalCount: 5, totalText: 6, title: 7, hour: 8, muted: 9, wrap: 10 };
+// The workbook's styles, named where they are used and numbered here: each
+// distinct one is written to styles.xml once, in the order it was first asked
+// for. Set in the report's colours and its face, Inter, with Excel's own sans
+// standing in where Inter is not installed.
+const INK = '0E2358';
+const INK_3 = '6B7898';
+const INK_4 = '98A1B8';
+const LINE = 'E3E7EF';
+const SOFT = 'F5F7FB';
+const COVER = '0B1020';
+function workbookStyles() {
+    const fonts = [];
+    const fills = ['<fill><patternFill patternType="none"/></fill>', '<fill><patternFill patternType="gray125"/></fill>'];
+    const borders = [];
+    const fmts = [];
+    const xfs = [];
+    const at = (list, x) => {
+        let i = list.indexOf(x);
+        if (i === -1) { list.push(x); i = list.length - 1; }
+        return i;
+    };
+    const BUILTIN = { General: 0, '#,##0': 3 };
+    const side = (name, c) => (c ? '<' + name + ' style="thin"><color rgb="FF' + c + '"/></' + name + '>' : '<' + name + '/>');
+    const get = (o) => {
+        const f = o.font || {};
+        const font = at(fonts, '<font>' + (f.b ? '<b/>' : '') + (f.u ? '<u/>' : '') + '<sz val="' + (f.sz || 10) + '"/>' +
+            '<color rgb="FF' + (f.color || INK) + '"/><name val="' + (f.name || 'Inter') + '"/><family val="2"/></font>');
+        const fill = o.fill ? at(fills, '<fill><patternFill patternType="solid"><fgColor rgb="FF' + o.fill +
+            '"/><bgColor indexed="64"/></patternFill></fill>') : 0;
+        const b = o.border || {};
+        const border = at(borders, '<border><left/><right/>' + side('top', b.top) + side('bottom', b.bottom) + '<diagonal/></border>');
+        let fmt = 0;
+        if (o.fmt) {
+            if (o.fmt in BUILTIN) fmt = BUILTIN[o.fmt];
+            else fmt = 164 + at(fmts, o.fmt);
+        }
+        // an indent is only kept beside an edge the text is aligned to
+        const h = o.h || (o.indent ? 'left' : '');
+        const align = '<alignment vertical="center"' + (h ? ' horizontal="' + h + '"' : '') +
+            (o.wrap ? ' wrapText="1"' : '') + (o.indent ? ' indent="' + o.indent + '"' : '') + '/>';
+        return at(xfs, '<xf numFmtId="' + fmt + '" fontId="' + font + '" fillId="' + fill + '" borderId="' + border +
+            '" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">' + align + '</xf>');
+    };
+    get({}); // the plain cell is the first
+    const xml = () => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+        (fmts.length ? '<numFmts count="' + fmts.length + '">' + fmts.map((c, i) => '<numFmt numFmtId="' + (164 + i) +
+            '" formatCode="' + xmlText(c) + '"/>').join('') + '</numFmts>' : '') +
+        '<fonts count="' + fonts.length + '">' + fonts.join('') + '</fonts>' +
+        '<fills count="' + fills.length + '">' + fills.join('') + '</fills>' +
+        '<borders count="' + borders.length + '">' + borders.join('') + '</borders>' +
+        '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+        '<cellXfs count="' + xfs.length + '">' + xfs.join('') + '</cellXfs>' +
+        '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
+        '</styleSheet>';
+    return { get, xml };
+}
+
+// The logo's gradient, from cyan to violet, in steps across a sheet's columns:
+// a cell holds one colour, and a fill that blends inside one is drawn by Excel
+// and by nothing else that opens the file
+function stripe(n) {
+    const a = [0x00, 0xe0, 0xff];
+    const b = [0xa0, 0x20, 0xf0];
+    return Array.from({ length: n }, (_, i) => {
+        const t = n === 1 ? 0 : i / (n - 1);
+        return a.map((x, k) => Math.round(x + (b[k] - x) * t).toString(16).padStart(2, '0')).join('').toUpperCase();
+    });
+}
 
 function cellXml(value, ref, style, formula) {
     const st = style ? ' s="' + style + '"' : '';
-    if (formula) return '<c r="' + ref + '"' + st + '><f>' + formula + '</f><v>' + value + '</v></c>';
+    if (formula) return '<c r="' + ref + '"' + st + '><f>' + xmlText(formula) + '</f><v>' + value + '</v></c>';
+    if (value === null || value === undefined || value === '') return style ? '<c r="' + ref + '"' + st + '/>' : '';
     if (typeof value === 'number' && Number.isFinite(value)) {
         return '<c r="' + ref + '"' + st + '><v>' + value + '</v></c>';
     }
-    return '<c r="' + ref + '"' + st + ' t="inlineStr"><is><t xml:space="preserve">' +
-        xmlText(value === null || value === undefined ? '' : value) + '</t></is></c>';
+    return '<c r="' + ref + '"' + st + ' t="inlineStr"><is><t xml:space="preserve">' + xmlText(value) + '</t></is></c>';
 }
 
-// A sheet: rows of { v, s, f } cells. The first `head` rows are its heading,
-// held on screen while the rest scroll; `filter` puts the filter buttons on
-// its heading; `firstCol` holds the first column too.
+// A sheet: rows of cells ({ v, s, f }) with a height where the row needs one,
+// the widths of its columns, what is merged, what stays on screen, its filter,
+// its links to the other sheets, and how it prints.
 function sheetXml(sh) {
-    const width = (c) => Math.min(sh.maxWidth || 60, Math.max(10, ...sh.rows.map((r) => {
-        const x = r[c];
-        if (!x || x.s === XS.title) return 0;
-        return x.s === XS.date ? 12 : x.s === XS.hour ? 17 : String(typeof x.v === 'number' ? x.v.toLocaleString('en') : x.v).length + 3;
-    })));
-    const cols = Math.max(...sh.rows.map((r) => r.length));
-    const widths = Array.from({ length: cols }, (_, c) => (sh.widths && sh.widths[c]) || width(c));
-    const pane = sh.head
-        ? (sh.firstCol
-            ? '<pane xSplit="1" ySplit="' + sh.head + '" topLeftCell="B' + (sh.head + 1) + '" activePane="bottomRight" state="frozen"/>'
-            : '<pane ySplit="' + sh.head + '" topLeftCell="A' + (sh.head + 1) + '" activePane="bottomLeft" state="frozen"/>')
+    const freeze = sh.freeze
+        ? (sh.freezeCol
+            ? '<pane xSplit="1" ySplit="' + sh.freeze + '" topLeftCell="B' + (sh.freeze + 1) + '" activePane="bottomRight" state="frozen"/>'
+            : '<pane ySplit="' + sh.freeze + '" topLeftCell="A' + (sh.freeze + 1) + '" activePane="bottomLeft" state="frozen"/>')
         : '';
     return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
-        '<sheetViews><sheetView workbookViewId="0"' + (sh.first ? ' tabSelected="1"' : '') + (sh.grid === false ? ' showGridLines="0"' : '') + '>' +
-        pane + '</sheetView></sheetViews>' +
-        '<cols>' + widths.map((w, i) => '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + w + '" customWidth="1"/>').join('') + '</cols>' +
-        '<sheetData>' + sh.rows.map((r, ri) => '<row r="' + (ri + 1) + '">' +
-            r.map((x, ci) => (x ? cellXml(x.v, colName(ci) + (ri + 1), x.s, x.f) : '')).join('') + '</row>').join('') +
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
+        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+        '<sheetPr><tabColor rgb="FF' + sh.tab + '"/><pageSetUpPr fitToPage="1"/></sheetPr>' +
+        '<sheetViews><sheetView workbookViewId="0" showGridLines="0"' + (sh.first ? ' tabSelected="1"' : '') + '>' +
+        freeze + '</sheetView></sheetViews>' +
+        '<sheetFormatPr defaultRowHeight="19" customHeight="1"/>' +
+        '<cols>' + sh.widths.map((w, i) => '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + w + '" customWidth="1"/>').join('') + '</cols>' +
+        '<sheetData>' + sh.rows.map((r, ri) => '<row r="' + (ri + 1) + '"' + (r.ht ? ' ht="' + r.ht + '" customHeight="1"' : '') + '>' +
+            r.cells.map((x, ci) => (x ? cellXml(x.v, colName(ci) + (ri + 1), x.s, x.f) : '')).join('') + '</row>').join('') +
         '</sheetData>' +
         (sh.filter ? '<autoFilter ref="' + sh.filter + '"/>' : '') +
+        (sh.merges.length ? '<mergeCells count="' + sh.merges.length + '">' + sh.merges.map((m) => '<mergeCell ref="' + m + '"/>').join('') + '</mergeCells>' : '') +
+        (sh.links.length ? '<hyperlinks>' + sh.links.map((l) => '<hyperlink ref="' + l.ref + '" location="' + xmlText(l.to) + '" display="' + xmlText(l.text) + '"/>').join('') + '</hyperlinks>' : '') +
+        '<printOptions horizontalCentered="1"/>' +
+        '<pageMargins left="0.5" right="0.5" top="0.6" bottom="0.7" header="0.3" footer="0.3"/>' +
+        '<pageSetup paperSize="9" orientation="' + (sh.wide ? 'landscape' : 'portrait') + '" fitToWidth="1" fitToHeight="0"/>' +
+        // the reference and the page at the foot of every printed page, as the
+        // PDF has them
+        '<headerFooter><oddFooter>' + xmlText('&L&8&K' + INK_3 + sh.foot[0] + '&R&8&K' + INK_3 + sh.foot[1]) + '</oddFooter></headerFooter>' +
         '</worksheet>';
 }
 
@@ -481,8 +552,7 @@ function sheetName(name, taken) {
     return n;
 }
 
-// What each sheet holds, said once on the first sheet: the same lines the
-// printed report opens its parts with.
+// What each sheet holds: the same lines the printed report opens its parts with.
 const SHEET_ABOUT = {
     Summary: 'The period’s figures, beside the same length of time before it.',
     Screenings: 'Every check in the period, by how it was made, how it ended and on which chain.',
@@ -493,96 +563,238 @@ const SHEET_ABOUT = {
     Evidence: 'The sealed records the organisation holds, by age and by kind, as they stood when the report was made.',
 };
 
-// The workbook, in the language asked for, for the people who will open it
-// in Excel rather than read it with a program: a first sheet saying whose
-// report it is, for when, with the reference, and what each sheet holds; the
-// figures as numbers with their thousands marked, the shares to a decimal
-// place, the days as dates; a filter on every table; and the day-by-day sheet
-// added up at its foot with formulas that count only the rows a filter
-// leaves on screen.
+// The summary in the overview's sections, each figure beside the period
+// before and how far it moved. What is already at the head of every sheet --
+// whose, when, which plan -- is not repeated as a row.
+const SUMMARY_GROUPS = [
+    ['Screenings', ['Screenings', 'Screenings included this cycle', 'Screenings used this cycle', 'Sanctioned', 'Worth a look', 'Clear',
+        'Distinct addresses', 'Chains screened', 'History sweeps', 'Sandbox checks not included']],
+    ['Review', ['Decisions recorded', 'Cleared', 'Confirmed', 'Findings open now', 'Oldest open finding']],
+    ['Team', ['Members', 'Projects', 'Active API tokens']],
+    ['API', ['API calls', 'Webhook deliveries']],
+    ['Evidence', ['Checks on record', 'Sealed with a digest', 'Decisions on record', 'Oldest record', 'Kept for (years)']],
+];
+
+// The workbook, for the people who open it in a spreadsheet rather than read
+// it with a program, and dressed the way the printed report is: in the
+// reader's language, each sheet under the cover's dark band with the logo's
+// colours beneath it, no grid, the breakdowns under their headings with a bar
+// beside every count, the summary beside the period before with how far each
+// figure moved, and the reference at the foot of every printed page.
+// The figures stay figures: counts are numbers with their thousands marked,
+// shares are percentages, days are dates, and the day-by-day sheet keeps its
+// filter and a total that counts only the rows a filter leaves on screen.
 function xlsx(list, meta, out) {
     const sp = speaker(langOf(meta.lang));
     const { tr, date } = sp;
-    const sum = new Map((list.find((sh) => sh.name === 'Summary') || { rows: [] }).rows.map((r) => [r[0], r[1]]));
+    const S = workbookStyles();
+    // dates in the workbook's language whatever the reader's own settings:
+    // the locale is written into the format, as Excel's own do
+    const lcid = { en: '[$-809]', hr: '[$-41A]', de: '[$-407]' }[sp.lang] || '';
+    const sum = new Map((list.find((sh) => sh.name === 'Summary') || { rows: [] }).rows.map((r) => [r[0], r]));
+    const val = (k) => (sum.get(k) || [])[1];
     const hourly = out && out.period && out.period.grain === 'hour';
-    // what is printed as it was given: names of chains, of projects, of plans,
-    // of endpoints, and the organisation's own
+    const span = tr('{from} to {to}', { from: date(val('Period from')), to: date(val('Period to')) });
+    const org = meta.organisation || '';
+    const sandbox = val('Scope') === 'Sandbox';
+    const subtitle = [org, span, tr(sandbox ? 'Sandbox' : 'Production')].filter(Boolean).join('  ·  ');
+    const foot = [tr('Reference {ref}', { ref: String(meta.reference).slice(0, 16) }),
+        tr('Page {n} of {all}').replace('{n}', '&P').replace('{all}', '&N')];
+    // what is printed as it was given: chains, projects, endpoints
     const asGiven = (group, label) => group === 'By chain' ||
         (group === 'By project' && label !== 'No project' && label !== 'Unnamed project');
-    const textCell = (v) => ({ v, s: XS.text });
-    const valueCell = (v, share) => {
-        if (typeof v === 'number') return { v, s: share ? XS.share : (Number.isInteger(v) ? XS.count : XS.share) };
-        const d = v ? excelDate(v) : null;
-        if (d) return { v: d.serial, s: d.timed ? XS.hour : XS.date };
-        // nothing to say is an empty cell, not a cell holding nothing
-        return v === undefined || v === null || v === '' ? null : { v, s: XS.text };
+
+    const st = {
+        band: S.get({ fill: COVER, font: { b: true, sz: 16, color: 'FFFFFF', name: 'Plus Jakarta Sans' }, indent: 1 }),
+        bandSub: S.get({ fill: COVER, font: { sz: 10, color: 'AEB6CC' }, indent: 1, wrap: true }),
+        bandFill: S.get({ fill: COVER }),
+        what: S.get({ font: { sz: 10, color: INK_3 }, wrap: true, indent: 1 }),
+        th: S.get({ font: { b: true, sz: 9, color: INK_3 }, border: { bottom: INK }, indent: 1 }),
+        thR: S.get({ font: { b: true, sz: 9, color: INK_3 }, border: { bottom: INK }, h: 'right' }),
+        group: S.get({ font: { b: true, sz: 10.5 }, border: { bottom: LINE }, indent: 1 }),
+        groupFill: S.get({ border: { bottom: LINE } }),
+        label: S.get({ border: { bottom: LINE }, indent: 2 }),
+        labelFlat: S.get({ border: { bottom: LINE }, indent: 1 }),
+        count: S.get({ border: { bottom: LINE }, fmt: '#,##0' }),
+        countMute: S.get({ border: { bottom: LINE }, fmt: '#,##0', font: { color: INK_4 } }),
+        share: S.get({ border: { bottom: LINE }, fmt: '0.0%', font: { color: INK_3 } }),
+        change: S.get({ border: { bottom: LINE }, fmt: '+0.0%;−0.0%;0.0%', font: { b: true } }),
+        none: S.get({ border: { bottom: LINE }, font: { color: INK_4 }, h: 'right' }),
+        was: S.get({ border: { bottom: LINE }, fmt: '#,##0', font: { color: INK_3 } }),
+        day: S.get({ border: { bottom: LINE }, fmt: lcid + 'd mmm yyyy', h: 'right' }),
+        dayWas: S.get({ border: { bottom: LINE }, fmt: lcid + 'd mmm yyyy', h: 'right', font: { color: INK_3 } }),
+        text: S.get({ border: { bottom: LINE }, h: 'right' }),
+        bar: S.get({ border: { bottom: LINE }, font: { sz: 8, color: '00B4E6', name: 'Arial' } }),
+        barMute: S.get({ border: { bottom: LINE }, font: { sz: 8, color: 'C9CFDD', name: 'Arial' } }),
+        dDay: S.get({ border: { bottom: LINE }, fmt: lcid + (hourly ? 'd mmm yyyy hh:mm' : 'ddd d mmm yyyy'), indent: 1 }),
+        dDayMute: S.get({ border: { bottom: LINE }, fmt: lcid + (hourly ? 'd mmm yyyy hh:mm' : 'ddd d mmm yyyy'), indent: 1, font: { color: INK_4 } }),
+        total: S.get({ fill: SOFT, border: { top: INK }, font: { b: true }, indent: 1 }),
+        totalN: S.get({ fill: SOFT, border: { top: INK }, font: { b: true }, fmt: '#,##0' }),
+        key: S.get({ font: { color: INK_3 }, border: { bottom: LINE }, indent: 1 }),
+        keyVal: S.get({ border: { bottom: LINE }, font: { b: true } }),
+        link: S.get({ border: { bottom: LINE }, font: { color: '0091C8', u: true }, indent: 1 }),
+        note: S.get({ font: { sz: 9, color: INK_4 }, wrap: true, indent: 1 }),
     };
-    const head = (cells) => cells.map((v) => ({ v: tr(v), s: XS.head }));
+
     const taken = new Set();
+    // a sheet is named as its chapter in the printed report is
+    const named = list.map((sh) => sheetName(tr(sh.name === 'Daily' ? 'Day by day' : sh.name), taken));
+    const firstName = sheetName(tr('About this report'), taken);
+
+    // A sheet with its head: the dark band with the title and whose report it
+    // is, the logo's colours under it, and a line on what the sheet holds.
+    // Returns the sheet and the row its table starts on.
+    const sheet = (title, what, widths, opts) => {
+        const n = widths.length;
+        const total = widths.reduce((a, w) => a + w, 0);
+        const lines = what ? Math.max(1, Math.ceil(what.length / (total * 1.05))) : 0;
+        const pad = (s) => Array.from({ length: n - 1 }, () => ({ v: '', s }));
+        const sh = Object.assign({
+            widths, merges: [], links: [], foot, tab: '00B4E6',
+            rows: [
+                { ht: 34, cells: [{ v: title, s: st.band }].concat(pad(st.bandFill)) },
+                // whose and when, over as many lines as a narrow sheet needs
+                { ht: Math.ceil(subtitle.length / (total * 1.1)) * 14 + 8, cells: [{ v: subtitle, s: st.bandSub }].concat(pad(st.bandFill)) },
+                { ht: 4, cells: stripe(n).map((c) => ({ v: '', s: S.get({ fill: c }) })) },
+                { ht: 8, cells: [] },
+            ],
+        }, opts);
+        sh.merges.push('A1:' + colName(n - 1) + '1', 'A2:' + colName(n - 1) + '2');
+        if (what) {
+            sh.rows.push({ ht: lines * 14 + 8, cells: [{ v: what, s: st.what }] });
+            sh.merges.push('A5:' + colName(n - 1) + '5');
+            sh.rows.push({ ht: 6, cells: [] });
+        }
+        return sh;
+    };
+    // a count's bar: full blocks as long as the count against the largest in
+    // its group, in the colour the PDF draws its bars in
+    const BAR = 22;
+    const barOf = (n, top) => (n > 0 && top > 0 ? '█'.repeat(Math.max(1, Math.round(n / top * BAR))) : '');
+
     const books = [];
 
     // ---- the first sheet: what this is
-    const span = tr('{from} to {to}', { from: date(sum.get('Period from')), to: date(sum.get('Period to')) });
-    const about = [
-        [{ v: 'Sentinelpay · ' + tr('Usage and evidence report'), s: XS.title }],
-        [],
-        [{ v: tr('Organisation'), s: XS.muted }, textCell(meta.organisation || '')],
-        [{ v: tr('Period'), s: XS.muted }, textCell(span)],
-        [{ v: tr('Scope'), s: XS.muted }, textCell(tr(sum.get('Scope') || 'Production'))],
-        [{ v: tr('Plan'), s: XS.muted }, textCell(sum.get('Plan') || '—')],
-        [{ v: tr('Time zone'), s: XS.muted }, textCell(sum.get('Time zone') || 'UTC')],
-        [{ v: tr('Generated'), s: XS.muted }, textCell(tr('{date} at {time} UTC', { date: date(meta.generated), time: String(meta.generated).slice(11, 16) }))],
-        [{ v: tr('Reference'), s: XS.muted }, textCell('sha256:' + meta.reference)],
-        [],
-        head(['Sheet', 'What it holds']),
-    ];
-    const names = list.map((sh) => sheetName(tr(sh.name), taken));
-    list.forEach((sh, i) => {
-        const what = sh.name === 'Daily'
-            ? tr(hourly ? 'Every hour in the period, in the organisation’s time zone, {zone}.' : 'Every day in the period, in the organisation’s time zone, {zone}.', { zone: sum.get('Time zone') || 'UTC' })
-            : SHEET_ABOUT[sh.name] ? tr(SHEET_ABOUT[sh.name]) : '';
-        about.push([textCell(names[i]), { v: what, s: XS.wrap }]);
-    });
-    about.push([], [{ v: tr('The same reference is printed in every format of this report, so a workbook, a CSV and a PDF of one period can be matched to each other.'), s: XS.muted }]);
-    books.push({ name: sheetName(tr('About this report'), taken), rows: about, widths: [24, 100], grid: false, first: true });
-
-    // ---- the figures
-    list.forEach((sh, i) => {
-        const grouped = sh.head[0] === 'Breakdown';
-        const rows = [head(sh.head.map((h) => (h === 'Share %' ? 'Share %' : h)))];
-        if (sh.name === 'Daily' && hourly) rows[0][0] = { v: tr('Hour'), s: XS.head };
-        sh.rows.forEach((r) => {
-            rows.push(r.map((v, c) => {
-                const shareCol = /%$/.test(sh.head[c] || '');
-                if (sh.name === 'Summary') {
-                    if (c === 0) return textCell(tr(v));
-                    if (r[0] === 'Organisation' || r[0] === 'Plan') return textCell(v);
-                    if (r[0] === 'Scope') return textCell(v ? tr(v) : '');
-                    return valueCell(v, false);
-                }
-                if (grouped && c === 0) return textCell(tr(v));
-                if (grouped && c === 1) return textCell(asGiven(r[0], v) ? v : tr(v));
-                // an endpoint is a path, printed as it is called
-                if (!grouped && c === 0 && sh.name === 'API') return textCell(v);
-                return valueCell(v, shareCol);
-            }));
+    {
+        const sh = sheet('Sentinelpay · ' + tr('Usage and evidence report'), '', [26, 96], { first: true, tab: COVER });
+        const facts = [
+            ['Organisation', org || '—'], ['Period', span], ['Scope', tr(sandbox ? 'Sandbox' : 'Production')],
+            ['Plan', val('Plan') || '—'], ['Time zone', val('Time zone') || 'UTC'],
+            ['Generated', tr('{date} at {time} UTC', { date: date(meta.generated), time: String(meta.generated).slice(11, 16) })],
+            ['Reference', 'sha256:' + meta.reference],
+        ];
+        facts.forEach(([k, v]) => sh.rows.push({ ht: 22, cells: [{ v: tr(k), s: st.key }, { v, s: st.keyVal }] }));
+        sh.rows.push({ ht: 18, cells: [] });
+        sh.rows.push({ ht: 22, cells: [{ v: tr('Sheet'), s: st.th }, { v: tr('What it holds'), s: st.th }] });
+        list.forEach((x, i) => {
+            const what = x.name === 'Daily'
+                ? tr(hourly ? 'Every hour in the period, in the organisation’s time zone, {zone}.' : 'Every day in the period, in the organisation’s time zone, {zone}.', { zone: val('Time zone') || 'UTC' })
+                : SHEET_ABOUT[x.name] ? tr(SHEET_ABOUT[x.name]) : '';
+            const row = sh.rows.length + 1;
+            sh.rows.push({ ht: what.length > 96 ? 34 : 22, cells: [{ v: named[i], s: st.link }, { v: what, s: S.get({ border: { bottom: LINE }, wrap: true, font: { color: INK_3 } }) }] });
+            sh.links.push({ ref: 'A' + row, to: "'" + named[i].replace(/'/g, "''") + "'!A1", text: named[i] });
         });
-        const book = { name: names[i], rows, head: 1 };
-        const last = colName(sh.head.length - 1);
-        if (sh.rows.length && sh.name !== 'Summary') book.filter = 'A1:' + last + (sh.rows.length + 1);
-        if (sh.name === 'Daily' && sh.rows.length) {
-            // added up at the foot, the formula kept so the total follows a filter
-            const end = sh.rows.length + 1;
-            rows.push(sh.head.map((h, c) => (c === 0 ? { v: tr('Total'), s: XS.totalText } : {
-                v: sh.rows.reduce((a, r) => a + (Number(r[c]) || 0), 0), s: XS.totalCount,
-                f: 'SUBTOTAL(109,' + colName(c) + '2:' + colName(c) + end + ')',
-            })));
-            book.firstCol = true;
+        sh.rows.push({ ht: 14, cells: [] });
+        sh.rows.push({ ht: 30, cells: [{ v: tr('The same reference is printed in every format of this report, so a workbook, a CSV and a PDF of one period can be matched to each other.'), s: st.note }] });
+        sh.merges.push('A' + sh.rows.length + ':B' + sh.rows.length);
+        sh.name = firstName;
+        books.push(sh);
+    }
+
+    list.forEach((x, i) => {
+        const what = x.name === 'Daily'
+            ? tr(hourly ? 'Every hour in the period, in the organisation’s time zone, {zone}.' : 'Every day in the period, in the organisation’s time zone, {zone}.', { zone: val('Time zone') || 'UTC' })
+            : SHEET_ABOUT[x.name] ? tr(SHEET_ABOUT[x.name]) : '';
+        let sh;
+        if (x.name === 'Summary') {
+            // ---- the overview's figures, beside the period before
+            sh = sheet(tr(x.name), what, [40, 18, 18, 12]);
+            sh.rows.push({ ht: 24, cells: [{ v: '', s: st.th }, { v: tr('This period'), s: st.thR }, { v: tr('The period before'), s: st.thR }, { v: tr('Change'), s: st.thR }] });
+            sh.freeze = sh.rows.length;
+            const used = new Set(['Organisation', 'Period from', 'Period to', 'Scope', 'Time zone', 'Plan']);
+            const groups = SUMMARY_GROUPS.map(([g, keys]) => [g, keys.filter((k) => sum.has(k))]);
+            // a figure the groups do not name still goes in, under the last
+            const loose = x.rows.map((r) => r[0]).filter((k) => !used.has(k) && !SUMMARY_GROUPS.some(([, ks]) => ks.includes(k)));
+            groups[groups.length - 1][1].push(...loose);
+            groups.forEach(([g, keys]) => {
+                if (!keys.length) return;
+                sh.rows.push({ ht: 26, cells: [{ v: tr(g), s: st.group }, { v: '', s: st.groupFill }, { v: '', s: st.groupFill }, { v: '', s: st.groupFill }] });
+                keys.forEach((k) => {
+                    const [, v, b] = sum.get(k);
+                    const cell = (x0, was) => {
+                        if (typeof x0 === 'number') return { v: x0, s: was ? st.was : st.count };
+                        const d = x0 ? excelDate(x0) : null;
+                        if (d) return { v: d.serial, s: was ? st.dayWas : st.day };
+                        return x0 === '' || x0 === undefined || x0 === null ? { v: '—', s: st.none } : { v: x0, s: st.text };
+                    };
+                    const change = typeof v === 'number' && typeof b === 'number'
+                        ? (b ? { v: Math.round((v - b) / b * 10000) / 10000, s: st.change } : (v ? { v: '—', s: st.none } : { v: 0, s: st.change }))
+                        : { v: '—', s: st.none };
+                    sh.rows.push({ cells: [{ v: tr(k), s: st.label }, cell(v, false), b === '' ? { v: '—', s: st.none } : cell(b, true), change] });
+                });
+            });
+        } else if (x.name === 'Daily') {
+            // ---- every day, a row; the quiet ones set back; the total at the foot
+            const heads = x.head.map((h, c) => (c === 0 && hourly ? 'Hour' : h));
+            const widths = heads.map((h, c) => (c === 0 ? 22 : Math.max(12, tr(h).length + 6)));
+            sh = sheet(tr('Day by day'), what, widths, { wide: true });
+            sh.rows.push({ ht: 24, cells: heads.map((h, c) => ({ v: tr(h), s: c ? st.thR : st.th })) });
+            const top = sh.rows.length;
+            sh.freeze = top;
+            sh.freezeCol = true;
+            x.rows.forEach((r) => {
+                const quiet = r.slice(1).every((n) => !Number(n));
+                const d = excelDate(r[0]);
+                sh.rows.push({ cells: r.map((n, c) => (c === 0
+                    ? (d ? { v: d.serial, s: quiet ? st.dDayMute : st.dDay } : { v: n, s: st.labelFlat })
+                    : { v: Number(n) || 0, s: quiet ? st.countMute : st.count })) });
+            });
+            const end = sh.rows.length;
+            if (x.rows.length) {
+                sh.filter = 'A' + top + ':' + colName(heads.length - 1) + end;
+                sh.rows.push({ ht: 24, cells: heads.map((h, c) => (c === 0 ? { v: tr('Total'), s: st.total } : {
+                    v: x.rows.reduce((a, r) => a + (Number(r[c]) || 0), 0), s: st.totalN,
+                    f: 'SUBTOTAL(109,' + colName(c) + (top + 1) + ':' + colName(c) + end + ')',
+                })) });
+            }
+        } else {
+            // ---- a breakdown: its groups under their headings, a bar beside
+            // every count, and each count's share of its group
+            const grouped = x.head[0] === 'Breakdown';
+            const rows = grouped ? x.rows : x.rows.map((r) => ['', r[0], r[1], r[2]]);
+            // an endpoint is a path and a chain or a project a name: printed as given
+            const shown = (r) => (!grouped || asGiven(r[0], r[1]) ? r[1] : tr(r[1]));
+            const label = Math.min(80, Math.max(30, ...rows.map((r) => String(shown(r)).length + 6)));
+            sh = sheet(tr(x.name), what, [label, 26, 14, 10]);
+            const unit = x.head[grouped ? 2 : 1];
+            sh.rows.push({ ht: 24, cells: [{ v: grouped ? '' : tr(x.head[0]), s: st.th }, { v: '', s: st.th }, { v: tr(unit), s: st.thR }, { v: tr('Share'), s: st.thR }] });
+            if (rows.length > 20) sh.freeze = sh.rows.length;
+            const most = new Map();
+            rows.forEach((r) => most.set(r[0], Math.max(most.get(r[0]) || 0, Number(r[2]) || 0)));
+            let last = null;
+            rows.forEach((r) => {
+                if (grouped && r[0] !== last) {
+                    sh.rows.push({ ht: 26, cells: [{ v: tr(r[0]), s: st.group }, { v: '', s: st.groupFill }, { v: '', s: st.groupFill }, { v: '', s: st.groupFill }] });
+                }
+                last = r[0];
+                // the ordinary outcome is drawn in grey, as on the page
+                const mute = x.name === 'Screenings' && r[0] === 'By verdict' && r[1] === 'Clear';
+                const n = Number(r[2]) || 0;
+                sh.rows.push({ cells: [
+                    { v: shown(r), s: grouped ? st.label : st.labelFlat },
+                    { v: barOf(n, most.get(r[0])), s: mute ? st.barMute : st.bar },
+                    { v: n, s: st.count },
+                    { v: Math.round((Number(r[3]) || 0) * 10) / 1000, s: st.share },
+                ] });
+            });
+            if (!rows.length) sh.rows.push({ cells: [{ v: tr('Nothing in this period.'), s: st.key }] });
         }
-        books.push(book);
+        sh.name = named[i];
+        books.push(sh);
     });
 
     const created = String(meta.generated || new Date().toISOString()).replace(/\.\d+Z$/, 'Z');
+    const quoted = (name) => "'" + xmlText(name.replace(/'/g, "''")) + "'";
     const files = [
         { name: '[Content_Types].xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
             '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
@@ -607,7 +819,7 @@ function xlsx(list, meta, out) {
             '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" ' +
             'xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" ' +
             'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">' +
-            '<dc:title>' + xmlText(tr('Usage and evidence report') + (meta.organisation ? ' · ' + meta.organisation : '') + ' · ' + span) + '</dc:title>' +
+            '<dc:title>' + xmlText(tr('Usage and evidence report') + (org ? ' · ' + org : '') + ' · ' + span) + '</dc:title>' +
             '<dc:creator>Sentinelpay</dc:creator><cp:lastModifiedBy>Sentinelpay</cp:lastModifiedBy>' +
             '<dc:identifier>sha256:' + xmlText(meta.reference) + '</dc:identifier>' +
             '<dc:language>' + sp.lang + '</dc:language>' +
@@ -621,9 +833,11 @@ function xlsx(list, meta, out) {
             'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>' +
             books.map((sh, i) => '<sheet name="' + xmlText(sh.name) + '" sheetId="' + (i + 1) +
                 '" r:id="rId' + (i + 1) + '"/>').join('') + '</sheets>' +
-            // the range each filter covers, which Excel keeps as a hidden name
+            // the range each filter covers, which Excel keeps as a hidden name,
+            // and the heading row printed again at the top of every page
             '<definedNames>' + books.map((sh, i) => (sh.filter ? '<definedName name="_xlnm._FilterDatabase" localSheetId="' + i +
-                '" hidden="1">\'' + xmlText(sh.name.replace(/'/g, "''")) + '\'!' + sh.filter.replace(/([A-Z]+)(\d+)/g, '$$$1$$$2') + '</definedName>' : '')).join('') +
+                '" hidden="1">' + quoted(sh.name) + '!' + sh.filter.replace(/([A-Z]+)(\d+)/g, '$$$1$$$2') + '</definedName>' : '') +
+                (sh.freeze ? '<definedName name="_xlnm.Print_Titles" localSheetId="' + i + '">' + quoted(sh.name) + '!$' + sh.freeze + ':$' + sh.freeze + '</definedName>' : '')).join('') +
             '</definedNames></workbook>' },
         { name: 'xl/_rels/workbook.xml.rels', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
             '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
@@ -633,40 +847,9 @@ function xlsx(list, meta, out) {
             '<Relationship Id="rId' + (books.length + 1) +
                 '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
             '</Relationships>' },
-        // The styles, in the order XS names them. Counts with their thousands
-        // marked in the reader's own way, shares to one place, days as days.
-        // The heading row on the report's pale blue with a rule under it, the
-        // total with a rule over it, the title in the report's ink.
-        { name: 'xl/styles.xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-            '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
-            '<numFmts count="3"><numFmt numFmtId="164" formatCode="0.0"/><numFmt numFmtId="165" formatCode="yyyy-mm-dd"/>' +
-            '<numFmt numFmtId="166" formatCode="yyyy-mm-dd hh:mm"/></numFmts>' +
-            '<fonts count="4"><font><sz val="11"/><color rgb="FF0E2358"/><name val="Calibri"/><family val="2"/></font>' +
-            '<font><b/><sz val="11"/><color rgb="FF0E2358"/><name val="Calibri"/><family val="2"/></font>' +
-            '<font><b/><sz val="16"/><color rgb="FF0E2358"/><name val="Calibri"/><family val="2"/></font>' +
-            '<font><sz val="11"/><color rgb="FF6B7898"/><name val="Calibri"/><family val="2"/></font></fonts>' +
-            '<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>' +
-            '<fill><patternFill patternType="solid"><fgColor rgb="FFEEF2FA"/><bgColor indexed="64"/></patternFill></fill></fills>' +
-            '<borders count="3"><border><left/><right/><top/><bottom/><diagonal/></border>' +
-            '<border><left/><right/><top/><bottom style="thin"><color rgb="FF0E2358"/></bottom><diagonal/></border>' +
-            '<border><left/><right/><top style="thin"><color rgb="FF0E2358"/></top><bottom/><diagonal/></border></borders>' +
-            '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
-            '<cellXfs count="11">' +
-            '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
-            '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>' +
-            '<xf numFmtId="3" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
-            '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
-            '<xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyAlignment="1"><alignment horizontal="left"/></xf>' +
-            '<xf numFmtId="3" fontId="1" fillId="0" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1"/>' +
-            '<xf numFmtId="0" fontId="1" fillId="0" borderId="2" xfId="0" applyFont="1" applyBorder="1"/>' +
-            '<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
-            '<xf numFmtId="166" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyAlignment="1"><alignment horizontal="left"/></xf>' +
-            '<xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
-            '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf>' +
-            '</cellXfs>' +
-            '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
-            '</styleSheet>' },
     ].concat(books.map((sh, i) => ({ name: 'xl/worksheets/sheet' + (i + 1) + '.xml', data: sheetXml(sh) })));
+    // the styles last, once every sheet has asked for the ones it uses
+    files.push({ name: 'xl/styles.xml', data: S.xml() });
     return zip(files);
 }
 
