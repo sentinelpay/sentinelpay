@@ -236,6 +236,11 @@ test('the report is laid out on the paper asked for, A4 when none is', () => {
         ['Overview of the period', 'Screenings and review', 'Sanctions coverage', 'API, team and evidence', 'Day by day'], 'the chapters are not the ones they were');
     assert.match(html, /\.chapter \{ break-before:page; \}/, 'a chapter does not start a page of its own');
     assert.match(html, /\.chapter \.part \{ break-inside:avoid; \}/, 'a section can leave two rows alone at the top of a page');
+    // the statement page is the letter and the confirmation; the report's
+    // particulars come last, with the full reference
+    assert.doesNotMatch(letter, /class="facts"/, 'the particulars are back on the statement page');
+    const about = html.slice(html.indexOf('<div class="part about">'));
+    assert.match(about, /<h3>Report details<\/h3><dl class="facts">[\s\S]*Reference[\s\S]*sha256:[0-9a-f]{64}/, 'the particulars are not at the end');
     // Screenings and review: what each part measures, a bar beside every
     // count with the ordinary outcome in grey, the two review tables side by
     // side, and no table of one row for projects nobody used

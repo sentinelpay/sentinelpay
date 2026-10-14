@@ -1001,17 +1001,10 @@ function report(list, meta, out) {
         // with the reference that seals it, and room at the foot for the
         // organisation to put its own name to it. Before any figure: what the
         // numbers are, then the numbers.
+        // The page is the statement and the confirmation under it, nothing
+        // else: whose report it is and for when is in its first sentence, and
+        // the rest of the particulars are at the end of the report.
         '<section class="sheet statement">' + sheetHead +
-        '<div class="to"><div class="to-org">' + esc(org) + '</div>' +
-        '<div>' + h('Usage and evidence report') + '</div><div>' + esc(span) + '</div></div>' +
-        '<dl class="facts">' +
-        dt('Scope', esc(scopeName)) +
-        (sum.get('Plan') ? dt('Plan', esc(sum.get('Plan'))) : '') +
-        dt('Time zone', esc(sum.get('Time zone'))) +
-        dt('Generated', esc(generated)) +
-        // A4 is A4 in every language; only the American sizes have a name to say
-        dt('Paper', esc(/^US /.test(paper.name) ? tr(paper.name) : paper.name)) +
-        '</dl>' +
         '<div class="l-rule"></div>' +
         '<h2 class="big">' + h('Statement on screening') + '</h2>' +
         '<p>' + h(sandbox
@@ -1066,7 +1059,20 @@ function report(list, meta, out) {
             head: ['Day', 'Screenings', 'Flagged', 'Sanctioned', 'Decisions', 'API calls'],
             rows: daily.rows.map((r) => [r[0], r[1], r[2], r[3], r[5], r[8]]),
         }, { keep: () => true }, sp) +
-        '<p class="end">' + h('End of report') + ' · sha256:' + esc(ref) + '</p>') +
+        // the particulars of the report itself, last, the way an audit report
+        // keeps them after the findings rather than ahead of them
+        '<div class="part about"><h3>' + h('Report details') + '</h3><dl class="facts">' +
+        dt('Organisation', esc(org)) +
+        dt('Period', esc(span)) +
+        dt('Scope', esc(scopeName)) +
+        (sum.get('Plan') ? dt('Plan', esc(sum.get('Plan'))) : '') +
+        dt('Time zone', esc(sum.get('Time zone'))) +
+        dt('Generated', esc(generated)) +
+        // A4 is A4 in every language; only the American sizes have a name to say
+        dt('Paper', esc(/^US /.test(paper.name) ? tr(paper.name) : paper.name)) +
+        dt('Reference', '<span class="ref">sha256:' + esc(ref) + '</span>') +
+        '</dl></div>' +
+        '<p class="end">' + h('End of report') + '</p>') +
         '</main>' +
         (meta.forPdf ? '' : '<script src="/report.js"></script>') + '</body></html>';
 }
@@ -1150,7 +1156,11 @@ h3 { font:700 14px 'Plus Jakarta Sans', Inter, sans-serif; margin:0 0 8px; paddi
 .part { margin-top:26px; }
 .part:first-of-type { margin-top:0; }
 .chapter .l-rule { margin-top:0; }
-.chapter .sheet-lh { margin-bottom:1.7em; }
+.chapter .sheet-lh, .statement .sheet-lh { margin-bottom:1.7em; }
+.statement .l-rule { margin-top:0; }
+.about { margin-top:30px; break-inside:avoid; }
+.about .ref { word-break:break-all; font-weight:600; }
+.about .facts dd { max-width:70%; }
 .chapter .run.is-foot { margin-top:28px; }
 
 /* ---- the overview */
