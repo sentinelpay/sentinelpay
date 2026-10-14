@@ -4045,6 +4045,28 @@ html.is-theming .btn {
 .use-spark-was { stroke: var(--line); vector-effect: non-scaling-stroke; }
 .use-mc-spark.is-quiet .use-spark-now { stroke: var(--line); }
 
+/* How much of a limit is used, where a cell with a ceiling had its line: a
+   track, filled from the left. Thin and round,
+   the meters' colours, at least as long as it is tall once anything is used
+   so a little reads as a little and not as nothing. */
+.use-mc-lim {
+    /* one length in every cell, against the right edge where the lines sit,
+       so a column of them reads down as a column; shorter only where the
+       figure beside it needs the room */
+    flex: 0 1 150px;
+    min-width: 64px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--line-2);
+    overflow: hidden;
+}
+/* the figure keeps its line and the bar gives way: "0 / 750,000" broken over
+   two lines to keep a bar long is the wrong way round */
+.use-mc-r:has(.use-mc-lim) .use-mc-v { flex: none; white-space: nowrap; }
+.use-mc-lim i { display: block; height: 100%; min-width: 6px; border-radius: 999px; background: var(--link); }
+.use-mc-lim i.is-near { background: var(--risk-mid); }
+.use-mc-lim i.is-full { background: var(--risk-high); }
+
 
 /* One column under the width where a label and its number stop fitting side
    by side in half a panel. */

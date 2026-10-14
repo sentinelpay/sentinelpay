@@ -6623,13 +6623,39 @@
         // to sit here said the same fraction the two numbers beside it already
         // said, in a shape nobody reads to better than a quarter, and it took
         // the space the only thing the figures cannot say was waiting for.
-        if (c.series) {
+        // A figure against a limit draws how much of the limit is gone, the
+        // way a meter reads: the shape of the window says nothing about
+        // whether there is room left, and that is the question a ceiling asks.
+        if (c.of && c.used !== null) {
+            row.appendChild(useLimit(c.used, c.of));
+        } else if (c.series) {
             var spark = useSpark(c.series, c.ghost);
             if (spark) row.appendChild(spark);
         }
         cell.appendChild(row);
 
         return cell;
+    }
+
+    // How much of an allowance is used, as a bar in the cell's row. The same
+    // colours as the meters on the cards: the link colour, the warning colour
+    // from four fifths, and red at the limit. Empty at nothing, rather than
+    // a stub that reads as a little used.
+    function useLimit(used, of) {
+        var pct = Math.max(0, Math.min(100, used / of * 100));
+        var track = document.createElement('span');
+        track.className = 'use-mc-lim';
+        track.setAttribute('role', 'img');
+        track.setAttribute('aria-label', fill('{pct}% of the allowance used', { pct: useNum(Math.round(pct)) }));
+        track.title = track.getAttribute('aria-label');
+        if (used > 0) {
+            var bar = document.createElement('i');
+            bar.style.width = pct.toFixed(1) + '%';
+            if (pct >= 100) bar.className = 'is-full';
+            else if (pct >= 80) bar.className = 'is-near';
+            track.appendChild(bar);
+        }
+        return track;
     }
 
     // The shape of a window, in the space a ring would have taken.
