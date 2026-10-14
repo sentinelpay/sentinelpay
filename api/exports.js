@@ -555,6 +555,20 @@ function table(sh, opts, sp) {
     const label = (x) => (typeof x === 'string' && /[a-z]/.test(x) && !/^(GET|POST) \//.test(x) && !o.raw ? sp.tr(x) : x);
     const rows = o.skipEmpty ? sh.rows.filter((r) => r.slice(2).some((x) => typeof x === 'number' && x > 0)) : sh.rows;
     if (!rows.length) return '<p class="none">' + sp.h('Nothing in this period.') + '</p>';
+    // A bar beside each count, as long as the count against the largest in
+    // its group, so what dominates reads before any number does. A muted row
+    // -- the ordinary outcome, Clear -- is drawn in grey, and the eye goes to
+    // the ones that are not.
+    const most = new Map();
+    if (o.bars) {
+        for (const r of rows) most.set(r[0], Math.max(most.get(r[0]) || 0, Number(r[2]) || 0));
+    }
+    const bar = (r) => {
+        const top = most.get(r[0]) || 0;
+        const w = top ? Math.round((Number(r[2]) || 0) / top * 1000) / 10 : 0;
+        return '<td class="sh-bar">' + (w ? '<i' + (o.mute && o.mute.includes(r[1]) ? ' class="is-mute"' : '') +
+            ' style="width:' + w + '%"></i>' : '') + '</td>';
+    };
     // rows grouped by their first column print as one table with a heading
     // line for each group, which reads the way the page's own breakdowns do
     let last = null;
@@ -562,16 +576,18 @@ function table(sh, opts, sp) {
         let pre = '';
         if (o.grouped && r[0] !== last) {
             last = r[0];
-            pre = '<tr class="grp"><th colspan="' + (r.length - 1) + '">' + esc(label(r[0])) + '</th></tr>';
+            if (!o.noGroupHead) pre = '<tr class="grp"><th colspan="' + (r.length - 1 + (o.bars ? 1 : 0)) + '">' + esc(label(r[0])) + '</th></tr>';
         }
         const cells = o.grouped ? r.slice(1) : r;
         return pre + '<tr>' + cells.map((x, i) => (i === 0
-            ? '<td>' + esc(o.keep && o.keep(r) ? x : label(x)) + '</td>'
+            ? '<td>' + esc(o.keep && o.keep(r) ? x : label(x)) + '</td>' + (o.bars ? bar(r) : '')
             : '<td class="n">' + sp.num(x) + (o.pct && i === cells.length - 1 ? '%' : '') + '</td>')).join('') + '</tr>';
     }).join('');
-    const head = (o.grouped ? sh.head.slice(1) : sh.head);
-    return '<table><thead><tr>' + head.map((x, i) => '<th' + (i ? ' class="n"' : '') + '>' +
-        esc(i === 0 && o.grouped ? '' : sp.tr(x)) + '</th>').join('') + '</tr></thead><tbody>' + body + '</tbody></table>';
+    let head = (o.grouped ? sh.head.slice(1) : sh.head);
+    if (o.heads) head = [head[0]].concat(o.heads);
+    const ths = head.map((x, i) => '<th' + (i ? ' class="n"' : '') + '>' + esc(i === 0 && o.grouped ? '' : sp.tr(x)) + '</th>');
+    if (o.bars) ths.splice(1, 0, '<th></th>');
+    return '<table' + (o.bars ? ' class="has-bars"' : '') + '><thead><tr>' + ths.join('') + '</tr></thead><tbody>' + body + '</tbody></table>';
 }
 
 // The paper sizes a report can be printed on. A4 unless asked otherwise: it is
@@ -844,6 +860,15 @@ function report(list, meta, out) {
     const sheetFoot = () => '<div class="run is-foot" aria-hidden="true"><span>' + esc(refLine) + '</span></div>';
     const dt = (k, v) => '<div><dt>' + h(k) + '</dt><dd>' + v + '</dd></div>';
 
+    // one group of a sheet's rows, as a sheet of its own
+    const rowsOf = (sh, name) => ({ head: sh.head, rows: sh.rows.filter((r) => r[0] === name) });
+    // Projects only when somebody used them: a period with every check outside
+    // any project says so in a line rather than a table of one row at 100%.
+    const projectless = !by('Screenings').rows.some((r) => r[0] === 'By project' && r[1] !== 'No project');
+    const screenings = projectless
+        ? { head: by('Screenings').head, rows: by('Screenings').rows.filter((r) => r[0] !== 'By project') }
+        : by('Screenings');
+
     // A chapter: a sheet of its own on screen and a fresh page on paper, its
     // title a bookmark in the PDF.
     const chapter = (i, inner) => '<section class="sheet chapter">' + sheetHead +
@@ -1014,12 +1039,22 @@ function report(list, meta, out) {
 
         // ---- the detail, a chapter to a page
         chapter(1,
-            '<div class="part"><h3>' + h('Screenings') + '</h3>' + table(by('Screenings'), {
-                grouped: true, pct: true, skipEmpty: true,
+            '<div class="part"><h3>' + h('Screenings') + '</h3>' +
+            '<p class="part-what">' + h('Every check in the period, by how it was made, how it ended and on which chain.') + '</p>' +
+            table(screenings, {
+                grouped: true, pct: true, skipEmpty: true, bars: true, mute: ['Clear'], heads: ['Checks', 'Share'],
                 // chains and the names people gave their projects are printed as they are
                 keep: (r) => r[0] === 'By chain' || (r[0] === 'By project' && r[1] !== 'No project' && r[1] !== 'Unnamed project'),
-            }, sp) + '</div>' +
-            '<div class="part"><h3>' + h('Review') + '</h3>' + table(by('Review'), { grouped: true, pct: true }, sp) + '</div>') +
+            }, sp) +
+            (projectless ? '<p class="part-note">' + h('No check was assigned to a project.') + '</p>' : '') + '</div>' +
+            '<div class="part"><h3>' + h('Review') + '</h3>' +
+            '<p class="part-what">' + h('How long it took for a decision to be recorded on a flagged check, and how old the findings still waiting are.') + '</p>' +
+            '<div class="pair">' +
+            '<div><h4 class="pair-t">' + h('Time to a decision') + '</h4>' +
+            table(rowsOf(by('Review'), 'Time to a decision'), { grouped: true, pct: true, bars: true, noGroupHead: true, heads: ['Decisions', 'Share'] }, sp) + '</div>' +
+            '<div><h4 class="pair-t">' + h('Still open, by age') + '</h4>' +
+            table(rowsOf(by('Review'), 'Still open, by age'), { grouped: true, pct: true, bars: true, noGroupHead: true, heads: ['Findings', 'Share'] }, sp) + '</div>' +
+            '</div></div>') +
         chapter(2, table(by('Coverage'), {
             grouped: true, pct: true, skipEmpty: true, keep: (r) => r[0] === 'By chain' || (r[0] === 'By list' && /^OFAC SDN$/.test(r[1])),
         }, sp)) +
@@ -1149,6 +1184,25 @@ sup { font-size:.62em; color:var(--ink-4); margin-left:1px; }
 .cmp { margin:10px 0 0; color:var(--ink-3); font-size:.88em; }
 .notes { margin:16px 0 0; padding:10px 0 0; border-top:1px solid var(--line); font-size:.77em; color:var(--ink-3); line-height:1.5; }
 .notes div { display:grid; grid-template-columns:14px 1fr; }
+
+/* ---- the chapters' tables: what is measured under each title, a bar
+   beside every count, and the numbers in the same columns throughout */
+.part-what { margin:-4px 0 10px; color:var(--ink-3); font-size:.88em; }
+.part-note { margin:6px 0 0; color:var(--ink-3); font-size:.88em; }
+table.has-bars td.n, table.has-bars th.n { width:64px; }
+table.has-bars td:last-child, table.has-bars th:last-child { width:62px; color:var(--ink-3); }
+td.sh-bar { width:40%; padding:0 4px 0 14px; }
+/* square ends: a gradient with rounded corners goes into a PDF as a picture */
+td.sh-bar i { display:block; height:7px; background:linear-gradient(90deg, #00b4e6, #6a4ff0); }
+td.sh-bar i.is-mute { background:rgba(14,35,88,.14); }
+.pair { display:grid; grid-template-columns:1fr 1fr; gap:30px; }
+.pair-t { font:700 .92em 'Plus Jakarta Sans', Inter, sans-serif; margin:0 0 6px; }
+h3:has(+ .part-what) { border:0; padding-bottom:0; margin-bottom:6px; }
+table.has-bars tr.grp th { color:var(--ink); }
+/* side by side the labels keep to one line and the bar takes what is left */
+.pair td:first-child { white-space:nowrap; }
+.pair td.sh-bar { width:100%; }
+.paper-a5 .pair { grid-template-columns:1fr; gap:14px; }
 /* A5 has the overview in half the room: smaller type in the table and the
    notes, and less air between them, so it still ends on its page */
 .paper-a5 .lede { margin-bottom:10px; }
@@ -1190,6 +1244,8 @@ tr { break-inside:avoid; }
   .sheet { padding:22px 16px; }
   .statement { min-height:0; }
   .fields { grid-template-columns:1fr; gap:22px; }
+  .pair { grid-template-columns:1fr; gap:16px; }
+  td.sh-bar { width:28%; padding-left:8px; }
   /* a phone's width: the dates under the column heads may wrap, and the
      numbers keep a gap between them */
   .n { padding-left:10px; }
