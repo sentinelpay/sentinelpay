@@ -236,6 +236,14 @@ test('the report is laid out on the paper asked for, A4 when none is', () => {
         ['Overview of the period', 'Screenings and review', 'Sanctions coverage', 'API, team and evidence', 'Day by day'], 'the chapters are not the ones they were');
     assert.match(html, /\.chapter \{ break-before:page; \}/, 'a chapter does not start a page of its own');
     assert.match(html, /\.chapter \.part \{ break-inside:avoid; \}/, 'a section can leave two rows alone at the top of a page');
+    // Screenings and review: what each part measures, a bar beside every
+    // count with the ordinary outcome in grey, the two review tables side by
+    // side, and no table of one row for projects nobody used
+    const detail = chapters[1];
+    assert.match(detail, /<p class="part-what">Every check in the period/, 'the screenings do not say what they measure');
+    assert.match(detail, /<table class="has-bars">/, 'the breakdowns have no bars');
+    assert.match(detail, /<div class="pair"><div><h4 class="pair-t">Time to a decision<\/h4>/, 'the review tables are not side by side');
+    assert.doesNotMatch(html, /\.sh-bar i \{[^}]*border-radius/, 'a rounded gradient bar goes into the PDF as a picture');
     // the overview: two sentences, the days as columns, the figures beside the
     // period before, and what the words in them mean
     const overview = chapters[0];
