@@ -11,7 +11,7 @@
 // staging and in development, and never written anywhere: it is drawn and
 // thrown away.
 
-const NAME = 'Internationale Handels- und Verwahrungsgesellschaft für digitale Vermögenswerte AG';
+const NAME = 'Internationale Handels- & Verwahrungsgesellschaft für digitale Vermögenswerte AG';
 
 const CHAINS = ['XBT', 'ETH', 'TRX', 'SOL', 'BNB', 'BASE', 'XRP', 'ARB', 'TON', 'POL', 'LTC', 'DOGE', 'OP', 'AVAX',
     'SUI', 'HYPE', 'ADA', 'XLM', 'HBAR', 'DOT', 'NEAR', 'APT', 'XMR', 'ATOM', 'ETC', 'TAO', 'S', 'ZKS', 'LINEA', 'MNT',

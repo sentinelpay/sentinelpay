@@ -643,3 +643,117 @@ test('the full sample is served on staging and in development, never in producti
     assert.equal(enabled({}), false, 'a server that says nothing');
     assert.equal(enabled(), false, 'no environment at all');
 });
+
+// A file's name says what it is before it is opened: ours, whose, the first
+// and last day it covers, and the language of the two a person reads.
+test('an export is named for whose it is, the days it covers and its language', () => {
+    const out = { period: { from: '2026-09-14T00:00:00.000Z', to: '2026-10-14T00:00:00.000Z' }, scope: 'live' };
+    const name = (f, organisation, lang, o) => exports_.filename(o || out, f, { organisation, lang });
+    assert.equal(name('pdf', 'Čistoća d.o.o.', 'hr'), 'sentinelpay-usage_cistoca-d-o-o_2026-09-14_2026-10-13_hr.pdf');
+    assert.equal(name('xlsx', 'Straße & Söhne GmbH', 'de'), 'sentinelpay-usage_strasse-sohne-gmbh_2026-09-14_2026-10-13_de.xlsx');
+    // a program's formats are in one language, so they carry none
+    assert.equal(name('csv', 'Acme', 'hr'), 'sentinelpay-usage_acme_2026-09-14_2026-10-13.csv');
+    assert.equal(name('json', 'Acme', 'de'), 'sentinelpay-usage_acme_2026-09-14_2026-10-13.json');
+    assert.equal(name('csv', 'Acme', '', { ...out, scope: 'sandbox' }), 'sentinelpay-usage_acme_2026-09-14_2026-10-13_sandbox.csv');
+    // a long name ends at a word, and a name with no letters drops out
+    assert.equal(name('pdf', 'Internationale Handels- und Verwahrungsgesellschaft für digitale Vermögenswerte', 'en'),
+        'sentinelpay-usage_internationale-handels-und_2026-09-14_2026-10-13_en.pdf');
+    assert.equal(name('json', '***', 'en'), 'sentinelpay-usage_2026-09-14_2026-10-13.json');
+    for (const n of [name('pdf', '"; rm -rf / <x>', 'en'), name('csv', '../../etc/passwd', 'en')]) {
+        assert.match(n, /^[a-z0-9_.-]+$/, 'a name carries a character a header or a path would read: ' + n);
+    }
+});
+
+// The CSV is one table: the same seven columns on every line, the report
+// itself as the first rows, every day's figure a row of its own.
+test('the csv is one table a program can read without being told where parts begin', () => {
+    const sample = require('../report-sample.js').full(new Date('2026-10-14T10:00:00Z'));
+    const list = exports_.sheets(sample.out, sample.org, sample.sub);
+    const meta = { reference: exports_.reference(list), generated: '2026-10-14T10:00:00.000Z', organisation: sample.org.name };
+    const text = exports_.csv(list, meta);
+    assert.ok(text.startsWith('﻿section,date,breakdown,item,value,share_percent,period_before\r\n'), 'the heading is not the first line');
+    const lines = text.slice(1).trim().split('\r\n');
+    // the cells of a line, a quoted comma not ending one
+    const cells = (line) => {
+        const outCells = [''];
+        let quoted = false;
+        for (const ch of line) {
+            if (ch === '"') quoted = !quoted;
+            else if (ch === ',' && !quoted) outCells.push('');
+            else outCells[outCells.length - 1] += ch;
+        }
+        return outCells;
+    };
+    for (const line of lines) assert.equal(cells(line).length, 7, 'a line is not seven columns: ' + line);
+    assert.ok(lines.includes('Report,,,Reference,sha256:' + meta.reference + ',,'), 'the reference is not in the table');
+    assert.equal(lines.filter((l) => l.startsWith('Daily,')).length, 365 * 9, 'a day\'s figure is missing');
+    assert.ok(lines.includes('Summary,,,Period to,2026-10-13,,2025-10-13'), 'the period does not end on its last day');
+    assert.ok(lines.some((l) => l.startsWith('API,,By endpoint,POST /v1/screen,')), 'the endpoints are not under a breakdown');
+    // a number is written as a number, even a negative one
+    assert.equal(exports_.csvCell(-3), '-3');
+    assert.equal(exports_.csvCell('-3'), "'-3");
+});
+
+// The JSON is the same figures as objects a program addresses by name.
+test('the json addresses every figure by name', () => {
+    const sample = require('../report-sample.js').full(new Date('2026-10-14T10:00:00Z'));
+    const list = exports_.sheets(sample.out, sample.org, sample.sub);
+    const meta = { reference: exports_.reference(list), generated: '2026-10-14T10:00:00.000Z', organisation: sample.org.name };
+    const doc = JSON.parse(exports_.json(list, meta, sample.out));
+    assert.equal(doc.version, 2);
+    assert.deepEqual(doc.period, { firstDay: '2025-10-14', lastDay: '2026-10-13', from: '2025-10-14T00:00:00.000Z',
+        to: '2026-10-14T00:00:00.000Z', zone: 'Europe/Zagreb', unit: 'day' });
+    assert.equal(doc.summary.screenings.value, sample.out.screenings.total);
+    assert.equal(doc.summary.screeningsIncludedThisCycle.periodBefore, null, 'a figure with nothing before it is not null');
+    assert.equal(doc.summary.organisation, undefined, 'the head of the report is repeated in the summary');
+    assert.equal(doc.daily.length, 365);
+    assert.deepEqual(Object.keys(doc.daily[0]), ['date', 'screenings', 'flagged', 'sanctioned', 'distinctAddresses',
+        'decisions', 'cleared', 'confirmed', 'apiCalls', 'webhookDeliveries']);
+    assert.equal(doc.breakdowns.screenings.byChain.length, 64);
+    assert.deepEqual(Object.keys(doc.breakdowns.screenings.byKind[0]), ['item', 'count', 'sharePercent']);
+    assert.equal(doc.breakdowns.api.byEndpoint[0].endpoint, 'POST /v1/screen');
+    assert.deepEqual(Object.keys(doc.breakdowns.review), ['timeToADecision', 'stillOpenByAge']);
+});
+
+// The workbook, opened: its parts read back out of the zip.
+function unzip(buf) {
+    const zlib = require('zlib');
+    const files = {};
+    for (let at = 0; buf.readUInt32LE(at) === 0x04034b50;) {
+        const size = buf.readUInt32LE(at + 18);
+        const nameLen = buf.readUInt16LE(at + 26);
+        const name = buf.slice(at + 30, at + 30 + nameLen).toString('utf8');
+        const start = at + 30 + nameLen + buf.readUInt16LE(at + 28);
+        files[name] = zlib.inflateRawSync(buf.slice(start, start + size)).toString('utf8');
+        at = start + size;
+    }
+    return files;
+}
+
+test('the workbook is in the reader\'s language, with dates, formats, filters and a total', () => {
+    const sample = require('../report-sample.js').full(new Date('2026-10-14T10:00:00Z'));
+    const list = exports_.sheets(sample.out, sample.org, sample.sub);
+    const meta = { reference: exports_.reference(list), generated: '2026-10-14T10:00:00.000Z', organisation: sample.org.name, lang: 'hr' };
+    const files = unzip(exports_.xlsx(list, meta, sample.out));
+    const wb = files['xl/workbook.xml'];
+    const names = [...wb.matchAll(/<sheet name="([^"]+)"/g)].map((m) => m[1]);
+    assert.deepEqual(names, ['O izvješću', 'Sažetak', 'Dan po dan', 'Provjere', 'Pregled', 'Pokrivenost', 'API', 'Tim', 'Dokazi']);
+    // the first sheet says whose it is and carries the reference
+    assert.match(files['xl/worksheets/sheet1.xml'], new RegExp('sha256:' + meta.reference));
+    assert.match(files['docProps/core.xml'], /<dc:creator>Sentinelpay<\/dc:creator>/);
+    assert.match(files['docProps/core.xml'], /<dc:language>hr<\/dc:language>/);
+    const daily = files['xl/worksheets/sheet3.xml'];
+    // a day is a date, a count a number with its thousands marked, a share to a place
+    assert.match(daily, /<c r="A2" s="4"><v>45944<\/v><\/c>/, 'the first day is not the date 2025-10-14');
+    assert.match(daily, /<c r="B2" s="2"><v>\d+<\/v><\/c>/, 'a count is not a number');
+    assert.match(files['xl/worksheets/sheet4.xml'], /<c r="D2" s="3"><v>[\d.]+<\/v><\/c>/, 'a share is not a number');
+    assert.match(files['xl/styles.xml'], /<xf numFmtId="3" fontId="0"/, 'counts are not marked in thousands');
+    // filtered, frozen, and added up at the foot with what a filter leaves
+    assert.match(daily, /<autoFilter ref="A1:J366"\/>/);
+    assert.match(daily, /<pane xSplit="1" ySplit="1" topLeftCell="B2"/);
+    assert.match(daily, /<c r="B367" s="5"><f>SUBTOTAL\(109,B2:B366\)<\/f><v>\d+<\/v><\/c>/);
+    assert.match(wb, /<definedName name="_xlnm\._FilterDatabase" localSheetId="2" hidden="1">'Dan po dan'!\$A\$1:\$J\$366<\/definedName>/);
+    // names given by people are printed as they were given
+    assert.match(files['xl/worksheets/sheet4.xml'], /<t xml:space="preserve">Card program 01, Frankfurt/);
+    assert.doesNotMatch(Object.values(files).join(''), /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/, 'a character XML cannot carry');
+});

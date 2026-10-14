@@ -6838,6 +6838,13 @@
                 var url = '/v1/orgs/' + encodeURIComponent(org.id) +
                     '/usage.' + f[0] + '?period=' + encodeURIComponent(out.period.key) +
                     '&scope=' + encodeURIComponent(out.scope) + '&tz=' + encodeURIComponent(zoneNow());
+                // the workbook is for people, in the dashboard's language;
+                // the CSV and the JSON are for programs, in one language always
+                if (f[0] === 'xlsx') {
+                    var lang = 'en';
+                    try { lang = (window.SentinelI18n && window.SentinelI18n.lang()) || 'en'; } catch (err) { lang = 'en'; }
+                    url += '&lang=' + encodeURIComponent(/^(en|hr|de)$/.test(lang) ? lang : 'en');
+                }
                 // the report is read and printed inside this page; the rest
                 // are files
                 if (f[0] === 'html') {
