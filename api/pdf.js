@@ -96,19 +96,20 @@ function release() {
     else if (!busy) rest();
 }
 
-// The cover, stretched to the page it is printed on.
+// The covers, stretched to the page they are printed on.
 //
 // Chromium lays a page out in whole pixels and writes the PDF's page in
 // three-hundredths of an inch, and the two disagree by a fraction of a point:
 // A5 is laid out 559px (419.25pt) wide on a page 420pt wide, A3 1587px tall
-// on a page 1191.12pt tall. Most pages never show it, but the cover is dark
-// to its edges, and the difference was a hairline of white down the right of
-// an A5 cover and along the foot of an A3 one. No rule in the page can reach
-// it, so the PDF is mended: the first page's drawing is scaled by the
-// difference, 1.0018 on A5, anchored at its top left, so it meets every edge.
+// on a page 1191.12pt tall. Most pages never show it, but a cover is dark to
+// its edges, and the difference was a hairline of white down the right of an
+// A5 cover and along the foot of an A3 one. No rule in the page can reach it,
+// so the PDF is mended: the first page's drawing and the last's are scaled
+// by the difference, 1.0018 on A5, anchored at the top left, so they meet
+// every edge.
 //
 // Written as an incremental update, the standard way to change a PDF without
-// rewriting it: two short streams around the page's own, the page pointing
+// rewriting it: two short streams around each page's own, the page pointing
 // at all three, and a new cross-reference section after the old one.
 function fillCover(bytes, paper) {
     const buf = Buffer.from(bytes);
@@ -124,35 +125,45 @@ function fillCover(bytes, paper) {
     }
     const ref = (d, key) => (new RegExp('\\/' + key + '\\s+(\\d+) 0 R').exec(d || '') || [])[1];
     const root = ref(end[1], 'Root');
-    let num = ref(objects.get(root), 'Pages');
-    for (let depth = 0; num && /\/Type\s*\/Pages\b/.test(objects.get(num) || '') && depth < 20; depth++) {
-        num = ((/\/Kids\s*\[\s*(\d+) 0 R/.exec(objects.get(num)) || [])[1]);
-    }
-    const page = objects.get(num);
-    if (!page) return buf;
-    const box = (/\/MediaBox\s*\[([^\]]+)\]/.exec(page) || [])[1];
-    const contents = /\/Contents\s*(\d+ 0 R|\[[^\]]*\])/.exec(page);
-    if (!box || !contents) return buf;
-    const [, , mw, mh] = box.trim().split(/\s+/).map(Number);
-    // the size the page was laid out at: the paper in whole pixels, in points
-    const cw = Math.round(paper.w / 25.4 * 96) * 0.75;
-    const ch = Math.round(paper.h / 25.4 * 96) * 0.75;
-    const sx = Math.max(1, mw / cw);
-    const sy = Math.max(1, mh / ch);
-    if (sx === 1 && sy === 1) return buf;
+    // the pages in order, through however many levels of the page tree
+    const pages = [];
+    const walk = (num, depth) => {
+        const d = objects.get(num) || '';
+        if (depth > 20) return;
+        if (/\/Type\s*\/Pages\b/.test(d)) {
+            const kids = (/\/Kids\s*\[([^\]]*)\]/.exec(d) || [])[1] || '';
+            for (const k of kids.matchAll(/(\d+) 0 R/g)) walk(k[1], depth + 1);
+        } else if (d) pages.push(num);
+    };
+    walk(ref(objects.get(root), 'Pages'), 0);
+    if (!pages.length) return buf;
     const size = Number((/\/Size\s+(\d+)/.exec(end[1]) || [])[1]);
     const info = ref(end[1], 'Info');
     if (!size || !root) return buf;
-    const before = size;
-    const after = size + 1;
+    // the size the page was laid out at: the paper in whole pixels, in points
+    const cw = Math.round(paper.w / 25.4 * 96) * 0.75;
+    const ch = Math.round(paper.h / 25.4 * 96) * 0.75;
     const f = (v) => v.toFixed(6);
     const stream = (n, body) => n + ' 0 obj\n<</Length ' + body.length + '>>\nstream\n' + body + '\nendstream\nendobj\n';
-    const inner = contents[1][0] === '[' ? contents[1].slice(1, -1).trim() : contents[1];
-    const parts = [
-        [before, stream(before, 'q ' + f(sx) + ' 0 0 ' + f(sy) + ' 0 ' + f(mh * (1 - sy)) + ' cm')],
-        [after, stream(after, 'Q')],
-        [Number(num), num + ' 0 obj\n<<' + page.replace(contents[0], '/Contents [' + before + ' 0 R ' + inner + ' ' + after + ' 0 R]') + '>>\nendobj\n'],
-    ];
+    const parts = [];
+    let next = size;
+    for (const num of [...new Set([pages[0], pages[pages.length - 1]])]) {
+        const page = objects.get(num);
+        const box = (/\/MediaBox\s*\[([^\]]+)\]/.exec(page) || [])[1];
+        const contents = /\/Contents\s*(\d+ 0 R|\[[^\]]*\])/.exec(page);
+        if (!box || !contents) continue;
+        const [, , mw, mh] = box.trim().split(/\s+/).map(Number);
+        const sx = Math.max(1, mw / cw);
+        const sy = Math.max(1, mh / ch);
+        if (sx === 1 && sy === 1) continue;
+        const before = next++;
+        const after = next++;
+        const inner = contents[1][0] === '[' ? contents[1].slice(1, -1).trim() : contents[1];
+        parts.push([before, stream(before, 'q ' + f(sx) + ' 0 0 ' + f(sy) + ' 0 ' + f(mh * (1 - sy)) + ' cm')]);
+        parts.push([after, stream(after, 'Q')]);
+        parts.push([Number(num), num + ' 0 obj\n<<' + page.replace(contents[0], '/Contents [' + before + ' 0 R ' + inner + ' ' + after + ' 0 R]') + '>>\nendobj\n']);
+    }
+    if (!parts.length) return buf;
     let at = buf.length + (s.endsWith('\n') ? 0 : 1);
     let add = s.endsWith('\n') ? '' : '\n';
     const offsets = new Map();
@@ -161,9 +172,10 @@ function fillCover(bytes, paper) {
         add += text;
         at += Buffer.byteLength(text, 'latin1');
     }
+    // one subsection for each object written, in the order of their numbers
     const entry = (n) => String(offsets.get(n)).padStart(10, '0') + ' 00000 n\r\n';
-    add += 'xref\n' + num + ' 1\n' + entry(Number(num)) + before + ' 2\n' + entry(before) + entry(after) +
-        'trailer\n<</Size ' + (size + 2) + '\n/Root ' + root + ' 0 R' + (info ? '\n/Info ' + info + ' 0 R' : '') +
+    add += 'xref\n' + [...offsets.keys()].sort((x, y) => x - y).map((n) => n + ' 1\n' + entry(n)).join('') +
+        'trailer\n<</Size ' + next + '\n/Root ' + root + ' 0 R' + (info ? '\n/Info ' + info + ' 0 R' : '') +
         '\n/Prev ' + end[2] + '>>\nstartxref\n' + at + '\n%%EOF\n';
     return Buffer.concat([buf, Buffer.from(add, 'latin1')]);
 }
