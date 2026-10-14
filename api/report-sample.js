@@ -6,7 +6,8 @@
 // A year of days, the longest period there is: an annual plan's cycle. Every
 // kind of check, every list, programme and role with something in it, sixty
 // four chains, two hundred projects, every API endpoint, numbers in the
-// millions, and an organisation name of eighty characters. Only ever served on
+// millions, and an organisation name of eighty characters. On whichever plan
+// is asked for, so each plan's cover can be seen. Only ever served on
 // staging and in development, and never written anywhere: it is drawn and
 // thrown away.
 
@@ -35,7 +36,11 @@ function seeded(seed) {
 
 const DAY = 86400000;
 
-function full(now) {
+// the plan the sample is on, for its cover: Enterprise unless asked
+const PLAN_NAMES = { starter: 'Starter', growth: 'Growth', enterprise: 'Enterprise' };
+
+function full(now, plan) {
+    const key = PLAN_NAMES[String(plan || '').toLowerCase()] ? String(plan).toLowerCase() : 'enterprise';
     const rnd = seeded(20260914);
     const end = new Date(now || Date.now());
     end.setUTCHours(0, 0, 0, 0);
@@ -133,7 +138,7 @@ function full(now) {
     return {
         out,
         org: { name: NAME.slice(0, 80) },
-        sub: { planName: 'Enterprise, annual', included: { screenings: Math.round(total * 0.9) } },
+        sub: { plan: key, planName: PLAN_NAMES[key] + ', annual', included: { screenings: Math.round(total * 0.9) } },
     };
 }
 

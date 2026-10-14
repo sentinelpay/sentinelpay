@@ -467,7 +467,8 @@ test('the PDF comes out on the paper asked for, set in real fonts', { timeout: 1
         // and Letter the two agree, and the file is left as it was written.
         if (mended) {
             assert.match(s, /\/Prev \d+>>\nstartxref\n\d+\n%%EOF\n$/, paper + ': the cover was not stretched to its page');
-            assert.match(s, /stream\nq 1\.\d+ 0 0 1\.\d+ 0 -?[\d.]+ cm\nendstream/, paper + ': the stretch is not drawn first');
+            // the back is dark to its edges too
+            assert.equal((s.match(/stream\nq 1\.\d+ 0 0 1\.\d+ 0 -?[\d.]+ cm\nendstream/g) || []).length, 2, paper + ': the covers are not both stretched');
         } else {
             assert.doesNotMatch(s, /\/Prev \d+>>\nstartxref/, paper + ': mended when there was nothing to mend');
         }
@@ -597,4 +598,28 @@ test('the full sample fills every chapter, and the chart has room for its number
         assert.match(days, /<tbody class="g-keep"><tr class="grp"><th colspan="6">[^<]+<\/th><\/tr>(<tr[^>]*>(?:(?!<\/tr>)[\s\S])*<\/tr>){3}<\/tbody><tbody>/, lang + ': a month does not hold its first three days');
     }
     assert.equal(sample.org.name.length, 80, 'the sample name is not the longest one allowed');
+});
+
+// A cover for each plan, front and back: its own colours and its own
+// arrangement of the shapes. A report with no plan takes Starter's. The
+// overview's chart names no day: the axis says how high a column is.
+test('each plan has its own cover, and the report closes on the back of it', () => {
+    const sample = require('../report-sample.js').full(new Date('2026-10-14T10:00:00Z'));
+    const list = exports_.sheets(sample.out, sample.org, sample.sub);
+    const meta = { reference: exports_.reference(list), generated: '2026-10-14T10:00:00Z', organisation: sample.org.name, back: '/', forPdf: true };
+    const art = (html, back) => (html.match(/<svg class="c-art"[\s\S]*?<\/svg>/g) || [])[back ? 1 : 0] || '';
+    const seen = new Set();
+    for (const plan of ['starter', 'growth', 'enterprise']) {
+        const html = exports_.report(list, { ...meta, plan }, sample.out);
+        const covers = html.match(/<section class="sheet cover( back)?"/g) || [];
+        assert.deepEqual(covers, ['<section class="sheet cover"', '<section class="sheet cover back"'], plan + ': not one cover at each end');
+        assert.ok(html.lastIndexOf('class="sheet cover back"') > html.lastIndexOf('End of report'), plan + ': the back is not last');
+        assert.notEqual(art(html), art(html, true), plan + ': the back is the front again');
+        assert.match(html, /<div class="b-end"><svg class="b-mark"[\s\S]*<p class="b-line">Sanctions screening for crypto\.<\/p>/, plan + ': the back has no name on it');
+        seen.add(art(html));
+        assert.doesNotMatch(html, /busiest/, plan + ': the chart still names its busiest day');
+    }
+    assert.equal(seen.size, 3, 'two plans share a cover');
+    assert.equal(art(exports_.report(list, meta, sample.out)), art(exports_.report(list, { ...meta, plan: 'starter' }, sample.out)), 'a report with no plan does not take Starter\'s cover');
+    assert.match(exports_.report(list, meta, sample.out), /@page bare \{ margin:0;/, 'the back is printed inside a margin');
 });

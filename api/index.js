@@ -2446,7 +2446,7 @@ const sampleReport = (req) => SAMPLE_REPORTS && String(req.query.sample || '') =
 async function usageReport(req, mine, extra) {
     let out, sub, org = mine;
     if (sampleReport(req)) {
-        ({ out, sub, org } = reportSample.full());
+        ({ out, sub, org } = reportSample.full(Date.now(), req.query.plan));
     } else {
         [out, sub] = await Promise.all([usageFor(req, mine), billing.get(mine.id)]);
         if (!out.ok) return null;
@@ -2462,6 +2462,8 @@ async function usageReport(req, mine, extra) {
         reference: exportsFile.reference(list),
         generated: new Date().toISOString(),
         organisation: org.name || '',
+        // whose plan it is decides the colours of its cover
+        plan: (sub && sub.plan) || '',
         back: '/dashboard/org/' + encodeURIComponent(mine.slug || '') + '/usage',
     }, extra);
     return { out, list, meta };

@@ -655,7 +655,7 @@ function periodChart(daily, hourly, sp, low) {
     const rows = daily.rows;
     // lower on A5 and Letter, the two sheets that are short for their width,
     // where the overview has the least room to end on its page
-    const W = 1000, H = low ? 200 : 250, R = 8, T = 30, B = 32;
+    const W = 1000, H = low ? 200 : 250, R = 8, T = 14, B = 32;
     const top = Math.max(1, ...rows.map((r) => Number(r[1]) || 0));
     // a round step for three or four lines: 1, 2 or 5 times a power of ten
     const raw = top / 3;
@@ -690,10 +690,8 @@ function periodChart(daily, hourly, sp, low) {
             (r ? 'Q' + n2(x) + ' ' + n2(y1) + ' ' + n2(x + r) + ' ' + n2(y1) : '') + 'H' + n2(x + w - r) +
             (r ? 'Q' + n2(x + w) + ' ' + n2(y1) + ' ' + n2(x + w) + ' ' + n2(y1 + r) : '') + 'V' + n2(y0) + 'Z"/>';
     };
-    let peak = 0;
     rows.forEach((r, i) => {
         const n = Number(r[1]) || 0, f = Math.min(n, Number(r[2]) || 0);
-        if (n > (Number(rows[peak][1]) || 0)) peak = i;
         const x = L + i * bw + gap / 2, w = Math.max(1, bw - gap);
         const yb = y(0), yf = y(f), yn = y(n);
         if (f) out.push(col(x, w, yb, yf, 'flag', f === n));
@@ -708,14 +706,6 @@ function periodChart(daily, hourly, sp, low) {
         const [x, anchor] = mid < L + 45 ? [L + i * bw, 'start'] : mid > W - R - 45 ? [L + (i + 1) * bw, 'end'] : [mid, 'middle'];
         out.push('<text x="' + n2(x) + '" y="' + (H - 8) + '" text-anchor="' + anchor + '">' + esc(when(rows[i][0])) + '</text>');
     });
-    // the busiest day, named on its column
-    const pn = Number(rows[peak][1]) || 0;
-    if (pn) {
-        const px = L + peak * bw + bw / 2;
-        const anchor = px < L + 120 ? 'start' : px > W - R - 120 ? 'end' : 'middle';
-        out.push('<text class="peak" x="' + n2(px) + '" y="' + n2(y(pn) - 9) + '" text-anchor="' + anchor + '">' +
-            sp.h(hourly ? '{n} · busiest hour' : '{n} · busiest day', { n: sp.num(pn) }) + '</text>');
-    }
     return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' +
         esc(sp.tr(hourly ? 'Checks by hour' : 'Checks by day')) + '">' + out.join('') + '</svg>';
 }
@@ -751,65 +741,119 @@ const LETTERHEAD = '<svg class="lh-mark" viewBox="0 0 120 120" aria-hidden="true
     '<path d="M38 60 Q 60 40 82 60 Q 60 80 38 60 Z"/><circle cx="60" cy="60" r="6"/></g></svg>' +
     '<span>Sentinelpay</span>';
 
-function coverArt(paper) {
+// Each plan has a cover of its own: its colours, and its own arrangement of
+// the shapes on the grid. Starter is the dashboard's navy, Growth a deep
+// teal, Enterprise a violet near black. A report with no plan behind it, a
+// trial or a lapsed one, takes Starter's. The back of the report is the same
+// grid turned over, its shapes in the other order, and closes the document
+// the way the cover opens it.
+const COVERS = {
+    starter: {
+        bg: '#0b1020', a: '#131d4f', b: '#1b2a72', ink: ['#00e0ff', '#a020f0'],
+        front: [['q-tl b', 'full a', 'dee-l b'], ['shield a', 'disc b', 'shield a'], ['disc b', 'dee-r a', 'q-br b']],
+        back: [['q-bl b', 'dee-l a', 'disc b'], ['shield a', 'disc b', 'shield a'], ['dee-r b', 'full a', 'q-tr b']],
+    },
+    growth: {
+        bg: '#04161b', a: '#0a3440', b: '#0e4f5e', ink: ['#4cf0c2', '#00b4e6'],
+        front: [['shield b', 'disc a', 'q-tr b'], ['dee-r a', 'disc b', 'dee-l a'], ['q-bl b', 'full a', 'shield b']],
+        back: [['q-tl b', 'full a', 'shield b'], ['dee-r a', 'disc b', 'dee-l a'], ['shield b', 'disc a', 'q-br b']],
+    },
+    enterprise: {
+        bg: '#0b0716', a: '#1d1240', b: '#2c1a5e', ink: ['#b07cff', '#ff6ad5'],
+        front: [['full a', 'shield b', 'full a'], ['disc b', 'disc a', 'disc b'], ['q-br a', 'dee-r b', 'q-bl a']],
+        back: [['q-tr a', 'dee-l b', 'q-tl a'], ['disc b', 'disc a', 'disc b'], ['full a', 'shield b', 'full a']],
+    },
+};
+const coverOf = (plan) => COVERS[String(plan || '').toLowerCase()] || COVERS.starter;
+
+// The cover's art: a grid of three modules across the paper's width and three
+// down, each filled with one shape taken from the logo -- the shield's lower
+// half, the iris of the eye, and the quarters and halves of that circle -- in
+// the plan's two colours on its dark. On the front the logo sits in the middle
+// module, the one bright thing on the page. Drawn in the paper's millimetres,
+// so the modules stay square on every size and only the space beside them
+// changes: under the grid on the front, over it on the back.
+function coverArt(paper, theme, back) {
     const W = paper.w;
     const H = paper.h;
     const m = W / 3;
     const n = (v) => Math.round(v * 100) / 100;
-    const A = '#131d4f';
-    const B = '#1b2a72';
-    const at = (c, r) => [n(c * m), n(r * m)];
-    const quarter = (c, r, corner, fill) => {
+    const top = back ? H - W : 0;
+    const id = back ? 'backInk' : 'coverInk';
+    const at = (c, r) => [n(c * m), n(top + r * m)];
+    const fill = (k) => theme[k];
+    const quarter = (c, r, corner, f) => {
         const [x, y] = at(c, r);
         const x2 = n(x + m);
         const y2 = n(y + m);
+        const R = n(m);
+        // the quarter of a circle whose centre is the named corner
         const d = {
-            tl: `M${x} ${y} H${x2} A${n(m)} ${n(m)} 0 0 1 ${x} ${y2} Z`,
-            br: `M${x2} ${y2} H${x} A${n(m)} ${n(m)} 0 0 1 ${x2} ${y} Z`,
+            tl: `M${x} ${y} H${x2} A${R} ${R} 0 0 1 ${x} ${y2} Z`,
+            tr: `M${x2} ${y} V${y2} A${R} ${R} 0 0 1 ${x} ${y} Z`,
+            br: `M${x2} ${y2} H${x} A${R} ${R} 0 0 1 ${x2} ${y} Z`,
+            bl: `M${x} ${y2} V${y} A${R} ${R} 0 0 1 ${x2} ${y2} Z`,
         }[corner];
-        return `<path d="${d}" fill="${fill}"/>`;
+        return `<path d="${d}" fill="${f}"/>`;
     };
-    const dee = (c, r, side, fill) => {
+    const dee = (c, r, side, f) => {
         const [x, y] = at(c, r);
         const h = n(m / 2);
         const d = side === 'r'
             ? `M${x} ${y} H${n(x + h)} A${h} ${h} 0 0 1 ${n(x + h)} ${n(y + m)} H${x} Z`
             : `M${n(x + m)} ${y} H${n(x + h)} A${h} ${h} 0 0 0 ${n(x + h)} ${n(y + m)} H${n(x + m)} Z`;
-        return `<path d="${d}" fill="${fill}"/>`;
+        return `<path d="${d}" fill="${f}"/>`;
     };
-    const shield = (c, r, fill) => {
+    const shield = (c, r, f) => {
         const [x, y] = at(c, r);
         const k = m / 70;
         const X = (v) => n(x + v * k);
         const Y = (v) => n(y + v * k);
         return `<path d="M${X(0)} ${Y(0)} H${X(70)} V${Y(22)} C${X(70)} ${Y(48)} ${X(48)} ${Y(63)} ${X(35)} ${Y(70)} ` +
-            `C${X(22)} ${Y(63)} ${X(0)} ${Y(48)} ${X(0)} ${Y(22)} Z" fill="${fill}"/>`;
+            `C${X(22)} ${Y(63)} ${X(0)} ${Y(48)} ${X(0)} ${Y(22)} Z" fill="${f}"/>`;
     };
-    const disc = (c, r, fill) => {
+    const disc = (c, r, f) => {
         const [x, y] = at(c, r);
-        return `<circle cx="${n(x + m / 2)}" cy="${n(y + m / 2)}" r="${n(m / 2)}" fill="${fill}"/>`;
+        return `<circle cx="${n(x + m / 2)}" cy="${n(y + m / 2)}" r="${n(m / 2)}" fill="${f}"/>`;
     };
-    const full = (c, r, fill) => {
+    const full = (c, r, f) => {
         const [x, y] = at(c, r);
-        return `<rect x="${x}" y="${y}" width="${n(m)}" height="${n(m)}" fill="${fill}"/>`;
+        return `<rect x="${x}" y="${y}" width="${n(m)}" height="${n(m)}" fill="${f}"/>`;
     };
+    const shape = (spec, c, r) => {
+        const [kind, k] = spec.split(' ');
+        if (kind.startsWith('q-')) return quarter(c, r, kind.slice(2), fill(k));
+        if (kind.startsWith('dee-')) return dee(c, r, kind.slice(4), fill(k));
+        return { shield, disc, full }[kind](c, r, fill(k));
+    };
+    const grid = (back ? theme.back : theme.front).map((row, r) => row.map((spec, c) => shape(spec, c, r)).join('')).join('');
     // the logo, centred in the middle module at the size it had on A4
     const k = m / 70;
     const lx = n(m + m / 2 - 60 * 0.37 * k);
     const ly = n(m + m / 2 - 60 * 0.37 * k);
-    return `<svg class="c-art" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">` +
-        '<defs><linearGradient id="coverInk" x1="0" y1="0" x2="1" y2="1">' +
-        '<stop offset="0" stop-color="#00e0ff"/><stop offset="1" stop-color="#a020f0"/></linearGradient></defs>' +
-        `<rect width="${W}" height="${H}" fill="#0b1020"/>` +
-        quarter(0, 0, 'tl', B) + full(1, 0, A) + dee(2, 0, 'l', B) +
-        shield(0, 1, A) + disc(1, 1, B) + shield(2, 1, A) +
-        disc(0, 2, B) + dee(1, 2, 'r', A) + quarter(2, 2, 'br', B) +
-        `<g transform="translate(${lx} ${ly}) scale(${n(0.37 * k)})" fill="none" stroke="url(#coverInk)" ` +
+    const logo = back ? '' :
+        `<g transform="translate(${lx} ${ly}) scale(${n(0.37 * k)})" fill="none" stroke="url(#${id})" ` +
         'stroke-width="6" stroke-linecap="round" stroke-linejoin="round">' +
         '<path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/>' +
         '<path d="M38 60 Q 60 40 82 60 Q 60 80 38 60 Z"/><circle cx="60" cy="60" r="6"/></g>' +
-        `<circle cx="${n(lx + 60 * 0.37 * k)}" cy="${n(ly + 60 * 0.37 * k)}" r="${n(0.9 * k)}" fill="url(#coverInk)"/>` +
-        '</svg>';
+        `<circle cx="${n(lx + 60 * 0.37 * k)}" cy="${n(ly + 60 * 0.37 * k)}" r="${n(0.9 * k)}" fill="url(#${id})"/>`;
+    return `<svg class="c-art" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">` +
+        `<defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1">` +
+        `<stop offset="0" stop-color="${theme.ink[0]}"/><stop offset="1" stop-color="${theme.ink[1]}"/></linearGradient></defs>` +
+        `<rect width="${W}" height="${H}" fill="${theme.bg}"/>` + grid + logo + '</svg>';
+}
+
+// Our mark and name on the back, white on the plan's dark, the mark in the
+// plan's ink: the same letters as the head of every page.
+function backMark(theme) {
+    const H = 150, gap = 40, w = Math.round(H + gap + WORDMARK.w);
+    return '<svg class="b-mark" viewBox="0 0 ' + w + ' ' + H + '" aria-hidden="true">' +
+        '<defs><linearGradient id="bmInk" x1="0" y1="0" x2="1" y2="1">' +
+        '<stop offset="0" stop-color="' + theme.ink[0] + '"/><stop offset="1" stop-color="' + theme.ink[1] + '"/></linearGradient></defs>' +
+        '<g transform="scale(1.25)" fill="none" stroke="url(#bmInk)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M60 15 L25 30 V55 C25 80 50 100 60 105 C70 100 95 80 95 55 V30 Z"/>' +
+        '<path d="M38 60 Q 60 40 82 60 Q 60 80 38 60 Z"/><circle cx="60" cy="60" r="6"/></g>' +
+        '<path transform="translate(' + (H + gap) + ' ' + ((H - WORDMARK.cap) / 2) + ')" fill="#fff" d="' + WORDMARK.d + '"/></svg>';
 }
 
 function report(list, meta, out) {
@@ -831,6 +875,10 @@ function report(list, meta, out) {
     const r2 = (v) => Math.round(v * 100) / 100;
     const coverBelow = r2(Math.min(14 / 210 * 100, room * 0.161));
     const coverFoot = r2(Math.min(15 / 210 * 100, room * 0.17));
+    // the plan's cover, front and back
+    const theme = coverOf(meta.plan);
+    const coverVars = '--below:' + coverBelow + 'cqw; --foot:' + coverFoot + 'cqw; --cbg:' + theme.bg +
+        '; --ink0:' + theme.ink[0] + '; --ink1:' + theme.ink[1];
     const org = meta.organisation || '';
     const from = date(out.period.from);
     const to = date(lastDay(out.period.to));
@@ -873,6 +921,9 @@ function report(list, meta, out) {
         '@bottom-right { content:' + counted + '; ' + box + ' text-align:right; } } ' +
         // the cover is the whole sheet, with no margin and nothing running
         '@page :first { margin:0; @top-left { content:none; } @top-center { content:none; } @top-right { content:none; } ' +
+        '@bottom-left { content:none; } @bottom-right { content:none; } } ' +
+        // and so is the back
+        '@page bare { margin:0; @top-left { content:none; } @top-center { content:none; } @top-right { content:none; } ' +
         '@bottom-left { content:none; } @bottom-right { content:none; } } ' +
         ':root { --pw:' + paper.w + 'mm; --ph:' + paper.h + 'mm; --mx:' + paper.mx + 'mm; --my:' + paper.my + 'mm; --mt:' + paper.mt + 'mm; ' +
         '--ar:' + paper.w + ' / ' + paper.h + '; ' +
@@ -1105,8 +1156,8 @@ function report(list, meta, out) {
         // a shorter sheet like Letter keeps the same gap rather than running
         // the title into the shapes.
         '<main class="doc">' +
-        '<section class="sheet cover" style="--below:' + coverBelow + 'cqw; --foot:' + coverFoot + 'cqw">' +
-        coverArt(paper) +
+        '<section class="sheet cover" style="' + coverVars + '">' +
+        coverArt(paper, theme) +
         '<div class="c-rule"></div>' +
         // set in capitals and broken across two lines, which is how it would
         // read as a bookmark, so the PDF's contents start at the statement
@@ -1199,6 +1250,13 @@ function report(list, meta, out) {
             return '<div class="part apx"><h3>' + h(a.title) + '</h3><div class="apx-cols">' +
                 table({ head: [a.what, a.unit, 'Share'], rows: a.rows }, { pct: true, keep: () => true, raw: true }, sp) + '</div></div>';
         }).join('') + tail) : '') +
+        // ---- the back: the cover's grid turned over, our name over it, and
+        // the reference again, so the last sheet of a printed copy still says
+        // which report it closes
+        '<section class="sheet cover back" style="' + coverVars + '">' + coverArt(paper, theme, true) +
+        '<div class="b-meta"><span>sentinelpay.org</span><span>' + esc(refLine) + '</span></div>' +
+        '<div class="b-end">' + backMark(theme) + '<p class="b-line">' + h('Sanctions screening for crypto.') + '</p></div>' +
+        '</section>' +
         '</main>' +
         (meta.forPdf ? '' : '<script src="/report.js"></script>') + '</body></html>';
 }
@@ -1237,10 +1295,10 @@ body { margin:0; color:var(--ink); font:var(--fs, 13px)/1.5 Inter, system-ui, sa
    than laid out again. The grid is as tall as the sheet is wide, so the type
    is placed from there: 100cqw down, then --below, set per paper. */
 .cover { position:relative; padding:0; aspect-ratio:var(--ar); min-height:0; container-type:inline-size;
-  overflow:hidden; background:#0b1020; color:#fff; }
+  overflow:hidden; background:var(--cbg, #0b1020); color:#fff; }
 .c-art { position:absolute; inset:0; width:100%; height:100%; display:block; }
 .c-rule { position:absolute; left:7.6cqw; top:calc(100cqw + var(--below)); width:14.3cqw; height:.55cqw;
-  background:linear-gradient(90deg, #00e0ff, #a020f0); }
+  background:linear-gradient(90deg, var(--ink0, #00e0ff), var(--ink1, #a020f0)); }
 .c-title { position:absolute; left:7.6cqw; right:7.6cqw; top:calc(100cqw + var(--below) + 3.8cqw); margin:0;
   font:600 4.7cqw/1.04 'Plus Jakarta Sans', Inter, sans-serif; letter-spacing:-.01em; text-transform:uppercase;
   color:#fff; overflow-wrap:anywhere; }
@@ -1249,6 +1307,13 @@ body { margin:0; color:var(--ink); font:var(--fs, 13px)/1.5 Inter, system-ui, sa
 .c-meta b { font:600 1.76cqw/1.4 'Plus Jakarta Sans', Inter, sans-serif; color:#fff; }
 .c-meta i { font-style:normal; margin:0 1.2cqw; color:rgba(255,255,255,.55); }
 .c-meta span:last-child { text-align:right; }
+/* the back: the grid at the foot, our name over it, the address and the
+   reference at the head, where the front has its own at the foot */
+.b-meta { position:absolute; left:7.6cqw; right:7.6cqw; top:var(--foot); display:flex; justify-content:space-between;
+  gap:4cqw; font:500 1.5cqw/1.4 Inter, sans-serif; color:rgba(255,255,255,.62); }
+.b-end { position:absolute; left:7.6cqw; right:7.6cqw; bottom:calc(100cqw + var(--below)); }
+.b-mark { display:block; width:26cqw; height:auto; }
+.b-line { margin:1.6cqw 0 0; font:500 1.76cqw/1.4 Inter, sans-serif; color:rgba(255,255,255,.82); }
 .c-sbx { position:absolute; left:7.6cqw; right:7.6cqw; bottom:calc(var(--foot) + 4.1cqw); font:600 1.6cqw/1.4 Inter, sans-serif; color:#f0b45a; }
 
 /* ---- statement, laid out as a letter */
@@ -1308,7 +1373,6 @@ h3 { font:700 14px 'Plus Jakarta Sans', Inter, sans-serif; margin:0 0 8px; paddi
 .chart .base { stroke:rgba(14,35,88,.3); stroke-width:1.5; }
 .chart .flag { fill:#3a50b0; }
 .chart .clear { fill:#7f9be0; }
-.chart .peak { fill:var(--ink-2); font-weight:600; }
 /* the figures beside the period before: every number in one face and weight,
    the earlier ones set back in colour only */
 table.sum thead th { vertical-align:bottom; line-height:1.35; padding-bottom:6px; border-bottom:1px solid var(--ink); }
@@ -1454,6 +1518,7 @@ html:has(body.is-embed)::-webkit-scrollbar-thumb:hover { background:var(--sb-thu
      of a millimetre wider than 148mm, and a cover drawn to the number left
      a hairline of white down its edge */
   .cover { width:100%; height:var(--ph); aspect-ratio:auto; break-after:page; }
+  .cover.back { page:bare; break-before:page; break-after:auto; }
   /* every chapter from the overview on starts a page of its own */
   .chapter { break-before:page; }
   /* and a section in it goes to the next page whole rather than leave two
