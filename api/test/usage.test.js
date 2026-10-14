@@ -235,11 +235,11 @@ test('the report is laid out on the paper asked for, A4 when none is', () => {
     assert.deepEqual(chapters.map((c) => (/<h2 class="big">([^<]*)<\/h2>/.exec(c) || [])[1]),
         ['Overview of the period', 'Screenings and review', 'Sanctions coverage', 'API, team and evidence', 'Day by day'], 'the chapters are not the ones they were');
     assert.match(html, /\.chapter \{ break-before:page; \}/, 'a chapter does not start a page of its own');
-    assert.match(html, /\.chapter \.part \{ break-inside:avoid; \}/, 'a section can leave two rows alone at the top of a page');
+    assert.match(html, /\.chapter \.part\.keep \{ break-inside:avoid; \}/, 'a short section can leave two rows alone at the top of a page');
     // the statement page is the letter and the confirmation; the report's
     // particulars come last, with the full reference
     assert.doesNotMatch(letter, /class="facts"/, 'the particulars are back on the statement page');
-    const about = html.slice(html.indexOf('<div class="part about">'));
+    const about = html.slice(html.search(/<div class="part[^"]*\babout">/));
     assert.match(about, /<h3>Report details<\/h3><dl class="facts">[\s\S]*Reference[\s\S]*sha256:[0-9a-f]{64}/, 'the particulars are not at the end');
     // Screenings and review: what each part measures, a bar beside every
     // count with the ordinary outcome in grey, the two review tables side by
@@ -502,4 +502,53 @@ test('the paper holds the largest report a period can make', { timeout: 120000 }
     assert.equal(at('Erklärung zu den Prüfungen'), 2, 'the statement does not start on page 2');
     assert.equal(at('Überblick über den Zeitraum'), 3, 'the statement runs onto a second page');
     assert.ok(at('Prüfungen und Entscheidungen') > 3, 'the chapters after the overview are out of place');
+});
+
+// A company using every chain, two hundred projects and fifteen endpoints.
+// The chapters show the ten largest of each and the rest as one row, so the
+// table still reads in a glance; every row is in the appendix, largest
+// first, so the paper still holds all of it.
+test('a long list shows its ten largest and keeps every row in the appendix', { timeout: 120000 }, async (t) => {
+    const line = (n) => ({ total: n, days: [{ day: '2026-09-01', n }, { day: '2026-09-02', n: 0 }] });
+    const chains = Array.from({ length: 64 }, (_, i) => ({ asset: 'C' + String(i).padStart(2, '0'), n: 6400 - i * 100 }));
+    const out = {
+        period: { from: '2026-09-01T00:00:00.000Z', to: '2026-09-03T00:00:00.000Z' }, scope: 'live', zone: 'UTC',
+        screenings: { total: chains.reduce((a, c) => a + c.n, 0), flagged: 0, clear: 1, addresses: 1, assetCount: 64, verdicts: { clear: 1 },
+            assets: chains, projects: Array.from({ length: 200 }, (_, i) => ({ id: String(i + 1), name: 'Project ' + (i + 1), n: 1000 - i })),
+            days: [{ day: '2026-09-01', n: 1, flagged: 0, severe: 0, addresses: 1 }] },
+        kinds: { live: line(1) },
+        api: { calls: line(1), deliveries: line(0), byEndpoint: Array.from({ length: 15 }, (_, i) => ({ path: 'GET /v1/e' + i, n: 100 - i })) },
+        lists: { byList: { ofac: 1 }, byTheme: {}, byChain: chains.slice(0, 24) },
+        org: {},
+    };
+    const list = exports_.sheets(out, { name: 'Acme' }, null);
+    const meta = { reference: exports_.reference(list), generated: '2026-09-03T00:00:00.000Z', organisation: 'Acme', back: '/', forPdf: true };
+    const html = exports_.report(list, meta, out);
+    const chapters = html.split('class="sheet chapter"').slice(1);
+    const detail = chapters[1];
+    assert.equal((detail.match(/<td>C\d\d<\/td>/g) || []).length, 10, 'the chapter does not show ten chains');
+    assert.match(detail, /<td>Other chains \(54\)<\/td>/, 'the rest of the chains are not one row');
+    assert.match(detail, /<td>Other projects \(190\)<\/td>/, 'the rest of the projects are not one row');
+    assert.match(chapters[3], /<td>Other endpoints \(5\)<\/td>/, 'the rest of the endpoints are not one row');
+    assert.match(detail, /The full list is in the appendix at the end of this report\./, 'the chapter does not say where the rest is');
+    const appendix = chapters[5] || '';
+    assert.match(appendix, /<h2 class="big">Appendix<\/h2>/, 'there is no appendix');
+    for (const [title, n] of [['Checks by chain', 64], ['Checks by project', 200], ['Designated addresses by chain', 24], ['API calls by endpoint', 15]]) {
+        const part = appendix.split('<div class="part').find((x) => x.includes('<h3>' + title + '</h3>')) || '';
+        assert.equal((part.match(/<tbody>[\s\S]*<\/tbody>/)[0].match(/<tr>/g) || []).length, n, title + ' does not list every row');
+    }
+    // a part longer than a page breaks between rows rather than leaving an
+    // empty page behind it; only a short one is kept whole
+    assert.match(html, /\.chapter \.part\.keep \{ break-inside:avoid; \}/, 'a long part can leave an empty page');
+    assert.match(detail, /<div class="part">/, 'the long part is held whole');
+    // and a report with a handful of each has no appendix at all
+    const small = exports_.sheets({ ...out, screenings: { ...out.screenings, assets: chains.slice(0, 3), projects: [] },
+        api: { ...out.api, byEndpoint: [] }, lists: { ...out.lists, byChain: [] } }, { name: 'Acme' }, null);
+    assert.doesNotMatch(exports_.report(small, meta, out), /Other chains|<h2 class="big">Appendix/, 'a short list is cut anyway');
+    const pdf = require('../pdf.js');
+    if (!pdf.available()) { t.skip('no browser here to make a PDF with'); return; }
+    const marks = outline(await pdf.render(html, exports_.PAPERS.a4));
+    const order = ['Overview of the period', 'Screenings and review', 'Sanctions coverage', 'API, team and evidence', 'Day by day', 'Appendix']
+        .map((x) => (marks.find((m) => m.title === x) || {}).page);
+    assert.ok(order.every((n, i) => n && (!i || n > order[i - 1])), 'the chapters are out of order: ' + order.join(', '));
 });
