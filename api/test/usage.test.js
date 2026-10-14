@@ -464,3 +464,42 @@ test('the PDF comes out on the paper asked for, set in real fonts', { timeout: 1
         }
     }
 });
+
+// The paper at its largest: the longest organisation name the product
+// allows, numbers in the millions, German, on A5, the smallest sheet. Nothing
+// may be cut off: the statement still ends on its page with its confirmation,
+// the overview starts on the page after it, and the overview's notes stay
+// together however far the table pushes them.
+test('the paper holds the largest report a period can make', { timeout: 120000 }, async (t) => {
+    const pdf = require('../pdf.js');
+    if (!pdf.available()) { t.skip('no browser here to make a PDF with'); return; }
+    const line = (n) => ({ total: n, days: [{ day: '2026-09-01', n }, { day: '2026-09-02', n: 0 }] });
+    const big = {
+        period: { from: '2026-09-01T00:00:00.000Z', to: '2026-09-03T00:00:00.000Z' }, scope: 'live', zone: 'Europe/Zagreb',
+        screenings: { total: 12345678, flagged: 1234567, clear: 11111111, addresses: 9876543, assetCount: 2,
+            verdicts: { severe: 654321, review: 580246, clear: 11111111 }, assets: [{ asset: 'XBT', n: 7345678 }, { asset: 'ETH', n: 5000000 }],
+            projects: [{ id: '', name: '', n: 12345678 }],
+            days: [{ day: '2026-09-01', n: 7345678, flagged: 734567, severe: 354321, addresses: 5876543 }, { day: '2026-09-02', n: 5000000, flagged: 500000, severe: 300000, addresses: 4000000 }] },
+        kinds: { live: line(12000000), history: line(345678) },
+        review: { decisions: line(4567890), cleared: line(4000000), confirmed: line(567890), holding: line(0),
+            took: { hour: 1000000, day: 2000000, week: 1000000, longer: 567890 }, queue: { open: 3456789, holding: 0, oldest: '2026-08-01T00:00:00Z', age: { day: 1, week: 456789, month: 1000000, older: 1999999 } } },
+        lists: { byList: { ofac: 1050 }, byTheme: {}, byChain: [{ asset: 'XBT', n: 528 }] },
+        api: { calls: line(98765432), deliveries: line(12345678), byEndpoint: [{ path: 'POST /v1/screen', n: 98765432 }] },
+        team: { state: { mfa: 1, roles: { owner: 1 }, seen: { today: 1 } } },
+        evidence: { state: { checks: 98765432, sealed: 98765432, decisions: 4567890, oldest: '2026-06-01T00:00:00Z', retentionYears: 5, age: { month: 1, quarter: 1, year: 1, older: 1 } } },
+        previous: { from: '2026-08-30T00:00:00.000Z', to: '2026-09-01T00:00:00.000Z', total: 23456789, flagged: 2345678, severe: 1234567, addresses: 8765432, assetCount: 2,
+            review: { decisions: line(2) } },
+        cycle: { used: 12345678 }, org: { members: 1, projects: 0, tokens: 1 },
+    };
+    const name = 'Wolfsburger Kryptowährungsbörse und Zahlungsdienstleister Gesellschaft mbH & Co KG'.slice(0, 80);
+    const list = exports_.sheets(big, { name }, { planName: 'Enterprise Custom Agreement 2026', included: { screenings: 99999999 } });
+    const html = exports_.report(list, { reference: exports_.reference(list), generated: '2026-09-03T00:00:00.000Z',
+        organisation: name, back: '/', lang: 'de', paper: 'a5', forPdf: true }, big);
+    assert.match(html, /\.notes, \.cmp, \.lede \{ break-inside:avoid; \}/, 'the notes can be split across pages');
+    assert.match(html, /table\.sum tr td\.n, table\.sum tr th\.n \{ padding-left:14px; white-space:nowrap; \}/, 'a long number can run into the one beside it');
+    const marks = outline(await pdf.render(html, exports_.PAPERS.a5));
+    const at = (t) => (marks.find((m) => m.title === t) || {}).page;
+    assert.equal(at('Erklärung zu den Prüfungen'), 2, 'the statement does not start on page 2');
+    assert.equal(at('Überblick über den Zeitraum'), 3, 'the statement runs onto a second page');
+    assert.ok(at('Prüfungen und Entscheidungen') > 3, 'the chapters after the overview are out of place');
+});
