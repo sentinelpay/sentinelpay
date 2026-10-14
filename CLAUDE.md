@@ -51,6 +51,12 @@ Take a position. Vary sentence length. Say the thing.
   silently won. Grep before naming.
 - The dashboard scrolls inside a box, not as a document, so `href="#id"` does
   not move it. Links scroll themselves.
+- The report paper holds everything a period can hold. Nothing is cut off,
+  nothing overlaps, and where there is more than a page of something it goes on
+  to the next page in whole blocks: a table row, a group with its first row,
+  the notes. Lay every page out for the largest case, not the sample: an
+  80-character organisation name, numbers in the millions, German, on A5. The
+  test that renders that case has to keep passing.
 
 ## Shipping
 

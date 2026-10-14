@@ -1184,6 +1184,9 @@ table.sum thead th { vertical-align:bottom; line-height:1.35; padding-bottom:6px
 table.sum th small { display:block; font-weight:400; color:var(--ink-4); }
 table.sum th.n { width:19%; }
 table.sum th.n:last-child { width:13%; }
+/* a gap no number can close: a change of +228,394,400% still stands apart
+   from the figure before it */
+table.sum tr td.n, table.sum tr th.n { padding-left:14px; white-space:nowrap; }
 table.sum td { padding:3px 0; }
 table.sum tr.grp th { padding:9px 0 3px; }
 table.sum td small { display:block; color:var(--ink-4); font-size:.82em; line-height:1.3; }
@@ -1194,6 +1197,11 @@ sup { font-size:.62em; color:var(--ink-4); margin-left:1px; }
 .cmp { margin:10px 0 0; color:var(--ink-3); font-size:.88em; }
 .notes { margin:16px 0 0; padding:10px 0 0; border-top:1px solid var(--line); font-size:.77em; color:var(--ink-3); line-height:1.5; }
 .notes div { display:grid; grid-template-columns:14px 1fr; }
+/* The paper holds whatever the period holds: where there is more than a page
+   of it, it goes on to the next page in whole blocks. The notes are one
+   block, the figure is one, a table row is one; none of them is left with
+   a single line on a page of its own. */
+.notes, .cmp, .lede { break-inside:avoid; }
 
 /* ---- the chapters' tables: what is measured under each title, a bar
    beside every count, and the numbers in the same columns throughout */
