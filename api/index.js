@@ -2440,7 +2440,7 @@ const pdfLimiter = rateLimit({
 // in the millions. It is how the paper is looked at full before a customer
 // fills it, so it is there on staging and in development and nowhere else:
 // a server that does not say which it is gets none.
-const SAMPLE_REPORTS = IS_STAGING || ['development', 'test'].includes(process.env.NODE_ENV);
+const SAMPLE_REPORTS = reportSample.enabled(process.env);
 const sampleReport = (req) => SAMPLE_REPORTS && String(req.query.sample || '') === 'full';
 
 async function usageReport(req, mine, extra) {

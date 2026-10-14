@@ -615,11 +615,30 @@ test('each plan has its own cover, and the report closes on the back of it', () 
         assert.deepEqual(covers, ['<section class="sheet cover"', '<section class="sheet cover back"'], plan + ': not one cover at each end');
         assert.ok(html.lastIndexOf('class="sheet cover back"') > html.lastIndexOf('End of report'), plan + ': the back is not last');
         assert.notEqual(art(html), art(html, true), plan + ': the back is the front again');
-        assert.match(html, /<div class="b-end"><svg class="b-mark"[\s\S]*<p class="b-line">Sanctions screening for crypto\.<\/p>/, plan + ': the back has no name on it');
+        // the back is the shapes and the eye, and nothing written on it
+        assert.match(art(html, true), /stroke="url\(#backInk\)"/, plan + ': the back has no eye at its centre');
+        assert.match(html, /<section class="sheet cover back" style="[^"]*"><svg class="c-art"[\s\S]*?<\/svg><\/section>/, plan + ': there is writing on the back');
         seen.add(art(html));
         assert.doesNotMatch(html, /busiest/, plan + ': the chart still names its busiest day');
     }
     assert.equal(seen.size, 3, 'two plans share a cover');
     assert.equal(art(exports_.report(list, meta, sample.out)), art(exports_.report(list, { ...meta, plan: 'starter' }, sample.out)), 'a report with no plan does not take Starter\'s cover');
     assert.match(exports_.report(list, meta, sample.out), /@page bare \{ margin:0;/, 'the back is printed inside a margin');
+});
+
+// The sample is invented numbers, and it is only ever served where that is
+// what a reader expects: on staging, which says so, and on a laptop. A
+// production server, or any deployed one that does not say it is staging,
+// serves none of it, whatever else its environment says.
+test('the full sample is served on staging and in development, never in production', () => {
+    const { enabled } = require('../report-sample.js');
+    assert.equal(enabled({ APP_ENV: 'staging', NODE_ENV: 'production', RAILWAY_ENVIRONMENT_NAME: 'staging' }), true, 'staging');
+    assert.equal(enabled({ NODE_ENV: 'development' }), true, 'a laptop');
+    assert.equal(enabled({ NODE_ENV: 'test' }), true, 'a test run');
+    assert.equal(enabled({ NODE_ENV: 'production', RAILWAY_ENVIRONMENT_NAME: 'production' }), false, 'production');
+    assert.equal(enabled({ NODE_ENV: 'production' }), false, 'production off Railway');
+    assert.equal(enabled({ RAILWAY_ENVIRONMENT_NAME: 'production' }), false, 'a deployed server that does not say what it is');
+    assert.equal(enabled({ NODE_ENV: 'development', RAILWAY_ENVIRONMENT_NAME: 'production' }), false, 'a deployed server set to development');
+    assert.equal(enabled({}), false, 'a server that says nothing');
+    assert.equal(enabled(), false, 'no environment at all');
 });
