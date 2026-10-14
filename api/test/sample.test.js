@@ -514,7 +514,7 @@ test('the report for print opens in a dialog and is counted when printed', () =>
 
     const index = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
     assert.match(index, /'frame-ancestors ' \+ \(embed \? "'self'" : "'none'"\)/, 'the report can be framed by anyone, or by nobody');
-    assert.match(index, /if \(!embed && !preview\(req\)\) \{\s*await accounts\.audit\('usage-export'/, 'a preview is counted as an export');
+    assert.match(index, /if \(!embed && !preview\(req\) && !sampleReport\(req\)\) \{\s*await accounts\.audit\('usage-export'/, 'a preview is counted as an export');
     assert.match(index, /\/\^\[0-9a-f\]\{64\}\$\/\.test\(ref\)/, 'the print record takes any reference it is handed');
 
     const exp = fs.readFileSync(path.join(__dirname, '..', 'exports.js'), 'utf8');
@@ -550,7 +550,7 @@ test('the dialog shows the PDF itself, saves it, and prints only when it cannot'
     assert.match(index, /pdf: 'application\/pdf',/, 'pdf is not a format the usage route knows');
     assert.match(index, /if \(format === 'pdf' && !pdf\.available\(\)\) return res\.status\(503\)/, 'a server without a browser does not say so');
     assert.match(index, /if \(req\.params\.format === 'pdf'\) return \(preview\(req\) \? previewLimiter : pdfLimiter\)\(req, res, next\);/, 'PDFs are not limited');
-    assert.match(index, /if \(!embed && !preview\(req\)\) \{\s*await accounts\.audit\('usage-export'/, 'a PDF looked at is filed as an export');
+    assert.match(index, /if \(!embed && !preview\(req\) && !sampleReport\(req\)\) \{\s*await accounts\.audit\('usage-export'/, 'a PDF looked at is filed as an export');
     assert.match(index, /const format = body\.format === 'pdf' \? 'pdf' : 'html';/, 'a saved PDF is filed as a print');
     // the paper's pages are no longer counted and numbered on screen
     assert.doesNotMatch(index, /usage\/pages/, 'the page counting route is still there');

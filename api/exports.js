@@ -573,29 +573,39 @@ function table(sh, opts, sp) {
             ' style="width:' + w + '%"></i>' : '') + '</td>';
     };
     // rows grouped by their first column print as one table with a heading
-    // line for each group, which reads the way the page's own breakdowns do.
-    // Each group is a body of its own, and a short one is kept whole on paper:
-    // the last two chains of a list do not go over to a page by themselves.
-    const size = new Map();
-    for (const r of rows) size.set(key(r), (size.get(key(r)) || 0) + 1);
-    let last = null;
-    const body = rows.map((r) => {
-        let pre = '';
-        if (o.grouped && r[0] !== last) {
-            pre = (last === null ? '' : '</tbody>') + '<tbody' + (size.get(r[0]) <= 14 ? ' class="g-keep"' : '') + '>';
-            last = r[0];
-            if (!o.noGroupHead) pre += '<tr class="grp"><th colspan="' + (r.length - 1 + (o.bars ? 1 : 0)) + '">' + esc(label(r[0])) + '</th></tr>';
-        }
+    // line for each group, which reads the way the page's own breakdowns do
+    const line = (r) => {
         const cells = o.grouped ? r.slice(1) : r;
-        return pre + '<tr>' + cells.map((x, i) => (i === 0
+        return '<tr>' + cells.map((x, i) => (i === 0
             ? '<td>' + esc(o.keep && o.keep(r) ? x : label(x)) + '</td>' + (o.bars ? bar(r) : '')
             : '<td class="n">' + sp.num(x) + (o.pct && i === cells.length - 1 ? '%' : '') + '</td>')).join('') + '</tr>';
-    }).join('');
+    };
+    let body;
+    if (o.grouped) {
+        const groups = [];
+        for (const r of rows) {
+            if (!groups.length || groups[groups.length - 1].k !== r[0]) groups.push({ k: r[0], rows: [] });
+            groups[groups.length - 1].rows.push(line(r));
+        }
+        body = groups.map((g) => bodies(o.noGroupHead ? '' : '<tr class="grp"><th colspan="' +
+            (rows[0].length - 1 + (o.bars ? 1 : 0)) + '">' + esc(label(g.k)) + '</th></tr>', g.rows)).join('');
+    } else body = '<tbody>' + rows.map(line).join('') + '</tbody>';
     let head = (o.grouped ? sh.head.slice(1) : sh.head);
     if (o.heads) head = [head[0]].concat(o.heads);
     const ths = head.map((x, i) => '<th' + (i ? ' class="n"' : '') + '>' + esc(i === 0 && o.grouped ? '' : sp.tr(x)) + '</th>');
     if (o.bars) ths.splice(1, 0, '<th></th>');
-    return '<table' + (o.bars ? ' class="has-bars"' : '') + '><thead><tr>' + ths.join('') + '</tr></thead>' + (o.grouped ? '' : '<tbody>') + body + '</tbody></table>';
+    return '<table' + (o.bars ? ' class="has-bars"' : '') + '><thead><tr>' + ths.join('') + '</tr></thead>' + body + '</table>';
+}
+
+// A group of rows on paper: its heading and first three rows held together,
+// and its last three, so where a page has to break a group it leaves three
+// rows on either side and never two chains alone at the top of a page. A
+// group of six or fewer is held whole.
+function bodies(head, rows) {
+    if (rows.length <= 6) return '<tbody class="g-keep">' + head + rows.join('') + '</tbody>';
+    return '<tbody class="g-keep">' + head + rows.slice(0, 3).join('') + '</tbody>' +
+        '<tbody>' + rows.slice(3, -3).join('') + '</tbody>' +
+        '<tbody class="g-keep">' + rows.slice(-3).join('') + '</tbody>';
 }
 
 // The paper sizes a report can be printed on. A4 unless asked otherwise: it is
@@ -645,14 +655,22 @@ function periodChart(daily, hourly, sp, low) {
     const rows = daily.rows;
     // lower on A5 and Letter, the two sheets that are short for their width,
     // where the overview has the least room to end on its page
-    const W = 1000, H = low ? 200 : 250, L = 52, R = 8, T = 30, B = 32;
-    const pw = W - L - R, ph = H - T - B;
+    const W = 1000, H = low ? 200 : 250, R = 8, T = 30, B = 32;
     const top = Math.max(1, ...rows.map((r) => Number(r[1]) || 0));
     // a round step for three or four lines: 1, 2 or 5 times a power of ten
     const raw = top / 3;
     const pow = Math.pow(10, Math.floor(Math.log10(raw)));
     const step = [1, 2, 5, 10].map((k) => k * pow).find((v) => v >= raw);
     const max = Math.ceil(top / step) * step;
+    // the left edge as wide as the widest number on the axis: a fixed one
+    // held "500" and cut "60.000" to "0.000". A digit of Inter at 15px is
+    // about nine units wide, a separator about four.
+    const widest = Math.max(...[0, step, max].map((v) => {
+        const t = String(sp.num(v));
+        return (t.match(/\d/g) || []).length * 9.2 + (t.match(/\D/g) || []).length * 4.6;
+    }));
+    const L = Math.max(52, Math.ceil(widest) + 16);
+    const pw = W - L - R, ph = H - T - B;
     const y = (v) => T + ph - ph * v / max;
     // never wider than a fourteenth of the width: the first days of a cycle
     // stand as columns from the left, not as blocks across the whole page
@@ -947,24 +965,21 @@ function report(list, meta, out) {
                 : { group: d.toLocaleDateString(sp.locale, { month: 'long', year: 'numeric', timeZone: 'UTC' }),
                     label: d.toLocaleDateString(sp.locale, { weekday: 'short', day: 'numeric', timeZone: 'UTC' }) };
         };
-        // a month short enough to share a page with the one before stays in
-        // one piece; a whole month on A5 runs on over the page like any ledger
-        const size = new Map();
-        for (const r of rows) { const g = whenOf(r[0]).group; size.set(g, (size.get(g) || 0) + 1); }
-        let last = null;
+        // under its month, and broken over a page like any other group: with
+        // three days on either side of the break
+        const groups = [];
         const totals = [0, 0, 0, 0, 0];
-        const body = rows.map((r) => {
+        for (const r of rows) {
             const w = whenOf(r[0]);
             const vals = r.slice(1).map((x) => Number(x) || 0);
             vals.forEach((x, i) => { totals[i] += x; });
-            const pre = w.group !== last ? (last === null ? '' : '</tbody>') +
-                '<tbody' + (size.get(w.group) <= 20 ? ' class="g-keep"' : '') + '><tr class="grp"><th colspan="6">' + esc(w.group) + '</th></tr>' : '';
-            last = w.group;
-            return pre + '<tr' + (vals.every((x) => !x) ? ' class="is-zero"' : '') + '><td>' + esc(w.label) + '</td>' +
-                vals.map((x) => '<td class="n">' + num(x) + '</td>').join('') + '</tr>';
-        }).join('');
+            if (!groups.length || groups[groups.length - 1].k !== w.group) groups.push({ k: w.group, rows: [] });
+            groups[groups.length - 1].rows.push('<tr' + (vals.every((x) => !x) ? ' class="is-zero"' : '') + '><td>' + esc(w.label) + '</td>' +
+                vals.map((x) => '<td class="n">' + num(x) + '</td>').join('') + '</tr>');
+        }
+        const body = groups.map((g) => bodies('<tr class="grp"><th colspan="6">' + esc(g.k) + '</th></tr>', g.rows)).join('');
         return '<table class="days"><thead><tr>' + head.map((x, i) => '<th' + (i ? ' class="n"' : '') + '>' + h(x) + '</th>').join('') +
-            '</tr></thead>' + body + '</tbody><tfoot><tr class="tot"><td>' + h('Total') + '</td>' +
+            '</tr></thead>' + body + '<tfoot><tr class="tot"><td>' + h('Total') + '</td>' +
             totals.map((x) => '<td class="n">' + num(x) + '</td>').join('') + '</tr></tfoot></table>';
     };
 

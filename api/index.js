@@ -23,6 +23,7 @@ const live = require('./live');
 const invites = require('./invites');
 const usage = require('./usage.js');
 const exportsFile = require('./exports.js');
+const reportSample = require('./report-sample.js');
 const pdf = require('./pdf.js');
 const billing = require('./billing.js');
 const plans = require('./plans.js');
@@ -2434,10 +2435,23 @@ const pdfLimiter = rateLimit({
     message: { error: 'Too many PDFs in an hour. Try again later.' }
 });
 // The period's figures as sheets, and what a report of them is laid out as.
+// The report at its fullest, from invented numbers rather than the
+// organisation's own: a year of days, every chain and list and role, numbers
+// in the millions. It is how the paper is looked at full before a customer
+// fills it, so it is there on staging and in development and nowhere else:
+// a server that does not say which it is gets none.
+const SAMPLE_REPORTS = IS_STAGING || ['development', 'test'].includes(process.env.NODE_ENV);
+const sampleReport = (req) => SAMPLE_REPORTS && String(req.query.sample || '') === 'full';
+
 async function usageReport(req, mine, extra) {
-    const [out, sub] = await Promise.all([usageFor(req, mine), billing.get(mine.id)]);
-    if (!out.ok) return null;
-    const list = exportsFile.sheets(out, mine, sub);
+    let out, sub, org = mine;
+    if (sampleReport(req)) {
+        ({ out, sub, org } = reportSample.full());
+    } else {
+        [out, sub] = await Promise.all([usageFor(req, mine), billing.get(mine.id)]);
+        if (!out.ok) return null;
+    }
+    const list = exportsFile.sheets(out, org, sub);
     const meta = Object.assign({
         // the paper it is laid out for; A4 unless another of the sizes it
         // knows is asked for
@@ -2447,7 +2461,7 @@ async function usageReport(req, mine, extra) {
         lang: exportsFile.langOf(req.query.lang),
         reference: exportsFile.reference(list),
         generated: new Date().toISOString(),
-        organisation: mine.name || '',
+        organisation: org.name || '',
         back: '/dashboard/org/' + encodeURIComponent(mine.slug || '') + '/usage',
     }, extra);
     return { out, list, meta };
@@ -2521,12 +2535,13 @@ app.get('/v1/orgs/:id/usage.:format', (req, res, next) => {
         if (embed) res.set('X-Frame-Options', 'SAMEORIGIN');
         res.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
     } else {
-        res.set('Content-Disposition', 'attachment; filename="' + exportsFile.filename(out, format) + '"');
+        // the sample opens in the browser to be looked at; it is nobody's file
+        res.set('Content-Disposition', (sampleReport(req) ? 'inline' : 'attachment') + '; filename="' + exportsFile.filename(out, format) + '"');
     }
     // filed under the organisation, so the evidence section can count what
     // left it and in which shape. A report previewed inside the usage page has
     // not left yet: it is counted when it is printed, below.
-    if (!embed && !preview(req)) {
+    if (!embed && !preview(req) && !sampleReport(req)) {
         await accounts.audit('usage-export', {
             actor: String(me.userId), subject: 'org:' + mine.id, ip: req.realIp,
             detail: format + ' ' + out.period.from.slice(0, 10) + ' ' + meta.reference.slice(0, 16),
