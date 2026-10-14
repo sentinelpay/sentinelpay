@@ -730,7 +730,7 @@ function unzip(buf) {
     return files;
 }
 
-test('the workbook is in the reader\'s language, with dates, formats, filters and a total', () => {
+test('the workbook is in the reader\'s language, dressed as the report, with its figures still figures', () => {
     const sample = require('../report-sample.js').full(new Date('2026-10-14T10:00:00Z'));
     const list = exports_.sheets(sample.out, sample.org, sample.sub);
     const meta = { reference: exports_.reference(list), generated: '2026-10-14T10:00:00.000Z', organisation: sample.org.name, lang: 'hr' };
@@ -738,22 +738,51 @@ test('the workbook is in the reader\'s language, with dates, formats, filters an
     const wb = files['xl/workbook.xml'];
     const names = [...wb.matchAll(/<sheet name="([^"]+)"/g)].map((m) => m[1]);
     assert.deepEqual(names, ['O izvješću', 'Sažetak', 'Dan po dan', 'Provjere', 'Pregled', 'Pokrivenost', 'API', 'Tim', 'Dokazi']);
-    // the first sheet says whose it is and carries the reference
-    assert.match(files['xl/worksheets/sheet1.xml'], new RegExp('sha256:' + meta.reference));
+    const sheet = (i) => files['xl/worksheets/sheet' + i + '.xml'];
+    const styles = files['xl/styles.xml'];
+    const xf = [...styles.match(/<cellXfs[^>]*>([\s\S]*?)<\/cellXfs>/)[1].matchAll(/<xf [^>]*>[\s\S]*?<\/xf>/g)].map((m) => m[0]);
+    const fmts = new Map([...styles.matchAll(/<numFmt numFmtId="(\d+)" formatCode="([^"]+)"\/>/g)].map((m) => [m[1], m[2]]));
+    const fmtOf = (cell) => {
+        const s = /s="(\d+)"/.exec(cell);
+        const id = /numFmtId="(\d+)"/.exec(xf[s ? +s[1] : 0])[1];
+        return id === '3' ? '#,##0' : fmts.get(id) || id;
+    };
+    const cell = (xml, ref) => (xml.match(new RegExp('<c r="' + ref + '"[^>]*?(/>|>[\\s\\S]*?</c>)')) || [''])[0];
+    // the first sheet says whose it is, links to every other, carries the reference
+    assert.match(sheet(1), new RegExp('sha256:' + meta.reference));
+    assert.equal((sheet(1).match(/<hyperlink /g) || []).length, 8, 'the first sheet does not link to every sheet');
     assert.match(files['docProps/core.xml'], /<dc:creator>Sentinelpay<\/dc:creator>/);
     assert.match(files['docProps/core.xml'], /<dc:language>hr<\/dc:language>/);
-    const daily = files['xl/worksheets/sheet3.xml'];
-    // a day is a date, a count a number with its thousands marked, a share to a place
-    assert.match(daily, /<c r="A2" s="4"><v>45944<\/v><\/c>/, 'the first day is not the date 2025-10-14');
-    assert.match(daily, /<c r="B2" s="2"><v>\d+<\/v><\/c>/, 'a count is not a number');
-    assert.match(files['xl/worksheets/sheet4.xml'], /<c r="D2" s="3"><v>[\d.]+<\/v><\/c>/, 'a share is not a number');
-    assert.match(files['xl/styles.xml'], /<xf numFmtId="3" fontId="0"/, 'counts are not marked in thousands');
-    // filtered, frozen, and added up at the foot with what a filter leaves
-    assert.match(daily, /<autoFilter ref="A1:J366"\/>/);
-    assert.match(daily, /<pane xSplit="1" ySplit="1" topLeftCell="B2"/);
-    assert.match(daily, /<c r="B367" s="5"><f>SUBTOTAL\(109,B2:B366\)<\/f><v>\d+<\/v><\/c>/);
-    assert.match(wb, /<definedName name="_xlnm\._FilterDatabase" localSheetId="2" hidden="1">'Dan po dan'!\$A\$1:\$J\$366<\/definedName>/);
+    for (let i = 1; i <= names.length; i++) {
+        // every sheet under the cover's band, with no grid and the reference at its foot
+        assert.match(sheet(i), /showGridLines="0"/, names[i - 1] + ': the grid shows');
+        assert.match(sheet(i), /<mergeCell ref="A1:[A-Z]+1"\/>/, names[i - 1] + ': no band over the sheet');
+        assert.match(sheet(i), /<oddFooter>&amp;L&amp;8&amp;K6B7898Referenca [0-9a-f]{16}&amp;R&amp;8&amp;K6B7898Stranica &amp;P od &amp;N<\/oddFooter>/, names[i - 1] + ': no reference at the foot');
+    }
+    assert.match(styles, /<fgColor rgb="FF0B1020"\/>/, 'the band is not the cover\'s dark');
+    assert.match(styles, /<fgColor rgb="FF00E0FF"\/>[\s\S]*<fgColor rgb="FFA020F0"\/>/, 'the logo\'s colours are not under the band');
+    // the summary beside the period before, with how far it moved
+    const summary = sheet(2);
+    assert.match(summary, /Ovo razdoblje[\s\S]*Prethodno razdoblje[\s\S]*Promjena/);
+    assert.equal(fmtOf(cell(summary, 'D9')), '+0.0%;−0.0%;0.0%', 'the change is not a percentage');
+    // a day is a date in the report's language, a count a number with its thousands marked
+    const daily = sheet(3);
+    assert.match(cell(daily, 'A8'), /<v>45944<\/v>/, 'the first day is not the date 2025-10-14');
+    assert.equal(fmtOf(cell(daily, 'A8')), '[$-41A]ddd d mmm yyyy');
+    assert.equal(fmtOf(cell(daily, 'B8')), '#,##0');
+    // filtered, frozen, printed with its heading on every page, added up with what a filter leaves
+    assert.match(daily, /<autoFilter ref="A7:J372"\/>/);
+    assert.match(daily, /<pane xSplit="1" ySplit="7" topLeftCell="B8"/);
+    assert.match(daily, /<c r="B373" s="\d+"><f>SUBTOTAL\(109,B8:B372\)<\/f><v>\d+<\/v><\/c>/);
+    assert.match(wb, /<definedName name="_xlnm\._FilterDatabase" localSheetId="2" hidden="1">'Dan po dan'!\$A\$7:\$J\$372<\/definedName>/);
+    assert.match(wb, /<definedName name="_xlnm\.Print_Titles" localSheetId="2">'Dan po dan'!\$7:\$7<\/definedName>/);
+    // a breakdown: its groups under headings, a bar beside each count, shares as percentages
+    const checks = sheet(4);
+    assert.match(checks, /<t xml:space="preserve">Po vrsti<\/t>/);
+    assert.match(checks, /<t xml:space="preserve">█{22}<\/t>/, 'the largest count has no full bar');
+    assert.equal(fmtOf(cell(checks, 'D9')), '0.0%');
+    assert.match(cell(checks, 'D9'), /<v>0\.61<\/v>/);
     // names given by people are printed as they were given
-    assert.match(files['xl/worksheets/sheet4.xml'], /<t xml:space="preserve">Card program 01, Frankfurt/);
+    assert.match(checks, /<t xml:space="preserve">Card program 01, Frankfurt/);
     assert.doesNotMatch(Object.values(files).join(''), /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/, 'a character XML cannot carry');
 });
