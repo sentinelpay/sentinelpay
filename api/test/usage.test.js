@@ -764,7 +764,24 @@ test('the workbook is in the reader\'s language, dressed as the report, with its
     // the summary beside the period before, with how far it moved
     const summary = sheet(2);
     assert.match(summary, /Ovo razdoblje[\s\S]*Prethodno razdoblje[\s\S]*Promjena/);
-    assert.equal(fmtOf(cell(summary, 'D9')), '+0.0%;−0.0%;0.0%', 'the change is not a percentage');
+    const firstChange = (summary.match(/<c r="D\d+" s="\d+"><v>[-\d.]+<\/v><\/c>/) || [''])[0];
+    assert.equal(fmtOf(firstChange), '+0.0%;−0.0%;0.0%', 'the change is not a percentage');
+    // and opens as the printed overview does: two sentences, the days as
+    // columns drawn from the day-by-day sheet, the marked words explained
+    assert.match(summary, /Od 14\. listopada 2025\. do 13\. listopada 2026\. ukupan broj provjera bio je 9\.923\.872/);
+    assert.doesNotMatch(summary, /<pane /, 'the chart is held on screen');
+    assert.match(summary, /<drawing r:id="rId1"\/>/, 'the summary has no chart');
+    const chart = files['xl/charts/chart1.xml'];
+    assert.match(chart, /<c:f>'Dan po dan'!\$B\$8:\$B\$372<\/c:f>/, 'the chart does not draw the day-by-day sheet');
+    assert.match(chart, /<c:f>'Dan po dan'!\$C\$8:\$C\$372<\/c:f>/);
+    assert.match(chart, /<c:overlap val="100"\/>/, 'the flagged checks are not drawn at the foot of the day');
+    assert.match(chart, /srgbClr val="7F9BE0"[\s\S]*srgbClr val="3A50B0"/, 'the chart is not in the report\'s blues');
+    assert.match(files['[Content_Types].xml'], /\/xl\/charts\/chart1\.xml/);
+    assert.match(summary, /Sankcionirano ¹/);
+    assert.match(summary, /1   Sankcionirano: adresa je u trenutku provjere bila na sankcijskoj listi\./);
+    // the first sheet carries the statement the PDF opens with
+    assert.match(sheet(1), /Izjava o provjerama/);
+    assert.match(sheet(1), /Svaka provjera i svaka odluka uračunata ovdje zapečaćena je SHA-256 sažetkom/);
     // a day is a date in the report's language, a count a number with its thousands marked
     const daily = sheet(3);
     assert.match(cell(daily, 'A8'), /<v>45944<\/v>/, 'the first day is not the date 2025-10-14');
