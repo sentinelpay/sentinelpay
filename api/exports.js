@@ -470,7 +470,7 @@ function workbookStyles() {
         }
         // an indent is only kept beside an edge the text is aligned to
         const h = o.h || (o.indent ? 'left' : '');
-        const align = '<alignment vertical="center"' + (h ? ' horizontal="' + h + '"' : '') +
+        const align = '<alignment vertical="' + (o.v || 'center') + '"' + (h ? ' horizontal="' + h + '"' : '') +
             (o.wrap ? ' wrapText="1"' : '') + (o.indent ? ' indent="' + o.indent + '"' : '') + '/>';
         return at(xfs, '<xf numFmtId="' + fmt + '" fontId="' + font + '" fillId="' + fill + '" borderId="' + border +
             '" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">' + align + '</xf>');
@@ -541,6 +541,7 @@ function sheetXml(sh) {
         // the reference and the page at the foot of every printed page, as the
         // PDF has them
         '<headerFooter><oddFooter>' + xmlText('&L&8&K' + INK_3 + sh.foot[0] + '&R&8&K' + INK_3 + sh.foot[1]) + '</oddFooter></headerFooter>' +
+        (sh.drawing ? '<drawing r:id="rId1"/>' : '') +
         '</worksheet>';
 }
 
@@ -575,6 +576,85 @@ const SUMMARY_GROUPS = [
     ['Evidence', ['Checks on record', 'Sealed with a digest', 'Decisions on record', 'Oldest record', 'Kept for (years)']],
 ];
 
+// The words the printed overview marks and says what they mean, under its
+// table; the workbook marks and explains the same ones.
+const NOTES = [
+    ['Sanctioned', 'the address was on a sanctions list when it was checked.'],
+    ['Worth a look', 'the address is on no list, but its risk score fell in the middle or high band the organisation has set.'],
+    ['Distinct addresses', 'each address counted once, however many times it was checked.'],
+    ['Findings open now', 'flagged checks with no decision recorded, as they stood when the report was made.'],
+    ['Sealed with a digest', 'a record given a SHA-256 digest when it was written, which can be checked without this report.'],
+];
+
+// What happened in the period, in the two sentences the printed overview
+// opens with, as plain text.
+function ledeOf(sum, sp) {
+    const { tr, date } = sp;
+    const num = (v) => Number(v).toLocaleString(sp.locale);
+    const at = (k) => (sum.get(k) || [])[1];
+    const was = (k) => (sum.get(k) || [])[2];
+    const from = date(at('Period from'));
+    const to = date(at('Period to'));
+    const total = Number(at('Screenings')) || 0;
+    if (!total) return tr('No checks were made between {from} and {to}.', { from, to });
+    const before = Number(was('Screenings')) || 0;
+    const d = before ? Math.round((total - before) / before * 1000) / 10 : null;
+    const args = { from, to, n: num(total), pct: d === null ? '' : num(Math.abs(d)) + '%' };
+    const severe = Number(at('Sanctioned')) || 0;
+    const review = Number(at('Worth a look')) || 0;
+    return tr(d === null ? 'The total number of checks between {from} and {to} was {n}.'
+        : d > 0 ? 'The total number of checks between {from} and {to} was {n}, {pct} more than in the period before.'
+            : d < 0 ? 'The total number of checks between {from} and {to} was {n}, {pct} fewer than in the period before.'
+                : 'The total number of checks between {from} and {to} was {n}, the same as in the period before.', args) + ' ' +
+        (severe + review
+            ? tr('The number flagged was {flagged}: {severe} on a sanctions list and {review} worth a look.',
+                { flagged: num(severe + review), severe: num(severe), review: num(review) })
+            : tr('None of them was flagged.'));
+}
+
+// A column chart in the workbook: one column a day, the series drawn over
+// each other so the second sits at the foot of the first, in the report's
+// colours, its labels small and set back, a hairline grid. Each series keeps
+// a copy of its numbers, so a reader that does not work the chart out from
+// the sheet still draws it.
+function chartXml(o) {
+    const txt = (sz, color) => '<c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="' + sz + '">' +
+        '<a:solidFill><a:srgbClr val="' + color + '"/></a:solidFill><a:latin typeface="Inter"/></a:defRPr></a:pPr>' +
+        '<a:endParaRPr lang="en-US"/></a:p></c:txPr>';
+    const cache = (vals, fmt) => '<c:numCache><c:formatCode>' + xmlText(fmt) + '</c:formatCode><c:ptCount val="' + vals.length + '"/>' +
+        vals.map((v, i) => '<c:pt idx="' + i + '"><c:v>' + v + '</c:v></c:pt>').join('') + '</c:numCache>';
+    // about a dozen dates under the axis, however many days there are
+    const skip = Math.max(1, Math.ceil(o.cats.length / 12));
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" ' +
+        'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" ' +
+        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+        '<c:roundedCorners val="0"/><c:chart><c:autoTitleDeleted val="1"/><c:plotArea><c:layout/>' +
+        '<c:barChart><c:barDir val="col"/><c:grouping val="clustered"/><c:varyColors val="0"/>' +
+        o.series.map((s, i) => '<c:ser><c:idx val="' + i + '"/><c:order val="' + i + '"/>' +
+            '<c:tx><c:v>' + xmlText(s.name) + '</c:v></c:tx>' +
+            '<c:spPr><a:solidFill><a:srgbClr val="' + s.color + '"/></a:solidFill><a:ln><a:noFill/></a:ln></c:spPr>' +
+            '<c:invertIfNegative val="0"/>' +
+            '<c:cat><c:numRef><c:f>' + o.catRef + '</c:f>' + cache(o.cats, o.catFmt) + '</c:numRef></c:cat>' +
+            '<c:val><c:numRef><c:f>' + s.ref + '</c:f>' + cache(s.values, 'General') + '</c:numRef></c:val></c:ser>').join('') +
+        '<c:gapWidth val="35"/><c:overlap val="100"/><c:axId val="5001"/><c:axId val="5002"/></c:barChart>' +
+        '<c:catAx><c:axId val="5001"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="b"/>' +
+        '<c:numFmt formatCode="' + xmlText(o.catFmt) + '" sourceLinked="0"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/>' +
+        '<c:tickLblPos val="nextTo"/><c:spPr><a:ln w="9525"><a:solidFill><a:srgbClr val="C9CFDD"/></a:solidFill></a:ln></c:spPr>' +
+        txt(800, INK_3) + '<c:crossAx val="5002"/><c:crosses val="autoZero"/><c:auto val="0"/><c:lblAlgn val="ctr"/>' +
+        '<c:lblOffset val="100"/><c:tickLblSkip val="' + skip + '"/><c:noMultiLvlLbl val="0"/></c:catAx>' +
+        '<c:valAx><c:axId val="5002"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="l"/>' +
+        '<c:majorGridlines><c:spPr><a:ln w="6350"><a:solidFill><a:srgbClr val="' + LINE + '"/></a:solidFill></a:ln></c:spPr></c:majorGridlines>' +
+        '<c:numFmt formatCode="#,##0" sourceLinked="0"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/>' +
+        '<c:spPr><a:ln><a:noFill/></a:ln></c:spPr>' + txt(800, INK_3) +
+        '<c:crossAx val="5001"/><c:crosses val="autoZero"/><c:crossBetween val="between"/></c:valAx>' +
+        '<c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr></c:plotArea>' +
+        '<c:legend><c:legendPos val="t"/><c:overlay val="0"/>' + txt(800, INK_3) + '</c:legend>' +
+        '<c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart>' +
+        '<c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr>' + txt(800, INK_3) +
+        '</c:chartSpace>';
+}
+
 // The workbook, for the people who open it in a spreadsheet rather than read
 // it with a program, and dressed the way the printed report is: in the
 // reader's language, each sheet under the cover's dark band with the logo's
@@ -598,6 +678,11 @@ function xlsx(list, meta, out) {
     const org = meta.organisation || '';
     const sandbox = val('Scope') === 'Sandbox';
     const subtitle = [org, span, tr(sandbox ? 'Sandbox' : 'Production')].filter(Boolean).join('  ·  ');
+    const when = [span, tr(sandbox ? 'Sandbox' : 'Production')].join('  ·  ');
+    // about this many characters of the band's type fit a column width's unit
+    const fits = (text, width) => text.length <= width * 0.95;
+    const subOf = (width) => (!org || fits(subtitle, width) ? subtitle : org + '\n' + when);
+    const subLines = (width) => subOf(width).split('\n').reduce((a, l) => a + Math.ceil(l.length / (width * 0.95)), 0);
     const foot = [tr('Reference {ref}', { ref: String(meta.reference).slice(0, 16) }),
         tr('Page {n} of {all}').replace('{n}', '&P').replace('{all}', '&N')];
     // what is printed as it was given: chains, projects, endpoints
@@ -633,7 +718,11 @@ function xlsx(list, meta, out) {
         key: S.get({ font: { color: INK_3 }, border: { bottom: LINE }, indent: 1 }),
         keyVal: S.get({ border: { bottom: LINE }, font: { b: true } }),
         link: S.get({ border: { bottom: LINE }, font: { color: '0091C8', u: true }, indent: 1 }),
-        note: S.get({ font: { sz: 9, color: INK_4 }, wrap: true, indent: 1 }),
+        note: S.get({ font: { sz: 9, color: INK_3 }, wrap: true, indent: 1 }),
+        h2: S.get({ font: { b: true, sz: 13, name: 'Plus Jakarta Sans' }, indent: 1, v: 'bottom' }),
+        para: S.get({ font: { sz: 10.5, color: '34446E' }, wrap: true, indent: 1, v: 'top' }),
+        lede: S.get({ font: { sz: 12, color: '34446E' }, wrap: true, indent: 1, v: 'top' }),
+        figT: S.get({ font: { b: true, sz: 10 }, indent: 1, v: 'bottom' }),
     };
 
     const taken = new Set();
@@ -653,8 +742,9 @@ function xlsx(list, meta, out) {
             widths, merges: [], links: [], foot, tab: '00B4E6',
             rows: [
                 { ht: 34, cells: [{ v: title, s: st.band }].concat(pad(st.bandFill)) },
-                // whose and when, over as many lines as a narrow sheet needs
-                { ht: Math.ceil(subtitle.length / (total * 1.1)) * 14 + 8, cells: [{ v: subtitle, s: st.bandSub }].concat(pad(st.bandFill)) },
+                // whose and when: on one line where the sheet is wide enough,
+                // the name over the period where it is not
+                { ht: subLines(total) * 14 + 8, cells: [{ v: subOf(total), s: st.bandSub }].concat(pad(st.bandFill)) },
                 { ht: 4, cells: stripe(n).map((c) => ({ v: '', s: S.get({ fill: c }) })) },
                 { ht: 8, cells: [] },
             ],
@@ -673,14 +763,36 @@ function xlsx(list, meta, out) {
     const barOf = (n, top) => (n > 0 && top > 0 ? '█'.repeat(Math.max(1, Math.round(n / top * BAR))) : '');
 
     const books = [];
+    let dailyAt = null;
 
     // ---- the first sheet: what this is
     {
         const sh = sheet('Sentinelpay · ' + tr('Usage and evidence report'), '', [26, 96], { first: true, tab: COVER });
+        // the statement the printed report opens with, paragraph by paragraph
+        const from = date(val('Period from'));
+        const to = date(val('Period to'));
+        const generated = tr('{date} at {time} UTC', { date: date(meta.generated), time: String(meta.generated).slice(11, 16) });
+        const para = (text, s0) => {
+            sh.rows.push({ ht: Math.ceil(text.length / 140) * 15 + 8, cells: [{ v: text, s: s0 || st.para }] });
+            sh.merges.push('A' + sh.rows.length + ':B' + sh.rows.length);
+        };
+        sh.rows.push({ ht: 28, cells: [{ v: tr('Statement on screening'), s: st.h2 }] });
+        para(tr(sandbox
+            ? 'This report sets out the screening {org} carried out through Sentinelpay between {from} and {to}, in the sandbox scope. It was generated on {generated} from the records as they stood at that moment.'
+            : 'This report sets out the screening {org} carried out through Sentinelpay between {from} and {to}, in the production scope. It was generated on {generated} from the records as they stood at that moment.',
+        { org, from, to, generated }));
+        para(tr('Every check and every decision counted here was sealed with a SHA-256 digest when it was written. Each one can be opened from its evidence file and its digest checked on its own, without this report and without access to Sentinelpay.'));
+        para(tr(sandbox
+            ? 'This is the sandbox scope. Its checks are test work and are not evidence of screening.'
+            : 'Sandbox checks are test work. They spend no allowance and are left out of every figure here.'));
+        para(tr('Every export of this period, CSV, Excel or JSON, carries the same reference, {ref}, so a copy in any format can be matched to this one.',
+            { ref: 'sha256:' + meta.reference }));
+        sh.rows.push({ ht: 16, cells: [] });
+        sh.rows.push({ ht: 28, cells: [{ v: tr('Report details'), s: st.h2 }] });
         const facts = [
             ['Organisation', org || '—'], ['Period', span], ['Scope', tr(sandbox ? 'Sandbox' : 'Production')],
             ['Plan', val('Plan') || '—'], ['Time zone', val('Time zone') || 'UTC'],
-            ['Generated', tr('{date} at {time} UTC', { date: date(meta.generated), time: String(meta.generated).slice(11, 16) })],
+            ['Generated', generated],
             ['Reference', 'sha256:' + meta.reference],
         ];
         facts.forEach(([k, v]) => sh.rows.push({ ht: 22, cells: [{ v: tr(k), s: st.key }, { v, s: st.keyVal }] }));
@@ -694,9 +806,6 @@ function xlsx(list, meta, out) {
             sh.rows.push({ ht: what.length > 96 ? 34 : 22, cells: [{ v: named[i], s: st.link }, { v: what, s: S.get({ border: { bottom: LINE }, wrap: true, font: { color: INK_3 } }) }] });
             sh.links.push({ ref: 'A' + row, to: "'" + named[i].replace(/'/g, "''") + "'!A1", text: named[i] });
         });
-        sh.rows.push({ ht: 14, cells: [] });
-        sh.rows.push({ ht: 30, cells: [{ v: tr('The same reference is printed in every format of this report, so a workbook, a CSV and a PDF of one period can be matched to each other.'), s: st.note }] });
-        sh.merges.push('A' + sh.rows.length + ':B' + sh.rows.length);
         sh.name = firstName;
         books.push(sh);
     }
@@ -708,9 +817,23 @@ function xlsx(list, meta, out) {
         let sh;
         if (x.name === 'Summary') {
             // ---- the overview's figures, beside the period before
-            sh = sheet(tr(x.name), what, [40, 18, 18, 12]);
+            // as the printed overview: what happened in two sentences, the
+            // days as columns, then every figure beside the period before
+            sh = sheet(tr(x.name), '', [40, 18, 18, 12]);
+            const lede = ledeOf(sum, sp);
+            sh.rows.push({ ht: Math.ceil(lede.length / 84) * 17 + 8, cells: [{ v: lede, s: st.lede }] });
+            sh.merges.push('A' + sh.rows.length + ':D' + sh.rows.length);
+            if (x.rows.length && (list.find((y) => y.name === 'Daily') || { rows: [] }).rows.length && Number(val('Screenings'))) {
+                sh.rows.push({ ht: 26, cells: [{ v: tr(hourly ? 'Checks by hour' : 'Checks by day'), s: st.figT }] });
+                // the chart sits over these rows, as wide as the table under it
+                sh.chartAt = sh.rows.length;
+                for (let k = 0; k < 14; k++) sh.rows.push({ cells: [] });
+                sh.chartTo = sh.rows.length;
+            }
+            sh.rows.push({ ht: 10, cells: [] });
             sh.rows.push({ ht: 24, cells: [{ v: '', s: st.th }, { v: tr('This period'), s: st.thR }, { v: tr('The period before'), s: st.thR }, { v: tr('Change'), s: st.thR }] });
-            sh.freeze = sh.rows.length;
+            // short, and under a chart: nothing held on screen, or the chart would be
+            if (!sh.chartAt) sh.freeze = sh.rows.length;
             const used = new Set(['Organisation', 'Period from', 'Period to', 'Scope', 'Time zone', 'Plan']);
             const groups = SUMMARY_GROUPS.map(([g, keys]) => [g, keys.filter((k) => sum.has(k))]);
             // a figure the groups do not name still goes in, under the last
@@ -730,8 +853,16 @@ function xlsx(list, meta, out) {
                     const change = typeof v === 'number' && typeof b === 'number'
                         ? (b ? { v: Math.round((v - b) / b * 10000) / 10000, s: st.change } : (v ? { v: '—', s: st.none } : { v: 0, s: st.change }))
                         : { v: '—', s: st.none };
-                    sh.rows.push({ cells: [{ v: tr(k), s: st.label }, cell(v, false), b === '' ? { v: '—', s: st.none } : cell(b, true), change] });
+                    const mark = NOTES.findIndex(([n]) => n === k);
+                    sh.rows.push({ cells: [{ v: tr(k) + (mark === -1 ? '' : ' ' + '¹²³⁴⁵⁶⁷⁸⁹'[mark]), s: st.label }, cell(v, false), b === '' ? { v: '—', s: st.none } : cell(b, true), change] });
                 });
+            });
+            // what the marked words mean, under the table as on the page
+            sh.rows.push({ ht: 12, cells: [] });
+            NOTES.forEach(([k, text], n) => {
+                const line = (n + 1) + '   ' + tr(k) + ': ' + tr(text);
+                sh.rows.push({ ht: Math.ceil(line.length / 96) * 13 + 5, cells: [{ v: line, s: st.note }] });
+                sh.merges.push('A' + sh.rows.length + ':D' + sh.rows.length);
             });
         } else if (x.name === 'Daily') {
             // ---- every day, a row; the quiet ones set back; the total at the foot
@@ -750,6 +881,7 @@ function xlsx(list, meta, out) {
                     : { v: Number(n) || 0, s: quiet ? st.countMute : st.count })) });
             });
             const end = sh.rows.length;
+            dailyAt = { name: named[i], top, end, rows: x.rows };
             if (x.rows.length) {
                 sh.filter = 'A' + top + ':' + colName(heads.length - 1) + end;
                 sh.rows.push({ ht: 24, cells: heads.map((h, c) => (c === 0 ? { v: tr('Total'), s: st.total } : {
@@ -795,6 +927,44 @@ function xlsx(list, meta, out) {
 
     const created = String(meta.generated || new Date().toISOString()).replace(/\.\d+Z$/, 'Z');
     const quoted = (name) => "'" + xmlText(name.replace(/'/g, "''")) + "'";
+    // the overview's chart, drawn by the spreadsheet from the day-by-day
+    // sheet, so it follows the figures if a reader corrects one
+    const charted = books.findIndex((b) => b.chartAt);
+    const parts = [];
+    if (charted !== -1 && dailyAt) {
+        const sh = books[charted];
+        sh.drawing = true;
+        const ref = (col) => quoted(dailyAt.name) + '!$' + col + '$' + (dailyAt.top + 1) + ':$' + col + '$' + dailyAt.end;
+        parts.push(
+            { name: 'xl/worksheets/_rels/sheet' + (charted + 1) + '.xml.rels', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+                '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+                '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/>' +
+                '</Relationships>' },
+            { name: 'xl/drawings/drawing1.xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+                '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">' +
+                '<xdr:twoCellAnchor editAs="oneCell">' +
+                '<xdr:from><xdr:col>0</xdr:col><xdr:colOff>60000</xdr:colOff><xdr:row>' + sh.chartAt + '</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>' +
+                '<xdr:to><xdr:col>4</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>' + sh.chartTo + '</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>' +
+                '<xdr:graphicFrame macro=""><xdr:nvGraphicFramePr><xdr:cNvPr id="2" name="' + xmlText(tr(hourly ? 'Checks by hour' : 'Checks by day')) + '"/><xdr:cNvGraphicFramePr/></xdr:nvGraphicFramePr>' +
+                '<xdr:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></xdr:xfrm>' +
+                '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart">' +
+                '<c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="rId1"/>' +
+                '</a:graphicData></a:graphic></xdr:graphicFrame><xdr:clientData/></xdr:twoCellAnchor></xdr:wsDr>' },
+            { name: 'xl/drawings/_rels/drawing1.xml.rels', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+                '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+                '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="../charts/chart1.xml"/>' +
+                '</Relationships>' },
+            { name: 'xl/charts/chart1.xml', data: chartXml({
+                cats: dailyAt.rows.map((r) => (excelDate(r[0]) || { serial: 0 }).serial), catRef: ref('A'),
+                catFmt: lcid + (hourly ? 'hh:mm' : 'd mmm'),
+                series: [
+                    // the day's checks in the lighter blue, the flagged ones over
+                    // their foot in the darker: the printed overview's columns
+                    { name: tr('Screenings'), ref: ref('B'), values: dailyAt.rows.map((r) => Number(r[1]) || 0), color: '7F9BE0' },
+                    { name: tr('Flagged'), ref: ref('C'), values: dailyAt.rows.map((r) => Number(r[2]) || 0), color: '3A50B0' },
+                ],
+            }) });
+    }
     const files = [
         { name: '[Content_Types].xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
             '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
@@ -806,6 +976,8 @@ function xlsx(list, meta, out) {
             '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>' +
             books.map((_, i) => '<Override PartName="/xl/worksheets/sheet' + (i + 1) +
                 '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>').join('') +
+            (parts.length ? '<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>' +
+                '<Override PartName="/xl/charts/chart1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>' : '') +
             '</Types>' },
         { name: '_rels/.rels', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
             '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
@@ -849,7 +1021,7 @@ function xlsx(list, meta, out) {
             '</Relationships>' },
     ].concat(books.map((sh, i) => ({ name: 'xl/worksheets/sheet' + (i + 1) + '.xml', data: sheetXml(sh) })));
     // the styles last, once every sheet has asked for the ones it uses
-    files.push({ name: 'xl/styles.xml', data: S.xml() });
+    files.push(...parts, { name: 'xl/styles.xml', data: S.xml() });
     return zip(files);
 }
 
