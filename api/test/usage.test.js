@@ -664,14 +664,15 @@ test('an export is named for whose it is, the days it covers and its language', 
     }
 });
 
-// The CSV is one table: the same seven columns on every line, the report
-// itself as the first rows, every day's figure a row of its own.
+// The CSV is one table: the same eight columns on every line, the report
+// itself as the first rows with the statement and the notes the PDF prints,
+// every figure under the chapter of the PDF it is in, in the PDF's order.
 test('the csv is one table a program can read without being told where parts begin', () => {
     const sample = require('../report-sample.js').full(new Date('2026-10-14T10:00:00Z'));
     const list = exports_.sheets(sample.out, sample.org, sample.sub);
     const meta = { reference: exports_.reference(list), generated: '2026-10-14T10:00:00.000Z', organisation: sample.org.name };
     const text = exports_.csv(list, meta);
-    assert.ok(text.startsWith('﻿section,date,breakdown,item,value,share_percent,period_before\r\n'), 'the heading is not the first line');
+    assert.ok(text.startsWith('\ufeffsection,date,breakdown,item,value,share_percent,period_before,change_percent\r\n'), 'the heading is not the first line');
     const lines = text.slice(1).trim().split('\r\n');
     // the cells of a line, a quoted comma not ending one
     const cells = (line) => {
@@ -684,11 +685,20 @@ test('the csv is one table a program can read without being told where parts beg
         }
         return outCells;
     };
-    for (const line of lines) assert.equal(cells(line).length, 7, 'a line is not seven columns: ' + line);
-    assert.ok(lines.includes('Report,,,Reference,sha256:' + meta.reference + ',,'), 'the reference is not in the table');
-    assert.equal(lines.filter((l) => l.startsWith('Daily,')).length, 365 * 9, 'a day\'s figure is missing');
-    assert.ok(lines.includes('Summary,,,Period to,2026-10-13,,2025-10-13'), 'the period does not end on its last day');
-    assert.ok(lines.some((l) => l.startsWith('API,,By endpoint,POST /v1/screen,')), 'the endpoints are not under a breakdown');
+    for (const line of lines) assert.equal(cells(line).length, 8, 'a line is not eight columns: ' + line);
+    assert.ok(lines.includes('Report,,,Reference,sha256:' + meta.reference + ',,,'), 'the reference is not in the table');
+    assert.ok(lines.some((l) => l.startsWith('Report,,Statement on screening,1,"This report sets out the screening ')), 'the statement is not in the table');
+    assert.ok(lines.includes('Report,,Notes,Sanctioned,The address was on a sanctions list when it was checked.,,,'), 'the notes are not in the table');
+    assert.equal(lines.filter((l) => l.startsWith('Day by day,')).length, 365 * 9, 'a day\'s figure is missing');
+    assert.ok(lines.includes('Overview of the period,,,Period to,2026-10-13,,2025-10-13,'), 'the period does not end on its last day');
+    // how far a figure moved, as the overview prints it
+    const total = sample.out.screenings.total;
+    const before = sample.out.previous.total;
+    assert.ok(lines.includes('Overview of the period,,,Screenings,' + total + ',,' + before + ',' + Math.round((total - before) / before * 1000) / 10), 'the change is not beside the figure');
+    assert.ok(lines.some((l) => l.startsWith('"API, team and evidence",,By endpoint,POST /v1/screen,')), 'the endpoints are not under their chapter');
+    // in the printed report's order: the overview, then the chapters, the days last
+    const order = [...new Set(lines.slice(1).map((l) => (l.startsWith('"') ? l.slice(1, l.indexOf('"', 1)) : l.split(',')[0])))];
+    assert.deepEqual(order, ['Report', 'Overview of the period', 'Screenings and review', 'Sanctions coverage', 'API, team and evidence', 'Day by day']);
     // a number is written as a number, even a negative one
     assert.equal(exports_.csvCell(-3), '-3');
     assert.equal(exports_.csvCell('-3'), "'-3");
