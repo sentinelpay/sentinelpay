@@ -10455,14 +10455,45 @@
                 li.textContent = x;
                 steps.appendChild(li);
             });
-            var key = document.createElement('button');
-            key.type = 'button';
+            // the key in its groups of four, the way an app asks for it, and a
+            // copy beside it that says when it has copied
+            var key = document.createElement('div');
             key.className = 'mfa-key';
-            key.title = t('Copy the key');
-            key.textContent = out.grouped || out.secret || '';
-            key.addEventListener('click', function () {
-                copyText(out.secret || '').then(function () { toast(t('Key copied'), 'good'); });
+            var groups = document.createElement('span');
+            groups.className = 'mfa-key-gs';
+            groups.setAttribute('aria-label', t('Key') + ': ' + (out.secret || ''));
+            String(out.grouped || out.secret || '').split(/\s+/).forEach(function (g) {
+                if (!g) return;
+                var chip = document.createElement('span');
+                chip.className = 'mfa-key-g';
+                chip.textContent = g;
+                groups.appendChild(chip);
             });
+            key.appendChild(groups);
+            var copy = document.createElement('button');
+            copy.type = 'button';
+            copy.className = 'mfa-key-copy';
+            var COPY_I = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
+                'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                '<rect x="8.5" y="8.5" width="11" height="11" rx="2.2"/><path d="M15.5 8.5V6.7a2.2 2.2 0 0 0-2.2-2.2H6.7a2.2 2.2 0 0 0-2.2 2.2v6.6a2.2 2.2 0 0 0 2.2 2.2h1.8"/></svg>';
+            var DONE_I = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
+                'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.2 4.2L19 7"/></svg>';
+            function copyLabel(done) {
+                copy.innerHTML = done ? DONE_I : COPY_I;
+                var tx = document.createElement('span');
+                tx.textContent = done ? t('Copied') : t('Copy');
+                copy.appendChild(tx);
+                copy.classList.toggle('is-done', done);
+            }
+            copyLabel(false);
+            copy.addEventListener('click', function () {
+                copyText(out.secret || '').then(function () {
+                    copyLabel(true);
+                    clearTimeout(copy.spTimer);
+                    copy.spTimer = setTimeout(function () { copyLabel(false); }, 1600);
+                }).catch(function () { toast(t('That did not work.'), 'bad'); });
+            });
+            key.appendChild(copy);
             steps.lastChild.appendChild(key);
             pair.appendChild(steps);
             m.body.appendChild(pair);
