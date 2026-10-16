@@ -589,7 +589,10 @@ test('the security page adds and removes an authenticator app', () => {
     const add = body('function addTwo(done) {', 6000);
     assert.match(add, /postJson\('\/v1\/account\/totp\/start'\)/);
     assert.match(add, /createElementNS\('http:\/\/www\.w3\.org\/2000\/svg', 'path'\)/, 'the code to scan is not drawn as a path');
-    assert.doesNotMatch(add, /innerHTML/, 'the setup dialog writes markup it was sent');
+    // markup only from the two icons written here, never anything the server sent
+    for (const m of add.match(/innerHTML\s*=\s*[^;]+;/g) || []) {
+        assert.match(m, /^innerHTML = done \? DONE_I : COPY_I;$/, 'the setup dialog writes markup it was sent: ' + m);
+    }
     assert.match(add, /postJson\('\/v1\/account\/totp\/confirm', \{ code: code\.value \}\)/);
     const codes = body('function showCodes(m, codes, done) {', 3000);
     assert.match(codes, /a\.download = 'sentinelpay-recovery-codes\.txt';/);

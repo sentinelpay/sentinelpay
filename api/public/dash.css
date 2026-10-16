@@ -5702,29 +5702,69 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
 .mfa-wait.is-bad { color: var(--danger); }
 .mfa-pair { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr); gap: 1.1rem; align-items: start; margin-bottom: 1.1rem; }
 .mfa-qr { display: block; width: 9.5rem; height: 9.5rem; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
-.mfa-steps { margin: 0; padding-left: 1.1rem; font-size: 0.84rem; line-height: 1.5; color: var(--ink-2); }
-.mfa-steps li + li { margin-top: 0.45rem; }
+.mfa-steps { margin: 0; padding: 0; list-style: none; counter-reset: mfa-step; font-size: 0.84rem; line-height: 1.5; color: var(--ink-2); }
+/* each step behind its number in a small round badge, the brand's ink on its
+   palest blue, so the three read as one sequence rather than a list */
+.mfa-steps li { position: relative; padding-left: 2rem; counter-increment: mfa-step; }
+.mfa-steps li::before {
+    content: counter(mfa-step);
+    position: absolute;
+    left: 0;
+    top: 0.05rem;
+    display: grid;
+    place-items: center;
+    width: 1.3rem;
+    height: 1.3rem;
+    border-radius: 50%;
+    background: var(--nav-on);
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--ink);
+}
+.mfa-steps li + li { margin-top: 0.6rem; }
+/* the key: its groups of four set out as chips, two rows of four across the
+   width of the box, and the copy under them */
 .mfa-key {
-    display: block;
-    width: 100%;
-    margin-top: 0.45rem;
-    padding: 0.5rem 0.65rem;
-    border: 1px dashed var(--field-line);
-    border-radius: 8px;
+    display: grid;
+    gap: 0.45rem;
+    margin-top: 0.55rem;
+    padding: 0.5rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
     background: var(--canvas);
-    font-family: var(--sp-text);
-    font-size: 0.82rem;
+}
+.mfa-key-gs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.3rem; }
+.mfa-key-g {
+    padding: 0.2rem 0;
+    border-radius: 6px;
+    background: var(--surface);
+    box-shadow: inset 0 0 0 1px var(--line-2);
+    font-size: 0.8rem;
     font-weight: 650;
     letter-spacing: 0.06em;
     font-variant-numeric: tabular-nums;
+    text-align: center;
     color: var(--ink);
-    text-align: left;
-    /* broken between its groups of four, never inside one */
-    white-space: normal;
-    overflow-wrap: normal;
-    cursor: pointer;
 }
-.mfa-key:hover { border-color: var(--link); }
+.mfa-key-copy {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.38rem 0.6rem;
+    border: 0;
+    border-radius: 7px;
+    background: var(--hover);
+    font-family: var(--sp-text);
+    font-size: 0.76rem;
+    font-weight: 650;
+    color: var(--ink-2);
+    cursor: pointer;
+    transition: background 0.16s ease, color 0.16s ease;
+}
+.mfa-key-copy svg { width: 14px; height: 14px; }
+.mfa-key-copy:hover { background: var(--nav-on); color: var(--ink); }
+.mfa-key-copy.is-done { background: var(--risk-low-bg); color: var(--risk-low); }
 .mfa-code { text-align: center; font-size: 1.15rem; font-weight: 650; letter-spacing: 0.35em; font-variant-numeric: tabular-nums; }
 /* the spacing is for the six digits, not for the words that stand in for them */
 .mfa-code:placeholder-shown { font-size: 0.9rem; font-weight: 400; letter-spacing: normal; }
