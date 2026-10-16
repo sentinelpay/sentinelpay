@@ -416,3 +416,25 @@ test.after(async () => {
     await new Promise((r) => setTimeout(r, 250));
     await db.close();
 });
+
+// The code to scan, drawn by the page from the outline the server sends: a
+// true QR code of the address the app is given, its three finder squares in
+// their corners, and nothing in it fetched from anywhere.
+test('the setup code is a QR code of the authenticator address', () => {
+    const { qrPath } = require('../qr');
+    const url = totp.otpauthUrl('JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP', 'ana@example.com', 'Sentinelpay');
+    const q = qrPath(url);
+    assert.ok(q.size >= 21 && (q.size - 17) % 4 === 0, 'not a QR size: ' + q.size);
+    const runs = q.d.split('z').filter(Boolean);
+    // a finder square's top edge is a run of seven dark modules
+    for (const at of ['M0 0h7', 'M' + (q.size - 7) + ' 0h7', 'M0 ' + (q.size - 7) + 'h7']) {
+        assert.ok(runs.some((r) => r.startsWith(at)), 'no finder square at ' + at);
+    }
+    assert.match(q.d, /^(M\d+ \d+h\d+v1h-\d+z)+$/);
+    // the same address gives the same code, a different one a different code
+    assert.equal(qrPath(url).d, q.d);
+    assert.notEqual(qrPath(url + 'x').d, q.d);
+    const index = require('fs').readFileSync(require('path').join(__dirname, '..', 'index.js'), 'utf8');
+    assert.match(index, /qr: qrPath\(totp\.otpauthUrl\(secret, me\.email \|\| 'sentinelpay', 'Sentinelpay'\)\)/, 'the setup answer carries no code to scan');
+    assert.ok(require('fs').existsSync(require('path').join(__dirname, '..', 'vendor', 'qrcode-generator-1.4.4', 'LICENSE.txt')), 'the encoder has no licence beside it');
+});

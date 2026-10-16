@@ -10216,19 +10216,101 @@
         page.appendChild(pageHead('Security',
             'Two factors, and every device and session that can reach this account. Sign one out from here if you do not know it.'));
 
-        var two = orghCard('Two-factor', 'twofa');
-        two.appendChild(orghStat('Second step',
-            me.totpOn ? t('On, with an authenticator app') : t('Off')));
-        var twoBody = document.createElement('div');
-        twoBody.className = 'orgh-body';
+        // Two-factor: whether a code from an app is asked for after the
+        // password, the app when there is one, and the way to add or remove it.
+        // What the account says about itself is read fresh, not from the frame
+        // the page was drawn with, because this is where it changes.
+        var two = orghCard('Two-factor authentication', 'twofa');
+        two.classList.add('mfa-card');
+        var twoAdd = document.createElement('button');
+        twoAdd.type = 'button';
+        twoAdd.className = 'btn btn-primary mfa-add';
+        twoAdd.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
+            'stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
+        twoAdd.appendChild(document.createTextNode(t('Add app')));
+        twoAdd.hidden = true;
+        two.querySelector('.orgh-card-h').appendChild(twoAdd);
         var twoP = document.createElement('p');
-        twoP.className = 'orgh-line is-quiet';
-        twoP.textContent = me.totpOn
-            ? t('A code from your app is asked for on every new sign in.')
-            : t('Without it, a password is the only thing between an intruder and this account.');
-        twoBody.appendChild(twoP);
-        two.appendChild(twoBody);
+        twoP.className = 'orgh-line mfa-what';
+        twoP.textContent = t('After your password, a six-digit code from an authenticator app such as Google Authenticator or 1Password. Someone who has your password still cannot get in without your phone.');
+        two.appendChild(twoP);
+        var twoList = document.createElement('div');
+        twoList.className = 'mfa-list';
+        two.appendChild(twoList);
         page.appendChild(two);
+
+        var state = { totp: Boolean(me.totpOn), totpSince: null, recoveryLeft: null, staffNeeds2fa: false };
+        function paintTwo() {
+            twoAdd.hidden = state.totp;
+            twoList.textContent = '';
+            if (!state.totp) {
+                var none = document.createElement('div');
+                none.className = 'mfa-none';
+                none.textContent = t('No authenticator app yet.');
+                twoList.appendChild(none);
+                if (state.staffNeeds2fa) {
+                    var need = document.createElement('div');
+                    need.className = 'mfa-need';
+                    need.textContent = t('This address is on the staff list, so two-factor is required before the staff pages will open.');
+                    twoList.appendChild(need);
+                }
+                return;
+            }
+            var row = document.createElement('div');
+            row.className = 'mfa-row';
+            var txt = document.createElement('span');
+            txt.className = 'mfa-t';
+            var name = document.createElement('span');
+            name.className = 'mfa-n';
+            name.textContent = t('Authenticator app');
+            var on = document.createElement('span');
+            on.className = 'mfa-on';
+            on.textContent = t('On');
+            name.appendChild(on);
+            txt.appendChild(name);
+            var sub = document.createElement('span');
+            sub.className = 'mfa-sub';
+            var bits = [];
+            if (state.totpSince) {
+                bits.push(fill('Added {date}', { date: new Date(state.totpSince).toLocaleDateString(navLang(), { day: 'numeric', month: 'short', year: 'numeric' }) }));
+            }
+            if (state.recoveryLeft !== null) {
+                bits.push(fill('{n} of 10 recovery codes left', { n: String(state.recoveryLeft) }));
+            }
+            sub.textContent = bits.join('  ·  ');
+            txt.appendChild(sub);
+            row.appendChild(txt);
+            var off = document.createElement('button');
+            off.type = 'button';
+            off.className = 'btn btn-quiet mfa-off';
+            off.textContent = t('Remove');
+            off.addEventListener('click', askTwoOff);
+            row.appendChild(off);
+            twoList.appendChild(row);
+            if (state.recoveryLeft !== null && state.recoveryLeft <= 2) {
+                var low = document.createElement('div');
+                low.className = 'mfa-need';
+                low.textContent = t('Few recovery codes are left. Remove the app and add it again to get ten new ones.');
+                twoList.appendChild(low);
+            }
+        }
+        function loadTwo() {
+            fetch('/v1/auth/me', { credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (j) {
+                    if (!j || !j.signedIn) return;
+                    state.totp = Boolean(j.totp);
+                    state.totpSince = j.totpSince || null;
+                    state.recoveryLeft = j.totp ? Number(j.recoveryLeft || 0) : null;
+                    state.staffNeeds2fa = Boolean(j.staffNeeds2fa);
+                    paintTwo();
+                })
+                .catch(function () { paintTwo(); });
+        }
+        twoAdd.addEventListener('click', function () { addTwo(loadTwo); });
+        function askTwoOff() { removeTwo(loadTwo); }
+        paintTwo();
+        loadTwo();
 
         // where this account is signed in. the one you are reading this on is
         // marked, because "sign out everywhere else" has to be unambiguous.
@@ -10290,9 +10372,232 @@
         });
 
         // signing out everywhere else, from somewhere else
-        onLive(function (e) { if (e.topic === 'me') loadSessions(); });
+        onLive(function (e) { if (e.topic === 'me') { loadSessions(); loadTwo(); } });
         loadSessions();
         return page;
+    }
+
+    // Text onto the clipboard, the old way where the clipboard api refuses
+    function copyText(text) {
+        var oldWay = function () {
+            var probe = document.createElement('textarea');
+            probe.value = text;
+            probe.setAttribute('readonly', '');
+            probe.style.position = 'fixed';
+            probe.style.opacity = '0';
+            document.body.appendChild(probe);
+            probe.select();
+            var won = false;
+            try { won = document.execCommand('copy'); } catch (err) { won = false; }
+            document.body.removeChild(probe);
+            return won ? Promise.resolve() : Promise.reject(new Error('no-copy'));
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            return navigator.clipboard.writeText(text).catch(oldWay);
+        }
+        return oldWay();
+    }
+
+    // POST a body as JSON; the answer's own message where it has one
+    function postJson(url, body) {
+        return fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify(body || {})
+        }).then(function (r) {
+            return r.json().catch(function () { return {}; }).then(function (j) {
+                // the sentence the server gave, in the language of the reader where we have it
+                if (!r.ok) throw new Error(j && j.error ? t(j.error) : t('That did not work.'));
+                return j;
+            });
+        });
+    }
+
+    // Adding an authenticator app, in one dialog: the code to scan and the key
+    // to type where a camera cannot, the six digits back, and then the
+    // recovery codes, shown this once with a way to keep them.
+    function addTwo(done) {
+        var m = modalShell('Add an authenticator app',
+            'Scan the code with the app, then enter the six digits it shows.');
+        m.box.classList.add('mfa-modal');
+        var wait = document.createElement('div');
+        wait.className = 'mfa-wait';
+        wait.textContent = t('Preparing…');
+        m.body.appendChild(wait);
+        postJson('/v1/account/totp/start').then(function (out) {
+            m.body.textContent = '';
+            var pair = document.createElement('div');
+            pair.className = 'mfa-pair';
+            var qr = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            qr.setAttribute('class', 'mfa-qr');
+            var n = (out.qr && out.qr.size) || 0;
+            qr.setAttribute('viewBox', '-4 -4 ' + (n + 8) + ' ' + (n + 8));
+            qr.setAttribute('role', 'img');
+            qr.setAttribute('aria-label', t('Code to scan with the authenticator app'));
+            qr.setAttribute('shape-rendering', 'crispEdges');
+            var bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            bg.setAttribute('x', '-4'); bg.setAttribute('y', '-4');
+            bg.setAttribute('width', String(n + 8)); bg.setAttribute('height', String(n + 8));
+            bg.setAttribute('fill', '#fff');
+            qr.appendChild(bg);
+            var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', (out.qr && out.qr.d) || '');
+            path.setAttribute('fill', '#0e2358');
+            qr.appendChild(path);
+            pair.appendChild(qr);
+            var steps = document.createElement('ol');
+            steps.className = 'mfa-steps';
+            [t('Open your authenticator app and choose to add an account.'),
+                t('Scan this code with it.'),
+                t('No camera? Enter this key instead:')].forEach(function (x) {
+                var li = document.createElement('li');
+                li.textContent = x;
+                steps.appendChild(li);
+            });
+            var key = document.createElement('button');
+            key.type = 'button';
+            key.className = 'mfa-key';
+            key.title = t('Copy the key');
+            key.textContent = out.grouped || out.secret || '';
+            key.addEventListener('click', function () {
+                copyText(out.secret || '').then(function () { toast(t('Key copied'), 'good'); });
+            });
+            steps.lastChild.appendChild(key);
+            pair.appendChild(steps);
+            m.body.appendChild(pair);
+
+            var form = document.createElement('form');
+            form.className = 'mfa-form';
+            var code = document.createElement('input');
+            code.className = 'modal-in mfa-code';
+            code.inputMode = 'numeric';
+            code.autocomplete = 'one-time-code';
+            code.maxLength = 6;
+            code.placeholder = t('Six-digit code');
+            code.setAttribute('aria-label', t('Six-digit code from the app'));
+            code.addEventListener('input', function () { code.value = code.value.replace(/\D/g, '').slice(0, 6); });
+            form.appendChild(code);
+            var msg = document.createElement('div');
+            msg.className = 'modal-msg';
+            form.appendChild(msg);
+            var go = wideBtn('Turn on two-factor', 'cta', 'submit');
+            form.appendChild(go);
+            m.body.appendChild(form);
+            code.focus();
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                if (code.value.length !== 6) { code.focus(); return; }
+                go.disabled = true;
+                msg.textContent = '';
+                msg.className = 'modal-msg';
+                postJson('/v1/account/totp/confirm', { code: code.value }).then(function (res) {
+                    showCodes(m, res.codes || [], done);
+                }).catch(function (err) {
+                    go.disabled = false;
+                    msg.textContent = err.message;
+                    msg.className = 'modal-msg is-bad';
+                    code.value = '';
+                    code.focus();
+                });
+            });
+        }).catch(function (err) {
+            wait.textContent = err.message;
+            wait.classList.add('is-bad');
+        });
+    }
+
+    // The recovery codes, each good once, shown the one time there is to show
+    // them, with a copy and a file to keep them in.
+    function showCodes(m, codes, done) {
+        m.retitle('Save your recovery codes',
+            'Two-factor is on. Keep these recovery codes somewhere safe and away from your phone. Each one works once, and this is the only time they are shown.');
+        m.body.textContent = '';
+        var grid = document.createElement('ol');
+        grid.className = 'mfa-codes';
+        codes.forEach(function (c) {
+            var li = document.createElement('li');
+            li.textContent = c;
+            grid.appendChild(li);
+        });
+        m.body.appendChild(grid);
+        var acts = document.createElement('div');
+        acts.className = 'mfa-acts';
+        var copy = document.createElement('button');
+        copy.type = 'button';
+        copy.className = 'btn btn-quiet';
+        copy.textContent = t('Copy codes');
+        copy.addEventListener('click', function () {
+            copyText(codes.join('\n')).then(function () { toast(t('Codes copied'), 'good'); });
+        });
+        acts.appendChild(copy);
+        var file = document.createElement('button');
+        file.type = 'button';
+        file.className = 'btn btn-quiet';
+        file.textContent = t('Download as .txt');
+        file.addEventListener('click', function () {
+            var text = t('Sentinelpay recovery codes') + '\n' + (lastMe && lastMe.email ? lastMe.email + '\n' : '') +
+                new Date().toISOString().slice(0, 10) + '\n\n' + codes.join('\n') + '\n\n' +
+                t('Each code works once, in place of a code from the app.') + '\n';
+            var href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+            var a = document.createElement('a');
+            a.href = href;
+            a.download = 'sentinelpay-recovery-codes.txt';
+            document.body.appendChild(a);
+            a.click();
+            a.parentNode.removeChild(a);
+            setTimeout(function () { URL.revokeObjectURL(href); }, 60 * 1000);
+        });
+        acts.appendChild(file);
+        m.body.appendChild(acts);
+        var ok = wideBtn('I have saved them', 'cta');
+        ok.addEventListener('click', function () { m.shut(); if (done) done(); });
+        m.body.appendChild(ok);
+        if (done) done();
+    }
+
+    // Removing the app takes the password: the one thing a person who found the
+    // laptop open does not have.
+    function removeTwo(done) {
+        var m = modalShell('Remove the authenticator app',
+            'Enter your password to confirm. After this, your password alone signs you in.');
+        var form = document.createElement('form');
+        var pw = document.createElement('input');
+        pw.type = 'password';
+        pw.className = 'modal-in';
+        pw.autocomplete = 'current-password';
+        pw.placeholder = t('Your password');
+        form.appendChild(pw);
+        var msg = document.createElement('div');
+        msg.className = 'modal-msg';
+        form.appendChild(msg);
+        var yes = wideBtn('Remove the app', 'cta', 'submit');
+        form.appendChild(yes);
+        var quit = document.createElement('div');
+        quit.className = 'modal-quit';
+        var no = wideBtn('Keep it', 'quiet');
+        no.addEventListener('click', m.shut);
+        quit.appendChild(no);
+        form.appendChild(quit);
+        m.body.appendChild(form);
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (!pw.value) { pw.focus(); return; }
+            yes.disabled = true;
+            msg.textContent = '';
+            msg.className = 'modal-msg';
+            postJson('/v1/account/totp/off', { password: pw.value }).then(function () {
+                m.shut();
+                toast(t('Two-factor is off.'), 'good');
+                if (done) done();
+            }).catch(function (err) {
+                yes.disabled = false;
+                msg.textContent = err.message;
+                msg.className = 'modal-msg is-bad';
+                pw.value = '';
+                pw.focus();
+            });
+        });
     }
 
     function sessionRow(x) {
