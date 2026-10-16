@@ -77,12 +77,6 @@
         // your own account
         prefs: '<circle cx="12" cy="12" r="2.9"/><path d="M12 3.2v2.3M12 18.5v2.3M20.8 12h-2.3M5.5 12H3.2' +
             'M18.2 5.8l-1.7 1.7M7.5 16.5l-1.7 1.7M18.2 18.2l-1.7-1.7M7.5 7.5 5.8 5.8"/>',
-        twofa: '<rect x="7.6" y="3.4" width="8.8" height="17.2" rx="2.2"/>' +
-            '<circle cx="10.4" cy="9.6" r="0.9"/><circle cx="13.6" cy="9.6" r="0.9"/>' +
-            '<circle cx="10.4" cy="12.8" r="0.9"/><circle cx="13.6" cy="12.8" r="0.9"/>' +
-            '<path d="M10.4 17.4h3.2"/>',
-        device: '<rect x="3.2" y="5" width="17.6" height="11" rx="2"/>' +
-            '<path d="M9.4 19.6h5.2"/><path d="M12 16v3.6"/>',
         lock: '<rect x="4.8" y="10.6" width="14.4" height="9.4" rx="2.1"/>' +
             '<path d="M8.4 10.6V7.8a3.6 3.6 0 0 1 7.2 0v2.8"/><path d="M12 14.4v2.2"/>',
         key: '<circle cx="7.4" cy="12" r="3.6"/><path d="M11 12h9.4"/>' +
@@ -10216,82 +10210,69 @@
         page.appendChild(pageHead('Security',
             'Two factors, and every device and session that can reach this account. Sign one out from here if you do not know it.'));
 
-        // Two-factor: whether a code from an app is asked for after the
-        // password, the app when there is one, and the way to add or remove it.
-        // What the account says about itself is read fresh, not from the frame
-        // the page was drawn with, because this is where it changes.
-        var two = orghCard('Two-factor authentication', 'twofa');
-        two.classList.add('mfa-card');
-        var twoAdd = document.createElement('button');
-        twoAdd.type = 'button';
-        twoAdd.className = 'btn btn-primary mfa-add';
-        twoAdd.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
-            'stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
-        twoAdd.appendChild(document.createTextNode(t('Add app')));
-        twoAdd.hidden = true;
-        two.querySelector('.orgh-card-h').appendChild(twoAdd);
-        var twoP = document.createElement('p');
-        twoP.className = 'orgh-line mfa-what';
-        twoP.textContent = t('After your password, a six-digit code from an authenticator app such as Google Authenticator or 1Password. Someone who has your password still cannot get in without your phone.');
-        two.appendChild(twoP);
-        var twoList = document.createElement('div');
-        twoList.className = 'mfa-list';
-        two.appendChild(twoList);
+        // ---- two-factor, as the preferences page sets out a setting: a title,
+        // a line on what it is for, and a card of rows with the control at the
+        // end of each. What the account says about itself is read fresh rather
+        // than from the frame the page was drawn with, because this is where
+        // it changes.
+        page.appendChild(sectionTitle('Two-factor authentication'));
+        page.appendChild(sectionNote('After your password, a six-digit code from an authenticator app such as Google Authenticator or 1Password. Someone who has your password still cannot get in without your phone.'));
+        var two = document.createElement('div');
+        two.className = 'card sec-card';
         page.appendChild(two);
 
         var state = { totp: Boolean(me.totpOn), totpSince: null, recoveryLeft: null, staffNeeds2fa: false };
+        function since() {
+            return state.totpSince
+                ? fill('Added {date}', { date: new Date(state.totpSince).toLocaleDateString(navLang(), { day: 'numeric', month: 'short', year: 'numeric' }) })
+                : '';
+        }
         function paintTwo() {
-            twoAdd.hidden = state.totp;
-            twoList.textContent = '';
-            if (!state.totp) {
-                var none = document.createElement('div');
-                none.className = 'mfa-none';
-                none.textContent = t('No authenticator app yet.');
-                twoList.appendChild(none);
-                if (state.staffNeeds2fa) {
-                    var need = document.createElement('div');
-                    need.className = 'mfa-need';
-                    need.textContent = t('This address is on the staff list, so two-factor is required before the staff pages will open.');
-                    twoList.appendChild(need);
-                }
-                return;
+            two.textContent = '';
+            var app = document.createElement('div');
+            app.className = 'sec-app';
+            var appT = document.createElement('span');
+            appT.className = 'sec-state' + (state.totp ? ' is-on' : '');
+            appT.textContent = state.totp ? t('On') : t('Off');
+            app.appendChild(appT);
+            var act = document.createElement('button');
+            act.type = 'button';
+            if (state.totp) {
+                act.className = 'btn btn-quiet sec-remove';
+                act.textContent = t('Remove');
+                act.addEventListener('click', function () { removeTwo(loadTwo); });
+            } else {
+                act.className = 'btn btn-primary sec-add';
+                act.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
+                    'stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
+                act.appendChild(document.createTextNode(t('Add app')));
+                act.addEventListener('click', function () { addTwo(loadTwo); });
             }
-            var row = document.createElement('div');
-            row.className = 'mfa-row';
-            var txt = document.createElement('span');
-            txt.className = 'mfa-t';
-            var name = document.createElement('span');
-            name.className = 'mfa-n';
-            name.textContent = t('Authenticator app');
-            var on = document.createElement('span');
-            on.className = 'mfa-on';
-            on.textContent = t('On');
-            name.appendChild(on);
-            txt.appendChild(name);
-            var sub = document.createElement('span');
-            sub.className = 'mfa-sub';
-            var bits = [];
-            if (state.totpSince) {
-                bits.push(fill('Added {date}', { date: new Date(state.totpSince).toLocaleDateString(navLang(), { day: 'numeric', month: 'short', year: 'numeric' }) }));
+            app.appendChild(act);
+            var row = fieldRow({ label: 'Authenticator app', control: app });
+            var hint = document.createElement('div');
+            hint.className = 'fld-hint';
+            hint.textContent = state.totp ? (since() || t('A code from the app is asked for on every new sign in.')) : t('No authenticator app yet.');
+            row.querySelector('.fld-l').appendChild(hint);
+            two.appendChild(row);
+
+            if (state.totp) {
+                var left = document.createElement('span');
+                left.className = 'sec-fig' + (state.recoveryLeft !== null && state.recoveryLeft <= 2 ? ' is-low' : '');
+                left.textContent = state.recoveryLeft === null ? '—' : fill('{n} of 10 left', { n: String(state.recoveryLeft) });
+                two.appendChild(fieldRow({
+                    label: 'Recovery codes',
+                    hint: state.recoveryLeft !== null && state.recoveryLeft <= 2
+                        ? 'Few are left. Remove the app and add it again to get ten new ones.'
+                        : 'Each works once, in place of a code from the app, if the phone is lost.',
+                    control: left
+                }));
             }
-            if (state.recoveryLeft !== null) {
-                bits.push(fill('{n} of 10 recovery codes left', { n: String(state.recoveryLeft) }));
-            }
-            sub.textContent = bits.join('  ·  ');
-            txt.appendChild(sub);
-            row.appendChild(txt);
-            var off = document.createElement('button');
-            off.type = 'button';
-            off.className = 'btn btn-quiet mfa-off';
-            off.textContent = t('Remove');
-            off.addEventListener('click', askTwoOff);
-            row.appendChild(off);
-            twoList.appendChild(row);
-            if (state.recoveryLeft !== null && state.recoveryLeft <= 2) {
-                var low = document.createElement('div');
-                low.className = 'mfa-need';
-                low.textContent = t('Few recovery codes are left. Remove the app and add it again to get ten new ones.');
-                twoList.appendChild(low);
+            if (!state.totp && state.staffNeeds2fa) {
+                var need = document.createElement('div');
+                need.className = 'card-foot sec-need';
+                need.textContent = t('This address is on the staff list, so two-factor is required before the staff pages will open.');
+                two.appendChild(need);
             }
         }
         function loadTwo() {
@@ -10307,28 +10288,30 @@
                 })
                 .catch(function () { paintTwo(); });
         }
-        twoAdd.addEventListener('click', function () { addTwo(loadTwo); });
-        function askTwoOff() { removeTwo(loadTwo); }
         paintTwo();
         loadTwo();
 
-        // where this account is signed in. the one you are reading this on is
-        // marked, because "sign out everywhere else" has to be unambiguous.
-        var sess = orghCard('Signed in', 'device');
+        // ---- where this account is signed in: a row a session, the one you
+        // are reading this on marked, because "sign out everywhere else" has
+        // to be unambiguous, and that action at the foot of the card where the
+        // preferences page has its Save
+        page.appendChild(sectionTitle('Signed in'));
+        page.appendChild(sectionNote('Every browser and device where this account is signed in now. Sign out the ones you do not recognise.'));
+        var sess = document.createElement('div');
+        sess.className = 'card sec-card';
         var host = document.createElement('div');
         host.className = 'sess';
         sess.appendChild(host);
         skBusy(host).appendChild(skSessions(3));
-
-        var out = document.createElement('div');
-        out.className = 'orgh-body';
+        var foot = document.createElement('div');
+        foot.className = 'card-foot';
         var outBtn = document.createElement('button');
         outBtn.type = 'button';
-        outBtn.className = 'btn btn-quiet orgh-act';
+        outBtn.className = 'btn btn-quiet';
         outBtn.textContent = t('Sign out everywhere else');
         outBtn.disabled = true;
-        out.appendChild(outBtn);
-        sess.appendChild(out);
+        foot.appendChild(outBtn);
+        sess.appendChild(foot);
         page.appendChild(sess);
 
         function loadSessions() {
@@ -10371,10 +10354,36 @@
             });
         });
 
-        // signing out everywhere else, from somewhere else
+        // a change made from another screen: signed out from there, or two-factor
+        // turned on or off there
         onLive(function (e) { if (e.topic === 'me') { loadSessions(); loadTwo(); } });
         loadSessions();
         return page;
+    }
+
+    // A session as a settings row: when it was last used and when it began on
+    // the left, and on the right whether it is the one in front of you.
+    function sessionRow(x) {
+        var mark = document.createElement('span');
+        mark.className = 'sec-sess';
+        if (x.current) {
+            var here = document.createElement('span');
+            here.className = 'mem-you';
+            here.textContent = t('this one');
+            mark.appendChild(here);
+        }
+        var row = fieldRow({ label: 'Last used', control: mark });
+        var lab = row.querySelector('.fld-label');
+        lab.textContent = x.lastSeenAt
+            ? t('Last used') + '  ·  ' + new Date(x.lastSeenAt).toISOString().slice(0, 16).replace('T', ' ')
+            : t('In use');
+        var sub = document.createElement('div');
+        sub.className = 'fld-hint';
+        sub.textContent = (x.startedAt
+            ? t('Started') + ' ' + new Date(x.startedAt).toISOString().slice(0, 10) : '') +
+            (x.mfa ? '  ·  ' + t('passed two-factor') : '');
+        row.querySelector('.fld-l').appendChild(sub);
+        return row;
     }
 
     // Text onto the clipboard, the old way where the clipboard api refuses
@@ -10629,33 +10638,6 @@
                 pw.focus();
             });
         });
-    }
-
-    function sessionRow(x) {
-        var row = document.createElement('div');
-        row.className = 'sess-row';
-        var txt = document.createElement('span');
-        txt.className = 'sess-t';
-        var n = document.createElement('span');
-        n.className = 'sess-n';
-        n.textContent = x.lastSeenAt
-            ? t('Last used') + '  ·  ' + new Date(x.lastSeenAt).toISOString().slice(0, 16).replace('T', ' ')
-            : t('In use');
-        if (x.current) {
-            var here = document.createElement('span');
-            here.className = 'mem-you';
-            here.textContent = t('this one');
-            n.appendChild(here);
-        }
-        txt.appendChild(n);
-        var sub = document.createElement('span');
-        sub.className = 'sess-sub';
-        sub.textContent = (x.startedAt
-            ? t('Started') + ' ' + new Date(x.startedAt).toISOString().slice(0, 10) : '') +
-            (x.mfa ? '  ·  ' + t('passed two-factor') : '');
-        txt.appendChild(sub);
-        row.appendChild(txt);
-        return row;
     }
 
     // What this account has done, newest first. It reads the same trail a

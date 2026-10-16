@@ -576,16 +576,24 @@ test('a figure against a limit draws a bar, a plain count its line', () => {
     assert.match(CSS, /\.use-mc-r:has\(\.use-mc-lim\) \.use-mc-v \{ flex: none; white-space: nowrap; \}/, 'the figure breaks to make room for the bar');
 });
 
-// Two-factor is turned on and off from the security page itself: an app is
-// added from a code to scan or a key to type, the recovery codes are shown
-// once with a way to keep them, and removing the app takes the password.
+// Two-factor is turned on and off from the security page itself, set out as
+// the preferences page sets out a setting: an app is added from a code to
+// scan or a key to type, the recovery codes are shown once with a way to keep
+// them, and removing the app takes the password.
 test('the security page adds and removes an authenticator app', () => {
     const page = body('function viewSecurity(me) {', 12000);
-    assert.match(page, /orghCard\('Two-factor authentication', 'twofa'\)/);
+    // the preferences page's parts: section titles and notes, cards of rows
+    assert.match(page, /sectionTitle\('Two-factor authentication'\)/);
+    assert.match(page, /sectionTitle\('Signed in'\)/);
+    assert.match(page, /fieldRow\(\{ label: 'Authenticator app', control: app \}\)/);
+    assert.match(page, /label: 'Recovery codes'/);
+    assert.doesNotMatch(page, /orghCard\(/, 'the page is drawn in the overview cards, not the settings ones');
+    // one action at a time: add with no app, remove with one
+    assert.match(page, /if \(state\.totp\) \{\s*act\.className = 'btn btn-quiet sec-remove';[\s\S]*?\} else \{\s*act\.className = 'btn btn-primary sec-add';/);
     assert.match(page, /t\('Add app'\)/);
     assert.match(page, /t\('No authenticator app yet\.'\)/);
-    assert.match(page, /twoAdd\.hidden = state\.totp;/, 'the add button shows with an app already on');
-    assert.match(CSS, /\.mfa-add\[hidden\] \{ display: none; \}/, 'the add button outlives its hidden attribute');
+    // sign out everywhere else sits at the foot of its card, as Save does
+    assert.match(page, /foot\.className = 'card-foot';[\s\S]*?outBtn/);
     const add = body('function addTwo(done) {', 6000);
     assert.match(add, /postJson\('\/v1\/account\/totp\/start'\)/);
     assert.match(add, /createElementNS\('http:\/\/www\.w3\.org\/2000\/svg', 'path'\)/, 'the code to scan is not drawn as a path');
@@ -600,6 +608,8 @@ test('the security page adds and removes an authenticator app', () => {
     const off = body('function removeTwo(done) {', 3000);
     assert.match(off, /pw\.type = 'password';/);
     assert.match(off, /postJson\('\/v1\/account\/totp\/off', \{ password: pw\.value \}\)/);
-    // "this one" is a mark beside the session, not a word run into its time
-    assert.match(CSS, /\.mem-you \{[^}]*margin-left: 0\.5rem;/);
+    // "this one" is a mark at the end of its session's row, not a word run
+    // into its time
+    assert.match(CSS, /\.mem-you \{[^}]*border-radius: 999px;/);
+    assert.match(body('function sessionRow(x) {', 1500), /fieldRow\(\{ label: 'Last used', control: mark \}\)/);
 });
