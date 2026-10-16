@@ -664,15 +664,16 @@ test('an export is named for whose it is, the days it covers and its language', 
     }
 });
 
-// The CSV is one table: the same eight columns on every line, the report
-// itself as the first rows with the statement and the notes the PDF prints,
-// every figure under the chapter of the PDF it is in, in the PDF's order.
+// The CSV is one table: the same nine columns on every line, the numbers in
+// columns of numbers and every word in the last, the report itself as the
+// first rows with the statement and the notes the PDF prints, every figure
+// under the chapter of the PDF it is in, in the PDF's order.
 test('the csv is one table a program can read without being told where parts begin', () => {
     const sample = require('../report-sample.js').full(new Date('2026-10-14T10:00:00Z'));
     const list = exports_.sheets(sample.out, sample.org, sample.sub);
     const meta = { reference: exports_.reference(list), generated: '2026-10-14T10:00:00.000Z', organisation: sample.org.name };
     const text = exports_.csv(list, meta);
-    assert.ok(text.startsWith('\ufeffsection,date,breakdown,item,value,share_percent,period_before,change_percent\r\n'), 'the heading is not the first line');
+    assert.ok(text.startsWith('\ufeffsection,date,breakdown,item,value,share_percent,period_before,change_percent,text\r\n'), 'the heading is not the first line');
     const lines = text.slice(1).trim().split('\r\n');
     // the cells of a line, a quoted comma not ending one
     const cells = (line) => {
@@ -685,16 +686,22 @@ test('the csv is one table a program can read without being told where parts beg
         }
         return outCells;
     };
-    for (const line of lines) assert.equal(cells(line).length, 8, 'a line is not eight columns: ' + line);
-    assert.ok(lines.includes('Report,,,Reference,sha256:' + meta.reference + ',,,'), 'the reference is not in the table');
-    assert.ok(lines.some((l) => l.startsWith('Report,,Statement on screening,1,"This report sets out the screening ')), 'the statement is not in the table');
-    assert.ok(lines.includes('Report,,Notes,Sanctioned,The address was on a sanctions list when it was checked.,,,'), 'the notes are not in the table');
+    for (const line of lines) assert.equal(cells(line).length, 9, 'a line is not nine columns: ' + line);
+    // the columns a program sums hold numbers and nothing else
+    for (const line of lines.slice(1)) {
+        for (const c of [4, 5, 6, 7]) assert.match(cells(line)[c], /^(-?\d+(\.\d+)?)?$/, 'a word in a column of numbers: ' + line);
+    }
+    assert.ok(lines.includes('Report,,,Reference,,,,,sha256:' + meta.reference), 'the reference is not in the table');
+    assert.ok(lines.includes('Report,,,Period to,,,,,2026-10-13'), 'the period does not end on its last day');
+    assert.ok(lines.includes('Report,,,Period before to,,,,,2025-10-13'), 'the period before is not given');
+    assert.ok(lines.some((l) => l.startsWith('Report,,Statement on screening,Paragraph 1,,,,,"This report sets out the screening ')), 'the statement is not in the table');
+    assert.ok(lines.includes('Report,,Notes,Sanctioned,,,,,The address was on a sanctions list when it was checked.'), 'the notes are not in the table');
     assert.equal(lines.filter((l) => l.startsWith('Day by day,')).length, 365 * 9, 'a day\'s figure is missing');
-    assert.ok(lines.includes('Overview of the period,,,Period to,2026-10-13,,2025-10-13,'), 'the period does not end on its last day');
+    assert.ok(lines.some((l) => l.startsWith('Overview of the period,,,Oldest open finding,,,,,20')), 'a day is not in the column of words');
     // how far a figure moved, as the overview prints it
     const total = sample.out.screenings.total;
     const before = sample.out.previous.total;
-    assert.ok(lines.includes('Overview of the period,,,Screenings,' + total + ',,' + before + ',' + Math.round((total - before) / before * 1000) / 10), 'the change is not beside the figure');
+    assert.ok(lines.includes('Overview of the period,,,Screenings,' + total + ',,' + before + ',' + Math.round((total - before) / before * 1000) / 10 + ','), 'the change is not beside the figure');
     assert.ok(lines.some((l) => l.startsWith('"API, team and evidence",,By endpoint,POST /v1/screen,')), 'the endpoints are not under their chapter');
     // in the printed report's order: the overview, then the chapters, the days last
     const order = [...new Set(lines.slice(1).map((l) => (l.startsWith('"') ? l.slice(1, l.indexOf('"', 1)) : l.split(',')[0])))];
@@ -812,4 +819,21 @@ test('the workbook is in the reader\'s language, dressed as the report, with its
     // names given by people are printed as they were given
     assert.match(checks, /<t xml:space="preserve">Card program 01, Frankfurt/);
     assert.doesNotMatch(Object.values(files).join(''), /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/, 'a character XML cannot carry');
+});
+
+// A billing cycle still running ends on the invoice months away, but nothing
+// after today is counted: the report says the period reaches today, so it
+// never says screening happened on a day that has not come.
+test('a period still running ends today in every format', () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const out = {
+        period: { from: '2026-01-01T00:00:00.000Z', to: '2999-01-01T00:00:00.000Z' }, scope: 'live', zone: 'UTC',
+        screenings: { total: 1, verdicts: { clear: 1 }, assets: [], projects: [], days: [] }, org: {},
+    };
+    const list = exports_.sheets(out, { name: 'Acme' }, null);
+    const meta = { reference: exports_.reference(list), generated: new Date().toISOString(), organisation: 'Acme', back: '/', forPdf: true };
+    assert.equal(list[0].rows.find((r) => r[0] === 'Period to')[1], today);
+    assert.equal(JSON.parse(exports_.json(list, meta, out)).period.lastDay, today);
+    assert.match(exports_.filename(out, 'pdf', meta), new RegExp('_2026-01-01_' + today + '_en\\.pdf$'));
+    assert.doesNotMatch(exports_.report(list, meta, out), /2999|31 December 2998/, 'the report names a day that has not come');
 });

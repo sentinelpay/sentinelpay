@@ -96,7 +96,7 @@ function sheets(out, org, sub) {
             ['Period from', day(out.period.from), was(() => day(prev.from))],
             // the last day the period covers: its end is the instant after it,
             // which as a date is the next day
-            ['Period to', day(lastDay(out.period.to)), was(() => day(lastDay(prev.to)))],
+            ['Period to', periodEnd(out.period), was(() => periodEnd(prev))],
             ['Scope', out.scope === 'sandbox' ? 'Sandbox' : 'Production', ''],
             ['Time zone', out.zone || 'UTC', ''],
             ['Plan', sub ? sub.planName : '', ''],
@@ -258,7 +258,13 @@ function csvCell(value) {
     return /[",\n\r]/.test(safe) ? '"' + safe.replace(/"/g, '""') + '"' : safe;
 }
 
-const CSV_HEAD = ['section', 'date', 'breakdown', 'item', 'value', 'share_percent', 'period_before', 'change_percent'];
+// The numbers in their own columns and nothing else in them, so a column a
+// program sums is a column of numbers; every word -- a name, a date, a
+// paragraph -- in the last column, where a long one runs on into nothing.
+const CSV_HEAD = ['section', 'date', 'breakdown', 'item', 'value', 'share_percent', 'period_before', 'change_percent', 'text'];
+
+// what the report already says at its head is not repeated in the summary
+const ABOUT_ROWS = ['Organisation', 'Period from', 'Period to', 'Scope', 'Time zone', 'Plan'];
 
 // The chapter of the printed report each sheet's figures are in, in the
 // order the report prints them, so a row is filed under the heading a reader
@@ -282,14 +288,21 @@ function csv(list, meta) {
     const to = sp.date(at('Period to'));
     const sandbox = at('Scope') === 'Sandbox';
     const generated = sp.tr('{date} at {time} UTC', { date: sp.date(meta.generated), time: String(meta.generated).slice(11, 16) });
-    const blank = (section, breakdown, item, value) => [section, '', breakdown, item, value, '', '', ''];
+    const words = (section, breakdown, item, text) => [section, '', breakdown, item, '', '', '', '', text];
     // the report itself first: what it is, its reference, the statement the
     // PDF opens with, and what the words its overview marks mean
     const rows = [
-        blank('Report', '', 'Report', 'Sentinelpay usage and evidence report'),
-        blank('Report', '', 'Reference', 'sha256:' + meta.reference),
-        blank('Report', '', 'Generated', meta.generated),
+        words('Report', '', 'Report', 'Sentinelpay usage and evidence report'),
+        words('Report', '', 'Reference', 'sha256:' + meta.reference),
+        words('Report', '', 'Generated', meta.generated),
     ];
+    // whose report and for when, with the period it is set beside
+    for (const k of ABOUT_ROWS) {
+        const r = sum.get(k);
+        if (!r) continue;
+        rows.push(words('Report', '', k, r[1]));
+        if (r[2] !== '' && r[2] !== undefined) rows.push(words('Report', '', k.replace('Period', 'Period before'), r[2]));
+    }
     [
         sandbox
             ? 'This report sets out the screening {org} carried out through Sentinelpay between {from} and {to}, in the sandbox scope. It was generated on {generated} from the records as they stood at that moment.'
@@ -299,9 +312,9 @@ function csv(list, meta) {
             ? 'This is the sandbox scope. Its checks are test work and are not evidence of screening.'
             : 'Sandbox checks are test work. They spend no allowance and are left out of every figure here.',
         'Every export of this period, CSV, Excel or JSON, carries the same reference, {ref}, so a copy in any format can be matched to this one.',
-    ].forEach((text, i) => rows.push(blank('Report', 'Statement on screening', String(i + 1),
+    ].forEach((text, i) => rows.push(words('Report', 'Statement on screening', 'Paragraph ' + (i + 1),
         sp.tr(text, { org: meta.organisation || '', from, to, generated, ref: 'sha256:' + meta.reference }))));
-    NOTES.forEach(([word, text]) => rows.push(blank('Report', 'Notes', word, text[0].toUpperCase() + text.slice(1))));
+    NOTES.forEach(([word, text]) => rows.push(words('Report', 'Notes', word, text[0].toUpperCase() + text.slice(1))));
 
     // how far a figure moved from the period before, as the overview prints it
     const change = (v, b) => {
@@ -313,14 +326,17 @@ function csv(list, meta) {
         const sh = get(name);
         if (!sh) continue;
         if (name === 'Summary') {
-            sh.rows.forEach((r) => rows.push([chapter, '', '', r[0], r[1], '', r[2], change(r[1], r[2])]));
+            sh.rows.filter((r) => !ABOUT_ROWS.includes(r[0])).forEach((r) => rows.push(typeof r[1] === 'number'
+                ? [chapter, '', '', r[0], r[1], '', r[2], change(r[1], r[2]), '']
+                // a figure that is a day, the oldest record or finding: a word
+                : [chapter, '', '', r[0], '', '', '', '', r[1]]));
         } else if (name === 'Daily') {
-            sh.rows.forEach((r) => sh.head.slice(1).forEach((h, i) => rows.push([chapter, r[0], '', h, r[i + 1], '', '', ''])));
+            sh.rows.forEach((r) => sh.head.slice(1).forEach((h, i) => rows.push([chapter, r[0], '', h, r[i + 1], '', '', '', ''])));
         } else if (sh.head[0] === 'Breakdown') {
-            sh.rows.forEach((r) => rows.push([chapter, '', r[0], r[1], r[2], r[3], '', '']));
+            sh.rows.forEach((r) => rows.push([chapter, '', r[0], r[1], r[2], r[3], '', '', '']));
         } else {
             // a list with no groups: the API's endpoints
-            sh.rows.forEach((r) => rows.push([chapter, '', 'By ' + sh.head[0].toLowerCase(), r[0], r[1], r[2], '', '']));
+            sh.rows.forEach((r) => rows.push([chapter, '', 'By ' + sh.head[0].toLowerCase(), r[0], r[1], r[2], '', '', '']));
         }
     }
     // a byte-order mark, or Excel opens a file of Croatian names as mojibake
@@ -340,8 +356,6 @@ function csv(list, meta) {
 const camel = (label) => String(label).replace(/[()]/g, '').split(/[^A-Za-z0-9]+/).filter(Boolean)
     .map((w, i) => (i ? w[0].toUpperCase() + w.slice(1).toLowerCase() : w.toLowerCase())).join('');
 const orNull = (v) => (v === '' || v === undefined ? null : v);
-// what the report already says at its head is not repeated in the summary
-const ABOUT_ROWS = ['Organisation', 'Period from', 'Period to', 'Scope', 'Time zone', 'Plan'];
 
 function json(list, meta, out) {
     const get = (name) => list.find((sh) => sh.name === name) || { head: [], rows: [] };
@@ -373,7 +387,7 @@ function json(list, meta, out) {
         scope: out.scope === 'sandbox' ? 'sandbox' : 'production',
         period: {
             firstDay: day(out.period.from),
-            lastDay: day(lastDay(out.period.to)),
+            lastDay: periodEnd(out.period),
             from: out.period.from,
             to: out.period.to,
             zone: out.zone || 'UTC',
@@ -1283,6 +1297,16 @@ function lastDay(iso) {
     return new Date(new Date(iso).getTime() - 1).toISOString();
 }
 
+// The last day a period's figures reach. A billing cycle that is still
+// running ends in December on the invoice, but nothing after today has been
+// counted, and a report saying the organisation screened "between 20
+// September and 19 December" on the 16th of October says something that has
+// not happened. So a period still running ends today, which is as far as its
+// figures go; a period that has ended ends on its last day.
+function periodEnd(period) {
+    return day(lastDay(new Date(Math.min(new Date(period.to).getTime(), Date.now())).toISOString()));
+}
+
 // The cover's art: a grid of three modules across the paper's width and three
 // down, each filled with one shape taken from the logo -- the shield's lower
 // half, the iris of the eye, and the quarters and halves of that circle -- in
@@ -1523,7 +1547,7 @@ function report(list, meta, out) {
         '; --ink0:' + theme.ink[0] + '; --ink1:' + theme.ink[1];
     const org = meta.organisation || '';
     const from = date(out.period.from);
-    const to = date(lastDay(out.period.to));
+    const to = date(periodEnd(out.period));
     const span = tr('{from} to {to}', { from, to });
     const scopeName = tr(sandbox ? 'Sandbox' : 'Production');
     // when it was made, as a reader says it: "11 October 2026 at 22:22 UTC"
@@ -1772,7 +1796,7 @@ function report(list, meta, out) {
     return '<!doctype html><html lang="' + sp.lang + '"><head><meta charset="utf-8">' +
         '<meta name="viewport" content="width=device-width,initial-scale=1">' +
         '<meta name="robots" content="noindex,nofollow">' +
-        '<title>' + h('Usage report {from} to {to}', { from: day(out.period.from), to: day(out.period.to) }) + ' · ' + esc(org) + '</title>' +
+        '<title>' + h('Usage report {from} to {to}', { from: day(out.period.from), to: periodEnd(out.period) }) + ' · ' + esc(org) + '</title>' +
         // for a PDF the page is self-contained; in the browser it links what
         // the site already serves
         (meta.forPdf
@@ -2185,7 +2209,7 @@ function fileSlug(v) {
 function filename(out, format, meta) {
     const m = meta || {};
     const read = format === 'pdf' || format === 'xlsx' || format === 'html';
-    return ['sentinelpay-usage', fileSlug(m.organisation), day(out.period.from), day(lastDay(out.period.to)),
+    return ['sentinelpay-usage', fileSlug(m.organisation), day(out.period.from), periodEnd(out.period),
         out.scope === 'sandbox' ? 'sandbox' : '', read ? langOf(m.lang) : '']
         .filter(Boolean).join('_') + '.' + format;
 }
