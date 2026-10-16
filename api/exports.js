@@ -240,11 +240,12 @@ function reference(list) {
 // or a script reads it without being told where one part ends and the next
 // begins. The sheets used to follow each other in one file, each with its own
 // heading row, which a person could read and a program could not. Now every
-// figure is a row of its own: which part of the report it is from, the day
-// for a daily figure, the breakdown and the line it sits on, the value, its
-// share where it has one, and the same figure for the period before where
-// there is one. The report itself -- whose, which period, the reference --
-// is the first rows, in the same columns.
+// figure is a row of its own: the chapter of the printed report it is in, the
+// day for a daily figure, the breakdown and the line it sits on, the value,
+// its share where it has one, and the same figure for the period before with
+// how far it moved, where there is one. The report itself -- its reference,
+// the statement it opens with and what its marked words mean -- is the first
+// rows, in the same columns.
 
 function csvCell(value) {
     // a number is a number: "-3" is not a formula, and quoting it would make
@@ -257,24 +258,69 @@ function csvCell(value) {
     return /[",\n\r]/.test(safe) ? '"' + safe.replace(/"/g, '""') + '"' : safe;
 }
 
-const CSV_HEAD = ['section', 'date', 'breakdown', 'item', 'value', 'share_percent', 'period_before'];
+const CSV_HEAD = ['section', 'date', 'breakdown', 'item', 'value', 'share_percent', 'period_before', 'change_percent'];
+
+// The chapter of the printed report each sheet's figures are in, in the
+// order the report prints them, so a row is filed under the heading a reader
+// of the PDF would look for it under.
+const CSV_CHAPTERS = [
+    ['Summary', 'Overview of the period'],
+    ['Screenings', 'Screenings and review'], ['Review', 'Screenings and review'],
+    ['Coverage', 'Sanctions coverage'],
+    ['API', 'API, team and evidence'], ['Team', 'API, team and evidence'], ['Evidence', 'API, team and evidence'],
+    ['Daily', 'Day by day'],
+];
 
 function csv(list, meta) {
+    // in English always: a program reading "Sanctioned" today reads the same
+    // word tomorrow, whatever language the dashboard was in
+    const sp = speaker('en');
+    const get = (name) => list.find((sh) => sh.name === name);
+    const sum = new Map((get('Summary') || { rows: [] }).rows.map((r) => [r[0], r]));
+    const at = (k) => (sum.get(k) || [])[1];
+    const from = sp.date(at('Period from'));
+    const to = sp.date(at('Period to'));
+    const sandbox = at('Scope') === 'Sandbox';
+    const generated = sp.tr('{date} at {time} UTC', { date: sp.date(meta.generated), time: String(meta.generated).slice(11, 16) });
+    const blank = (section, breakdown, item, value) => [section, '', breakdown, item, value, '', '', ''];
+    // the report itself first: what it is, its reference, the statement the
+    // PDF opens with, and what the words its overview marks mean
     const rows = [
-        ['Report', '', '', 'Report', 'Sentinelpay usage and evidence report', '', ''],
-        ['Report', '', '', 'Reference', 'sha256:' + meta.reference, '', ''],
-        ['Report', '', '', 'Generated', meta.generated, '', ''],
+        blank('Report', '', 'Report', 'Sentinelpay usage and evidence report'),
+        blank('Report', '', 'Reference', 'sha256:' + meta.reference),
+        blank('Report', '', 'Generated', meta.generated),
     ];
-    for (const sh of list) {
-        if (sh.name === 'Summary') {
-            sh.rows.forEach((r) => rows.push([sh.name, '', '', r[0], r[1], '', r[2]]));
-        } else if (sh.name === 'Daily') {
-            sh.rows.forEach((r) => sh.head.slice(1).forEach((h, i) => rows.push([sh.name, r[0], '', h, r[i + 1], '', ''])));
+    [
+        sandbox
+            ? 'This report sets out the screening {org} carried out through Sentinelpay between {from} and {to}, in the sandbox scope. It was generated on {generated} from the records as they stood at that moment.'
+            : 'This report sets out the screening {org} carried out through Sentinelpay between {from} and {to}, in the production scope. It was generated on {generated} from the records as they stood at that moment.',
+        'Every check and every decision counted here was sealed with a SHA-256 digest when it was written. Each one can be opened from its evidence file and its digest checked on its own, without this report and without access to Sentinelpay.',
+        sandbox
+            ? 'This is the sandbox scope. Its checks are test work and are not evidence of screening.'
+            : 'Sandbox checks are test work. They spend no allowance and are left out of every figure here.',
+        'Every export of this period, CSV, Excel or JSON, carries the same reference, {ref}, so a copy in any format can be matched to this one.',
+    ].forEach((text, i) => rows.push(blank('Report', 'Statement on screening', String(i + 1),
+        sp.tr(text, { org: meta.organisation || '', from, to, generated, ref: 'sha256:' + meta.reference }))));
+    NOTES.forEach(([word, text]) => rows.push(blank('Report', 'Notes', word, text[0].toUpperCase() + text.slice(1))));
+
+    // how far a figure moved from the period before, as the overview prints it
+    const change = (v, b) => {
+        if (typeof v !== 'number' || typeof b !== 'number') return '';
+        if (!b) return v ? '' : 0;
+        return Math.round((v - b) / b * 1000) / 10;
+    };
+    for (const [name, chapter] of CSV_CHAPTERS) {
+        const sh = get(name);
+        if (!sh) continue;
+        if (name === 'Summary') {
+            sh.rows.forEach((r) => rows.push([chapter, '', '', r[0], r[1], '', r[2], change(r[1], r[2])]));
+        } else if (name === 'Daily') {
+            sh.rows.forEach((r) => sh.head.slice(1).forEach((h, i) => rows.push([chapter, r[0], '', h, r[i + 1], '', '', ''])));
         } else if (sh.head[0] === 'Breakdown') {
-            sh.rows.forEach((r) => rows.push([sh.name, '', r[0], r[1], r[2], r[3], '']));
+            sh.rows.forEach((r) => rows.push([chapter, '', r[0], r[1], r[2], r[3], '', '']));
         } else {
             // a list with no groups: the API's endpoints
-            sh.rows.forEach((r) => rows.push([sh.name, '', 'By ' + sh.head[0].toLowerCase(), r[0], r[1], r[2], '']));
+            sh.rows.forEach((r) => rows.push([chapter, '', 'By ' + sh.head[0].toLowerCase(), r[0], r[1], r[2], '', '']));
         }
     }
     // a byte-order mark, or Excel opens a file of Croatian names as mojibake
