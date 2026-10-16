@@ -409,6 +409,7 @@ async function readUser(userId) {
             since: row.created_at,
             mfa: false,
             totpOn: Boolean(row.totp_at),
+            totpSince: row.totp_at || null,
             emailHash: row.email_hash,
         };
     } catch (err) {
@@ -455,6 +456,7 @@ async function readSession(token) {
             since: row.created_at,
             mfa: Boolean(row.mfa),
             totpOn: Boolean(row.totp_at),
+            totpSince: row.totp_at || null,
             emailHash: row.email_hash,
         };
     } catch (err) {

@@ -12,6 +12,7 @@ const db = require('./db');
 const accounts = require('./accounts');
 const breached = require('./breached');
 const totp = require('./totp');
+const { qrPath } = require('./qr');
 const { PostgresStore, ipKey, startSweep: startRateSweep } = require('./rate-store');
 const sanctions = require('./sanctions');
 const trial = require('./trial');
@@ -2016,6 +2017,8 @@ app.post('/v1/account/totp/start', requireCloudflareOrigin, authTotpLimiter, asy
         secret,
         grouped: secret.replace(/(.{4})/g, '$1 ').trim(),
         url: totp.otpauthUrl(secret, me.email || 'sentinelpay', 'Sentinelpay'),
+        // the same address as a code to scan, drawn by the page from this
+        qr: qrPath(totp.otpauthUrl(secret, me.email || 'sentinelpay', 'Sentinelpay')),
     });
 });
 
@@ -3164,6 +3167,7 @@ app.get('/v1/auth/me', authMeLimiter, async (req, res) => {
         res.json({
             signedIn: true, name: me.name, email: me.email, since: me.since, staff,
             totp: Boolean(me.totpOn),
+            totpSince: me.totpSince || null,
             mfa: Boolean(me.mfa),
             recoveryLeft: me.totpOn ? await accounts.recoveryLeft(me.userId) : 0,
             staffNeeds2fa: staff && STAFF_REQUIRE_2FA && !me.totpOn,

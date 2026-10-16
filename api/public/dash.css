@@ -5658,3 +5658,113 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
     .rep-wait { padding: 20px 16px; }
     .rep-pages { padding: 12px 10px 24px; gap: 12px; }
 }
+
+/* ---- security: two-factor
+   The card reads as the others on the account pages: its heading with the
+   action at the end of the line, a line on what it is for, and under it a box
+   holding the app, or saying there is none yet. */
+.mfa-card .orgh-card-h { flex-wrap: wrap; }
+.mfa-add {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.42rem 0.85rem;
+}
+.mfa-add svg { width: 14px; height: 14px; }
+/* a display of its own outranks the hidden attribute, so it is said again */
+.mfa-add[hidden] { display: none; }
+.mfa-what { margin-top: 0.6rem; font-size: 0.85rem; color: var(--ink-3); }
+.mfa-list {
+    margin-top: 0.9rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--canvas);
+}
+.mfa-none { padding: 0.85rem 1rem; font-size: 0.85rem; color: var(--ink-4); }
+.mfa-need { padding: 0.7rem 1rem; border-top: 1px solid var(--line-2); font-size: 0.8rem; line-height: 1.5; color: var(--risk-mid); }
+.mfa-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.8rem 1rem; }
+.mfa-t { flex: 1; min-width: 0; }
+.mfa-n { display: flex; align-items: center; gap: 0.5rem; font-size: 0.88rem; font-weight: 600; color: var(--ink); }
+.mfa-on {
+    padding: 0.08rem 0.45rem;
+    border-radius: 999px;
+    background: var(--risk-low-bg);
+    font-size: 0.7rem;
+    font-weight: 650;
+    color: var(--risk-low);
+}
+.mfa-sub { display: block; margin-top: 0.15rem; font-size: 0.78rem; color: var(--ink-4); }
+.mfa-off { flex: none; color: var(--danger); }
+
+/* the dialog: the code beside the three steps, the key under the last of them */
+.mfa-wait { padding: 1.6rem 0; text-align: center; font-size: 0.86rem; color: var(--ink-4); }
+.mfa-wait.is-bad { color: var(--danger); }
+.mfa-pair { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr); gap: 1.1rem; align-items: start; margin-bottom: 1.1rem; }
+.mfa-qr { display: block; width: 9.5rem; height: 9.5rem; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+.mfa-steps { margin: 0; padding-left: 1.1rem; font-size: 0.84rem; line-height: 1.5; color: var(--ink-2); }
+.mfa-steps li + li { margin-top: 0.45rem; }
+.mfa-key {
+    display: block;
+    width: 100%;
+    margin-top: 0.45rem;
+    padding: 0.5rem 0.65rem;
+    border: 1px dashed var(--field-line);
+    border-radius: 8px;
+    background: var(--canvas);
+    font-family: var(--sp-text);
+    font-size: 0.82rem;
+    font-weight: 650;
+    letter-spacing: 0.06em;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+    text-align: left;
+    /* broken between its groups of four, never inside one */
+    white-space: normal;
+    overflow-wrap: normal;
+    cursor: pointer;
+}
+.mfa-key:hover { border-color: var(--link); }
+.mfa-code { text-align: center; font-size: 1.15rem; font-weight: 650; letter-spacing: 0.35em; font-variant-numeric: tabular-nums; }
+/* the spacing is for the six digits, not for the words that stand in for them */
+.mfa-code:placeholder-shown { font-size: 0.9rem; font-weight: 400; letter-spacing: normal; }
+/* wide enough for the code and its three steps side by side */
+.modal.mfa-modal { width: min(32rem, calc(100vw - 2rem)); max-width: none; }
+.mfa-form .btn-wide { margin-top: 0.85rem; }
+.mfa-codes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.45rem 1.4rem;
+    margin: 0 0 0.9rem;
+    padding: 0.95rem 1rem 0.95rem 2.1rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--canvas);
+    font-size: 0.9rem;
+    font-weight: 650;
+    letter-spacing: 0.05em;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+}
+.mfa-codes li::marker { color: var(--ink-4); font-weight: 500; }
+.mfa-acts { display: flex; justify-content: center; gap: 0.5rem; margin-bottom: 0.9rem; }
+@media (max-width: 520px) {
+    /* on a phone the action takes a line of its own, the width of the card */
+    .mfa-add { width: 100%; justify-content: center; margin-left: 0; margin-top: 0.4rem; }
+    .mfa-pair { grid-template-columns: minmax(0, 1fr); justify-items: center; }
+    .mfa-steps { justify-self: stretch; }
+}
+
+/* "this one", beside the session it is: a mark of its own, not a word run
+   into the time before it */
+.mem-you {
+    display: inline-block;
+    margin-left: 0.5rem;
+    padding: 0.06rem 0.45rem;
+    border-radius: 999px;
+    background: var(--nav-on);
+    font-size: 0.68rem;
+    font-weight: 650;
+    color: var(--ink-3);
+    vertical-align: 0.08em;
+}
