@@ -277,17 +277,42 @@ const CSV_CHAPTERS = [
     ['Daily', 'Day by day'],
 ];
 
+// The statement the printed report opens with, paragraph by paragraph, in
+// the speaker's language, for the formats that carry it as text.
+function statementOf(sp, sum, meta) {
+    const at = (k) => (sum.get(k) || [])[1];
+    const sandbox = at('Scope') === 'Sandbox';
+    const vals = {
+        org: meta.organisation || '', from: sp.date(at('Period from')), to: sp.date(at('Period to')),
+        generated: sp.tr('{date} at {time} UTC', { date: sp.date(meta.generated), time: String(meta.generated).slice(11, 16) }),
+        ref: 'sha256:' + meta.reference,
+    };
+    return [
+        sandbox
+            ? 'This report sets out the screening {org} carried out through Sentinelpay between {from} and {to}, in the sandbox scope. It was generated on {generated} from the records as they stood at that moment.'
+            : 'This report sets out the screening {org} carried out through Sentinelpay between {from} and {to}, in the production scope. It was generated on {generated} from the records as they stood at that moment.',
+        'Every check and every decision counted here was sealed with a SHA-256 digest when it was written. Each one can be opened from its evidence file and its digest checked on its own, without this report and without access to Sentinelpay.',
+        sandbox
+            ? 'This is the sandbox scope. Its checks are test work and are not evidence of screening.'
+            : 'Sandbox checks are test work. They spend no allowance and are left out of every figure here.',
+        'Every export of this period, CSV, Excel or JSON, carries the same reference, {ref}, so a copy in any format can be matched to this one.',
+    ].map((t) => sp.tr(t, vals));
+}
+
+// how far a figure moved from the period before, in per cent to one place,
+// as the overview prints it; nothing where there is nothing to compare
+function changeOf(v, b) {
+    if (typeof v !== 'number' || typeof b !== 'number') return '';
+    if (!b) return v ? '' : 0;
+    return Math.round((v - b) / b * 1000) / 10;
+}
+
 function csv(list, meta) {
     // in English always: a program reading "Sanctioned" today reads the same
     // word tomorrow, whatever language the dashboard was in
     const sp = speaker('en');
     const get = (name) => list.find((sh) => sh.name === name);
     const sum = new Map((get('Summary') || { rows: [] }).rows.map((r) => [r[0], r]));
-    const at = (k) => (sum.get(k) || [])[1];
-    const from = sp.date(at('Period from'));
-    const to = sp.date(at('Period to'));
-    const sandbox = at('Scope') === 'Sandbox';
-    const generated = sp.tr('{date} at {time} UTC', { date: sp.date(meta.generated), time: String(meta.generated).slice(11, 16) });
     const words = (section, breakdown, item, text) => [section, '', breakdown, item, '', '', '', '', text];
     // the report itself first: what it is, its reference, the statement the
     // PDF opens with, and what the words its overview marks mean
@@ -303,31 +328,15 @@ function csv(list, meta) {
         rows.push(words('Report', '', k, r[1]));
         if (r[2] !== '' && r[2] !== undefined) rows.push(words('Report', '', k.replace('Period', 'Period before'), r[2]));
     }
-    [
-        sandbox
-            ? 'This report sets out the screening {org} carried out through Sentinelpay between {from} and {to}, in the sandbox scope. It was generated on {generated} from the records as they stood at that moment.'
-            : 'This report sets out the screening {org} carried out through Sentinelpay between {from} and {to}, in the production scope. It was generated on {generated} from the records as they stood at that moment.',
-        'Every check and every decision counted here was sealed with a SHA-256 digest when it was written. Each one can be opened from its evidence file and its digest checked on its own, without this report and without access to Sentinelpay.',
-        sandbox
-            ? 'This is the sandbox scope. Its checks are test work and are not evidence of screening.'
-            : 'Sandbox checks are test work. They spend no allowance and are left out of every figure here.',
-        'Every export of this period, CSV, Excel or JSON, carries the same reference, {ref}, so a copy in any format can be matched to this one.',
-    ].forEach((text, i) => rows.push(words('Report', 'Statement on screening', 'Paragraph ' + (i + 1),
-        sp.tr(text, { org: meta.organisation || '', from, to, generated, ref: 'sha256:' + meta.reference }))));
+    statementOf(sp, sum, meta).forEach((text, i) => rows.push(words('Report', 'Statement on screening', 'Paragraph ' + (i + 1), text)));
     NOTES.forEach(([word, text]) => rows.push(words('Report', 'Notes', word, text[0].toUpperCase() + text.slice(1))));
 
-    // how far a figure moved from the period before, as the overview prints it
-    const change = (v, b) => {
-        if (typeof v !== 'number' || typeof b !== 'number') return '';
-        if (!b) return v ? '' : 0;
-        return Math.round((v - b) / b * 1000) / 10;
-    };
     for (const [name, chapter] of CSV_CHAPTERS) {
         const sh = get(name);
         if (!sh) continue;
         if (name === 'Summary') {
             sh.rows.filter((r) => !ABOUT_ROWS.includes(r[0])).forEach((r) => rows.push(typeof r[1] === 'number'
-                ? [chapter, '', '', r[0], r[1], '', r[2], change(r[1], r[2]), '']
+                ? [chapter, '', '', r[0], r[1], '', r[2], changeOf(r[1], r[2]), '']
                 // a figure that is a day, the oldest record or finding: a word
                 : [chapter, '', '', r[0], '', '', '', '', r[1]]));
         } else if (name === 'Daily') {
@@ -345,41 +354,49 @@ function csv(list, meta) {
 
 // ---- json
 //
-// The same figures as objects a program can address by name rather than as
-// rows it has to know the order of: the summary as one object, a day as one
-// object, each breakdown as a list of its lines. Keys are the report's own
-// words in camel case, so "Screenings included this cycle" is
-// screeningsIncludedThisCycle and a key reads as what it is. A figure with
-// no value is null rather than an empty string, and the period carries the
-// first and the last day it covers as well as the instants it runs between.
+// The report as a program addresses it: by name rather than by the order of
+// rows. Laid out the way the printed report is, its chapters in the order it
+// prints them -- the overview, screenings and review, sanctions coverage, the
+// API, team and evidence, and day by day -- under the report's own head: what
+// it is, whose, for when, its reference, the statement it opens with and what
+// the words its overview marks mean. A figure is { value, periodBefore,
+// changePercent }; a breakdown is a list of { item, count, sharePercent }; a
+// day is one object. Keys are the report's words in camel case, so "Screenings
+// included this cycle" is screeningsIncludedThisCycle; a figure with nothing
+// to say is null. Always in English: a key is the same word in every copy.
 
 const camel = (label) => String(label).replace(/[()]/g, '').split(/[^A-Za-z0-9]+/).filter(Boolean)
     .map((w, i) => (i ? w[0].toUpperCase() + w.slice(1).toLowerCase() : w.toLowerCase())).join('');
 const orNull = (v) => (v === '' || v === undefined ? null : v);
 
 function json(list, meta, out) {
+    const sp = speaker('en');
     const get = (name) => list.find((sh) => sh.name === name) || { head: [], rows: [] };
     const sum = new Map(get('Summary').rows.map((r) => [r[0], r]));
-    const summary = {};
-    get('Summary').rows.filter((r) => !ABOUT_ROWS.includes(r[0])).forEach((r) => {
-        summary[camel(r[0])] = { value: orNull(r[1]), periodBefore: orNull(r[2]) };
-    });
-    const daily = get('Daily');
-    const breakdowns = {};
-    list.filter((sh) => sh.name !== 'Summary' && sh.name !== 'Daily').forEach((sh) => {
+    const was = (k) => orNull((sum.get(k) || [])[2]);
+    // a sheet's groups, each a list of its lines
+    const groups = (name) => {
+        const sh = get(name);
         const into = {};
         if (sh.head[0] === 'Breakdown') {
             sh.rows.forEach((r) => {
                 (into[camel(r[0])] = into[camel(r[0])] || []).push({ item: r[1], count: r[2], sharePercent: r[3] });
             });
-        } else {
+        } else if (sh.head.length) {
             into['by' + sh.head[0]] = sh.rows.map((r) => ({ [sh.head[0].toLowerCase()]: r[0], count: r[1], sharePercent: r[2] }));
         }
-        breakdowns[camel(sh.name)] = into;
+        return into;
+    };
+    const overview = {};
+    get('Summary').rows.filter((r) => !ABOUT_ROWS.includes(r[0])).forEach((r) => {
+        overview[camel(r[0])] = { value: orNull(r[1]), periodBefore: orNull(r[2]), changePercent: orNull(changeOf(r[1], r[2])) };
     });
+    const daily = get('Daily');
+    const hourly = out.period.grain === 'hour';
     return JSON.stringify({
         report: 'sentinelpay-usage',
-        version: 2,
+        version: 3,
+        title: 'Sentinelpay usage and evidence report',
         reference: 'sha256:' + meta.reference,
         generated: meta.generated,
         organisation: meta.organisation || null,
@@ -391,15 +408,20 @@ function json(list, meta, out) {
             from: out.period.from,
             to: out.period.to,
             zone: out.zone || 'UTC',
-            unit: out.period.grain === 'hour' ? 'hour' : 'day',
+            unit: hourly ? 'hour' : 'day',
         },
-        summary,
-        daily: daily.rows.map((r) => {
-            const o = { [out.period.grain === 'hour' ? 'hour' : 'date']: r[0] };
+        periodBefore: was('Period from') ? { firstDay: was('Period from'), lastDay: was('Period to') } : null,
+        statement: statementOf(sp, sum, meta),
+        notes: Object.fromEntries(NOTES.map(([word, text]) => [camel(word), text[0].toUpperCase() + text.slice(1)])),
+        overview,
+        screeningsAndReview: { screenings: groups('Screenings'), review: groups('Review') },
+        sanctionsCoverage: groups('Coverage'),
+        apiTeamAndEvidence: { api: groups('API'), team: groups('Team'), evidence: groups('Evidence') },
+        dayByDay: daily.rows.map((r) => {
+            const o = { [hourly ? 'hour' : 'date']: r[0] };
             daily.head.slice(1).forEach((h, i) => { o[camel(h)] = r[i + 1]; });
             return o;
         }),
-        breakdowns,
     }, null, 2) + '\n';
 }
 

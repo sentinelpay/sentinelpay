@@ -711,25 +711,37 @@ test('the csv is one table a program can read without being told where parts beg
     assert.equal(exports_.csvCell('-3'), "'-3");
 });
 
-// The JSON is the same figures as objects a program addresses by name.
-test('the json addresses every figure by name', () => {
+// The JSON is the printed report as a program addresses it: its head, its
+// statement and notes, then its chapters in the order it prints them, every
+// figure by name.
+test('the json addresses every figure by name, chapter by chapter', () => {
     const sample = require('../report-sample.js').full(new Date('2026-10-14T10:00:00Z'));
     const list = exports_.sheets(sample.out, sample.org, sample.sub);
     const meta = { reference: exports_.reference(list), generated: '2026-10-14T10:00:00.000Z', organisation: sample.org.name };
     const doc = JSON.parse(exports_.json(list, meta, sample.out));
-    assert.equal(doc.version, 2);
+    assert.equal(doc.version, 3);
+    assert.deepEqual(Object.keys(doc), ['report', 'version', 'title', 'reference', 'generated', 'organisation', 'plan', 'scope',
+        'period', 'periodBefore', 'statement', 'notes', 'overview', 'screeningsAndReview', 'sanctionsCoverage', 'apiTeamAndEvidence', 'dayByDay']);
     assert.deepEqual(doc.period, { firstDay: '2025-10-14', lastDay: '2026-10-13', from: '2025-10-14T00:00:00.000Z',
         to: '2026-10-14T00:00:00.000Z', zone: 'Europe/Zagreb', unit: 'day' });
-    assert.equal(doc.summary.screenings.value, sample.out.screenings.total);
-    assert.equal(doc.summary.screeningsIncludedThisCycle.periodBefore, null, 'a figure with nothing before it is not null');
-    assert.equal(doc.summary.organisation, undefined, 'the head of the report is repeated in the summary');
-    assert.equal(doc.daily.length, 365);
-    assert.deepEqual(Object.keys(doc.daily[0]), ['date', 'screenings', 'flagged', 'sanctioned', 'distinctAddresses',
+    assert.deepEqual(doc.periodBefore, { firstDay: '2024-10-14', lastDay: '2025-10-13' });
+    assert.equal(doc.statement.length, 4);
+    assert.match(doc.statement[3], new RegExp('sha256:' + meta.reference));
+    assert.equal(doc.notes.sanctioned, 'The address was on a sanctions list when it was checked.');
+    const total = sample.out.screenings.total;
+    const before = sample.out.previous.total;
+    assert.deepEqual(doc.overview.screenings, { value: total, periodBefore: before, changePercent: Math.round((total - before) / before * 1000) / 10 });
+    assert.deepEqual(doc.overview.screeningsIncludedThisCycle.periodBefore, null, 'a figure with nothing before it is not null');
+    assert.equal(doc.overview.organisation, undefined, 'the head of the report is repeated in the overview');
+    assert.equal(doc.dayByDay.length, 365);
+    assert.deepEqual(Object.keys(doc.dayByDay[0]), ['date', 'screenings', 'flagged', 'sanctioned', 'distinctAddresses',
         'decisions', 'cleared', 'confirmed', 'apiCalls', 'webhookDeliveries']);
-    assert.equal(doc.breakdowns.screenings.byChain.length, 64);
-    assert.deepEqual(Object.keys(doc.breakdowns.screenings.byKind[0]), ['item', 'count', 'sharePercent']);
-    assert.equal(doc.breakdowns.api.byEndpoint[0].endpoint, 'POST /v1/screen');
-    assert.deepEqual(Object.keys(doc.breakdowns.review), ['timeToADecision', 'stillOpenByAge']);
+    assert.equal(doc.screeningsAndReview.screenings.byChain.length, 64);
+    assert.deepEqual(Object.keys(doc.screeningsAndReview.screenings.byKind[0]), ['item', 'count', 'sharePercent']);
+    assert.deepEqual(Object.keys(doc.screeningsAndReview.review), ['timeToADecision', 'stillOpenByAge']);
+    assert.deepEqual(Object.keys(doc.sanctionsCoverage), ['byList', 'byProgramme', 'byChain']);
+    assert.equal(doc.apiTeamAndEvidence.api.byEndpoint[0].endpoint, 'POST /v1/screen');
+    assert.deepEqual(Object.keys(doc.apiTeamAndEvidence.team), ['byRole', 'lastSignedIn', 'security']);
 });
 
 // The workbook, opened: its parts read back out of the zip.
