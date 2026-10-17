@@ -10709,7 +10709,7 @@
     // going turns two-factor off, so that case says so in the warning the
     // token drawer uses, with what to think about first.
     function removeTwo(app, last, done) {
-        var m = modalShell(fill('Remove {name}', { name: app.name || t('Authenticator app') }),
+        var m = modalShell('Remove app',
             last ? '' : 'The other apps on the account keep working, and any of them still signs you in.');
         m.box.classList.add('mfa-modal');
         if (last) {
@@ -10749,18 +10749,22 @@
             think.appendChild(ul);
             m.body.appendChild(think);
         }
+        // the buttons as the naming step sets its own: the action and, a step
+        // below it, the way out
+        var acts = document.createElement('div');
+        acts.className = 'mfa-form';
         var msg = document.createElement('div');
         msg.className = 'modal-msg';
-        m.body.appendChild(msg);
+        acts.appendChild(msg);
         var yes = wideBtn(last ? 'Turn off two-factor' : 'Remove the app', 'danger');
-        yes.classList.add('mfa-off-go');
-        m.body.appendChild(yes);
+        acts.appendChild(yes);
         var quit = document.createElement('div');
         quit.className = 'modal-quit';
         var no = wideBtn('Cancel', 'quiet');
         no.addEventListener('click', m.shut);
         quit.appendChild(no);
-        m.body.appendChild(quit);
+        acts.appendChild(quit);
+        m.body.appendChild(acts);
         yes.addEventListener('click', function () {
             yes.disabled = true;
             msg.textContent = '';

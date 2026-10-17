@@ -5675,11 +5675,10 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
 /* removing the last app: the warning, then what to think about first, then
    the red button and the way out */
 .mfa-off-warn { margin-bottom: 1rem; text-align: left; }
-.mfa-think { margin-bottom: 1.1rem; padding: 0 0.2rem; text-align: left; }
+.mfa-think { padding: 0 0.2rem; text-align: left; }
 .mfa-think-h { font-size: 0.84rem; font-weight: 650; color: var(--ink); }
 .mfa-think ul { margin: 0.4rem 0 0; padding-left: 1.1rem; font-size: 0.82rem; line-height: 1.55; color: var(--ink-3); }
 .mfa-think li + li { margin-top: 0.25rem; }
-.mfa-off-go { margin-top: 0.35rem; }
 /* each app's Delete at the end of its row, as the preferences rows end */
 .sec-card .fld-r { display: flex; justify-content: flex-end; }
 
