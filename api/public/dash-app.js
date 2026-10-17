@@ -10626,11 +10626,20 @@
     function showCodes(m, codes, done) {
         m.body.appendChild(mfaHead('Save your recovery codes',
             'Two-factor is on. Keep these recovery codes somewhere safe and away from your phone. Each one works once, and this is the only time they are shown.'));
+        // two columns, the left against the left edge and the right against
+        // the right, each code behind its number in a column of its own width
         var grid = document.createElement('ol');
         grid.className = 'mfa-codes';
-        codes.forEach(function (c) {
+        codes.forEach(function (c, i) {
             var li = document.createElement('li');
-            li.textContent = c;
+            var n = document.createElement('span');
+            n.className = 'mfa-code-n';
+            n.textContent = (i + 1) + '.';
+            li.appendChild(n);
+            var v = document.createElement('span');
+            v.className = 'mfa-code-v';
+            v.textContent = c;
+            li.appendChild(v);
             grid.appendChild(li);
         });
         m.body.appendChild(grid);
