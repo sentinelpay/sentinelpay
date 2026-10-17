@@ -5800,22 +5800,27 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
 .mfa-form .btn-wide { margin-top: 1.1rem; }
 .mfa-codes {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.45rem 1.4rem;
+    grid-template-columns: max-content max-content;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
     margin: 0 0 0.9rem;
-    padding: 0.95rem 1rem 0.95rem 2.1rem;
+    padding: 0.95rem 1.1rem;
+    list-style: none;
     border: 1px solid var(--line);
     border-radius: 10px;
     background: var(--canvas);
-    font-size: 0.9rem;
-    font-weight: 650;
-    letter-spacing: 0.05em;
-    font-variant-numeric: tabular-nums;
-    color: var(--ink);
 }
-.mfa-codes li::marker { color: var(--ink-4); font-weight: 500; }
+.mfa-codes li { display: flex; align-items: baseline; gap: 0.5rem; }
+/* the number in a column wide enough for "10.", so every code starts on one line */
+.mfa-code-n { width: 1.6rem; text-align: right; font-size: 0.82rem; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--ink-4); }
+.mfa-code-v { font-size: 0.92rem; font-weight: 650; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; color: var(--ink); }
 .mfa-acts { display: flex; justify-content: center; gap: 0.5rem; margin-bottom: 0.9rem; }
 @media (max-width: 520px) {
+    /* two columns of codes still fit a phone, a little closer together */
+    .mfa-codes { gap: 0.45rem 0.5rem; padding: 0.85rem 0.75rem; }
+    .mfa-codes li { gap: 0.35rem; }
+    .mfa-code-n { width: 1.3rem; font-size: 0.74rem; }
+    .mfa-code-v { font-size: 0.84rem; letter-spacing: 0.02em; }
     .mfa-otp { gap: 0.4rem; }
     /* from nothing, sharing the row: an input left at auto is as wide as
        twenty characters, and six of them pushed the dialog to 1,800px */
@@ -5824,3 +5829,7 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
     .mfa-key { min-height: 11rem; }
 }
 
+/* the narrowest phones: the codes one under another, in order */
+@media (max-width: 360px) {
+    .mfa-codes { grid-template-columns: max-content; justify-content: center; }
+}
