@@ -10266,7 +10266,7 @@
                 h.textContent = t('If you lose this phone');
                 txt.appendChild(h);
                 var p2 = document.createElement('p');
-                p2.textContent = t('There are no recovery codes. Without the phone the app is on, you cannot sign in until support has confirmed the account is yours, so write to support@sentinelpay.org from the address on the account.');
+                p2.textContent = t('There are no recovery codes. Without the phone the app is on, you cannot sign in until support has confirmed the account is yours.');
                 txt.appendChild(p2);
                 box.appendChild(txt);
                 warnHost.appendChild(box);
