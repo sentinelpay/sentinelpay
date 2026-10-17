@@ -674,10 +674,10 @@ async function signIn(email, password) {
     };
 }
 
-// How many authenticator apps one account may hold. Enough for every phone
-// and password manager a careful person keeps; few enough that a list of them
-// is still read.
-const MAX_FACTORS = 10;
+// One authenticator app an account. A person who loses the phone it is on
+// writes to support, which takes two-factor off once it is sure who they are
+// (tools/remove-2fa.js); there are no recovery codes and no second app.
+const MAX_FACTORS = 1;
 
 // The secret of an app being added waits in users.totp_enc until a code from
 // the app confirms it; two-factor stays as it was meanwhile, on or off.
@@ -694,10 +694,8 @@ async function startTotp(userId) {
     return secret;
 }
 
-// A code from the app proves it holds the secret: the app joins the account's
-// list under the name it was given, and two-factor is on if it was not.
-// There are no recovery codes. A lost phone is answered by another app on
-// another device, which the security page asks for while there is only one.
+// A code from the app proves it holds the secret: the app goes on the
+// account, and two-factor is on.
 async function confirmTotp(userId, code, name) {
     if (!(await init())) return { ok: false, reason: 'unavailable' };
     let row;
@@ -712,7 +710,7 @@ async function confirmTotp(userId, code, name) {
         console.error('[accounts] could not read the 2fa secret: ' + err.message);
         return { ok: false, reason: 'unavailable' };
     }
-    if (row.n >= MAX_FACTORS) return { ok: false, reason: 'too-many' };
+    if (row.n >= MAX_FACTORS) return { ok: false, reason: 'already-on' };
     const secret = db.open('totp:' + userId, row.totp_enc);
     if (!secret) return { ok: false, reason: 'unavailable' };
     const step = totp.checkCode(secret, code);
