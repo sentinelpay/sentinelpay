@@ -2951,11 +2951,6 @@ html.is-theming .btn {
 }
 
 /* where this account is signed in, and what it has done */
-.sess { display: grid; }
-.sess-row { padding: 0.75rem 1.1rem; border-top: 1px solid var(--line-2); }
-.sess-t { display: block; min-width: 0; }
-.sess-n { display: block; font-size: 0.85rem; font-weight: 600; color: var(--ink); }
-.sess-sub { display: block; margin-top: 0.1rem; font-size: 0.78rem; color: var(--ink-4); }
 
 .lg {
     display: flex;
@@ -5502,8 +5497,8 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
 .shim.sk.is-dot { border-radius: 50%; }
 /* the second line of a two-line cell sits under the first, not beside it */
 .sk + .sk { margin-left: 0.6rem; }
-.prj-t > span, .org-t > span, .sess-t > span, .lg-t > span { display: block; }
-.prj-t > span + span, .org-t > span + span, .sess-t > span + span, .lg-t > span + span { margin-top: 0.35rem; }
+.prj-t > span, .org-t > span, .lg-t > span { display: block; }
+.prj-t > span + span, .org-t > span + span, .lg-t > span + span { margin-top: 0.35rem; }
 /* marks that carry their own box keep it; the bar inside them is the glyph */
 .prj-mark > .sk, .org-mark > .sk { width: 100% !important; height: 100% !important; }
 /* rows cascade, so the list breathes down the page rather than all at once */
@@ -5675,12 +5670,8 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
 .sec-remove { color: var(--danger); }
 .sec-fig { display: block; text-align: right; font-size: 0.86rem; font-weight: 650; font-variant-numeric: tabular-nums; color: var(--ink-2); }
 .sec-fig.is-low { color: var(--risk-mid); }
-.sec-sess { display: flex; justify-content: flex-end; }
 .sec-card .card-foot { justify-content: flex-end; }
 .sec-card .sec-need { justify-content: flex-start; font-size: 0.8rem; line-height: 1.5; color: var(--risk-mid); }
-/* the sessions sit in the card as its rows do, the last of them closing on
-   the foot rather than on a rule of its own */
-.sec-card .sess > .fld:last-child { border-bottom: 0; }
 
 /* the dialog: the code beside the three steps, the key under the last of them */
 .mfa-wait { padding: 1.6rem 0; text-align: center; font-size: 0.86rem; color: var(--ink-4); }
@@ -5778,16 +5769,3 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
     .mfa-steps { justify-self: stretch; }
 }
 
-/* "this one", beside the session it is: a mark of its own, not a word run
-   into the time before it */
-.mem-you {
-    display: inline-block;
-    margin-left: 0.5rem;
-    padding: 0.06rem 0.45rem;
-    border-radius: 999px;
-    background: var(--nav-on);
-    font-size: 0.68rem;
-    font-weight: 650;
-    color: var(--ink-3);
-    vertical-align: 0.08em;
-}

@@ -10208,7 +10208,7 @@
         var page = document.createElement('div');
         page.className = 'pg';
         page.appendChild(pageHead('Security',
-            'Two factors, and every device and session that can reach this account. Sign one out from here if you do not know it.'));
+            'What it takes to sign in to this account, beyond the password.'));
 
         // ---- two-factor, as the preferences page sets out a setting: a title,
         // a line on what it is for, and a card of rows with the control at the
@@ -10291,99 +10291,9 @@
         paintTwo();
         loadTwo();
 
-        // ---- where this account is signed in: a row a session, the one you
-        // are reading this on marked, because "sign out everywhere else" has
-        // to be unambiguous, and that action at the foot of the card where the
-        // preferences page has its Save
-        page.appendChild(sectionTitle('Signed in'));
-        page.appendChild(sectionNote('Every browser and device where this account is signed in now. Sign out the ones you do not recognise.'));
-        var sess = document.createElement('div');
-        sess.className = 'card sec-card';
-        var host = document.createElement('div');
-        host.className = 'sess';
-        sess.appendChild(host);
-        skBusy(host).appendChild(skSessions(3));
-        var foot = document.createElement('div');
-        foot.className = 'card-foot';
-        var outBtn = document.createElement('button');
-        outBtn.type = 'button';
-        outBtn.className = 'btn btn-quiet';
-        outBtn.textContent = t('Sign out everywhere else');
-        outBtn.disabled = true;
-        foot.appendChild(outBtn);
-        sess.appendChild(foot);
-        page.appendChild(sess);
-
-        function loadSessions() {
-            fetch('/v1/account/sessions', { credentials: 'same-origin' })
-                .then(function (r) {
-                    if (!r.ok) throw new Error('bad-status-' + r.status);
-                    return r.json();
-                })
-                .then(function (j) {
-                    var rows = (j && j.sessions) || [];
-                    host.textContent = '';
-                    if (!rows.length) {
-                        host.appendChild(emptyState('Nothing signed in',
-                            'That should not happen: you are reading this.'));
-                        return;
-                    }
-                    rows.forEach(function (x) { host.appendChild(sessionRow(x)); });
-                    outBtn.disabled = rows.length < 2;
-                })
-                .catch(function () {
-                    host.textContent = '';
-                    host.appendChild(emptyState('That did not load.', 'Reload the page to try again.'));
-                });
-        }
-
-        outBtn.addEventListener('click', function () {
-            outBtn.disabled = true;
-            fetch('/v1/account/sessions/revoke', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin',
-                body: '{}'
-            }).then(function (r) {
-                if (!r.ok) throw new Error('bad');
-                toast(t('Signed out everywhere else'), 'good');
-                loadSessions();
-            }).catch(function () {
-                toast(t('That did not work.'), 'bad');
-                outBtn.disabled = false;
-            });
-        });
-
-        // a change made from another screen: signed out from there, or two-factor
-        // turned on or off there
-        onLive(function (e) { if (e.topic === 'me') { loadSessions(); loadTwo(); } });
-        loadSessions();
+        // two-factor turned on or off from another screen
+        onLive(function (e) { if (e.topic === 'me') loadTwo(); });
         return page;
-    }
-
-    // A session as a settings row: when it was last used and when it began on
-    // the left, and on the right whether it is the one in front of you.
-    function sessionRow(x) {
-        var mark = document.createElement('span');
-        mark.className = 'sec-sess';
-        if (x.current) {
-            var here = document.createElement('span');
-            here.className = 'mem-you';
-            here.textContent = t('this one');
-            mark.appendChild(here);
-        }
-        var row = fieldRow({ label: 'Last used', control: mark });
-        var lab = row.querySelector('.fld-label');
-        lab.textContent = x.lastSeenAt
-            ? t('Last used') + '  ·  ' + new Date(x.lastSeenAt).toISOString().slice(0, 16).replace('T', ' ')
-            : t('In use');
-        var sub = document.createElement('div');
-        sub.className = 'fld-hint';
-        sub.textContent = (x.startedAt
-            ? t('Started') + ' ' + new Date(x.startedAt).toISOString().slice(0, 10) : '') +
-            (x.mfa ? '  ·  ' + t('passed two-factor') : '');
-        row.querySelector('.fld-l').appendChild(sub);
-        return row;
     }
 
     // Text onto the clipboard, the old way where the clipboard api refuses
@@ -11129,18 +11039,6 @@
                 skEl('span', 'org-mark', [sk(35, 35, 'chip')]),
                 skEl('span', 'org-t', [skEl('span', 'org-n', [sk(skw(7, i), 13)]), skEl('span', 'org-sub', [sk('7rem', 10)])]),
                 sk(72, 22, 'pill')
-            ])]));
-        }
-        return f;
-    }
-
-    // Sessions on an account: when each was last used and how it started.
-    function skSessions(n) {
-        var f = document.createDocumentFragment();
-        for (var i = 0; i < n; i++) {
-            f.appendChild(skEl('div', 'sess-row', [skEl('span', 'sess-t', [
-                skEl('span', 'sess-n', [sk(skw(13, i), 12)]),
-                skEl('span', 'sess-sub', [sk('9rem', 10)])
             ])]));
         }
         return f;

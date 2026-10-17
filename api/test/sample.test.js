@@ -487,7 +487,7 @@ test('the usage page loads in the shape it ends in', () => {
 // served with the sidebar, the corner and a page already sketched in.
 test('every page loads in its own shape, the shell included', () => {
     assert.doesNotMatch(SRC, /function waiting\(\)|waiting\(\)\)/, 'a page loads as the shared grey rows again');
-    for (const f of ['skAlerts', 'skLatest', 'skChecks', 'skTeam', 'skTokens', 'skProjects', 'skOrgs', 'skSessions', 'skLogs', 'skBilling', 'skPage']) {
+    for (const f of ['skAlerts', 'skLatest', 'skChecks', 'skTeam', 'skTokens', 'skProjects', 'skOrgs', 'skLogs', 'skBilling', 'skPage']) {
         assert.match(SRC, new RegExp('function ' + f + '\\('), f + ' is gone');
         assert.match(SRC, new RegExp('\\b' + f + '\\(\\d*\\)(?!\\s*\\{)'), f + ' is never used');
     }
@@ -584,7 +584,7 @@ test('the security page adds and removes an authenticator app', () => {
     const page = body('function viewSecurity(me) {', 12000);
     // the preferences page's parts: section titles and notes, cards of rows
     assert.match(page, /sectionTitle\('Two-factor authentication'\)/);
-    assert.match(page, /sectionTitle\('Signed in'\)/);
+    assert.doesNotMatch(page, /account\/sessions/, 'the sessions are back on the security page');
     assert.match(page, /fieldRow\(\{ label: 'Authenticator app', control: app \}\)/);
     assert.match(page, /label: 'Recovery codes'/);
     assert.doesNotMatch(page, /orghCard\(/, 'the page is drawn in the overview cards, not the settings ones');
@@ -592,8 +592,6 @@ test('the security page adds and removes an authenticator app', () => {
     assert.match(page, /if \(state\.totp\) \{\s*act\.className = 'btn btn-quiet sec-remove';[\s\S]*?\} else \{\s*act\.className = 'btn btn-primary sec-add';/);
     assert.match(page, /t\('Add app'\)/);
     assert.match(page, /t\('No authenticator app yet\.'\)/);
-    // sign out everywhere else sits at the foot of its card, as Save does
-    assert.match(page, /foot\.className = 'card-foot';[\s\S]*?outBtn/);
     const add = body('function addTwo(done) {', 6000);
     assert.match(add, /postJson\('\/v1\/account\/totp\/start'\)/);
     assert.match(add, /createElementNS\('http:\/\/www\.w3\.org\/2000\/svg', 'path'\)/, 'the code to scan is not drawn as a path');
@@ -608,8 +606,4 @@ test('the security page adds and removes an authenticator app', () => {
     const off = body('function removeTwo(done) {', 3000);
     assert.match(off, /pw\.type = 'password';/);
     assert.match(off, /postJson\('\/v1\/account\/totp\/off', \{ password: pw\.value \}\)/);
-    // "this one" is a mark at the end of its session's row, not a word run
-    // into its time
-    assert.match(CSS, /\.mem-you \{[^}]*border-radius: 999px;/);
-    assert.match(body('function sessionRow(x) {', 1500), /fieldRow\(\{ label: 'Last used', control: mark \}\)/);
 });
