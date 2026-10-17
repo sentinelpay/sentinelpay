@@ -10741,6 +10741,8 @@
             think.appendChild(lead);
             var ul = document.createElement('ul');
             [t('Adding another authenticator app first, then removing this one.'),
+                t('Making sure your account does not need two-factor.'),
+                t('You will lose access to any organisation that requires two-factor of its members.'),
                 t('Anyone who learns your password will be able to sign in as you.')].forEach(function (line) {
                 var li = document.createElement('li');
                 li.textContent = line;
