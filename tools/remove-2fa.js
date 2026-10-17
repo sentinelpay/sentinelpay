@@ -1,13 +1,12 @@
 'use strict';
 
-// Takes two-factor off an account whose owner has lost every device with an
+// Takes two-factor off an account whose owner has lost the phone with its
 // authenticator app on it.
 //
-// There are no recovery codes. The security page asks for a second app while
-// there is only one, and a person who added two can sign in with either. One
-// who lost them all writes to support, and this is what support runs once it
-// is satisfied the person writing is the person who owns the account: on a
-// call, from the address on the account, and, for anyone who is not the
+// An account holds one authenticator app and no recovery codes. A person who
+// loses the phone it is on writes to support, and this is what support runs
+// once it is satisfied the person writing is the person who owns the account:
+// on a call, from the address on the account, and, for anyone who is not the
 // owner of their organisation, confirmed by that owner. Without it a lost
 // phone would be a lost account, and there would be no way back in at all.
 //

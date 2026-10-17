@@ -10210,10 +10210,9 @@
         page.appendChild(pageHead('Security',
             'What it takes to sign in to this account, beyond the password.'));
 
-        // ---- two-factor: every authenticator app on the account, a row each,
-        // and the way to add one at the head of the section. There are no
-        // recovery codes, so while there is only one app the page asks for a
-        // second on another device, the way back in if the first is lost.
+        // ---- two-factor: the account's authenticator app in a row of its own,
+        // and the way to add one at the head of the section while there is
+        // none. One app an account; a lost phone is a letter to support.
         var head = document.createElement('div');
         head.className = 'sec-head';
         var headT = document.createElement('div');
@@ -10231,8 +10230,6 @@
         head.appendChild(add);
         page.appendChild(head);
 
-        var warn = document.createElement('div');
-        page.appendChild(warn);
         var list = document.createElement('div');
         list.className = 'card sec-card';
         page.appendChild(list);
@@ -10243,40 +10240,9 @@
             return new Date(iso).toLocaleString(navLang(), { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
         }
         function paint() {
-            warn.textContent = '';
             list.textContent = '';
             if (apps === null) return;
-            // one app is one lost phone from a locked account
-            if (apps.length === 1) {
-                var box = document.createElement('div');
-                box.className = 'sec-warn';
-                var mark = document.createElement('span');
-                mark.className = 'sec-warn-i';
-                mark.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
-                    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-                    '<path d="M12 8.5v5M12 16.9v.1"/><path d="M10.3 4.3 2.8 18a1.8 1.8 0 0 0 1.6 2.7h15.2A1.8 1.8 0 0 0 21.2 18L13.7 4.3a1.9 1.9 0 0 0-3.4 0Z"/></svg>';
-                box.appendChild(mark);
-                var txt = document.createElement('div');
-                txt.className = 'sec-warn-t';
-                var h = document.createElement('div');
-                h.className = 'sec-warn-h';
-                h.textContent = t('Avoid being locked out');
-                txt.appendChild(h);
-                var p = document.createElement('p');
-                p.className = 'sec-warn-p';
-                p.textContent = t('Add a second authenticator app on another device now. If the only phone with an app on it is lost, you cannot sign in until support has confirmed the account is yours.');
-                txt.appendChild(p);
-                box.appendChild(txt);
-                var more = document.createElement('button');
-                more.type = 'button';
-                more.className = 'btn sec-warn-btn';
-                more.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
-                    'stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
-                more.appendChild(document.createTextNode(t('Add another app')));
-                more.addEventListener('click', function () { addTwo(load); });
-                box.appendChild(more);
-                warn.appendChild(box);
-            }
+            add.hidden = apps.length > 0;
             if (!apps.length) {
                 var none = document.createElement('div');
                 none.className = 'sec-none';
@@ -10295,9 +10261,8 @@
                 del.type = 'button';
                 del.className = 'btn btn-quiet sec-remove';
                 del.textContent = t('Delete');
-                del.addEventListener('click', function () { removeTwo(f, apps.length === 1, load); });
+                del.addEventListener('click', function () { removeTwo(f.id, load); });
                 var row = fieldRow({ label: 'Authenticator app', control: del });
-                if (f.name) row.querySelector('.fld-label').textContent = f.name;
                 var sub = document.createElement('div');
                 sub.className = 'fld-hint';
                 sub.textContent = fill('Added {date}', { date: when(f.createdAt) }) +
@@ -10378,10 +10343,9 @@
         return head;
     }
 
-    // Adding an authenticator app, in two steps the dialog glides between as
+    // Adding the authenticator app, in two steps the dialog glides between as
     // the sign in dialog does: the code to scan, with the key behind a link
-    // for the reader without a camera; then a name for the app and the six
-    // digits back, a box each.
+    // for the reader without a camera; then the six digits back, a box each.
     function addTwo(done) {
         var m = modalShell('Add an authenticator app', '');
         m.box.classList.add('mfa-modal');
@@ -10474,15 +10438,6 @@
                     'Type the code the app shows for Sentinelpay. It changes every 30 seconds.'));
                 var form = document.createElement('form');
                 form.className = 'mfa-form';
-                // a name to tell this app from the others by, when there are several
-                var name = document.createElement('input');
-                name.type = 'text';
-                name.className = 'modal-in mfa-name';
-                name.maxLength = 40;
-                name.autocomplete = 'off';
-                name.placeholder = t('Name this app, e.g. iPhone or 1Password');
-                name.setAttribute('aria-label', t('Name of the app'));
-                form.appendChild(name);
                 var row = document.createElement('div');
                 row.className = 'mfa-otp';
                 row.setAttribute('role', 'group');
@@ -10547,11 +10502,7 @@
                     });
                     box.addEventListener('focus', function () { box.select(); });
                 });
-                setTimeout(function () { name.focus(); }, 60);
-                // the name is said, then the digits: enter moves on rather than sends
-                name.addEventListener('keydown', function (e) {
-                    if (e.key === 'Enter') { e.preventDefault(); boxes[0].focus(); }
-                });
+                setTimeout(function () { boxes[0].focus(); }, 60);
 
                 var sending = false;
                 function send() {
@@ -10566,7 +10517,7 @@
                     go.disabled = true;
                     msg.textContent = '';
                     msg.className = 'modal-msg';
-                    postJson('/v1/account/totp/confirm', { code: value, name: name.value }).then(function () {
+                    postJson('/v1/account/totp/confirm', { code: value }).then(function () {
                         m.shut();
                         toast(t('Authenticator app added'), 'good');
                         if (done) done();
@@ -10656,13 +10607,11 @@
         return key;
     }
 
-    // Removing an app takes the password: the one thing a person who found the
-    // laptop open does not have. The last one going takes two-factor with it,
-    // and the dialog says so.
-    function removeTwo(app, last, done) {
-        var m = modalShell(fill('Remove {name}', { name: app.name || t('Authenticator app') }),
-            last ? 'This is the only app on the account. Two-factor goes off with it, and your password alone signs you in.'
-                : 'Enter your password to confirm. The other apps on the account keep working.');
+    // Removing the app takes the password: the one thing a person who found the
+    // laptop open does not have. Two-factor goes with it, and the dialog says so.
+    function removeTwo(appId, done) {
+        var m = modalShell('Remove the authenticator app',
+            'Two-factor goes off with it, and your password alone signs you in. Enter your password to confirm.');
         var form = document.createElement('form');
         var pw = document.createElement('input');
         pw.type = 'password';
@@ -10688,9 +10637,9 @@
             yes.disabled = true;
             msg.textContent = '';
             msg.className = 'modal-msg';
-            postJson('/v1/account/totp/remove', { id: app.id, password: pw.value }).then(function (res) {
+            postJson('/v1/account/totp/remove', { id: appId, password: pw.value }).then(function () {
                 m.shut();
-                toast(res.left ? t('Authenticator app removed') : t('Two-factor is off.'), 'good');
+                toast(t('Two-factor is off.'), 'good');
                 if (done) done();
             }).catch(function (err) {
                 yes.disabled = false;

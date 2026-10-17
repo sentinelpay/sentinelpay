@@ -576,24 +576,23 @@ test('a figure against a limit draws a bar, a plain count its line', () => {
     assert.match(CSS, /\.use-mc-r:has\(\.use-mc-lim\) \.use-mc-v \{ flex: none; white-space: nowrap; \}/, 'the figure breaks to make room for the bar');
 });
 
-// Two-factor is managed from the security page itself: every authenticator
-// app on the account in a row of its own, an app added from a code to scan or
-// a key to type, and one taken off on the password. There are no recovery
-// codes; while there is a single app the page asks for a second.
-test('the security page lists, adds and removes authenticator apps', () => {
+// Two-factor is managed from the security page itself: the account's one
+// authenticator app in a row of its own, added from a code to scan or a key to
+// type, and taken off on the password. No recovery codes, no second app.
+test('the security page adds and removes the authenticator app', () => {
     const page = body('function viewSecurity(me) {', 12000);
     assert.match(page, /sectionTitle\('Two-factor authentication'\)/);
     assert.doesNotMatch(page, /account\/sessions/, 'the sessions are back on the security page');
     assert.doesNotMatch(page, /orghCard\(/, 'the page is drawn in the overview cards, not the settings ones');
     assert.doesNotMatch(SRC, /Recovery codes|recovery-codes\.txt|function showCodes/, 'recovery codes are shown again');
-    // the apps, a row each, with the action to add one at the head
+    // the app in its row, the action to add one only while there is none
     assert.match(page, /fetch\('\/v1\/account\/totp', \{ credentials: 'same-origin' \}\)/);
-    assert.match(page, /apps\.forEach\(function \(f\) \{/);
-    assert.match(page, /removeTwo\(f, apps\.length === 1, load\)/);
+    assert.match(page, /removeTwo\(f\.id, load\)/);
+    assert.match(page, /add\.hidden = apps\.length > 0;/, 'a second app can be added');
+    assert.match(CSS, /\.sec-add\[hidden\] \{ display: none; \}/);
     assert.match(page, /t\('Add app'\)/);
     assert.match(page, /t\('No authenticator app yet\.'\)/);
-    // one app is one lost phone from a locked account, and the page says so
-    assert.match(page, /if \(apps\.length === 1\) \{[\s\S]*?t\('Avoid being locked out'\)[\s\S]*?t\('Add another app'\)/);
+    assert.doesNotMatch(SRC, /Add another app|Avoid being locked out|mfa-name/, 'the page asks for a second app again');
     // the dialog itself, up to the helpers drawn after it
     const add = SRC.slice(SRC.indexOf('function addTwo(done) {'), SRC.indexOf('function qrSvg(qr) {'));
     assert.ok(add.length > 1000, 'the setup dialog is gone');
@@ -602,11 +601,11 @@ test('the security page lists, adds and removes authenticator apps', () => {
     const qr = body('function qrSvg(qr) {', 1500);
     assert.match(qr, /createElementNS\(NS, 'path'\)/, 'the code to scan is not drawn as a path');
     assert.doesNotMatch(qr, /innerHTML/, 'the code to scan is written as markup it was sent');
-    // two steps glided between: the code, then a name and the six digits
+    // two steps glided between: the code, then the six digits
     for (const step of ["mfaHead('Scan the code'", "mfaHead('Enter the six digits'", "swap(stepCode)", "m.stepBack.onclick = function () { stepScan(true); };"]) {
         assert.ok(add.includes(step), 'the dialog has lost ' + step);
     }
-    assert.match(add, /postJson\('\/v1\/account\/totp\/confirm', \{ code: value, name: name\.value \}\)/);
+    assert.match(add, /postJson\('\/v1\/account\/totp\/confirm', \{ code: value \}\)/);
     assert.match(add, /toast\(t\('Authenticator app added'\), 'good'\)/);
     // markup only from the icons written here, never anything the server sent
     assert.doesNotMatch(add, /innerHTML/, 'the setup dialog writes markup');
@@ -623,11 +622,11 @@ test('the security page lists, adds and removes authenticator apps', () => {
     assert.match(add, /more\.className = 'modal-link mfa-more';/);
     assert.match(add, /keyCard\.hidden = true;/);
     assert.match(CSS, /\.mfa-key\[hidden\] \{ display: none; \}/);
-    // one app off, on the password, and the last one says what goes with it
-    const off = body('function removeTwo(app, last, done) {', 3000);
+    // the app off, on the password, and the dialog says two-factor goes with it
+    const off = body('function removeTwo(appId, done) {', 3000);
     assert.match(off, /pw\.type = 'password';/);
-    assert.match(off, /postJson\('\/v1\/account\/totp\/remove', \{ id: app\.id, password: pw\.value \}\)/);
-    assert.match(off, /last \? 'This is the only app on the account\./);
+    assert.match(off, /postJson\('\/v1\/account\/totp\/remove', \{ id: appId, password: pw\.value \}\)/);
+    assert.match(off, /'Two-factor goes off with it/);
     // the sign in dialog no longer offers a recovery code
     const flowSrc = fs.readFileSync(path.join(__dirname, '..', 'public', 'auth-flow.js'), 'utf8');
     assert.doesNotMatch(flowSrc, /A recovery code works here/, 'sign in still offers a recovery code');

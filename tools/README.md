@@ -76,9 +76,8 @@ empty one instead of letting you back into the one you meant.
 
 # taking two-factor off an account
 
-There are no recovery codes. The security page asks for a second authenticator
-app on another device while there is only one, and either app signs in. A person
-who has lost every device with an app on it writes to support, and once support
+An account holds one authenticator app and no recovery codes. A person who has
+lost the phone it is on writes to support, and once support
 is satisfied the person writing owns the account -- on a call, from the address
 on the account, and confirmed by the owner of their organisation when they are
 not the owner -- this takes two-factor off:
