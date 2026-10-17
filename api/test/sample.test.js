@@ -592,7 +592,9 @@ test('the security page adds and removes an authenticator app', () => {
     assert.match(page, /if \(state\.totp\) \{\s*act\.className = 'btn btn-quiet sec-remove';[\s\S]*?\} else \{\s*act\.className = 'btn btn-primary sec-add';/);
     assert.match(page, /t\('Add app'\)/);
     assert.match(page, /t\('No authenticator app yet\.'\)/);
-    const add = body('function addTwo(done) {', 12000);
+    // the dialog itself, up to the helpers drawn after it
+    const add = SRC.slice(SRC.indexOf('function addTwo(done) {'), SRC.indexOf('function qrSvg(qr) {'));
+    assert.ok(add.length > 1000, 'the setup dialog is gone');
     assert.match(add, /postJson\('\/v1\/account\/totp\/start'\)/);
     // the code to scan, drawn by the page from the outline it was sent
     const qr = body('function qrSvg(qr) {', 1500);
