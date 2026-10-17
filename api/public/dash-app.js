@@ -10583,10 +10583,6 @@
     function keyPanel(out) {
         var key = document.createElement('div');
         key.className = 'mfa-key';
-        var lab = document.createElement('div');
-        lab.className = 'mfa-key-l';
-        lab.textContent = t('Setup key');
-        key.appendChild(lab);
         var groups = document.createElement('span');
         groups.className = 'mfa-key-gs';
         groups.setAttribute('aria-label', t('Key') + ': ' + (out.secret || ''));
