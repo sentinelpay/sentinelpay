@@ -10409,11 +10409,6 @@
                     slot.className = 'mfa-slot';
                     var scan = document.createElement('div');
                     scan.className = 'mfa-scan';
-                    ['tl', 'tr', 'bl', 'br'].forEach(function (c) {
-                        var corner = document.createElement('span');
-                        corner.className = 'mfa-corner is-' + c;
-                        scan.appendChild(corner);
-                    });
                     scan.appendChild(qrSvg(out.qr));
                     slot.appendChild(scan);
                     var keyCard = keyPanel(out);
