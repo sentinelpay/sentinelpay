@@ -594,10 +594,19 @@ test('the security page adds and removes an authenticator app', () => {
     assert.match(page, /t\('No authenticator app yet\.'\)/);
     const add = body('function addTwo(done) {', 12000);
     assert.match(add, /postJson\('\/v1\/account\/totp\/start'\)/);
-    assert.match(add, /createElementNS\('http:\/\/www\.w3\.org\/2000\/svg', 'path'\)/, 'the code to scan is not drawn as a path');
-    // markup only from the two icons written here, never anything the server sent
-    for (const m of add.match(/innerHTML\s*=\s*[^;]+;/g) || []) {
-        assert.match(m, /^innerHTML = done \? DONE_I : COPY_I;$/, 'the setup dialog writes markup it was sent: ' + m);
+    // the code to scan, drawn by the page from the outline it was sent
+    const qr = body('function qrSvg(qr) {', 1500);
+    assert.match(qr, /createElementNS\(NS, 'path'\)/, 'the code to scan is not drawn as a path');
+    assert.doesNotMatch(qr, /innerHTML/, 'the code to scan is written as markup it was sent');
+    // three steps, each under its own head, glided between
+    for (const step of ["mfaHead(1, 'scan'", "mfaHead(2, 'code'", "swap(stepCode)", "m.stepBack.onclick = function () { stepScan(true); };"]) {
+        assert.ok(add.includes(step), 'the dialog has lost ' + step);
+    }
+    assert.ok(body('function showCodes(m, codes, done) {', 600).includes("mfaHead(3, 'save'"), 'the codes are not the third step');
+    // markup only from the icons written here, never anything the server sent
+    assert.doesNotMatch(add, /innerHTML/, 'the setup dialog writes markup');
+    for (const m of body('function keyPanel(out) {', 4000).match(/innerHTML\s*=\s*[^;]+;/g) || []) {
+        assert.match(m, /^innerHTML = done \? DONE_I : COPY_I;$/, 'the key panel writes markup it was sent: ' + m);
     }
     assert.match(add, /postJson\('\/v1\/account\/totp\/confirm', \{ code: value \}\)/);
     // the six digits a box each, as the sign up dialog asks for its code, sent
@@ -605,9 +614,10 @@ test('the security page adds and removes an authenticator app', () => {
     assert.match(add, /row\.className = 'mfa-otp';/);
     assert.match(add, /for \(var i = 0; i < 6; i\+\+\)/);
     assert.match(add, /if \(codeValue\(\)\.length === 6\) send\(\);/);
-    // the key waits behind a link, as a forgotten password does on sign in
+    // the key waits behind a link, as a forgotten password does on sign in,
+    // and takes the code's place when asked for
     assert.match(add, /more\.className = 'modal-link mfa-more';/);
-    assert.match(add, /key\.hidden = true;/);
+    assert.match(add, /keyCard\.hidden = true;/);
     assert.match(CSS, /\.mfa-key\[hidden\] \{ display: none; \}/);
     const codes = body('function showCodes(m, codes, done) {', 3000);
     assert.match(codes, /a\.download = 'sentinelpay-recovery-codes\.txt';/);

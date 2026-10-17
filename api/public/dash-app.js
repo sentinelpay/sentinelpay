@@ -10336,226 +10336,317 @@
         });
     }
 
-    // Adding an authenticator app, in one dialog: the code to scan and the key
-    // to type where a camera cannot, the six digits back, and then the
-    // recovery codes, shown this once with a way to keep them.
+    // The head of a step of the two-factor dialog, as the sign up dialog heads
+    // its own: a mark in its tinted tile, where in the three steps this is,
+    // a title and one line under it.
+    var MFA_MARKS = {
+        scan: '<rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1.4"/><rect x="14" y="3.5" width="6.5" height="6.5" rx="1.4"/>' +
+            '<rect x="3.5" y="14" width="6.5" height="6.5" rx="1.4"/><path d="M14 14h2.6v2.6H14zM18.6 18.6h1.9v1.9h-1.9zM18.6 14h1.9M14 18.6v1.9"/>',
+        code: '<rect x="4.5" y="10.5" width="15" height="9.5" rx="2.2"/><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/><path d="M12 14.4v2"/>',
+        save: '<path d="M12 3.4 5 6.2v5.2c0 4.3 3 7.7 7 9.2 4-1.5 7-4.9 7-9.2V6.2L12 3.4Z"/><path d="m9 12.2 2.2 2.2L15.4 10"/>'
+    };
+    function mfaHead(n, mark, title, sub) {
+        var head = document.createElement('div');
+        head.className = 'mfa-head';
+        var tile = document.createElement('div');
+        tile.className = 'mfa-mark';
+        tile.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+            'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + MFA_MARKS[mark] + '</svg>';
+        head.appendChild(tile);
+        var step = document.createElement('div');
+        step.className = 'mfa-step';
+        step.textContent = fill('Step {n} of 3', { n: String(n) });
+        head.appendChild(step);
+        var h = document.createElement('h2');
+        h.className = 'modal-h';
+        h.textContent = t(title);
+        head.appendChild(h);
+        var p = document.createElement('p');
+        p.className = 'modal-p';
+        p.textContent = t(sub);
+        head.appendChild(p);
+        return head;
+    }
+
+    // Adding an authenticator app, in three steps the dialog glides between as
+    // the sign in dialog does: the code to scan, with the key behind a link
+    // for the reader without a camera; the six digits back, a box each; and
+    // the recovery codes, shown this once with a way to keep them.
     function addTwo(done) {
-        var m = modalShell('Add an authenticator app',
-            'Scan the code with the app, then enter the six digits it shows.');
+        var m = modalShell('Add an authenticator app', '');
         m.box.classList.add('mfa-modal');
+        m.bare(true);
+        m.stepBack.setAttribute('aria-label', t('Back to the code to scan'));
+
+        function glide(change) {
+            var box = m.box;
+            if (prefersStill()) { change(); return; }
+            var from = box.getBoundingClientRect().height;
+            box.style.height = '';
+            change();
+            var to = box.getBoundingClientRect().height;
+            clearTimeout(box.spGlide);
+            box.classList.remove('is-gliding');
+            box.style.height = from + 'px';
+            void box.offsetHeight;
+            box.classList.add('is-gliding');
+            box.style.height = to + 'px';
+            box.spGlide = setTimeout(function () {
+                box.classList.remove('is-gliding');
+                box.style.height = '';
+            }, 320);
+        }
+        function swap(build, backwards) {
+            glide(function () {
+                m.body.textContent = '';
+                build();
+            });
+            m.body.style.setProperty('--step-dir', backwards ? '-14px' : '14px');
+            m.body.classList.remove('is-stepping');
+            void m.body.offsetWidth;
+            m.body.classList.add('is-stepping');
+        }
+
         var wait = document.createElement('div');
         wait.className = 'mfa-wait';
         wait.textContent = t('Preparing…');
         m.body.appendChild(wait);
+
         postJson('/v1/account/totp/start').then(function (out) {
             m.body.textContent = '';
-            var pair = document.createElement('div');
-            pair.className = 'mfa-pair';
-            var qr = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            qr.setAttribute('class', 'mfa-qr');
-            var n = (out.qr && out.qr.size) || 0;
-            qr.setAttribute('viewBox', '-4 -4 ' + (n + 8) + ' ' + (n + 8));
-            qr.setAttribute('role', 'img');
-            qr.setAttribute('aria-label', t('Code to scan with the authenticator app'));
-            qr.setAttribute('shape-rendering', 'crispEdges');
-            var bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            bg.setAttribute('x', '-4'); bg.setAttribute('y', '-4');
-            bg.setAttribute('width', String(n + 8)); bg.setAttribute('height', String(n + 8));
-            bg.setAttribute('fill', '#fff');
-            qr.appendChild(bg);
-            var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            path.setAttribute('d', (out.qr && out.qr.d) || '');
-            path.setAttribute('fill', '#0e2358');
-            qr.appendChild(path);
-            pair.appendChild(qr);
-            var steps = document.createElement('ol');
-            steps.className = 'mfa-steps';
-            [t('Open your authenticator app and choose to add an account.'),
-                t('Scan this code with it.')].forEach(function (x) {
-                var li = document.createElement('li');
-                li.textContent = x;
-                steps.appendChild(li);
-            });
-            var side = document.createElement('div');
-            side.className = 'mfa-side';
-            side.appendChild(steps);
-            // the key is there for the reader without a camera, asked for the
-            // way the sign in dialog asks after a forgotten password: a link,
-            // and only then the thing itself
-            var more = document.createElement('button');
-            more.type = 'button';
-            more.className = 'modal-link mfa-more';
-            more.textContent = t('No camera? Enter a key instead');
-            side.appendChild(more);
-            pair.appendChild(side);
-            m.body.appendChild(pair);
+            stepScan(false);
 
-            // the key in its groups of four, the way an app asks for it, and a
-            // copy under it that says when it has copied
-            var key = document.createElement('div');
-            key.className = 'mfa-key';
-            key.hidden = true;
-            var groups = document.createElement('span');
-            groups.className = 'mfa-key-gs';
-            groups.setAttribute('aria-label', t('Key') + ': ' + (out.secret || ''));
-            String(out.grouped || out.secret || '').split(/\s+/).forEach(function (g) {
-                if (!g) return;
-                var chip = document.createElement('span');
-                chip.className = 'mfa-key-g';
-                chip.textContent = g;
-                groups.appendChild(chip);
-            });
-            key.appendChild(groups);
-            var copy = document.createElement('button');
-            copy.type = 'button';
-            copy.className = 'mfa-key-copy';
-            var COPY_I = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
-                'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-                '<rect x="8.5" y="8.5" width="11" height="11" rx="2.2"/><path d="M15.5 8.5V6.7a2.2 2.2 0 0 0-2.2-2.2H6.7a2.2 2.2 0 0 0-2.2 2.2v6.6a2.2 2.2 0 0 0 2.2 2.2h1.8"/></svg>';
-            var DONE_I = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
-                'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.2 4.2L19 7"/></svg>';
-            function copyLabel(done) {
-                copy.innerHTML = done ? DONE_I : COPY_I;
-                var tx = document.createElement('span');
-                tx.textContent = done ? t('Copied') : t('Copy key');
-                copy.appendChild(tx);
-                copy.classList.toggle('is-done', done);
+            // ---- 1: the code to scan, or the key in its place
+            function stepScan(back) {
+                m.stepBack.hidden = true;
+                var build = function () {
+                    m.body.appendChild(mfaHead(1, 'scan', 'Scan the code',
+                        'Open Google Authenticator, 1Password or any authenticator app and add an account with this code.'));
+                    var slot = document.createElement('div');
+                    slot.className = 'mfa-slot';
+                    var scan = document.createElement('div');
+                    scan.className = 'mfa-scan';
+                    ['tl', 'tr', 'bl', 'br'].forEach(function (c) {
+                        var corner = document.createElement('span');
+                        corner.className = 'mfa-corner is-' + c;
+                        scan.appendChild(corner);
+                    });
+                    scan.appendChild(qrSvg(out.qr));
+                    slot.appendChild(scan);
+                    var keyCard = keyPanel(out);
+                    keyCard.hidden = true;
+                    slot.appendChild(keyCard);
+                    m.body.appendChild(slot);
+                    var more = document.createElement('button');
+                    more.type = 'button';
+                    more.className = 'modal-link mfa-more';
+                    more.textContent = t('Cannot scan it? Enter a key instead');
+                    more.addEventListener('click', function () {
+                        glide(function () {
+                            var showKey = !scan.hidden;
+                            scan.hidden = showKey;
+                            keyCard.hidden = !showKey;
+                            more.textContent = showKey ? t('Show the code to scan') : t('Cannot scan it? Enter a key instead');
+                            var shown = showKey ? keyCard : scan;
+                            shown.classList.remove('is-in');
+                            void shown.offsetWidth;
+                            shown.classList.add('is-in');
+                        });
+                    });
+                    m.body.appendChild(more);
+                    var next = wideBtn('Continue', 'cta');
+                    next.addEventListener('click', function () { swap(stepCode); });
+                    m.body.appendChild(next);
+                    next.focus();
+                };
+                if (back) swap(build, true); else build();
             }
-            copyLabel(false);
-            copy.addEventListener('click', function () {
-                copyText(out.secret || '').then(function () {
-                    copyLabel(true);
-                    clearTimeout(copy.spTimer);
-                    copy.spTimer = setTimeout(function () { copyLabel(false); }, 1600);
-                }).catch(function () { toast(t('That did not work.'), 'bad'); });
-            });
-            key.appendChild(copy);
-            m.body.appendChild(key);
-            more.addEventListener('click', function () {
-                key.hidden = !key.hidden;
-                more.textContent = key.hidden ? t('No camera? Enter a key instead') : t('Hide the key');
-                if (!key.hidden) {
-                    key.classList.remove('is-in');
-                    void key.offsetWidth;
-                    key.classList.add('is-in');
+
+            // ---- 2: the six digits back
+            function stepCode() {
+                m.stepBack.hidden = false;
+                m.body.appendChild(mfaHead(2, 'code', 'Enter the six digits',
+                    'Type the code the app shows for Sentinelpay. It changes every 30 seconds.'));
+                var form = document.createElement('form');
+                form.className = 'mfa-form';
+                var row = document.createElement('div');
+                row.className = 'mfa-otp';
+                row.setAttribute('role', 'group');
+                row.setAttribute('aria-label', t('Six-digit code from the app'));
+                var boxes = [];
+                for (var i = 0; i < 6; i++) {
+                    var box = document.createElement('input');
+                    box.type = 'text';
+                    box.inputMode = 'numeric';
+                    box.maxLength = 1;
+                    box.autocomplete = i === 0 ? 'one-time-code' : 'off';
+                    box.setAttribute('aria-label', t('Digit') + ' ' + (i + 1));
+                    row.appendChild(box);
+                    boxes.push(box);
                 }
-            });
-
-            // the six digits, a box each, as the sign up dialog asks for the
-            // code it mailed: typing moves on, backspace moves back, a pasted
-            // code fills the row, and the sixth digit sends it
-            var form = document.createElement('form');
-            form.className = 'mfa-form';
-            var row = document.createElement('div');
-            row.className = 'mfa-otp';
-            row.setAttribute('role', 'group');
-            row.setAttribute('aria-label', t('Six-digit code from the app'));
-            var boxes = [];
-            for (var i = 0; i < 6; i++) {
-                var box = document.createElement('input');
-                box.type = 'text';
-                box.inputMode = 'numeric';
-                box.maxLength = 1;
-                box.autocomplete = i === 0 ? 'one-time-code' : 'off';
-                box.setAttribute('aria-label', t('Digit') + ' ' + (i + 1));
-                row.appendChild(box);
-                boxes.push(box);
-            }
-            form.appendChild(row);
-            var msg = document.createElement('div');
-            msg.className = 'modal-msg';
-            form.appendChild(msg);
-            var go = wideBtn('Turn on two-factor', 'cta', 'submit');
-            form.appendChild(go);
-            m.body.appendChild(form);
-
-            function codeValue() { return boxes.map(function (x) { return x.value; }).join(''); }
-            // a fresh digit is a fresh try: the last one's complaint goes
-            function markFilled() {
-                boxes.forEach(function (x) { x.classList.toggle('is-filled', x.value !== ''); });
-                if (codeValue() && msg.textContent) { msg.textContent = ''; msg.className = 'modal-msg'; }
-            }
-            function spread(digits, from) {
-                for (var k = 0; k < 6 - from && k < digits.length; k++) boxes[from + k].value = digits[k];
-                markFilled();
-                row.classList.remove('is-wrong');
-                boxes[Math.min(from + digits.length, 5)].focus();
-                if (codeValue().length === 6) send();
-            }
-            boxes.forEach(function (box, idx) {
-                box.addEventListener('input', function () {
-                    var digits = box.value.replace(/\D/g, '');
-                    if (digits.length > 1) { spread(digits, idx); return; }
-                    box.value = digits;
-                    markFilled();
-                    row.classList.remove('is-wrong');
-                    if (digits && idx < 5) boxes[idx + 1].focus();
-                    if (codeValue().length === 6) send();
-                });
-                box.addEventListener('keydown', function (e) {
-                    if (e.key === 'Backspace' && !box.value && idx > 0) {
-                        e.preventDefault();
-                        boxes[idx - 1].value = '';
-                        markFilled();
-                        boxes[idx - 1].focus();
-                    } else if (e.key === 'ArrowLeft' && idx > 0) { e.preventDefault(); boxes[idx - 1].focus(); }
-                    else if (e.key === 'ArrowRight' && idx < 5) { e.preventDefault(); boxes[idx + 1].focus(); }
-                });
-                box.addEventListener('paste', function (e) {
-                    var text = (e.clipboardData || window.clipboardData).getData('text') || '';
-                    var digits = text.replace(/\D/g, '');
-                    if (!digits) return;
-                    e.preventDefault();
-                    spread(digits, idx);
-                });
-                box.addEventListener('focus', function () { box.select(); });
-            });
-            boxes[0].focus();
-
-            var sending = false;
-            function send() {
-                if (sending) return;
-                var value = codeValue();
-                if (value.length !== 6) {
-                    var gap = boxes.filter(function (x) { return !x.value; })[0];
-                    if (gap) gap.focus();
-                    return;
-                }
-                sending = true;
-                go.disabled = true;
-                msg.textContent = '';
+                form.appendChild(row);
+                var msg = document.createElement('div');
                 msg.className = 'modal-msg';
-                postJson('/v1/account/totp/confirm', { code: value }).then(function (res) {
-                    showCodes(m, res.codes || [], done);
-                }).catch(function (err) {
-                    sending = false;
-                    go.disabled = false;
-                    msg.textContent = err.message;
-                    msg.className = 'modal-msg is-bad';
-                    row.classList.remove('is-wrong');
-                    void row.offsetWidth;
-                    row.classList.add('is-wrong');
-                    boxes.forEach(function (x) { x.value = ''; });
+                form.appendChild(msg);
+                var go = wideBtn('Turn on two-factor', 'cta', 'submit');
+                form.appendChild(go);
+                m.body.appendChild(form);
+
+                function codeValue() { return boxes.map(function (x) { return x.value; }).join(''); }
+                // a fresh digit is a fresh try: the last one's complaint goes
+                function markFilled() {
+                    boxes.forEach(function (x) { x.classList.toggle('is-filled', x.value !== ''); });
+                    if (codeValue() && msg.textContent) { msg.textContent = ''; msg.className = 'modal-msg'; }
+                }
+                function spread(digits, from) {
+                    for (var k = 0; k < 6 - from && k < digits.length; k++) boxes[from + k].value = digits[k];
                     markFilled();
-                    boxes[0].focus();
+                    row.classList.remove('is-wrong');
+                    boxes[Math.min(from + digits.length, 5)].focus();
+                    if (codeValue().length === 6) send();
+                }
+                boxes.forEach(function (box, idx) {
+                    box.addEventListener('input', function () {
+                        var digits = box.value.replace(/\D/g, '');
+                        if (digits.length > 1) { spread(digits, idx); return; }
+                        box.value = digits;
+                        markFilled();
+                        row.classList.remove('is-wrong');
+                        if (digits && idx < 5) boxes[idx + 1].focus();
+                        if (codeValue().length === 6) send();
+                    });
+                    box.addEventListener('keydown', function (e) {
+                        if (e.key === 'Backspace' && !box.value && idx > 0) {
+                            e.preventDefault();
+                            boxes[idx - 1].value = '';
+                            markFilled();
+                            boxes[idx - 1].focus();
+                        } else if (e.key === 'ArrowLeft' && idx > 0) { e.preventDefault(); boxes[idx - 1].focus(); }
+                        else if (e.key === 'ArrowRight' && idx < 5) { e.preventDefault(); boxes[idx + 1].focus(); }
+                    });
+                    box.addEventListener('paste', function (e) {
+                        var text = (e.clipboardData || window.clipboardData).getData('text') || '';
+                        var digits = text.replace(/\D/g, '');
+                        if (!digits) return;
+                        e.preventDefault();
+                        spread(digits, idx);
+                    });
+                    box.addEventListener('focus', function () { box.select(); });
+                });
+                setTimeout(function () { boxes[0].focus(); }, 60);
+
+                var sending = false;
+                function send() {
+                    if (sending) return;
+                    var value = codeValue();
+                    if (value.length !== 6) {
+                        var gap = boxes.filter(function (x) { return !x.value; })[0];
+                        if (gap) gap.focus();
+                        return;
+                    }
+                    sending = true;
+                    go.disabled = true;
+                    msg.textContent = '';
+                    msg.className = 'modal-msg';
+                    postJson('/v1/account/totp/confirm', { code: value }).then(function (res) {
+                        m.stepBack.hidden = true;
+                        swap(function () { showCodes(m, res.codes || [], done); });
+                        if (done) done();
+                    }).catch(function (err) {
+                        sending = false;
+                        go.disabled = false;
+                        msg.textContent = err.message;
+                        msg.className = 'modal-msg is-bad';
+                        row.classList.remove('is-wrong');
+                        void row.offsetWidth;
+                        row.classList.add('is-wrong');
+                        boxes.forEach(function (x) { x.value = ''; });
+                        markFilled();
+                        boxes[0].focus();
+                    });
+                }
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    send();
                 });
             }
-            form.addEventListener('submit', function (e) {
-                e.preventDefault();
-                send();
-            });
+            m.stepBack.onclick = function () { stepScan(true); };
         }).catch(function (err) {
             wait.textContent = err.message;
             wait.classList.add('is-bad');
         });
     }
 
-    // The recovery codes, each good once, shown the one time there is to show
-    // them, with a copy and a file to keep them in.
+    // The code to scan, drawn from the outline the server sent: the page makes
+    // every element of it, so nothing it was sent is read as markup.
+    function qrSvg(qr) {
+        var NS = 'http://www.w3.org/2000/svg';
+        var n = (qr && qr.size) || 0;
+        var svg = document.createElementNS(NS, 'svg');
+        svg.setAttribute('class', 'mfa-qr');
+        svg.setAttribute('viewBox', '-1 -1 ' + (n + 2) + ' ' + (n + 2));
+        svg.setAttribute('role', 'img');
+        svg.setAttribute('aria-label', t('Code to scan with the authenticator app'));
+        svg.setAttribute('shape-rendering', 'crispEdges');
+        var path = document.createElementNS(NS, 'path');
+        path.setAttribute('d', (qr && qr.d) || '');
+        path.setAttribute('fill', '#0e2358');
+        svg.appendChild(path);
+        return svg;
+    }
+
+    // The key in its groups of four, the way an app asks for it, and a copy
+    // under them that says when it has copied.
+    function keyPanel(out) {
+        var key = document.createElement('div');
+        key.className = 'mfa-key';
+        var lab = document.createElement('div');
+        lab.className = 'mfa-key-l';
+        lab.textContent = t('Setup key');
+        key.appendChild(lab);
+        var groups = document.createElement('span');
+        groups.className = 'mfa-key-gs';
+        groups.setAttribute('aria-label', t('Key') + ': ' + (out.secret || ''));
+        String(out.grouped || out.secret || '').split(/\s+/).forEach(function (g) {
+            if (!g) return;
+            var chip = document.createElement('span');
+            chip.className = 'mfa-key-g';
+            chip.textContent = g;
+            groups.appendChild(chip);
+        });
+        key.appendChild(groups);
+        var copy = document.createElement('button');
+        copy.type = 'button';
+        copy.className = 'mfa-key-copy';
+        var COPY_I = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
+            'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<rect x="8.5" y="8.5" width="11" height="11" rx="2.2"/><path d="M15.5 8.5V6.7a2.2 2.2 0 0 0-2.2-2.2H6.7a2.2 2.2 0 0 0-2.2 2.2v6.6a2.2 2.2 0 0 0 2.2 2.2h1.8"/></svg>';
+        var DONE_I = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
+            'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.2 4.2L19 7"/></svg>';
+        function copyLabel(done) {
+            copy.innerHTML = done ? DONE_I : COPY_I;
+            var tx = document.createElement('span');
+            tx.textContent = done ? t('Copied') : t('Copy key');
+            copy.appendChild(tx);
+            copy.classList.toggle('is-done', done);
+        }
+        copyLabel(false);
+        copy.addEventListener('click', function () {
+            copyText(out.secret || '').then(function () {
+                copyLabel(true);
+                clearTimeout(copy.spTimer);
+                copy.spTimer = setTimeout(function () { copyLabel(false); }, 1600);
+            }).catch(function () { toast(t('That did not work.'), 'bad'); });
+        });
+        key.appendChild(copy);
+        return key;
+    }
+
+    // ---- 3: the recovery codes, each good once, shown the one time there is
+    // to show them, with a copy and a file to keep them in
     function showCodes(m, codes, done) {
-        m.retitle('Save your recovery codes',
-            'Two-factor is on. Keep these recovery codes somewhere safe and away from your phone. Each one works once, and this is the only time they are shown.');
-        m.body.textContent = '';
+        m.body.appendChild(mfaHead(3, 'save', 'Save your recovery codes',
+            'Two-factor is on. Keep these recovery codes somewhere safe and away from your phone. Each one works once, and this is the only time they are shown.'));
         var grid = document.createElement('ol');
         grid.className = 'mfa-codes';
         codes.forEach(function (c) {
@@ -10596,7 +10687,6 @@
         var ok = wideBtn('I have saved them', 'cta');
         ok.addEventListener('click', function () { m.shut(); if (done) done(); });
         m.body.appendChild(ok);
-        if (done) done();
     }
 
     // Removing the app takes the password: the one thing a person who found the
