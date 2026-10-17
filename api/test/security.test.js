@@ -455,15 +455,14 @@ test('the setup code is a QR code of the authenticator address', () => {
     assert.ok(require('fs').existsSync(require('path').join(__dirname, '..', 'vendor', 'qrcode-generator-1.4.4', 'LICENSE.txt')), 'the encoder has no licence beside it');
 });
 
-// Removing an app asks for no password. What stands in for it is the session:
-// only one that has passed a code from an app, at sign in or by adding an app,
-// may ask, so a laptop left signed in with the password alone cannot take
-// two-factor off.
-test('an app comes off only from a session that passed the second step', () => {
+// Removing an app is a click: no password and no fresh code, the signed-in
+// session is what it asks. Adding one still marks the session as having
+// passed the second step, which the sign-in record keeps.
+test('an app comes off on a click from the signed-in session', () => {
     const index = require('fs').readFileSync(require('path').join(__dirname, '..', 'index.js'), 'utf8');
     const route = index.slice(index.indexOf("app.post('/v1/account/totp/remove'"), index.indexOf("app.post('/v1/account/totp/off'"));
-    assert.match(route, /if \(!me\.mfa\) \{\s*return res\.status\(403\)/, 'a session without the second step can remove an app');
-    assert.doesNotMatch(route, /password/, 'removing an app asks for the password again');
+    assert.match(route, /const me = await requireSession\(req, res\);/, 'an app can be removed signed out');
+    assert.doesNotMatch(route, /password|me\.mfa/, 'removing an app asks for more than the session');
     const confirm = index.slice(index.indexOf("app.post('/v1/account/totp/confirm'"), index.indexOf("app.get('/v1/account/totp'"));
-    assert.match(confirm, /await accounts\.markSessionMfa\(readSessionCookie\(req\)\);/, 'adding an app does not count as the second step');
+    assert.match(confirm, /await accounts\.markSessionMfa\(readSessionCookie\(req\)\);/);
 });

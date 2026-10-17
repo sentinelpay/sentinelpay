@@ -10704,9 +10704,8 @@
         return key;
     }
 
-    // Removing an app, asked once and plainly. No password: the server takes
-    // it only from a session that has passed a code from an app. The last one
-    // going turns two-factor off, so that case says so in the warning the
+    // Removing an app, asked once and plainly, and done on the click. The last
+    // one going turns two-factor off, so that case says so in the warning the
     // token drawer uses, with what to think about first.
     function removeTwo(app, last, done) {
         var m = modalShell('Remove app',

@@ -2050,15 +2050,10 @@ app.get('/v1/account/totp', async (req, res) => {
     res.json({ ok: true, factors: await accounts.listFactors(me.userId) });
 });
 
-// One app off the account. No password is asked for; the session must have
-// passed the second step, at sign in or by adding an app, so a person who
-// finds a laptop signed in with the password alone cannot take two-factor off.
+// One app off the account, on a click: the signed-in session is all it asks.
 app.post('/v1/account/totp/remove', requireCloudflareOrigin, authTotpLimiter, async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
-    if (!me.mfa) {
-        return res.status(403).json({ error: 'To remove an app, sign out and sign in again with a code from one of your authenticator apps.' });
-    }
     const b = req.body || {};
     const out = await accounts.removeFactor(me.userId, String(b.id || ''));
     if (out.reason === 'not-found') return res.status(404).json({ error: 'That app is not on this account.' });
