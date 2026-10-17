@@ -5724,7 +5724,6 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
     background: var(--canvas);
 }
 .mfa-key[hidden] { display: none; }
-.mfa-key-l { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; text-align: center; color: var(--ink-4); }
 .mfa-key-gs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.4rem; }
 .mfa-key-g {
     padding: 0.42rem 0;
