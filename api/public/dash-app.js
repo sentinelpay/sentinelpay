@@ -10212,9 +10212,11 @@
         page.appendChild(pageHead('Security',
             'What it takes to sign in to this account, beyond the password.'));
 
-        // ---- two-factor: the account's authenticator app in a row of its own,
-        // and the way to add one at the head of the section while there is
-        // none. One app an account; a lost phone is a letter to support.
+        // ---- two-factor: every authenticator app on the account in a row of
+        // its own, up to three, and the way to add one at the head of the
+        // section while there is room. There are no recovery codes, so while
+        // there is only one app the page asks for a second on another device:
+        // the way back in if the first is lost.
         var head = document.createElement('div');
         head.className = 'sec-head';
         var headT = document.createElement('div');
@@ -10232,8 +10234,8 @@
         head.appendChild(add);
         page.appendChild(head);
 
-        // while the app is on, what losing the phone means: the warning the
-        // token drawer gives a token about to get everything, here too
+        // with a single app, what losing the phone means: the warning the token
+        // drawer gives a token about to get everything, here too
         var warnHost = document.createElement('div');
         warnHost.className = 'warn-host sec-warn-host';
         page.appendChild(warnHost);
@@ -10249,8 +10251,8 @@
             list.textContent = '';
             warnHost.textContent = '';
             if (apps === null) return;
-            add.hidden = apps.length > 0;
-            if (apps.length) {
+            add.hidden = apps.length >= MFA_MAX;
+            if (apps.length === 1) {
                 var box = document.createElement('div');
                 box.className = 'warn';
                 var mark = document.createElement('span');
@@ -10264,12 +10266,20 @@
                 txt.className = 'warn-t';
                 var h = document.createElement('div');
                 h.className = 'warn-h';
-                h.textContent = t('If you lose this phone');
+                h.textContent = t('Avoid being locked out');
                 txt.appendChild(h);
                 var p2 = document.createElement('p');
-                p2.textContent = t('There are no recovery codes. Without the phone the app is on, you cannot sign in until support has confirmed the account is yours.');
+                p2.textContent = t('Add a second authenticator app on another device now. There are no recovery codes, so if the only phone with an app on it is lost, you cannot sign in until support has confirmed the account is yours.');
                 txt.appendChild(p2);
                 box.appendChild(txt);
+                var more = document.createElement('button');
+                more.type = 'button';
+                more.className = 'btn sec-warn-btn';
+                more.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
+                    'stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
+                more.appendChild(document.createTextNode(t('Add another app')));
+                more.addEventListener('click', function () { addTwo(load); });
+                box.appendChild(more);
                 warnHost.appendChild(box);
             }
             if (!apps.length) {
@@ -10290,8 +10300,10 @@
                 del.type = 'button';
                 del.className = 'btn btn-quiet sec-remove';
                 del.textContent = t('Delete');
-                del.addEventListener('click', function () { removeTwo(f.id, load); });
+                del.addEventListener('click', function () { removeTwo(f, apps.length === 1, load); });
                 var row = fieldRow({ label: 'Authenticator app', control: del });
+                // by the name it was given; one added before apps had names is the generic one
+                if (f.name) row.querySelector('.fld-label').textContent = f.name;
                 var sub = document.createElement('div');
                 sub.className = 'fld-hint';
                 sub.textContent = fill('Added {date}', { date: when(f.createdAt) }) +
@@ -10357,6 +10369,10 @@
         });
     }
 
+    // As many authenticator apps as one account may hold; the server holds the
+    // same number and refuses a fourth.
+    var MFA_MAX = 3;
+
     // The head of a step of the two-factor dialog: its title and one line.
     function mfaHead(title, sub) {
         var head = document.createElement('div');
@@ -10372,14 +10388,17 @@
         return head;
     }
 
-    // Adding the authenticator app, in two steps the dialog glides between as
-    // the sign in dialog does: the code to scan, with the key behind a link
-    // for the reader without a camera; then the six digits back, a box each.
+    // Adding an authenticator app, in three steps the dialog glides between
+    // as the sign in dialog does: a name to know the app by; the code to scan,
+    // with the key behind a link for the reader without a camera; then the six
+    // digits back, a box each. The secret is asked for once the name is given,
+    // and kept if the reader steps back.
     function addTwo(done) {
         var m = modalShell('Add an authenticator app', '');
         m.box.classList.add('mfa-modal');
         m.bare(true);
-        m.stepBack.setAttribute('aria-label', t('Back to the code to scan'));
+        var appName = '';
+        var out = null;
 
         function glide(change) {
             var box = m.box;
@@ -10410,170 +10429,215 @@
             m.body.classList.add('is-stepping');
         }
 
-        var wait = document.createElement('div');
-        wait.className = 'mfa-wait';
-        wait.textContent = t('Preparing…');
-        m.body.appendChild(wait);
+        stepName(false);
 
-        postJson('/v1/account/totp/start').then(function (out) {
-            m.body.textContent = '';
-            stepScan(false);
-
-            // ---- 1: the code to scan, or the key in its place
-            function stepScan(back) {
-                m.stepBack.hidden = true;
-                var build = function () {
-                    m.body.appendChild(mfaHead('Scan the code',
-                        'Open Google Authenticator, 1Password or any authenticator app and add an account with this code.'));
-                    var slot = document.createElement('div');
-                    slot.className = 'mfa-slot';
-                    var scan = document.createElement('div');
-                    scan.className = 'mfa-scan';
-                    scan.appendChild(qrSvg(out.qr));
-                    slot.appendChild(scan);
-                    var keyCard = keyPanel(out);
-                    keyCard.hidden = true;
-                    slot.appendChild(keyCard);
-                    m.body.appendChild(slot);
-                    var more = document.createElement('button');
-                    more.type = 'button';
-                    more.className = 'modal-link mfa-more';
-                    more.textContent = t('Cannot scan it? Enter a key instead');
-                    more.addEventListener('click', function () {
-                        glide(function () {
-                            var showKey = !scan.hidden;
-                            scan.hidden = showKey;
-                            keyCard.hidden = !showKey;
-                            more.textContent = showKey ? t('Show the code to scan') : t('Cannot scan it? Enter a key instead');
-                            var shown = showKey ? keyCard : scan;
-                            shown.classList.remove('is-in');
-                            void shown.offsetWidth;
-                            shown.classList.add('is-in');
-                        });
-                    });
-                    m.body.appendChild(more);
-                    var next = wideBtn('Continue', 'cta');
-                    next.addEventListener('click', function () { swap(stepCode); });
-                    m.body.appendChild(next);
-                    next.focus();
-                };
-                if (back) swap(build, true); else build();
-            }
-
-            // ---- 2: the six digits back
-            function stepCode() {
-                m.stepBack.hidden = false;
-                m.body.appendChild(mfaHead('Enter the six digits',
-                    'Type the code the app shows for Sentinelpay. It changes every 30 seconds.'));
+        // ---- 1: a name for the app
+        function stepName(back) {
+            m.stepBack.hidden = true;
+            var build = function () {
+                m.body.appendChild(mfaHead('Name the app',
+                    'So you can tell it from the others in your account settings and when you sign in.'));
                 var form = document.createElement('form');
                 form.className = 'mfa-form';
-                var row = document.createElement('div');
-                row.className = 'mfa-otp';
-                row.setAttribute('role', 'group');
-                row.setAttribute('aria-label', t('Six-digit code from the app'));
-                var boxes = [];
-                for (var i = 0; i < 6; i++) {
-                    var box = document.createElement('input');
-                    box.type = 'text';
-                    box.inputMode = 'numeric';
-                    box.maxLength = 1;
-                    box.autocomplete = i === 0 ? 'one-time-code' : 'off';
-                    box.setAttribute('aria-label', t('Digit') + ' ' + (i + 1));
-                    row.appendChild(box);
-                    boxes.push(box);
-                }
-                form.appendChild(row);
+                var name = document.createElement('input');
+                name.type = 'text';
+                name.className = 'modal-in';
+                name.maxLength = 40;
+                name.autocomplete = 'off';
+                name.value = appName;
+                name.placeholder = t('e.g. Google Authenticator on my iPhone');
+                name.setAttribute('aria-label', t('Name of the app'));
+                form.appendChild(name);
                 var msg = document.createElement('div');
                 msg.className = 'modal-msg';
                 form.appendChild(msg);
-                var go = wideBtn('Turn on two-factor', 'cta', 'submit');
+                var go = wideBtn('Continue', 'cta', 'submit');
+                go.disabled = !appName;
                 form.appendChild(go);
+                var quit = document.createElement('div');
+                quit.className = 'modal-quit';
+                var no = wideBtn('Cancel', 'quiet');
+                no.addEventListener('click', m.shut);
+                quit.appendChild(no);
+                form.appendChild(quit);
                 m.body.appendChild(form);
-
-                function codeValue() { return boxes.map(function (x) { return x.value; }).join(''); }
-                // a fresh digit is a fresh try: the last one's complaint goes
-                function markFilled() {
-                    boxes.forEach(function (x) { x.classList.toggle('is-filled', x.value !== ''); });
-                    if (codeValue() && msg.textContent) { msg.textContent = ''; msg.className = 'modal-msg'; }
-                }
-                function spread(digits, from) {
-                    for (var k = 0; k < 6 - from && k < digits.length; k++) boxes[from + k].value = digits[k];
-                    markFilled();
-                    row.classList.remove('is-wrong');
-                    boxes[Math.min(from + digits.length, 5)].focus();
-                    if (codeValue().length === 6) send();
-                }
-                boxes.forEach(function (box, idx) {
-                    box.addEventListener('input', function () {
-                        var digits = box.value.replace(/\D/g, '');
-                        if (digits.length > 1) { spread(digits, idx); return; }
-                        box.value = digits;
-                        markFilled();
-                        row.classList.remove('is-wrong');
-                        if (digits && idx < 5) boxes[idx + 1].focus();
-                        if (codeValue().length === 6) send();
-                    });
-                    box.addEventListener('keydown', function (e) {
-                        if (e.key === 'Backspace' && !box.value && idx > 0) {
-                            e.preventDefault();
-                            boxes[idx - 1].value = '';
-                            markFilled();
-                            boxes[idx - 1].focus();
-                        } else if (e.key === 'ArrowLeft' && idx > 0) { e.preventDefault(); boxes[idx - 1].focus(); }
-                        else if (e.key === 'ArrowRight' && idx < 5) { e.preventDefault(); boxes[idx + 1].focus(); }
-                    });
-                    box.addEventListener('paste', function (e) {
-                        var text = (e.clipboardData || window.clipboardData).getData('text') || '';
-                        var digits = text.replace(/\D/g, '');
-                        if (!digits) return;
-                        e.preventDefault();
-                        spread(digits, idx);
-                    });
-                    box.addEventListener('focus', function () { box.select(); });
-                });
-                setTimeout(function () { boxes[0].focus(); }, 60);
-
-                var sending = false;
-                function send() {
-                    if (sending) return;
-                    var value = codeValue();
-                    if (value.length !== 6) {
-                        var gap = boxes.filter(function (x) { return !x.value; })[0];
-                        if (gap) gap.focus();
-                        return;
-                    }
-                    sending = true;
+                name.addEventListener('input', function () { go.disabled = !name.value.trim(); });
+                setTimeout(function () { name.focus(); }, 60);
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    appName = name.value.replace(/\s+/g, ' ').trim();
+                    if (!appName) { name.focus(); return; }
+                    if (out) { swap(function () { stepScan(); }); return; }
                     go.disabled = true;
                     msg.textContent = '';
                     msg.className = 'modal-msg';
-                    postJson('/v1/account/totp/confirm', { code: value }).then(function () {
-                        m.shut();
-                        toast(t('Authenticator app added'), 'good');
-                        if (done) done();
+                    postJson('/v1/account/totp/start').then(function (got) {
+                        out = got;
+                        swap(function () { stepScan(); });
                     }).catch(function (err) {
-                        sending = false;
                         go.disabled = false;
                         msg.textContent = err.message;
                         msg.className = 'modal-msg is-bad';
-                        row.classList.remove('is-wrong');
-                        void row.offsetWidth;
-                        row.classList.add('is-wrong');
-                        boxes.forEach(function (x) { x.value = ''; });
-                        markFilled();
-                        boxes[0].focus();
                     });
-                }
-                form.addEventListener('submit', function (e) {
+                });
+            };
+            if (back) swap(build, true); else build();
+        }
+
+        // ---- 2: the code to scan, or the key in its place
+        function stepScan(back) {
+            m.stepBack.hidden = false;
+            m.stepBack.setAttribute('aria-label', t('Back to the name'));
+            m.stepBack.onclick = function () { stepName(true); };
+            var build = function () {
+                m.body.appendChild(mfaHead('Scan the code',
+                    'Open Google Authenticator, 1Password or any authenticator app and add an account with this code.'));
+                var slot = document.createElement('div');
+                slot.className = 'mfa-slot';
+                var scan = document.createElement('div');
+                scan.className = 'mfa-scan';
+                scan.appendChild(qrSvg(out.qr));
+                slot.appendChild(scan);
+                var keyCard = keyPanel(out);
+                keyCard.hidden = true;
+                slot.appendChild(keyCard);
+                m.body.appendChild(slot);
+                var more = document.createElement('button');
+                more.type = 'button';
+                more.className = 'modal-link mfa-more';
+                more.textContent = t('Cannot scan it? Enter a key instead');
+                more.addEventListener('click', function () {
+                    glide(function () {
+                        var showKey = !scan.hidden;
+                        scan.hidden = showKey;
+                        keyCard.hidden = !showKey;
+                        more.textContent = showKey ? t('Show the code to scan') : t('Cannot scan it? Enter a key instead');
+                        var shown = showKey ? keyCard : scan;
+                        shown.classList.remove('is-in');
+                        void shown.offsetWidth;
+                        shown.classList.add('is-in');
+                    });
+                });
+                m.body.appendChild(more);
+                var next = wideBtn('Continue', 'cta');
+                next.addEventListener('click', function () { swap(stepCode); });
+                m.body.appendChild(next);
+                next.focus();
+            };
+            if (back) swap(build, true); else build();
+        }
+
+        // ---- 3: the six digits back
+        function stepCode() {
+            m.stepBack.hidden = false;
+            m.stepBack.setAttribute('aria-label', t('Back to the code to scan'));
+            m.stepBack.onclick = function () { stepScan(true); };
+            m.body.appendChild(mfaHead('Enter the six digits',
+                'Type the code the app shows for Sentinelpay. It changes every 30 seconds.'));
+            var form = document.createElement('form');
+            form.className = 'mfa-form';
+            var row = document.createElement('div');
+            row.className = 'mfa-otp';
+            row.setAttribute('role', 'group');
+            row.setAttribute('aria-label', t('Six-digit code from the app'));
+            var boxes = [];
+            for (var i = 0; i < 6; i++) {
+                var box = document.createElement('input');
+                box.type = 'text';
+                box.inputMode = 'numeric';
+                box.maxLength = 1;
+                box.autocomplete = i === 0 ? 'one-time-code' : 'off';
+                box.setAttribute('aria-label', t('Digit') + ' ' + (i + 1));
+                row.appendChild(box);
+                boxes.push(box);
+            }
+            form.appendChild(row);
+            var msg = document.createElement('div');
+            msg.className = 'modal-msg';
+            form.appendChild(msg);
+            var go = wideBtn('Turn on two-factor', 'cta', 'submit');
+            form.appendChild(go);
+            m.body.appendChild(form);
+
+            function codeValue() { return boxes.map(function (x) { return x.value; }).join(''); }
+            // a fresh digit is a fresh try: the last one's complaint goes
+            function markFilled() {
+                boxes.forEach(function (x) { x.classList.toggle('is-filled', x.value !== ''); });
+                if (codeValue() && msg.textContent) { msg.textContent = ''; msg.className = 'modal-msg'; }
+            }
+            function spread(digits, from) {
+                for (var k = 0; k < 6 - from && k < digits.length; k++) boxes[from + k].value = digits[k];
+                markFilled();
+                row.classList.remove('is-wrong');
+                boxes[Math.min(from + digits.length, 5)].focus();
+                if (codeValue().length === 6) send();
+            }
+            boxes.forEach(function (box, idx) {
+                box.addEventListener('input', function () {
+                    var digits = box.value.replace(/\D/g, '');
+                    if (digits.length > 1) { spread(digits, idx); return; }
+                    box.value = digits;
+                    markFilled();
+                    row.classList.remove('is-wrong');
+                    if (digits && idx < 5) boxes[idx + 1].focus();
+                    if (codeValue().length === 6) send();
+                });
+                box.addEventListener('keydown', function (e) {
+                    if (e.key === 'Backspace' && !box.value && idx > 0) {
+                        e.preventDefault();
+                        boxes[idx - 1].value = '';
+                        markFilled();
+                        boxes[idx - 1].focus();
+                    } else if (e.key === 'ArrowLeft' && idx > 0) { e.preventDefault(); boxes[idx - 1].focus(); }
+                    else if (e.key === 'ArrowRight' && idx < 5) { e.preventDefault(); boxes[idx + 1].focus(); }
+                });
+                box.addEventListener('paste', function (e) {
+                    var text = (e.clipboardData || window.clipboardData).getData('text') || '';
+                    var digits = text.replace(/\D/g, '');
+                    if (!digits) return;
                     e.preventDefault();
-                    send();
+                    spread(digits, idx);
+                });
+                box.addEventListener('focus', function () { box.select(); });
+            });
+            setTimeout(function () { boxes[0].focus(); }, 60);
+
+            var sending = false;
+            function send() {
+                if (sending) return;
+                var value = codeValue();
+                if (value.length !== 6) {
+                    var gap = boxes.filter(function (x) { return !x.value; })[0];
+                    if (gap) gap.focus();
+                    return;
+                }
+                sending = true;
+                go.disabled = true;
+                msg.textContent = '';
+                msg.className = 'modal-msg';
+                postJson('/v1/account/totp/confirm', { code: value, name: appName }).then(function () {
+                    m.shut();
+                    toast(t('Authenticator app added'), 'good');
+                    if (done) done();
+                }).catch(function (err) {
+                    sending = false;
+                    go.disabled = false;
+                    msg.textContent = err.message;
+                    msg.className = 'modal-msg is-bad';
+                    row.classList.remove('is-wrong');
+                    void row.offsetWidth;
+                    row.classList.add('is-wrong');
+                    boxes.forEach(function (x) { x.value = ''; });
+                    markFilled();
+                    boxes[0].focus();
                 });
             }
-            m.stepBack.onclick = function () { stepScan(true); };
-        }).catch(function (err) {
-            wait.textContent = err.message;
-            wait.classList.add('is-bad');
-        });
-    }
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                send();
+            });
+        }
+}
 
     // The code to scan, drawn from the outline the server sent: the page makes
     // every element of it, so nothing it was sent is read as markup.
@@ -10636,11 +10700,13 @@
         return key;
     }
 
-    // Removing the app takes the password: the one thing a person who found the
-    // laptop open does not have. Two-factor goes with it, and the dialog says so.
-    function removeTwo(appId, done) {
-        var m = modalShell('Remove the authenticator app',
-            'Two-factor goes off with it, and your password alone signs you in. Enter your password to confirm.');
+    // Removing an app takes the password: the one thing a person who found the
+    // laptop open does not have. The last one going takes two-factor with it,
+    // and the dialog says so.
+    function removeTwo(app, last, done) {
+        var m = modalShell(fill('Remove {name}', { name: app.name || t('Authenticator app') }),
+            last ? 'This is the only app on the account. Two-factor goes off with it, and your password alone signs you in.'
+                : 'Enter your password to confirm. The other apps on the account keep working.');
         var form = document.createElement('form');
         var pw = document.createElement('input');
         pw.type = 'password';
@@ -10666,9 +10732,9 @@
             yes.disabled = true;
             msg.textContent = '';
             msg.className = 'modal-msg';
-            postJson('/v1/account/totp/remove', { id: appId, password: pw.value }).then(function () {
+            postJson('/v1/account/totp/remove', { id: app.id, password: pw.value }).then(function (res) {
                 m.shut();
-                toast(t('Two-factor is off.'), 'good');
+                toast(res.left ? t('Authenticator app removed') : t('Two-factor is off.'), 'good');
                 if (done) done();
             }).catch(function (err) {
                 yes.disabled = false;
