@@ -10296,6 +10296,8 @@
                 del.textContent = t('Delete');
                 del.addEventListener('click', function () { removeTwo(f, apps.length === 1, load); });
                 var row = fieldRow({ label: 'Authenticator app', control: del });
+                // Delete stays beside the name on a phone, as a switch does
+                row.classList.add('is-sw');
                 // by the name it was given; one added before apps had names is the generic one
                 if (f.name) row.querySelector('.fld-label').textContent = f.name;
                 var sub = document.createElement('div');
@@ -10347,13 +10349,18 @@
         return oldWay();
     }
 
-    // POST a body as JSON; the answer's own message where it has one
+    // POST a body as JSON; the answer's own message where it has one. No
+    // answer at all -- the connection dropped, the server was mid-deploy, a
+    // sign-in in front of the site had lapsed -- is said in words rather than
+    // as the browser's "Failed to fetch".
     function postJson(url, body) {
         return fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'same-origin',
             body: JSON.stringify(body || {})
+        }).catch(function () {
+            throw new Error(t('Sentinelpay could not be reached. Reload the page and try again.'));
         }).then(function (r) {
             return r.json().catch(function () { return {}; }).then(function (j) {
                 // the sentence the server gave, in the language of the reader where we have it
@@ -11239,7 +11246,7 @@
     function skFactors(n) {
         var f = document.createDocumentFragment();
         for (var i = 0; i < n; i++) {
-            f.appendChild(skEl('div', 'fld', [
+            f.appendChild(skEl('div', 'fld is-sw', [
                 skEl('div', 'fld-l', [skEl('div', 'fld-label', [sk(skw(8, i), 13)]), skEl('div', 'fld-hint', [sk(skw(13, i + 1), 10)])]),
                 skEl('div', 'fld-r', [sk('4.6rem', 32)])
             ]));
