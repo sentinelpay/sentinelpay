@@ -23,6 +23,15 @@ const WORK = [
         extra: ['email_hash'],
     },
     {
+        table: 'totp_factors',
+        id: 'id',
+        columns: [
+            { column: 'secret_enc', label: (row) => 'totp:' + row.user_id },
+            { column: 'name_enc', label: (row) => 'totp-name:' + row.user_id },
+        ],
+        extra: ['user_id'],
+    },
+    {
         table: 'signup_codes',
         id: 'email_hash',
         columns: [
