@@ -5685,8 +5685,7 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
 .mfa-head { position: relative; z-index: 1; text-align: center; margin-bottom: 1.35rem; }
 .mfa-head .modal-h { margin-bottom: 0.4rem; }
 
-/* the code to scan, on white whatever the theme (a phone reads dark on light),
-   in a card with a viewfinder's corners round it */
+/* the code to scan, on white whatever the theme: a phone reads dark on light */
 .mfa-slot { display: grid; justify-items: center; margin-bottom: 0.9rem; }
 .mfa-scan {
     position: relative;
@@ -5699,11 +5698,6 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
 }
 .mfa-scan[hidden] { display: none; }
 .mfa-qr { display: block; width: 100%; height: 100%; }
-.mfa-corner { position: absolute; width: 22px; height: 22px; border: 0 solid var(--link); pointer-events: none; }
-.mfa-corner.is-tl { top: -7px; left: -7px; border-top-width: 3px; border-left-width: 3px; border-top-left-radius: 12px; }
-.mfa-corner.is-tr { top: -7px; right: -7px; border-top-width: 3px; border-right-width: 3px; border-top-right-radius: 12px; }
-.mfa-corner.is-bl { bottom: -7px; left: -7px; border-bottom-width: 3px; border-left-width: 3px; border-bottom-left-radius: 12px; }
-.mfa-corner.is-br { bottom: -7px; right: -7px; border-bottom-width: 3px; border-right-width: 3px; border-bottom-right-radius: 12px; }
 .mfa-scan.is-in, .mfa-key.is-in { animation: mfaIn 0.26s cubic-bezier(0.22, 1, 0.36, 1); }
 @keyframes mfaIn { from { opacity: 0; transform: translateY(-6px) scale(0.98); } to { opacity: 1; transform: none; } }
 
