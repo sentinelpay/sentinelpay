@@ -2627,7 +2627,9 @@
         var d = new Date(iso);
         if (isNaN(d.getTime())) return '';
         var opts = { year: 'numeric', month: 'short', day: 'numeric' };
-        if (withTime) { opts.hour = '2-digit'; opts.minute = '2-digit'; }
+        // a clock is the 24-hour one everywhere in the dashboard, whatever
+        // the language would pick on its own
+        if (withTime) { opts.hour = '2-digit'; opts.minute = '2-digit'; opts.hourCycle = 'h23'; }
         try {
             opts.timeZone = zoneNow();
             return new Intl.DateTimeFormat(navLang(), opts).format(d);
@@ -10241,9 +10243,8 @@
 
         var apps = null;
         var staffNeeds = false;
-        function when(iso) {
-            return new Date(iso).toLocaleString(navLang(), { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-        }
+        // in the zone chosen in Preferences, on the 24-hour clock
+        var when = function (iso) { return whenText(iso, true); };
         function paint() {
             list.textContent = '';
             warnHost.textContent = '';
