@@ -5700,10 +5700,13 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
 .mfa-steps li + li { margin-top: 0.6rem; }
 /* the key: its groups of four set out as chips, two rows of four across the
    width of the box, and the copy under them */
+.mfa-side { display: grid; align-content: start; gap: 0.85rem; min-width: 0; }
+/* asked for as the sign in dialog asks after a forgotten password */
+.mfa-more { justify-self: start; font-size: 0.82rem; white-space: normal; text-align: left; }
 .mfa-key {
     display: grid;
     gap: 0.45rem;
-    margin-top: 0.55rem;
+    margin: -0.25rem 0 1.1rem;
     padding: 0.5rem;
     border: 1px solid var(--line);
     border-radius: 10px;
@@ -5741,9 +5744,47 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
 .mfa-key-copy svg { width: 14px; height: 14px; }
 .mfa-key-copy:hover { background: var(--nav-on); color: var(--ink); }
 .mfa-key-copy.is-done { background: var(--risk-low-bg); color: var(--risk-low); }
-.mfa-code { text-align: center; font-size: 1.15rem; font-weight: 650; letter-spacing: 0.35em; font-variant-numeric: tabular-nums; }
-/* the spacing is for the six digits, not for the words that stand in for them */
-.mfa-code:placeholder-shown { font-size: 0.9rem; font-weight: 400; letter-spacing: normal; }
+.mfa-key[hidden] { display: none; }
+.mfa-key.is-in { animation: mfaIn 0.26s cubic-bezier(0.22, 1, 0.36, 1); }
+@keyframes mfaIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+/* the six digits, a box each: the sign up dialog's code, in the dashboard's
+   colours so it reads in both themes */
+.mfa-otp { display: flex; justify-content: center; gap: 0.55rem; }
+.mfa-otp input {
+    width: 3.1rem;
+    height: 3.6rem;
+    padding: 0;
+    border: 1.5px solid var(--field-line);
+    border-radius: 14px;
+    background: var(--canvas);
+    font-family: var(--sp-text);
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    color: var(--ink);
+    caret-color: var(--link);
+    outline: none;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.mfa-otp input:focus {
+    border-color: var(--link);
+    background: var(--surface);
+    box-shadow: 0 0 0 4px var(--field-ring);
+    transform: translateY(-1px);
+}
+.mfa-otp input.is-filled { border-color: rgba(0, 170, 220, 0.45); background: rgba(0, 170, 220, 0.06); }
+.mfa-otp.is-wrong input { border-color: var(--danger); background: var(--danger-bg); box-shadow: none; transform: none; }
+.mfa-otp.is-wrong { animation: mfaShake 0.4s ease; }
+@keyframes mfaShake {
+    0%, 100% { transform: none; }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+}
 /* wide enough for the code and its three steps side by side */
 .modal.mfa-modal { width: min(32rem, calc(100vw - 2rem)); max-width: none; }
 .mfa-form .btn-wide { margin-top: 0.85rem; }
@@ -5765,7 +5806,9 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
 .mfa-codes li::marker { color: var(--ink-4); font-weight: 500; }
 .mfa-acts { display: flex; justify-content: center; gap: 0.5rem; margin-bottom: 0.9rem; }
 @media (max-width: 520px) {
+    .mfa-otp { gap: 0.4rem; }
+    .mfa-otp input { width: auto; flex: 1 1 0; min-width: 0; height: 3.2rem; font-size: 1.3rem; }
     .mfa-pair { grid-template-columns: minmax(0, 1fr); justify-items: center; }
-    .mfa-steps { justify-self: stretch; }
+    .mfa-side { justify-self: stretch; }
 }
 

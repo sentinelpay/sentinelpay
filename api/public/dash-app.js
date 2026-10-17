@@ -10231,10 +10231,13 @@
             two.textContent = '';
             var app = document.createElement('div');
             app.className = 'sec-app';
-            var appT = document.createElement('span');
-            appT.className = 'sec-state' + (state.totp ? ' is-on' : '');
-            appT.textContent = state.totp ? t('On') : t('Off');
-            app.appendChild(appT);
+            // On beside the app that is on; with none, the button says it all
+            if (state.totp) {
+                var appT = document.createElement('span');
+                appT.className = 'sec-state is-on';
+                appT.textContent = t('On');
+                app.appendChild(appT);
+            }
             var act = document.createElement('button');
             act.type = 'button';
             if (state.totp) {
@@ -10368,16 +10371,30 @@
             var steps = document.createElement('ol');
             steps.className = 'mfa-steps';
             [t('Open your authenticator app and choose to add an account.'),
-                t('Scan this code with it.'),
-                t('No camera? Enter this key instead:')].forEach(function (x) {
+                t('Scan this code with it.')].forEach(function (x) {
                 var li = document.createElement('li');
                 li.textContent = x;
                 steps.appendChild(li);
             });
+            var side = document.createElement('div');
+            side.className = 'mfa-side';
+            side.appendChild(steps);
+            // the key is there for the reader without a camera, asked for the
+            // way the sign in dialog asks after a forgotten password: a link,
+            // and only then the thing itself
+            var more = document.createElement('button');
+            more.type = 'button';
+            more.className = 'modal-link mfa-more';
+            more.textContent = t('No camera? Enter a key instead');
+            side.appendChild(more);
+            pair.appendChild(side);
+            m.body.appendChild(pair);
+
             // the key in its groups of four, the way an app asks for it, and a
-            // copy beside it that says when it has copied
+            // copy under it that says when it has copied
             var key = document.createElement('div');
             key.className = 'mfa-key';
+            key.hidden = true;
             var groups = document.createElement('span');
             groups.className = 'mfa-key-gs';
             groups.setAttribute('aria-label', t('Key') + ': ' + (out.secret || ''));
@@ -10400,7 +10417,7 @@
             function copyLabel(done) {
                 copy.innerHTML = done ? DONE_I : COPY_I;
                 var tx = document.createElement('span');
-                tx.textContent = done ? t('Copied') : t('Copy');
+                tx.textContent = done ? t('Copied') : t('Copy key');
                 copy.appendChild(tx);
                 copy.classList.toggle('is-done', done);
             }
@@ -10413,43 +10430,119 @@
                 }).catch(function () { toast(t('That did not work.'), 'bad'); });
             });
             key.appendChild(copy);
-            steps.lastChild.appendChild(key);
-            pair.appendChild(steps);
-            m.body.appendChild(pair);
+            m.body.appendChild(key);
+            more.addEventListener('click', function () {
+                key.hidden = !key.hidden;
+                more.textContent = key.hidden ? t('No camera? Enter a key instead') : t('Hide the key');
+                if (!key.hidden) {
+                    key.classList.remove('is-in');
+                    void key.offsetWidth;
+                    key.classList.add('is-in');
+                }
+            });
 
+            // the six digits, a box each, as the sign up dialog asks for the
+            // code it mailed: typing moves on, backspace moves back, a pasted
+            // code fills the row, and the sixth digit sends it
             var form = document.createElement('form');
             form.className = 'mfa-form';
-            var code = document.createElement('input');
-            code.className = 'modal-in mfa-code';
-            code.inputMode = 'numeric';
-            code.autocomplete = 'one-time-code';
-            code.maxLength = 6;
-            code.placeholder = t('Six-digit code');
-            code.setAttribute('aria-label', t('Six-digit code from the app'));
-            code.addEventListener('input', function () { code.value = code.value.replace(/\D/g, '').slice(0, 6); });
-            form.appendChild(code);
+            var row = document.createElement('div');
+            row.className = 'mfa-otp';
+            row.setAttribute('role', 'group');
+            row.setAttribute('aria-label', t('Six-digit code from the app'));
+            var boxes = [];
+            for (var i = 0; i < 6; i++) {
+                var box = document.createElement('input');
+                box.type = 'text';
+                box.inputMode = 'numeric';
+                box.maxLength = 1;
+                box.autocomplete = i === 0 ? 'one-time-code' : 'off';
+                box.setAttribute('aria-label', t('Digit') + ' ' + (i + 1));
+                row.appendChild(box);
+                boxes.push(box);
+            }
+            form.appendChild(row);
             var msg = document.createElement('div');
             msg.className = 'modal-msg';
             form.appendChild(msg);
             var go = wideBtn('Turn on two-factor', 'cta', 'submit');
             form.appendChild(go);
             m.body.appendChild(form);
-            code.focus();
-            form.addEventListener('submit', function (e) {
-                e.preventDefault();
-                if (code.value.length !== 6) { code.focus(); return; }
+
+            function codeValue() { return boxes.map(function (x) { return x.value; }).join(''); }
+            // a fresh digit is a fresh try: the last one's complaint goes
+            function markFilled() {
+                boxes.forEach(function (x) { x.classList.toggle('is-filled', x.value !== ''); });
+                if (codeValue() && msg.textContent) { msg.textContent = ''; msg.className = 'modal-msg'; }
+            }
+            function spread(digits, from) {
+                for (var k = 0; k < 6 - from && k < digits.length; k++) boxes[from + k].value = digits[k];
+                markFilled();
+                row.classList.remove('is-wrong');
+                boxes[Math.min(from + digits.length, 5)].focus();
+                if (codeValue().length === 6) send();
+            }
+            boxes.forEach(function (box, idx) {
+                box.addEventListener('input', function () {
+                    var digits = box.value.replace(/\D/g, '');
+                    if (digits.length > 1) { spread(digits, idx); return; }
+                    box.value = digits;
+                    markFilled();
+                    row.classList.remove('is-wrong');
+                    if (digits && idx < 5) boxes[idx + 1].focus();
+                    if (codeValue().length === 6) send();
+                });
+                box.addEventListener('keydown', function (e) {
+                    if (e.key === 'Backspace' && !box.value && idx > 0) {
+                        e.preventDefault();
+                        boxes[idx - 1].value = '';
+                        markFilled();
+                        boxes[idx - 1].focus();
+                    } else if (e.key === 'ArrowLeft' && idx > 0) { e.preventDefault(); boxes[idx - 1].focus(); }
+                    else if (e.key === 'ArrowRight' && idx < 5) { e.preventDefault(); boxes[idx + 1].focus(); }
+                });
+                box.addEventListener('paste', function (e) {
+                    var text = (e.clipboardData || window.clipboardData).getData('text') || '';
+                    var digits = text.replace(/\D/g, '');
+                    if (!digits) return;
+                    e.preventDefault();
+                    spread(digits, idx);
+                });
+                box.addEventListener('focus', function () { box.select(); });
+            });
+            boxes[0].focus();
+
+            var sending = false;
+            function send() {
+                if (sending) return;
+                var value = codeValue();
+                if (value.length !== 6) {
+                    var gap = boxes.filter(function (x) { return !x.value; })[0];
+                    if (gap) gap.focus();
+                    return;
+                }
+                sending = true;
                 go.disabled = true;
                 msg.textContent = '';
                 msg.className = 'modal-msg';
-                postJson('/v1/account/totp/confirm', { code: code.value }).then(function (res) {
+                postJson('/v1/account/totp/confirm', { code: value }).then(function (res) {
                     showCodes(m, res.codes || [], done);
                 }).catch(function (err) {
+                    sending = false;
                     go.disabled = false;
                     msg.textContent = err.message;
                     msg.className = 'modal-msg is-bad';
-                    code.value = '';
-                    code.focus();
+                    row.classList.remove('is-wrong');
+                    void row.offsetWidth;
+                    row.classList.add('is-wrong');
+                    boxes.forEach(function (x) { x.value = ''; });
+                    markFilled();
+                    boxes[0].focus();
                 });
+            }
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                send();
             });
         }).catch(function (err) {
             wait.textContent = err.message;
