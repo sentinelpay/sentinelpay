@@ -2008,7 +2008,10 @@ async function requireSession(req, res) {
 app.post('/v1/account/totp/start', requireCloudflareOrigin, authTotpLimiter, async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
-    if (me.totpOn) return res.status(409).json({ error: 'Two-factor is already on for this account.' });
+    // another app can be added beside the ones there are, up to a limit
+    if ((await accounts.listFactors(me.userId)).length >= accounts.MAX_FACTORS) {
+        return res.status(409).json({ error: 'This account has as many authenticator apps as it can hold. Remove one first.' });
+    }
     const secret = await accounts.startTotp(me.userId);
     if (!secret) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
     res.set('Cache-Control', 'no-store, private');
@@ -2025,14 +2028,37 @@ app.post('/v1/account/totp/start', requireCloudflareOrigin, authTotpLimiter, asy
 app.post('/v1/account/totp/confirm', requireCloudflareOrigin, authTotpLimiter, async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
-    const out = await accounts.confirmTotp(me.userId, String((req.body || {}).code || ''));
+    const b = req.body || {};
+    const out = await accounts.confirmTotp(me.userId, String(b.code || ''), typeof b.name === 'string' ? b.name : '');
     if (out.reason === 'not-started') return res.status(400).json({ error: 'Start the setup again, then enter a code from the app.' });
-    if (out.reason === 'already-on') return res.status(409).json({ error: 'Two-factor is already on for this account.' });
+    if (out.reason === 'too-many') return res.status(409).json({ error: 'This account has as many authenticator apps as it can hold. Remove one first.' });
     if (out.reason === 'bad-code') return res.status(400).json({ error: 'That code is not right. Check your app and try again.' });
     if (!out.ok) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
     res.set('Cache-Control', 'no-store, private');
     tellMe(me.userId, { topic: 'me' });
-    res.json({ ok: true, codes: out.codes });
+    res.json({ ok: true, factor: out.factor });
+});
+
+// The authenticator apps on the account: their names, when each was added
+// and when it last signed in. Never their secrets.
+app.get('/v1/account/totp', async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    res.set('Cache-Control', 'no-store, private');
+    res.json({ ok: true, factors: await accounts.listFactors(me.userId) });
+});
+
+// One app off the account, on the password.
+app.post('/v1/account/totp/remove', requireCloudflareOrigin, authTotpLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const b = req.body || {};
+    const out = await accounts.removeFactor(me.userId, String(b.id || ''), String(b.password || ''));
+    if (out.reason === 'bad-password') return res.status(401).json({ error: 'That password is not right.' });
+    if (out.reason === 'not-found') return res.status(404).json({ error: 'That app is not on this account.' });
+    if (!out.ok) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
+    tellMe(me.userId, { topic: 'me' });
+    res.json({ ok: true, left: out.left });
 });
 
 app.post('/v1/account/totp/off', requireCloudflareOrigin, authTotpLimiter, async (req, res) => {

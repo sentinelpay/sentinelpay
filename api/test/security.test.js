@@ -150,46 +150,66 @@ test('the sign-in throttle follows the address, account or not', flow, async () 
     await accounts.forget(email);
 });
 
-test('two-factor: enrolling, signing in, reuse, and recovery', flow, async () => {
+// Two-factor holds as many authenticator apps as a careful person keeps, and
+// a code from any of them signs in. There are no recovery codes: a second app
+// on another device is the way back in. One an older account was given still
+// works once, so nobody is locked out by the change.
+test('two-factor: several apps, signing in with any, reuse, and taking them off', flow, async () => {
     const email = freshEmail('twofa');
-    const started = await accounts.startSignup({
-        email, name: 'Ana Anic', password: 'a-very-long-password-1', lang: 'en', flags: [],
-    });
+    const pass = 'a-very-long-password-1';
+    const started = await accounts.startSignup({ email, name: 'Ana Anic', password: pass, lang: 'en', flags: [] });
     const made = await accounts.verifySignup(email, await codeFor(db.blindIndex(email)), started.origin);
     const userId = made.userId || (await db.query('SELECT id FROM users WHERE email_hash = $1', [db.blindIndex(email)])).rows[0].id;
-
-    const secret = await accounts.startTotp(userId);
-    assert.ok(secret);
-
-    let signIn = await accounts.signIn(email, 'a-very-long-password-1');
-    assert.strictEqual(signIn.ok, true, 'an unconfirmed secret must not lock anybody out');
-
-    assert.strictEqual((await accounts.confirmTotp(userId, '000000')).reason, 'bad-code');
     const step = Math.floor(Date.now() / 1000 / 30);
-    const confirmed = await accounts.confirmTotp(userId, totp.codeFor(secret, step));
-    assert.strictEqual(confirmed.ok, true);
-    assert.strictEqual(confirmed.codes.length, 10);
 
-    signIn = await accounts.signIn(email, 'a-very-long-password-1');
+    // the first app
+    const first = await accounts.startTotp(userId);
+    assert.ok(first);
+    let signIn = await accounts.signIn(email, pass);
+    assert.strictEqual(signIn.ok, true, 'an unconfirmed secret must not lock anybody out');
+    assert.strictEqual((await accounts.confirmTotp(userId, '000000', 'iPhone')).reason, 'bad-code');
+    const one = await accounts.confirmTotp(userId, totp.codeFor(first, step), 'iPhone');
+    assert.strictEqual(one.ok, true);
+    assert.strictEqual(one.codes, undefined, 'recovery codes are handed out again');
+    assert.strictEqual(one.factor.name, 'iPhone');
+
+    signIn = await accounts.signIn(email, pass);
     assert.strictEqual(signIn.reason, 'totp-required');
-    assert.ok(signIn.pending);
-
-    assert.strictEqual((await accounts.finishTotp(signIn.pending, totp.codeFor(secret, step))).reason, 'code-used');
+    assert.strictEqual((await accounts.finishTotp(signIn.pending, totp.codeFor(first, step))).reason, 'code-used');
     assert.strictEqual((await accounts.finishTotp(signIn.pending, '000000')).reason, 'bad-code');
-
-    const next = await accounts.finishTotp(signIn.pending, totp.codeFor(secret, step + 1));
+    const next = await accounts.finishTotp(signIn.pending, totp.codeFor(first, step + 1));
     assert.strictEqual(next.ok, true);
-    assert.ok(next.session);
 
-    const again = await accounts.signIn(email, 'a-very-long-password-1');
-    const rescued = await accounts.finishTotp(again.pending, confirmed.codes[0]);
-    assert.strictEqual(rescued.ok, true);
+    // a second app, added while two-factor is on, leaves it on while it is added
+    const second = await accounts.startTotp(userId);
+    assert.notStrictEqual(second, first);
+    assert.strictEqual((await accounts.signIn(email, pass)).reason, 'totp-required', 'adding an app switched two-factor off');
+    const two = await accounts.confirmTotp(userId, totp.codeFor(second, step), '  1Password   work  ');
+    assert.strictEqual(two.ok, true);
+    const apps = await accounts.listFactors(userId);
+    assert.deepStrictEqual(apps.map((f) => f.name), ['iPhone', '1Password work']);
+    assert.ok(apps[0].usedAt, 'the app that signed in does not say so');
+
+    // and either signs in
+    const viaSecond = await accounts.signIn(email, pass);
+    assert.strictEqual((await accounts.finishTotp(viaSecond.pending, totp.codeFor(second, step + 1))).ok, true);
+
+    // a recovery code an older account was given still works, once
+    const old = '12345-67890';
+    await db.query('INSERT INTO recovery_codes (user_id, code_hash) VALUES ($1, $2)', [userId,
+        crypto.createHmac('sha256', db.indexKey() || Buffer.alloc(32)).update('recovery:' + userId + ':' + totp.normaliseRecovery(old), 'utf8').digest('hex')]);
+    const rescued = await accounts.finishTotp((await accounts.signIn(email, pass)).pending, old);
     assert.strictEqual(rescued.usedRecovery, true);
-    assert.strictEqual(rescued.recoveryLeft, 9);
-
-    const third = await accounts.signIn(email, 'a-very-long-password-1');
-    assert.strictEqual((await accounts.finishTotp(third.pending, confirmed.codes[0])).reason, 'bad-code',
+    assert.strictEqual((await accounts.finishTotp((await accounts.signIn(email, pass)).pending, old)).reason, 'bad-code',
         'a spent recovery code must not work twice');
+
+    // taking them off: on the password, one at a time, the last taking two-factor with it
+    assert.strictEqual((await accounts.removeFactor(userId, apps[0].id, 'wrong-password')).reason, 'bad-password');
+    assert.strictEqual((await accounts.removeFactor(userId, '999999999', pass)).reason, 'not-found');
+    assert.deepStrictEqual(await accounts.removeFactor(userId, apps[0].id, pass), { ok: true, left: 1 });
+    assert.strictEqual((await accounts.signIn(email, pass)).reason, 'totp-required', 'two-factor went with the first of two apps');
+    assert.deepStrictEqual(await accounts.removeFactor(userId, apps[1].id, pass), { ok: true, left: 0 });
+    assert.strictEqual((await accounts.signIn(email, pass)).ok, true, 'two-factor stayed on with no app left');
 
     await accounts.forget(email);
 });

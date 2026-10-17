@@ -576,22 +576,24 @@ test('a figure against a limit draws a bar, a plain count its line', () => {
     assert.match(CSS, /\.use-mc-r:has\(\.use-mc-lim\) \.use-mc-v \{ flex: none; white-space: nowrap; \}/, 'the figure breaks to make room for the bar');
 });
 
-// Two-factor is turned on and off from the security page itself, set out as
-// the preferences page sets out a setting: an app is added from a code to
-// scan or a key to type, the recovery codes are shown once with a way to keep
-// them, and removing the app takes the password.
-test('the security page adds and removes an authenticator app', () => {
+// Two-factor is managed from the security page itself: every authenticator
+// app on the account in a row of its own, an app added from a code to scan or
+// a key to type, and one taken off on the password. There are no recovery
+// codes; while there is a single app the page asks for a second.
+test('the security page lists, adds and removes authenticator apps', () => {
     const page = body('function viewSecurity(me) {', 12000);
-    // the preferences page's parts: section titles and notes, cards of rows
     assert.match(page, /sectionTitle\('Two-factor authentication'\)/);
     assert.doesNotMatch(page, /account\/sessions/, 'the sessions are back on the security page');
-    assert.match(page, /fieldRow\(\{ label: 'Authenticator app', control: app \}\)/);
-    assert.match(page, /label: 'Recovery codes'/);
     assert.doesNotMatch(page, /orghCard\(/, 'the page is drawn in the overview cards, not the settings ones');
-    // one action at a time: add with no app, remove with one
-    assert.match(page, /if \(state\.totp\) \{\s*act\.className = 'btn btn-quiet sec-remove';[\s\S]*?\} else \{\s*act\.className = 'btn btn-primary sec-add';/);
+    assert.doesNotMatch(SRC, /Recovery codes|recovery-codes\.txt|function showCodes/, 'recovery codes are shown again');
+    // the apps, a row each, with the action to add one at the head
+    assert.match(page, /fetch\('\/v1\/account\/totp', \{ credentials: 'same-origin' \}\)/);
+    assert.match(page, /apps\.forEach\(function \(f\) \{/);
+    assert.match(page, /removeTwo\(f, apps\.length === 1, load\)/);
     assert.match(page, /t\('Add app'\)/);
     assert.match(page, /t\('No authenticator app yet\.'\)/);
+    // one app is one lost phone from a locked account, and the page says so
+    assert.match(page, /if \(apps\.length === 1\) \{[\s\S]*?t\('Avoid being locked out'\)[\s\S]*?t\('Add another app'\)/);
     // the dialog itself, up to the helpers drawn after it
     const add = SRC.slice(SRC.indexOf('function addTwo(done) {'), SRC.indexOf('function qrSvg(qr) {'));
     assert.ok(add.length > 1000, 'the setup dialog is gone');
@@ -600,17 +602,17 @@ test('the security page adds and removes an authenticator app', () => {
     const qr = body('function qrSvg(qr) {', 1500);
     assert.match(qr, /createElementNS\(NS, 'path'\)/, 'the code to scan is not drawn as a path');
     assert.doesNotMatch(qr, /innerHTML/, 'the code to scan is written as markup it was sent');
-    // three steps, each under its own head, glided between
+    // two steps glided between: the code, then a name and the six digits
     for (const step of ["mfaHead('Scan the code'", "mfaHead('Enter the six digits'", "swap(stepCode)", "m.stepBack.onclick = function () { stepScan(true); };"]) {
         assert.ok(add.includes(step), 'the dialog has lost ' + step);
     }
-    assert.ok(body('function showCodes(m, codes, done) {', 600).includes("mfaHead('Save your recovery codes'"), 'the codes are not the third step');
+    assert.match(add, /postJson\('\/v1\/account\/totp\/confirm', \{ code: value, name: name\.value \}\)/);
+    assert.match(add, /toast\(t\('Authenticator app added'\), 'good'\)/);
     // markup only from the icons written here, never anything the server sent
     assert.doesNotMatch(add, /innerHTML/, 'the setup dialog writes markup');
     for (const m of body('function keyPanel(out) {', 4000).match(/innerHTML\s*=\s*[^;]+;/g) || []) {
         assert.match(m, /^innerHTML = done \? DONE_I : COPY_I;$/, 'the key panel writes markup it was sent: ' + m);
     }
-    assert.match(add, /postJson\('\/v1\/account\/totp\/confirm', \{ code: value \}\)/);
     // the six digits a box each, as the sign up dialog asks for its code, sent
     // when the sixth is in
     assert.match(add, /row\.className = 'mfa-otp';/);
@@ -621,10 +623,12 @@ test('the security page adds and removes an authenticator app', () => {
     assert.match(add, /more\.className = 'modal-link mfa-more';/);
     assert.match(add, /keyCard\.hidden = true;/);
     assert.match(CSS, /\.mfa-key\[hidden\] \{ display: none; \}/);
-    const codes = body('function showCodes(m, codes, done) {', 3000);
-    assert.match(codes, /a\.download = 'sentinelpay-recovery-codes\.txt';/);
-    assert.match(codes, /copyText\(codes\.join\('\\n'\)\)/);
-    const off = body('function removeTwo(done) {', 3000);
+    // one app off, on the password, and the last one says what goes with it
+    const off = body('function removeTwo(app, last, done) {', 3000);
     assert.match(off, /pw\.type = 'password';/);
-    assert.match(off, /postJson\('\/v1\/account\/totp\/off', \{ password: pw\.value \}\)/);
+    assert.match(off, /postJson\('\/v1\/account\/totp\/remove', \{ id: app\.id, password: pw\.value \}\)/);
+    assert.match(off, /last \? 'This is the only app on the account\./);
+    // the sign in dialog no longer offers a recovery code
+    const flowSrc = fs.readFileSync(path.join(__dirname, '..', 'public', 'auth-flow.js'), 'utf8');
+    assert.doesNotMatch(flowSrc, /A recovery code works here/, 'sign in still offers a recovery code');
 });

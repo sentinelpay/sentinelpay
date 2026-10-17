@@ -104,6 +104,31 @@ CREATE TABLE IF NOT EXISTS recovery_codes (
     PRIMARY KEY (user_id, code_hash)
 );
 
+-- Every authenticator app a person has added, so a second phone can stand in
+-- for a lost first one. Each keeps the last step it was used at, so a code is
+-- good once on the app that showed it.
+CREATE TABLE IF NOT EXISTS totp_factors (
+    id         bigserial   PRIMARY KEY,
+    user_id    bigint      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name_enc   text,
+    secret_enc text        NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    last_step  bigint,
+    used_at    timestamptz
+);
+CREATE INDEX IF NOT EXISTS totp_factors_user_idx ON totp_factors (user_id);
+-- the one app an account could have before it could have several, carried
+-- over as it was: the same sealed secret under the same label
+INSERT INTO totp_factors (user_id, secret_enc, created_at, last_step)
+    SELECT u.id, u.totp_enc, u.totp_at, u.totp_last FROM users u
+     WHERE u.totp_at IS NOT NULL AND u.totp_enc IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM totp_factors f WHERE f.user_id = u.id);
+-- users.totp_enc is now only the secret of an app being added, until its
+-- first code confirms it
+UPDATE users SET totp_enc = NULL
+ WHERE totp_at IS NOT NULL AND totp_enc IS NOT NULL
+   AND EXISTS (SELECT 1 FROM totp_factors f WHERE f.user_id = users.id);
+
 CREATE TABLE IF NOT EXISTS totp_pending (
     token_hash text        PRIMARY KEY,
     user_id    bigint      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -649,14 +674,18 @@ async function signIn(email, password) {
     };
 }
 
+// How many authenticator apps one account may hold. Enough for every phone
+// and password manager a careful person keeps; few enough that a list of them
+// is still read.
+const MAX_FACTORS = 10;
+
+// The secret of an app being added waits in users.totp_enc until a code from
+// the app confirms it; two-factor stays as it was meanwhile, on or off.
 async function startTotp(userId) {
     if (!(await init())) return null;
     const secret = totp.newSecret();
     try {
-        await db.query(
-            'UPDATE users SET totp_enc = $1, totp_at = NULL, totp_last = NULL WHERE id = $2',
-            [db.seal('totp:' + userId, secret), userId]
-        );
+        await db.query('UPDATE users SET totp_enc = $1 WHERE id = $2', [db.seal('totp:' + userId, secret), userId]);
     } catch (err) {
         console.error('[accounts] could not start 2fa: ' + err.message);
         return null;
@@ -664,43 +693,101 @@ async function startTotp(userId) {
     audit('2fa-started', { actor: userId });
     return secret;
 }
-async function confirmTotp(userId, code) {
+
+// A code from the app proves it holds the secret: the app joins the account's
+// list under the name it was given, and two-factor is on if it was not.
+// There are no recovery codes. A lost phone is answered by another app on
+// another device, which the security page asks for while there is only one.
+async function confirmTotp(userId, code, name) {
     if (!(await init())) return { ok: false, reason: 'unavailable' };
     let row;
     try {
-        const res = await db.query('SELECT totp_enc, totp_at FROM users WHERE id = $1', [userId]);
+        const res = await db.query(
+            'SELECT u.totp_enc, (SELECT count(*)::int FROM totp_factors f WHERE f.user_id = u.id) AS n FROM users u WHERE u.id = $1',
+            [userId]
+        );
         if (!res.rowCount || !res.rows[0].totp_enc) return { ok: false, reason: 'not-started' };
         row = res.rows[0];
     } catch (err) {
         console.error('[accounts] could not read the 2fa secret: ' + err.message);
         return { ok: false, reason: 'unavailable' };
     }
-    if (row.totp_at) return { ok: false, reason: 'already-on' };
+    if (row.n >= MAX_FACTORS) return { ok: false, reason: 'too-many' };
     const secret = db.open('totp:' + userId, row.totp_enc);
     if (!secret) return { ok: false, reason: 'unavailable' };
     const step = totp.checkCode(secret, code);
     if (step === null) return { ok: false, reason: 'bad-code' };
-    const codes = totp.newRecoveryCodes(10);
+    const label = String(name || '').replace(/\s+/g, ' ').trim().slice(0, 40);
     const client = await db.connect();
+    let factor;
     try {
         await client.query('BEGIN');
-        await client.query('UPDATE users SET totp_at = now(), totp_last = $1 WHERE id = $2', [String(step), userId]);
-        await client.query('DELETE FROM recovery_codes WHERE user_id = $1', [userId]);
-        for (const c of codes) {
-            await client.query('INSERT INTO recovery_codes (user_id, code_hash) VALUES ($1, $2)',
-                [userId, hashRecovery(userId, c)]);
-        }
+        const made = await client.query(
+            'INSERT INTO totp_factors (user_id, name_enc, secret_enc, last_step) VALUES ($1, $2, $3, $4) RETURNING id, created_at',
+            [userId, label ? db.seal('totp-name:' + userId, label) : null, row.totp_enc, String(step)]
+        );
+        await client.query('UPDATE users SET totp_at = COALESCE(totp_at, now()), totp_enc = NULL, totp_last = NULL WHERE id = $1', [userId]);
         await client.query('COMMIT');
+        factor = { id: String(made.rows[0].id), name: label || null, createdAt: made.rows[0].created_at, usedAt: null };
     } catch (err) {
         try { await client.query('ROLLBACK'); } catch (rbErr) {  }
-        console.error('[accounts] could not switch on 2fa: ' + err.message);
+        console.error('[accounts] could not add the app: ' + err.message);
         return { ok: false, reason: 'unavailable' };
     } finally {
         client.release();
     }
-    audit('2fa-on', { actor: userId });
-    return { ok: true, codes };
+    audit(row.n ? '2fa-app-added' : '2fa-on', { actor: userId, detail: label || '' });
+    return { ok: true, factor };
 }
+
+// The apps on an account, oldest first, by the names they were given.
+async function listFactors(userId) {
+    if (!(await init())) return [];
+    try {
+        const res = await db.query(
+            'SELECT id, name_enc, created_at, used_at FROM totp_factors WHERE user_id = $1 ORDER BY created_at, id', [userId]);
+        return res.rows.map((r) => ({
+            id: String(r.id),
+            name: r.name_enc ? db.open('totp-name:' + userId, r.name_enc) : null,
+            createdAt: r.created_at,
+            usedAt: r.used_at,
+        }));
+    } catch (err) {
+        console.error('[accounts] could not list the apps: ' + err.message);
+        return [];
+    }
+}
+
+// Removing an app takes the password. The last one going takes two-factor
+// with it, and whatever recovery codes an older account still holds.
+async function removeFactor(userId, factorId, password) {
+    if (!(await init())) return { ok: false, reason: 'unavailable' };
+    let left;
+    try {
+        const res = await db.query('SELECT password_hash FROM users WHERE id = $1', [userId]);
+        if (!res.rowCount) return { ok: false, reason: 'unavailable' };
+        if (!(await verifyPassword(String(password || ''), res.rows[0].password_hash))) {
+            audit('2fa-off-refused', { actor: userId, detail: 'wrong password' });
+            return { ok: false, reason: 'bad-password' };
+        }
+        const gone = await db.query('DELETE FROM totp_factors WHERE user_id = $1 AND id = $2 RETURNING id',
+            [userId, Number(factorId) || 0]);
+        if (!gone.rowCount) return { ok: false, reason: 'not-found' };
+        const rest = await db.query('SELECT count(*)::int AS n FROM totp_factors WHERE user_id = $1', [userId]);
+        left = rest.rows[0].n;
+        if (!left) {
+            await db.query('UPDATE users SET totp_enc = NULL, totp_at = NULL, totp_last = NULL WHERE id = $1', [userId]);
+            await db.query('DELETE FROM recovery_codes WHERE user_id = $1', [userId]);
+        }
+    } catch (err) {
+        console.error('[accounts] could not remove the app: ' + err.message);
+        return { ok: false, reason: 'unavailable' };
+    }
+    audit(left ? '2fa-app-removed' : '2fa-off', { actor: userId });
+    return { ok: true, left };
+}
+
+// Every app at once, for the older screens that only knew on and off.
 async function disableTotp(userId, password) {
     if (!(await init())) return { ok: false, reason: 'unavailable' };
     try {
@@ -710,14 +797,18 @@ async function disableTotp(userId, password) {
             audit('2fa-off-refused', { actor: userId, detail: 'wrong password' });
             return { ok: false, reason: 'bad-password' };
         }
-        await db.query('UPDATE users SET totp_enc = NULL, totp_at = NULL, totp_last = NULL WHERE id = $1', [userId]);
-        await db.query('DELETE FROM recovery_codes WHERE user_id = $1', [userId]);
+        await clearFactors(userId);
     } catch (err) {
         console.error('[accounts] could not switch off 2fa: ' + err.message);
         return { ok: false, reason: 'unavailable' };
     }
     audit('2fa-off', { actor: userId });
     return { ok: true };
+}
+async function clearFactors(userId) {
+    await db.query('DELETE FROM totp_factors WHERE user_id = $1', [userId]);
+    await db.query('UPDATE users SET totp_enc = NULL, totp_at = NULL, totp_last = NULL WHERE id = $1', [userId]);
+    await db.query('DELETE FROM recovery_codes WHERE user_id = $1', [userId]);
 }
 function hashRecovery(userId, code) {
     return crypto.createHmac('sha256', db.indexKey() || Buffer.alloc(32))
@@ -742,7 +833,7 @@ async function finishTotp(pendingToken, code) {
     let row;
     try {
         const res = await db.query(
-            'SELECT p.token_hash, p.user_id, p.tries, u.totp_enc, u.totp_last, u.email_hash, u.email_enc, u.name_enc, u.lang' +
+            'SELECT p.token_hash, p.user_id, p.tries, u.email_hash, u.email_enc, u.name_enc, u.lang' +
             ' FROM totp_pending p JOIN users u ON u.id = p.user_id' +
             ' WHERE p.token_hash = $1 AND p.expires_at > now()',
             [hashToken(String(pendingToken || ''))]
@@ -759,17 +850,28 @@ async function finishTotp(pendingToken, code) {
         audit('2fa-refused', { actor: row.user_id, detail: 'out of tries' });
         return { ok: false, reason: 'too-many-attempts' };
     }
-    const secret = db.open('totp:' + row.user_id, row.totp_enc);
-    const step = secret ? totp.checkCode(secret, code) : null;
+    // a code from any of the apps on the account; each app's own last step
+    // keeps a code it showed from being used twice
+    const apps = await db.query('SELECT id, secret_enc, last_step FROM totp_factors WHERE user_id = $1', [row.user_id])
+        .catch(() => ({ rows: [] }));
+    let step = null;
+    let app = null;
+    for (const f of apps.rows) {
+        const secret = db.open('totp:' + row.user_id, f.secret_enc);
+        const at = secret ? totp.checkCode(secret, code) : null;
+        if (at !== null) { step = at; app = f; break; }
+    }
     let usedRecovery = false;
     if (step !== null) {
-        if (row.totp_last !== null && String(row.totp_last) === String(step)) {
-
+        if (app.last_step !== null && String(app.last_step) === String(step)) {
             audit('2fa-refused', { actor: row.user_id, detail: 'code reused' });
             return { ok: false, reason: 'code-used' };
         }
-        await db.query('UPDATE users SET totp_last = $1 WHERE id = $2', [String(step), row.user_id]).catch(() => {});
+        await db.query('UPDATE totp_factors SET last_step = $1, used_at = now() WHERE id = $2', [String(step), app.id]).catch(() => {});
     } else {
+        // Recovery codes are no longer given out. One an older account was
+        // given before then still works, once, so nobody is locked out by the
+        // change; when the last of them is spent there are no more.
         const spent = await db.query(
             'UPDATE recovery_codes SET used_at = now() WHERE user_id = $1 AND code_hash = $2 AND used_at IS NULL RETURNING 1',
             [row.user_id, hashRecovery(row.user_id, code)]
@@ -1167,6 +1269,7 @@ module.exports = {
     init, startSignup, resendSignup, verifySignup, exists, inspect, purge, forget, status,
     audit, loginHold, recentAudit, noteDevice,
     startTotp, confirmTotp, disableTotp, startTotpPending, finishTotp, recoveryLeft,
+    listFactors, removeFactor, clearFactors, MAX_FACTORS,
     changePassword, listSessions, revokeOtherSessions, deleteAccount,
     startReset, readReset, finishReset, RESET_TTL_MIN, RESET_RESEND_WAIT_S,
     readUser,

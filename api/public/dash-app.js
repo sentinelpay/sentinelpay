@@ -10210,92 +10210,119 @@
         page.appendChild(pageHead('Security',
             'What it takes to sign in to this account, beyond the password.'));
 
-        // ---- two-factor, as the preferences page sets out a setting: a title,
-        // a line on what it is for, and a card of rows with the control at the
-        // end of each. What the account says about itself is read fresh rather
-        // than from the frame the page was drawn with, because this is where
-        // it changes.
-        page.appendChild(sectionTitle('Two-factor authentication'));
-        page.appendChild(sectionNote('After your password, a six-digit code from an authenticator app such as Google Authenticator or 1Password. Someone who has your password still cannot get in without your phone.'));
-        var two = document.createElement('div');
-        two.className = 'card sec-card';
-        page.appendChild(two);
+        // ---- two-factor: every authenticator app on the account, a row each,
+        // and the way to add one at the head of the section. There are no
+        // recovery codes, so while there is only one app the page asks for a
+        // second on another device, the way back in if the first is lost.
+        var head = document.createElement('div');
+        head.className = 'sec-head';
+        var headT = document.createElement('div');
+        headT.className = 'sec-head-t';
+        headT.appendChild(sectionTitle('Two-factor authentication'));
+        headT.appendChild(sectionNote('After your password, a six-digit code from an authenticator app such as Google Authenticator or 1Password. Someone who has your password still cannot get in without your phone.'));
+        head.appendChild(headT);
+        var add = document.createElement('button');
+        add.type = 'button';
+        add.className = 'btn btn-primary sec-add';
+        add.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
+            'stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
+        add.appendChild(document.createTextNode(t('Add app')));
+        add.addEventListener('click', function () { addTwo(load); });
+        head.appendChild(add);
+        page.appendChild(head);
 
-        var state = { totp: Boolean(me.totpOn), totpSince: null, recoveryLeft: null, staffNeeds2fa: false };
-        function since() {
-            return state.totpSince
-                ? fill('Added {date}', { date: new Date(state.totpSince).toLocaleDateString(navLang(), { day: 'numeric', month: 'short', year: 'numeric' }) })
-                : '';
+        var warn = document.createElement('div');
+        page.appendChild(warn);
+        var list = document.createElement('div');
+        list.className = 'card sec-card';
+        page.appendChild(list);
+
+        var apps = null;
+        var staffNeeds = false;
+        function when(iso) {
+            return new Date(iso).toLocaleString(navLang(), { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
         }
-        function paintTwo() {
-            two.textContent = '';
-            var app = document.createElement('div');
-            app.className = 'sec-app';
-            // On beside the app that is on; with none, the button says it all
-            if (state.totp) {
-                var appT = document.createElement('span');
-                appT.className = 'sec-state is-on';
-                appT.textContent = t('On');
-                app.appendChild(appT);
-            }
-            var act = document.createElement('button');
-            act.type = 'button';
-            if (state.totp) {
-                act.className = 'btn btn-quiet sec-remove';
-                act.textContent = t('Remove');
-                act.addEventListener('click', function () { removeTwo(loadTwo); });
-            } else {
-                act.className = 'btn btn-primary sec-add';
-                act.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
+        function paint() {
+            warn.textContent = '';
+            list.textContent = '';
+            if (apps === null) return;
+            // one app is one lost phone from a locked account
+            if (apps.length === 1) {
+                var box = document.createElement('div');
+                box.className = 'sec-warn';
+                var mark = document.createElement('span');
+                mark.className = 'sec-warn-i';
+                mark.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+                    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                    '<path d="M12 8.5v5M12 16.9v.1"/><path d="M10.3 4.3 2.8 18a1.8 1.8 0 0 0 1.6 2.7h15.2A1.8 1.8 0 0 0 21.2 18L13.7 4.3a1.9 1.9 0 0 0-3.4 0Z"/></svg>';
+                box.appendChild(mark);
+                var txt = document.createElement('div');
+                txt.className = 'sec-warn-t';
+                var h = document.createElement('div');
+                h.className = 'sec-warn-h';
+                h.textContent = t('Avoid being locked out');
+                txt.appendChild(h);
+                var p = document.createElement('p');
+                p.className = 'sec-warn-p';
+                p.textContent = t('Add a second authenticator app on another device now. If the only phone with an app on it is lost, you cannot sign in until support has confirmed the account is yours.');
+                txt.appendChild(p);
+                box.appendChild(txt);
+                var more = document.createElement('button');
+                more.type = 'button';
+                more.className = 'btn sec-warn-btn';
+                more.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
                     'stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
-                act.appendChild(document.createTextNode(t('Add app')));
-                act.addEventListener('click', function () { addTwo(loadTwo); });
+                more.appendChild(document.createTextNode(t('Add another app')));
+                more.addEventListener('click', function () { addTwo(load); });
+                box.appendChild(more);
+                warn.appendChild(box);
             }
-            app.appendChild(act);
-            var row = fieldRow({ label: 'Authenticator app', control: app });
-            var hint = document.createElement('div');
-            hint.className = 'fld-hint';
-            hint.textContent = state.totp ? (since() || t('A code from the app is asked for on every new sign in.')) : t('No authenticator app yet.');
-            row.querySelector('.fld-l').appendChild(hint);
-            two.appendChild(row);
-
-            if (state.totp) {
-                var left = document.createElement('span');
-                left.className = 'sec-fig' + (state.recoveryLeft !== null && state.recoveryLeft <= 2 ? ' is-low' : '');
-                left.textContent = state.recoveryLeft === null ? '—' : fill('{n} of 10 left', { n: String(state.recoveryLeft) });
-                two.appendChild(fieldRow({
-                    label: 'Recovery codes',
-                    hint: state.recoveryLeft !== null && state.recoveryLeft <= 2
-                        ? 'Few are left. Remove the app and add it again to get ten new ones.'
-                        : 'Each works once, in place of a code from the app, if the phone is lost.',
-                    control: left
-                }));
+            if (!apps.length) {
+                var none = document.createElement('div');
+                none.className = 'sec-none';
+                none.textContent = t('No authenticator app yet.');
+                list.appendChild(none);
+                if (staffNeeds) {
+                    var need = document.createElement('div');
+                    need.className = 'card-foot sec-need';
+                    need.textContent = t('This address is on the staff list, so two-factor is required before the staff pages will open.');
+                    list.appendChild(need);
+                }
+                return;
             }
-            if (!state.totp && state.staffNeeds2fa) {
-                var need = document.createElement('div');
-                need.className = 'card-foot sec-need';
-                need.textContent = t('This address is on the staff list, so two-factor is required before the staff pages will open.');
-                two.appendChild(need);
-            }
+            apps.forEach(function (f) {
+                var del = document.createElement('button');
+                del.type = 'button';
+                del.className = 'btn btn-quiet sec-remove';
+                del.textContent = t('Delete');
+                del.addEventListener('click', function () { removeTwo(f, apps.length === 1, load); });
+                var row = fieldRow({ label: 'Authenticator app', control: del });
+                if (f.name) row.querySelector('.fld-label').textContent = f.name;
+                var sub = document.createElement('div');
+                sub.className = 'fld-hint';
+                sub.textContent = fill('Added {date}', { date: when(f.createdAt) }) +
+                    (f.usedAt ? '  ·  ' + fill('last used {date}', { date: when(f.usedAt) }) : '');
+                row.querySelector('.fld-l').appendChild(sub);
+                list.appendChild(row);
+            });
         }
-        function loadTwo() {
-            fetch('/v1/auth/me', { credentials: 'same-origin' })
-                .then(function (r) { return r.json(); })
-                .then(function (j) {
-                    if (!j || !j.signedIn) return;
-                    state.totp = Boolean(j.totp);
-                    state.totpSince = j.totpSince || null;
-                    state.recoveryLeft = j.totp ? Number(j.recoveryLeft || 0) : null;
-                    state.staffNeeds2fa = Boolean(j.staffNeeds2fa);
-                    paintTwo();
-                })
-                .catch(function () { paintTwo(); });
+        function load() {
+            Promise.all([
+                fetch('/v1/account/totp', { credentials: 'same-origin' }).then(function (r) { return r.json(); }),
+                fetch('/v1/auth/me', { credentials: 'same-origin' }).then(function (r) { return r.json(); })
+            ]).then(function (got) {
+                apps = (got[0] && got[0].factors) || [];
+                staffNeeds = Boolean(got[1] && got[1].staffNeeds2fa);
+                paint();
+            }).catch(function () {
+                apps = apps || [];
+                paint();
+            });
         }
-        paintTwo();
-        loadTwo();
+        load();
 
-        // two-factor turned on or off from another screen
-        onLive(function (e) { if (e.topic === 'me') loadTwo(); });
+        // an app added or removed from another screen
+        onLive(function (e) { if (e.topic === 'me') load(); });
         return page;
     }
 
@@ -10351,10 +10378,10 @@
         return head;
     }
 
-    // Adding an authenticator app, in three steps the dialog glides between as
+    // Adding an authenticator app, in two steps the dialog glides between as
     // the sign in dialog does: the code to scan, with the key behind a link
-    // for the reader without a camera; the six digits back, a box each; and
-    // the recovery codes, shown this once with a way to keep them.
+    // for the reader without a camera; then a name for the app and the six
+    // digits back, a box each.
     function addTwo(done) {
         var m = modalShell('Add an authenticator app', '');
         m.box.classList.add('mfa-modal');
@@ -10447,6 +10474,15 @@
                     'Type the code the app shows for Sentinelpay. It changes every 30 seconds.'));
                 var form = document.createElement('form');
                 form.className = 'mfa-form';
+                // a name to tell this app from the others by, when there are several
+                var name = document.createElement('input');
+                name.type = 'text';
+                name.className = 'modal-in mfa-name';
+                name.maxLength = 40;
+                name.autocomplete = 'off';
+                name.placeholder = t('Name this app, e.g. iPhone or 1Password');
+                name.setAttribute('aria-label', t('Name of the app'));
+                form.appendChild(name);
                 var row = document.createElement('div');
                 row.className = 'mfa-otp';
                 row.setAttribute('role', 'group');
@@ -10511,7 +10547,11 @@
                     });
                     box.addEventListener('focus', function () { box.select(); });
                 });
-                setTimeout(function () { boxes[0].focus(); }, 60);
+                setTimeout(function () { name.focus(); }, 60);
+                // the name is said, then the digits: enter moves on rather than sends
+                name.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') { e.preventDefault(); boxes[0].focus(); }
+                });
 
                 var sending = false;
                 function send() {
@@ -10526,9 +10566,9 @@
                     go.disabled = true;
                     msg.textContent = '';
                     msg.className = 'modal-msg';
-                    postJson('/v1/account/totp/confirm', { code: value }).then(function (res) {
-                        m.stepBack.hidden = true;
-                        swap(function () { showCodes(m, res.codes || [], done); });
+                    postJson('/v1/account/totp/confirm', { code: value, name: name.value }).then(function () {
+                        m.shut();
+                        toast(t('Authenticator app added'), 'good');
                         if (done) done();
                     }).catch(function (err) {
                         sending = false;
@@ -10616,67 +10656,13 @@
         return key;
     }
 
-    // ---- 3: the recovery codes, each good once, shown the one time there is
-    // to show them, with a copy and a file to keep them in
-    function showCodes(m, codes, done) {
-        m.body.appendChild(mfaHead('Save your recovery codes',
-            'Two-factor is on. Keep these recovery codes somewhere safe and away from your phone. Each one works once, and this is the only time they are shown.'));
-        // two columns, the left against the left edge and the right against
-        // the right, each code behind its number in a column of its own width
-        var grid = document.createElement('ol');
-        grid.className = 'mfa-codes';
-        codes.forEach(function (c, i) {
-            var li = document.createElement('li');
-            var n = document.createElement('span');
-            n.className = 'mfa-code-n';
-            n.textContent = (i + 1) + '.';
-            li.appendChild(n);
-            var v = document.createElement('span');
-            v.className = 'mfa-code-v';
-            v.textContent = c;
-            li.appendChild(v);
-            grid.appendChild(li);
-        });
-        m.body.appendChild(grid);
-        var acts = document.createElement('div');
-        acts.className = 'mfa-acts';
-        var copy = document.createElement('button');
-        copy.type = 'button';
-        copy.className = 'btn btn-quiet';
-        copy.textContent = t('Copy codes');
-        copy.addEventListener('click', function () {
-            copyText(codes.join('\n')).then(function () { toast(t('Codes copied'), 'good'); });
-        });
-        acts.appendChild(copy);
-        var file = document.createElement('button');
-        file.type = 'button';
-        file.className = 'btn btn-quiet';
-        file.textContent = t('Download as .txt');
-        file.addEventListener('click', function () {
-            var text = t('Sentinelpay recovery codes') + '\n' + (lastMe && lastMe.email ? lastMe.email + '\n' : '') +
-                new Date().toISOString().slice(0, 10) + '\n\n' + codes.join('\n') + '\n\n' +
-                t('Each code works once, in place of a code from the app.') + '\n';
-            var href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
-            var a = document.createElement('a');
-            a.href = href;
-            a.download = 'sentinelpay-recovery-codes.txt';
-            document.body.appendChild(a);
-            a.click();
-            a.parentNode.removeChild(a);
-            setTimeout(function () { URL.revokeObjectURL(href); }, 60 * 1000);
-        });
-        acts.appendChild(file);
-        m.body.appendChild(acts);
-        var ok = wideBtn('I have saved them', 'cta');
-        ok.addEventListener('click', function () { m.shut(); if (done) done(); });
-        m.body.appendChild(ok);
-    }
-
-    // Removing the app takes the password: the one thing a person who found the
-    // laptop open does not have.
-    function removeTwo(done) {
-        var m = modalShell('Remove the authenticator app',
-            'Enter your password to confirm. After this, your password alone signs you in.');
+    // Removing an app takes the password: the one thing a person who found the
+    // laptop open does not have. The last one going takes two-factor with it,
+    // and the dialog says so.
+    function removeTwo(app, last, done) {
+        var m = modalShell(fill('Remove {name}', { name: app.name || t('Authenticator app') }),
+            last ? 'This is the only app on the account. Two-factor goes off with it, and your password alone signs you in.'
+                : 'Enter your password to confirm. The other apps on the account keep working.');
         var form = document.createElement('form');
         var pw = document.createElement('input');
         pw.type = 'password';
@@ -10702,9 +10688,9 @@
             yes.disabled = true;
             msg.textContent = '';
             msg.className = 'modal-msg';
-            postJson('/v1/account/totp/off', { password: pw.value }).then(function () {
+            postJson('/v1/account/totp/remove', { id: app.id, password: pw.value }).then(function (res) {
                 m.shut();
-                toast(t('Two-factor is off.'), 'good');
+                toast(res.left ? t('Authenticator app removed') : t('Two-factor is off.'), 'good');
                 if (done) done();
             }).catch(function (err) {
                 yes.disabled = false;

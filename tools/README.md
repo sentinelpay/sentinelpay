@@ -74,6 +74,27 @@ one cannot, or it would tell the world who has an account; but `finishReset`
 creates an account when none exists, so here a typo would quietly make a second
 empty one instead of letting you back into the one you meant.
 
+# taking two-factor off an account
+
+There are no recovery codes. The security page asks for a second authenticator
+app on another device while there is only one, and either app signs in. A person
+who has lost every device with an app on it writes to support, and once support
+is satisfied the person writing owns the account -- on a call, from the address
+on the account, and confirmed by the owner of their organisation when they are
+not the owner -- this takes two-factor off:
+
+    DATABASE_URL=... SUBMISSIONS_KEY=... node tools/remove-2fa.js them@example.com
+    DATABASE_URL=... SUBMISSIONS_KEY=... node tools/remove-2fa.js them@example.com \
+        --yes --why "ticket 1042, call with the owner"
+
+Without `--yes` it lists the apps on the account and does nothing. With it,
+every app comes off, two-factor is off, every session the account has is ended,
+and the audit trail records `2fa-off-by-support` with the reason given in
+`--why`, which it will not run without. The person then signs in with their
+password and adds an app again.
+
+It runs against production: that is where people lose phones.
+
 # print fonts
 
 Cuts fixed weights out of the variable fonts in `api/public/fonts` into
