@@ -10242,15 +10242,19 @@
         var list = document.createElement('div');
         list.className = 'card sec-card';
         page.appendChild(list);
+        // loads in the shape of an app's row, as every other page loads in
+        // the shape of what it is loading; nothing to add to until it is known
+        add.hidden = true;
+        skBusy(list).appendChild(skFactors(1));
 
         var apps = null;
         var staffNeeds = false;
         // in the zone chosen in Preferences, on the 24-hour clock
         var when = function (iso) { return whenText(iso, true); };
         function paint() {
+            if (apps === null) return;
             list.textContent = '';
             warnHost.textContent = '';
-            if (apps === null) return;
             add.hidden = apps.length >= MFA_MAX;
             if (apps.length === 1) {
                 var box = document.createElement('div');
@@ -10272,21 +10276,11 @@
                 p2.textContent = t('Add a second authenticator app on another device now. There are no recovery codes, so if the only phone with an app on it is lost, you cannot sign in until support has confirmed the account is yours.');
                 txt.appendChild(p2);
                 box.appendChild(txt);
-                var more = document.createElement('button');
-                more.type = 'button';
-                more.className = 'btn sec-warn-btn';
-                more.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
-                    'stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
-                more.appendChild(document.createTextNode(t('Add another app')));
-                more.addEventListener('click', function () { addTwo(load); });
-                box.appendChild(more);
                 warnHost.appendChild(box);
             }
             if (!apps.length) {
-                var none = document.createElement('div');
-                none.className = 'sec-none';
-                none.textContent = t('No authenticator app yet.');
-                list.appendChild(none);
+                list.appendChild(emptyState('No authenticator app yet',
+                    'When you add one it will appear here, with when it was added and when it was last used.'));
                 if (staffNeeds) {
                     var need = document.createElement('div');
                     need.className = 'card-foot sec-need';
@@ -11236,6 +11230,19 @@
                 skEl('span', 'org-t', [skEl('span', 'org-n', [sk(skw(7, i), 13)]), skEl('span', 'org-sub', [sk('7rem', 10)])]),
                 sk(72, 22, 'pill')
             ])]));
+        }
+        return f;
+    }
+
+    // Authenticator apps on an account: a name and when it was added on the
+    // left, its Delete on the right, the rows the security page draws.
+    function skFactors(n) {
+        var f = document.createDocumentFragment();
+        for (var i = 0; i < n; i++) {
+            f.appendChild(skEl('div', 'fld', [
+                skEl('div', 'fld-l', [skEl('div', 'fld-label', [sk(skw(8, i), 13)]), skEl('div', 'fld-hint', [sk(skw(13, i + 1), 10)])]),
+                skEl('div', 'fld-r', [sk('4.6rem', 32)])
+            ]));
         }
         return f;
     }

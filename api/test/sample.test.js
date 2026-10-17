@@ -487,7 +487,7 @@ test('the usage page loads in the shape it ends in', () => {
 // served with the sidebar, the corner and a page already sketched in.
 test('every page loads in its own shape, the shell included', () => {
     assert.doesNotMatch(SRC, /function waiting\(\)|waiting\(\)\)/, 'a page loads as the shared grey rows again');
-    for (const f of ['skAlerts', 'skLatest', 'skChecks', 'skTeam', 'skTokens', 'skProjects', 'skOrgs', 'skLogs', 'skBilling', 'skPage']) {
+    for (const f of ['skAlerts', 'skLatest', 'skChecks', 'skTeam', 'skTokens', 'skProjects', 'skOrgs', 'skFactors', 'skLogs', 'skBilling', 'skPage']) {
         assert.match(SRC, new RegExp('function ' + f + '\\('), f + ' is gone');
         assert.match(SRC, new RegExp('\\b' + f + '\\(\\d*\\)(?!\\s*\\{)'), f + ' is never used');
     }
@@ -593,11 +593,14 @@ test('the security page names, adds and removes authenticator apps', () => {
     assert.match(page, /add\.hidden = apps\.length >= MFA_MAX;/);
     assert.match(SRC, /var MFA_MAX = 3;/);
     assert.match(CSS, /\.sec-add\[hidden\] \{ display: none; \}/);
-    assert.match(page, /t\('No authenticator app yet\.'\)/);
+    // the empty state the tokens page has, and a row's shape while it loads
+    assert.match(page, /emptyState\('No authenticator app yet',/);
+    assert.match(page, /skBusy\(list\)\.appendChild\(skFactors\(1\)\);/);
     // with a single app, the warning the token drawer gives a token about to
-    // get everything, asking for a second
+    // get everything, asking for a second; the button to add one stays at the head
     assert.match(page, /if \(apps\.length === 1\) \{\s*var box = document\.createElement\('div'\);\s*box\.className = 'warn';/);
-    assert.match(page, /t\('Avoid being locked out'\)[\s\S]*?t\('Add another app'\)/);
+    assert.match(page, /t\('Avoid being locked out'\)/);
+    assert.doesNotMatch(SRC, /Add another app|sec-warn-btn/, 'the warning has a button of its own again');
     // the dialog itself, up to the helpers drawn after it
     const add = SRC.slice(SRC.indexOf('function addTwo(done) {'), SRC.indexOf('function qrSvg(qr) {'));
     assert.ok(add.length > 1000, 'the setup dialog is gone');

@@ -5665,29 +5665,6 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
 .sec-add svg { width: 14px; height: 14px; }
 .sec-remove { color: var(--danger); }
 .sec-warn-host { margin-bottom: 0.8rem; }
-/* the warning's own action, at its end, as the token drawer has none of */
-.sec-warn-host .warn { align-items: center; }
-.sec-warn-btn {
-    flex: none;
-    margin-left: auto;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    white-space: nowrap;
-    background: var(--surface);
-    color: var(--ink);
-    box-shadow: inset 0 0 0 1px var(--line);
-}
-.sec-warn-btn svg { width: 14px; height: 14px; }
-.sec-warn-btn:hover:not([disabled]) { background: var(--hover); }
-/* on a phone the words stay beside the mark and the button goes under them */
-@media (max-width: 620px) {
-    .sec-warn-host .warn { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; }
-    .sec-warn-btn { grid-column: 2; justify-self: start; margin-left: 0; margin-top: 0.3rem; }
-}
-.sec-none { padding: 1rem 1.15rem; font-size: 0.86rem; color: var(--ink-4); }
-.sec-card .sec-need { justify-content: flex-start; font-size: 0.8rem; line-height: 1.5; color: var(--risk-mid); }
-
 /* each app's Delete at the end of its row, as the preferences rows end */
 .sec-card .fld-r { display: flex; justify-content: flex-end; }
 
