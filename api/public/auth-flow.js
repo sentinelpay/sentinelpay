@@ -1272,7 +1272,7 @@
         tBtn.type = 'submit';
         totpPanel.appendChild(tBtn);
         var tFoot = el('div', 'sp-auth-vfoot');
-        var tNote = el('p', 'sp-auth-hint', 'Lost the phone? Write to support@sentinelpay.org and we will help you back in.');
+        var tNote = el('p', 'sp-auth-hint', 'Lost the phone? A code from another app you added works here, or write to support@sentinelpay.org.');
         tFoot.appendChild(tNote);
         var tBack = el('button', 'sp-auth-linkbtn', 'Back to sign in');
         tBack.type = 'button';
