@@ -5694,7 +5694,8 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
     padding: 0.85rem;
     border-radius: 18px;
     background: #fff;
-    box-shadow: 0 0 0 1px var(--line), 0 18px 40px -24px rgba(14, 35, 88, 0.55);
+    /* a hairline round the white and nothing under it */
+    box-shadow: 0 0 0 1px var(--line);
 }
 .mfa-scan[hidden] { display: none; }
 .mfa-qr { display: block; width: 100%; height: 100%; }
