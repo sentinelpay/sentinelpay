@@ -601,6 +601,9 @@ test('the security page names, adds and removes authenticator apps', () => {
     assert.match(page, /if \(apps\.length === 1\) \{\s*var box = document\.createElement\('div'\);\s*box\.className = 'warn';/);
     assert.match(page, /t\('Avoid being locked out'\)/);
     assert.doesNotMatch(SRC, /Add another app|sec-warn-btn/, 'the warning has a button of its own again');
+    // amber, and drawn without the drawer's entrance, which over the loading
+    // row read as a blink
+    assert.match(CSS, /\.sec-warn-host \.warn \{ border-color: var\(--risk-mid\); background: var\(--risk-mid-bg\); animation: none; \}/);
     // on a phone Delete stays beside the app's name, as a switch does
     assert.match(page, /row\.classList\.add\('is-sw'\);/);
     // no answer at all is said in words, not as the browser's "Failed to fetch"

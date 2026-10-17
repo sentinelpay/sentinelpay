@@ -5665,6 +5665,12 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
 .sec-add svg { width: 14px; height: 14px; }
 .sec-remove { color: var(--danger); }
 .sec-warn-host { margin-bottom: 0.8rem; }
+/* the token drawer's warning, in the amber of a thing to do rather than the
+   red of a thing being done; and without its entrance, which belongs to a
+   warning that appears on a click, not to one that arrives with the page:
+   faded in over the loading row it read as a blink */
+.sec-warn-host .warn { border-color: var(--risk-mid); background: var(--risk-mid-bg); animation: none; }
+.sec-warn-host .warn-i { background: var(--risk-mid); }
 /* each app's Delete at the end of its row, as the preferences rows end */
 .sec-card .fld-r { display: flex; justify-content: flex-end; }
 
