@@ -199,13 +199,12 @@ test('two-factor: up to three apps, signing in with any, reuse, and taking them 
     assert.strictEqual((await accounts.finishTotp((await accounts.signIn(email, pass)).pending, old)).reason, 'bad-code',
         'a spent recovery code must not work twice');
 
-    // taking them off, on the password, the last taking two-factor with it
-    assert.strictEqual((await accounts.removeFactor(userId, apps[0].id, 'wrong-password')).reason, 'bad-password');
-    assert.strictEqual((await accounts.removeFactor(userId, '999999999', pass)).reason, 'not-found');
-    assert.deepStrictEqual(await accounts.removeFactor(userId, apps[0].id, pass), { ok: true, left: 2 });
-    assert.deepStrictEqual(await accounts.removeFactor(userId, apps[1].id, pass), { ok: true, left: 1 });
+    // taking them off, one at a time, the last taking two-factor with it
+    assert.strictEqual((await accounts.removeFactor(userId, '999999999')).reason, 'not-found');
+    assert.deepStrictEqual(await accounts.removeFactor(userId, apps[0].id), { ok: true, left: 2 });
+    assert.deepStrictEqual(await accounts.removeFactor(userId, apps[1].id), { ok: true, left: 1 });
     assert.strictEqual((await accounts.signIn(email, pass)).reason, 'totp-required', 'two-factor went before the last app');
-    assert.deepStrictEqual(await accounts.removeFactor(userId, apps[2].id, pass), { ok: true, left: 0 });
+    assert.deepStrictEqual(await accounts.removeFactor(userId, apps[2].id), { ok: true, left: 0 });
     assert.strictEqual((await accounts.signIn(email, pass)).ok, true, 'two-factor stayed on with no app left');
 
     await accounts.forget(email);
@@ -454,4 +453,17 @@ test('the setup code is a QR code of the authenticator address', () => {
     const index = require('fs').readFileSync(require('path').join(__dirname, '..', 'index.js'), 'utf8');
     assert.match(index, /qr: qrPath\(totp\.otpauthUrl\(secret, me\.email \|\| 'sentinelpay', 'Sentinelpay'\)\)/, 'the setup answer carries no code to scan');
     assert.ok(require('fs').existsSync(require('path').join(__dirname, '..', 'vendor', 'qrcode-generator-1.4.4', 'LICENSE.txt')), 'the encoder has no licence beside it');
+});
+
+// Removing an app asks for no password. What stands in for it is the session:
+// only one that has passed a code from an app, at sign in or by adding an app,
+// may ask, so a laptop left signed in with the password alone cannot take
+// two-factor off.
+test('an app comes off only from a session that passed the second step', () => {
+    const index = require('fs').readFileSync(require('path').join(__dirname, '..', 'index.js'), 'utf8');
+    const route = index.slice(index.indexOf("app.post('/v1/account/totp/remove'"), index.indexOf("app.post('/v1/account/totp/off'"));
+    assert.match(route, /if \(!me\.mfa\) \{\s*return res\.status\(403\)/, 'a session without the second step can remove an app');
+    assert.doesNotMatch(route, /password/, 'removing an app asks for the password again');
+    const confirm = index.slice(index.indexOf("app.post('/v1/account/totp/confirm'"), index.indexOf("app.get('/v1/account/totp'"));
+    assert.match(confirm, /await accounts\.markSessionMfa\(readSessionCookie\(req\)\);/, 'adding an app does not count as the second step');
 });

@@ -627,7 +627,9 @@ test('the security page names, adds and removes authenticator apps', () => {
     assert.match(add, /toast\(t\('Authenticator app added'\), 'good'\)/);
     // markup only from the icons written here, never anything the server sent
     assert.doesNotMatch(add, /innerHTML/, 'the setup dialog writes markup');
-    for (const m of body('function keyPanel(out) {', 4000).match(/innerHTML\s*=\s*[^;]+;/g) || []) {
+    const keyPanel = SRC.slice(SRC.indexOf('function keyPanel(out) {'), SRC.indexOf('function removeTwo(app, last, done) {'));
+    assert.ok(keyPanel.length > 500, 'the key panel is gone');
+    for (const m of keyPanel.match(/innerHTML\s*=\s*[^;]+;/g) || []) {
         assert.match(m, /^innerHTML = done \? DONE_I : COPY_I;$/, 'the key panel writes markup it was sent: ' + m);
     }
     // the six digits a box each, as the sign up dialog asks for its code, sent
@@ -640,11 +642,12 @@ test('the security page names, adds and removes authenticator apps', () => {
     assert.match(add, /more\.className = 'modal-link mfa-more';/);
     assert.match(add, /keyCard\.hidden = true;/);
     assert.match(CSS, /\.mfa-key\[hidden\] \{ display: none; \}/);
-    // one app off, on the password, and the last one says what goes with it
-    const off = body('function removeTwo(app, last, done) {', 3000);
-    assert.match(off, /pw\.type = 'password';/);
-    assert.match(off, /postJson\('\/v1\/account\/totp\/remove', \{ id: app\.id, password: pw\.value \}\)/);
-    assert.match(off, /last \? 'This is the only app on the account\./);
+    // one app off, no password, and the last one warns what goes with it
+    const off = body('function removeTwo(app, last, done) {', 5000);
+    assert.doesNotMatch(off, /password'|pw\.value/, 'removing an app asks for the password again');
+    assert.match(off, /postJson\('\/v1\/account\/totp\/remove', \{ id: app\.id \}\)/);
+    assert.match(off, /if \(last\) \{[\s\S]*?box\.className = 'warn mfa-off-warn';[\s\S]*?t\('Two-factor will be turned off'\)/);
+    assert.match(off, /wideBtn\(last \? 'Turn off two-factor' : 'Remove the app', 'danger'\)/);
     // the sign in dialog no longer offers a recovery code
     const flowSrc = fs.readFileSync(path.join(__dirname, '..', 'public', 'auth-flow.js'), 'utf8');
     assert.doesNotMatch(flowSrc, /A recovery code works here/, 'sign in still offers a recovery code');

@@ -2034,6 +2034,8 @@ app.post('/v1/account/totp/confirm', requireCloudflareOrigin, authTotpLimiter, a
     if (out.reason === 'too-many') return res.status(409).json({ error: 'This account already has three authenticator apps. Remove one first.' });
     if (out.reason === 'bad-code') return res.status(400).json({ error: 'That code is not right. Check your app and try again.' });
     if (!out.ok) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
+    // the code just shown is the second step, passed on this session
+    await accounts.markSessionMfa(readSessionCookie(req));
     res.set('Cache-Control', 'no-store, private');
     tellMe(me.userId, { topic: 'me' });
     res.json({ ok: true, factor: out.factor });
@@ -2048,13 +2050,17 @@ app.get('/v1/account/totp', async (req, res) => {
     res.json({ ok: true, factors: await accounts.listFactors(me.userId) });
 });
 
-// One app off the account, on the password.
+// One app off the account. No password is asked for; the session must have
+// passed the second step, at sign in or by adding an app, so a person who
+// finds a laptop signed in with the password alone cannot take two-factor off.
 app.post('/v1/account/totp/remove', requireCloudflareOrigin, authTotpLimiter, async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
+    if (!me.mfa) {
+        return res.status(403).json({ error: 'To remove an app, sign out and sign in again with a code from one of your authenticator apps.' });
+    }
     const b = req.body || {};
-    const out = await accounts.removeFactor(me.userId, String(b.id || ''), String(b.password || ''));
-    if (out.reason === 'bad-password') return res.status(401).json({ error: 'That password is not right.' });
+    const out = await accounts.removeFactor(me.userId, String(b.id || ''));
     if (out.reason === 'not-found') return res.status(404).json({ error: 'That app is not on this account.' });
     if (!out.ok) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
     tellMe(me.userId, { topic: 'me' });

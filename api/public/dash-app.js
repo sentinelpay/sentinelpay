@@ -2125,7 +2125,9 @@
         head.appendChild(h);
         var p = document.createElement('p');
         p.className = 'modal-p';
-        p.textContent = t(sub);
+        p.textContent = sub ? t(sub) : '';
+        // a dialog with nothing to say under its title has no line there
+        p.hidden = !sub;
         head.appendChild(p);
         box.appendChild(head);
 
@@ -2162,7 +2164,8 @@
             bare: function (on) { head.hidden = !!on; },
             retitle: function (title2, sub2) {
                 h.textContent = t(title2);
-                p.textContent = t(sub2);
+                p.textContent = sub2 ? t(sub2) : '';
+                p.hidden = !sub2;
             }
         };
     }
@@ -10701,39 +10704,68 @@
         return key;
     }
 
-    // Removing an app takes the password: the one thing a person who found the
-    // laptop open does not have. The last one going takes two-factor with it,
-    // and the dialog says so.
+    // Removing an app, asked once and plainly. No password: the server takes
+    // it only from a session that has passed a code from an app. The last one
+    // going turns two-factor off, so that case says so in the warning the
+    // token drawer uses, with what to think about first.
     function removeTwo(app, last, done) {
         var m = modalShell(fill('Remove {name}', { name: app.name || t('Authenticator app') }),
-            last ? 'This is the only app on the account. Two-factor goes off with it, and your password alone signs you in.'
-                : 'Enter your password to confirm. The other apps on the account keep working.');
-        var form = document.createElement('form');
-        var pw = document.createElement('input');
-        pw.type = 'password';
-        pw.className = 'modal-in';
-        pw.autocomplete = 'current-password';
-        pw.placeholder = t('Your password');
-        form.appendChild(pw);
+            last ? '' : 'The other apps on the account keep working, and any of them still signs you in.');
+        m.box.classList.add('mfa-modal');
+        if (last) {
+            var box = document.createElement('div');
+            box.className = 'warn mfa-off-warn';
+            var mark = document.createElement('span');
+            mark.className = 'warn-i';
+            mark.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                '<path d="M12 8.5v5M12 16.9v.1"/>' +
+                '<path d="M10.3 4.3 2.8 18a1.8 1.8 0 0 0 1.6 2.7h15.2A1.8 1.8 0 0 0 21.2 18L13.7 4.3a1.9 1.9 0 0 0-3.4 0Z"/></svg>';
+            box.appendChild(mark);
+            var txt = document.createElement('div');
+            txt.className = 'warn-t';
+            var h = document.createElement('div');
+            h.className = 'warn-h';
+            h.textContent = t('Two-factor will be turned off');
+            txt.appendChild(h);
+            var p = document.createElement('p');
+            p.textContent = t('This is the only app on the account. Once it is removed, your password alone signs you in.');
+            txt.appendChild(p);
+            box.appendChild(txt);
+            m.body.appendChild(box);
+            var think = document.createElement('div');
+            think.className = 'mfa-think';
+            var lead = document.createElement('div');
+            lead.className = 'mfa-think-h';
+            lead.textContent = t('Before you remove it, consider:');
+            think.appendChild(lead);
+            var ul = document.createElement('ul');
+            [t('Adding another authenticator app first, then removing this one.'),
+                t('Anyone who learns your password will be able to sign in as you.')].forEach(function (line) {
+                var li = document.createElement('li');
+                li.textContent = line;
+                ul.appendChild(li);
+            });
+            think.appendChild(ul);
+            m.body.appendChild(think);
+        }
         var msg = document.createElement('div');
         msg.className = 'modal-msg';
-        form.appendChild(msg);
-        var yes = wideBtn('Remove the app', 'cta', 'submit');
-        form.appendChild(yes);
+        m.body.appendChild(msg);
+        var yes = wideBtn(last ? 'Turn off two-factor' : 'Remove the app', 'danger');
+        yes.classList.add('mfa-off-go');
+        m.body.appendChild(yes);
         var quit = document.createElement('div');
         quit.className = 'modal-quit';
-        var no = wideBtn('Keep it', 'quiet');
+        var no = wideBtn('Cancel', 'quiet');
         no.addEventListener('click', m.shut);
         quit.appendChild(no);
-        form.appendChild(quit);
-        m.body.appendChild(form);
-        form.addEventListener('submit', function (e) {
-            e.preventDefault();
-            if (!pw.value) { pw.focus(); return; }
+        m.body.appendChild(quit);
+        yes.addEventListener('click', function () {
             yes.disabled = true;
             msg.textContent = '';
             msg.className = 'modal-msg';
-            postJson('/v1/account/totp/remove', { id: app.id, password: pw.value }).then(function (res) {
+            postJson('/v1/account/totp/remove', { id: app.id }).then(function (res) {
                 m.shut();
                 toast(res.left ? t('Authenticator app removed') : t('Two-factor is off.'), 'good');
                 if (done) done();
@@ -10741,8 +10773,6 @@
                 yes.disabled = false;
                 msg.textContent = err.message;
                 msg.className = 'modal-msg is-bad';
-                pw.value = '';
-                pw.focus();
             });
         });
     }

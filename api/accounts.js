@@ -757,18 +757,14 @@ async function listFactors(userId) {
     }
 }
 
-// Removing an app takes the password. The last one going takes two-factor
-// with it, and whatever recovery codes an older account still holds.
-async function removeFactor(userId, factorId, password) {
+// Removing an app. What stands in for a password here is the session: the
+// route lets only one that has passed a code from an app ask for this. The
+// last app going takes two-factor with it, and whatever recovery codes an
+// older account still holds.
+async function removeFactor(userId, factorId) {
     if (!(await init())) return { ok: false, reason: 'unavailable' };
     let left;
     try {
-        const res = await db.query('SELECT password_hash FROM users WHERE id = $1', [userId]);
-        if (!res.rowCount) return { ok: false, reason: 'unavailable' };
-        if (!(await verifyPassword(String(password || ''), res.rows[0].password_hash))) {
-            audit('2fa-off-refused', { actor: userId, detail: 'wrong password' });
-            return { ok: false, reason: 'bad-password' };
-        }
         const gone = await db.query('DELETE FROM totp_factors WHERE user_id = $1 AND id = $2 RETURNING id',
             [userId, Number(factorId) || 0]);
         if (!gone.rowCount) return { ok: false, reason: 'not-found' };
@@ -784,6 +780,14 @@ async function removeFactor(userId, factorId, password) {
     }
     audit(left ? '2fa-app-removed' : '2fa-off', { actor: userId });
     return { ok: true, left };
+}
+
+// A session that has just shown a code from an app has passed the second
+// step as surely as one that signed in with it, and is marked so.
+async function markSessionMfa(token) {
+    if (!token) return;
+    await db.query('UPDATE sessions SET mfa = true WHERE token_hash = $1', [hashToken(String(token))])
+        .catch((err) => console.error('[accounts] could not mark the session: ' + err.message));
 }
 
 // Every app at once, for the older screens that only knew on and off.
@@ -1268,7 +1272,7 @@ module.exports = {
     init, startSignup, resendSignup, verifySignup, exists, inspect, purge, forget, status,
     audit, loginHold, recentAudit, noteDevice,
     startTotp, confirmTotp, disableTotp, startTotpPending, finishTotp, recoveryLeft,
-    listFactors, removeFactor, clearFactors, MAX_FACTORS,
+    listFactors, removeFactor, clearFactors, markSessionMfa, MAX_FACTORS,
     changePassword, listSessions, revokeOtherSessions, deleteAccount,
     startReset, readReset, finishReset, RESET_TTL_MIN, RESET_RESEND_WAIT_S,
     readUser,
