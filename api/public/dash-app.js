@@ -10336,27 +10336,10 @@
         });
     }
 
-    // The head of a step of the two-factor dialog, as the sign up dialog heads
-    // its own: a mark in its tinted tile, where in the three steps this is,
-    // a title and one line under it.
-    var MFA_MARKS = {
-        scan: '<rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1.4"/><rect x="14" y="3.5" width="6.5" height="6.5" rx="1.4"/>' +
-            '<rect x="3.5" y="14" width="6.5" height="6.5" rx="1.4"/><path d="M14 14h2.6v2.6H14zM18.6 18.6h1.9v1.9h-1.9zM18.6 14h1.9M14 18.6v1.9"/>',
-        code: '<rect x="4.5" y="10.5" width="15" height="9.5" rx="2.2"/><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/><path d="M12 14.4v2"/>',
-        save: '<path d="M12 3.4 5 6.2v5.2c0 4.3 3 7.7 7 9.2 4-1.5 7-4.9 7-9.2V6.2L12 3.4Z"/><path d="m9 12.2 2.2 2.2L15.4 10"/>'
-    };
-    function mfaHead(n, mark, title, sub) {
+    // The head of a step of the two-factor dialog: its title and one line.
+    function mfaHead(title, sub) {
         var head = document.createElement('div');
         head.className = 'mfa-head';
-        var tile = document.createElement('div');
-        tile.className = 'mfa-mark';
-        tile.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
-            'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + MFA_MARKS[mark] + '</svg>';
-        head.appendChild(tile);
-        var step = document.createElement('div');
-        step.className = 'mfa-step';
-        step.textContent = fill('Step {n} of 3', { n: String(n) });
-        head.appendChild(step);
         var h = document.createElement('h2');
         h.className = 'modal-h';
         h.textContent = t(title);
@@ -10420,7 +10403,7 @@
             function stepScan(back) {
                 m.stepBack.hidden = true;
                 var build = function () {
-                    m.body.appendChild(mfaHead(1, 'scan', 'Scan the code',
+                    m.body.appendChild(mfaHead('Scan the code',
                         'Open Google Authenticator, 1Password or any authenticator app and add an account with this code.'));
                     var slot = document.createElement('div');
                     slot.className = 'mfa-slot';
@@ -10465,7 +10448,7 @@
             // ---- 2: the six digits back
             function stepCode() {
                 m.stepBack.hidden = false;
-                m.body.appendChild(mfaHead(2, 'code', 'Enter the six digits',
+                m.body.appendChild(mfaHead('Enter the six digits',
                     'Type the code the app shows for Sentinelpay. It changes every 30 seconds.'));
                 var form = document.createElement('form');
                 form.className = 'mfa-form';
@@ -10645,7 +10628,7 @@
     // ---- 3: the recovery codes, each good once, shown the one time there is
     // to show them, with a copy and a file to keep them in
     function showCodes(m, codes, done) {
-        m.body.appendChild(mfaHead(3, 'save', 'Save your recovery codes',
+        m.body.appendChild(mfaHead('Save your recovery codes',
             'Two-factor is on. Keep these recovery codes somewhere safe and away from your phone. Each one works once, and this is the only time they are shown.'));
         var grid = document.createElement('ol');
         grid.className = 'mfa-codes';

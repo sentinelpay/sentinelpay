@@ -5673,9 +5673,8 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
 .sec-card .card-foot { justify-content: flex-end; }
 .sec-card .sec-need { justify-content: flex-start; font-size: 0.8rem; line-height: 1.5; color: var(--risk-mid); }
 
-/* ---- the two-factor dialog: three steps, each under the head the sign up
-   dialog gives its own -- a mark in a tinted tile, where in the steps this
-   is, a title and a line -- and everything on one axis down the middle */
+/* ---- the two-factor dialog: three steps, each under its title and a line,
+   and everything on one axis down the middle */
 .modal.mfa-modal { width: min(28rem, calc(100vw - 2rem)); max-width: none; }
 /* the dialog is a grid, and a grid track is never narrower than what is in it
    wants to be: held to the dialog, whatever a step holds */
@@ -5684,26 +5683,6 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
 .mfa-wait { padding: 2.4rem 0; text-align: center; font-size: 0.86rem; color: var(--ink-4); }
 .mfa-wait.is-bad { color: var(--danger); }
 .mfa-head { position: relative; z-index: 1; text-align: center; margin-bottom: 1.35rem; }
-.mfa-mark {
-    display: grid;
-    place-items: center;
-    width: 46px;
-    height: 46px;
-    margin: 0 auto 0.9rem;
-    border: 1px solid rgba(0, 170, 220, 0.22);
-    border-radius: 14px;
-    background: linear-gradient(160deg, rgba(0, 170, 220, 0.14), rgba(160, 32, 240, 0.09));
-    color: var(--link);
-}
-.mfa-mark svg { width: 22px; height: 22px; }
-.mfa-step {
-    margin-bottom: 0.45rem;
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.09em;
-    text-transform: uppercase;
-    color: var(--ink-4);
-}
 .mfa-head .modal-h { margin-bottom: 0.4rem; }
 
 /* the code to scan, on white whatever the theme (a phone reads dark on light),
