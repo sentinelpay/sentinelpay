@@ -592,14 +592,23 @@ test('the security page adds and removes an authenticator app', () => {
     assert.match(page, /if \(state\.totp\) \{\s*act\.className = 'btn btn-quiet sec-remove';[\s\S]*?\} else \{\s*act\.className = 'btn btn-primary sec-add';/);
     assert.match(page, /t\('Add app'\)/);
     assert.match(page, /t\('No authenticator app yet\.'\)/);
-    const add = body('function addTwo(done) {', 6000);
+    const add = body('function addTwo(done) {', 12000);
     assert.match(add, /postJson\('\/v1\/account\/totp\/start'\)/);
     assert.match(add, /createElementNS\('http:\/\/www\.w3\.org\/2000\/svg', 'path'\)/, 'the code to scan is not drawn as a path');
     // markup only from the two icons written here, never anything the server sent
     for (const m of add.match(/innerHTML\s*=\s*[^;]+;/g) || []) {
         assert.match(m, /^innerHTML = done \? DONE_I : COPY_I;$/, 'the setup dialog writes markup it was sent: ' + m);
     }
-    assert.match(add, /postJson\('\/v1\/account\/totp\/confirm', \{ code: code\.value \}\)/);
+    assert.match(add, /postJson\('\/v1\/account\/totp\/confirm', \{ code: value \}\)/);
+    // the six digits a box each, as the sign up dialog asks for its code, sent
+    // when the sixth is in
+    assert.match(add, /row\.className = 'mfa-otp';/);
+    assert.match(add, /for \(var i = 0; i < 6; i\+\+\)/);
+    assert.match(add, /if \(codeValue\(\)\.length === 6\) send\(\);/);
+    // the key waits behind a link, as a forgotten password does on sign in
+    assert.match(add, /more\.className = 'modal-link mfa-more';/);
+    assert.match(add, /key\.hidden = true;/);
+    assert.match(CSS, /\.mfa-key\[hidden\] \{ display: none; \}/);
     const codes = body('function showCodes(m, codes, done) {', 3000);
     assert.match(codes, /a\.download = 'sentinelpay-recovery-codes\.txt';/);
     assert.match(codes, /copyText\(codes\.join\('\\n'\)\)/);
