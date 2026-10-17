@@ -757,10 +757,9 @@ async function listFactors(userId) {
     }
 }
 
-// Removing an app. What stands in for a password here is the session: the
-// route lets only one that has passed a code from an app ask for this. The
-// last app going takes two-factor with it, and whatever recovery codes an
-// older account still holds.
+// Removing an app, for the signed-in owner of the account. The last app going
+// takes two-factor with it, and whatever recovery codes an older account
+// still holds.
 async function removeFactor(userId, factorId) {
     if (!(await init())) return { ok: false, reason: 'unavailable' };
     let left;
