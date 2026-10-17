@@ -5664,6 +5664,7 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
 .sec-add[hidden] { display: none; }
 .sec-add svg { width: 14px; height: 14px; }
 .sec-remove { color: var(--danger); }
+.sec-warn-host { margin-bottom: 0.8rem; }
 .sec-none { padding: 1rem 1.15rem; font-size: 0.86rem; color: var(--ink-4); }
 .sec-card .sec-need { justify-content: flex-start; font-size: 0.8rem; line-height: 1.5; color: var(--risk-mid); }
 

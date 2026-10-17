@@ -10230,6 +10230,11 @@
         head.appendChild(add);
         page.appendChild(head);
 
+        // while the app is on, what losing the phone means: the warning the
+        // token drawer gives a token about to get everything, here too
+        var warnHost = document.createElement('div');
+        warnHost.className = 'warn-host sec-warn-host';
+        page.appendChild(warnHost);
         var list = document.createElement('div');
         list.className = 'card sec-card';
         page.appendChild(list);
@@ -10241,8 +10246,31 @@
         }
         function paint() {
             list.textContent = '';
+            warnHost.textContent = '';
             if (apps === null) return;
             add.hidden = apps.length > 0;
+            if (apps.length) {
+                var box = document.createElement('div');
+                box.className = 'warn';
+                var mark = document.createElement('span');
+                mark.className = 'warn-i';
+                mark.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                    '<path d="M12 8.5v5M12 16.9v.1"/>' +
+                    '<path d="M10.3 4.3 2.8 18a1.8 1.8 0 0 0 1.6 2.7h15.2A1.8 1.8 0 0 0 21.2 18L13.7 4.3a1.9 1.9 0 0 0-3.4 0Z"/></svg>';
+                box.appendChild(mark);
+                var txt = document.createElement('div');
+                txt.className = 'warn-t';
+                var h = document.createElement('div');
+                h.className = 'warn-h';
+                h.textContent = t('If you lose this phone');
+                txt.appendChild(h);
+                var p2 = document.createElement('p');
+                p2.textContent = t('There are no recovery codes. Without the phone the app is on, you cannot sign in until support has confirmed the account is yours, so write to support@sentinelpay.org from the address on the account.');
+                txt.appendChild(p2);
+                box.appendChild(txt);
+                warnHost.appendChild(box);
+            }
             if (!apps.length) {
                 var none = document.createElement('div');
                 none.className = 'sec-none';

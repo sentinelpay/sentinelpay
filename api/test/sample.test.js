@@ -593,6 +593,10 @@ test('the security page adds and removes the authenticator app', () => {
     assert.match(page, /t\('Add app'\)/);
     assert.match(page, /t\('No authenticator app yet\.'\)/);
     assert.doesNotMatch(SRC, /Add another app|Avoid being locked out|mfa-name/, 'the page asks for a second app again');
+    // while the app is on, what losing the phone means, in the warning the
+    // token drawer gives a token about to get everything
+    assert.match(page, /if \(apps\.length\) \{\s*var box = document\.createElement\('div'\);\s*box\.className = 'warn';/);
+    assert.match(page, /t\('If you lose this phone'\)/);
     // the dialog itself, up to the helpers drawn after it
     const add = SRC.slice(SRC.indexOf('function addTwo(done) {'), SRC.indexOf('function qrSvg(qr) {'));
     assert.ok(add.length > 1000, 'the setup dialog is gone');
