@@ -599,10 +599,10 @@ test('the security page adds and removes an authenticator app', () => {
     assert.match(qr, /createElementNS\(NS, 'path'\)/, 'the code to scan is not drawn as a path');
     assert.doesNotMatch(qr, /innerHTML/, 'the code to scan is written as markup it was sent');
     // three steps, each under its own head, glided between
-    for (const step of ["mfaHead(1, 'scan'", "mfaHead(2, 'code'", "swap(stepCode)", "m.stepBack.onclick = function () { stepScan(true); };"]) {
+    for (const step of ["mfaHead('Scan the code'", "mfaHead('Enter the six digits'", "swap(stepCode)", "m.stepBack.onclick = function () { stepScan(true); };"]) {
         assert.ok(add.includes(step), 'the dialog has lost ' + step);
     }
-    assert.ok(body('function showCodes(m, codes, done) {', 600).includes("mfaHead(3, 'save'"), 'the codes are not the third step');
+    assert.ok(body('function showCodes(m, codes, done) {', 600).includes("mfaHead('Save your recovery codes'"), 'the codes are not the third step');
     // markup only from the icons written here, never anything the server sent
     assert.doesNotMatch(add, /innerHTML/, 'the setup dialog writes markup');
     for (const m of body('function keyPanel(out) {', 4000).match(/innerHTML\s*=\s*[^;]+;/g) || []) {
