@@ -10685,11 +10685,21 @@
             '<rect x="8.5" y="8.5" width="11" height="11" rx="2.2"/><path d="M15.5 8.5V6.7a2.2 2.2 0 0 0-2.2-2.2H6.7a2.2 2.2 0 0 0-2.2 2.2v6.6a2.2 2.2 0 0 0 2.2 2.2h1.8"/></svg>';
         var DONE_I = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
             'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.2 4.2L19 7"/></svg>';
-        function copyLabel(done) {
-            copy.innerHTML = done ? DONE_I : COPY_I;
+        // Both faces are in the button at once, in one cell, and only one is
+        // seen: the button is as wide as the wider of them either way, so a
+        // click does not widen it and push what sits beside it onto a new line.
+        function face(svg, text, cls) {
+            var f = document.createElement('span');
+            f.className = 'mfa-key-copy-f ' + cls;
+            f.innerHTML = svg;
             var tx = document.createElement('span');
-            tx.textContent = done ? t('Copied') : t(label);
-            copy.appendChild(tx);
+            tx.textContent = text;
+            f.appendChild(tx);
+            return f;
+        }
+        copy.appendChild(face(COPY_I, t(label), 'is-copy'));
+        copy.appendChild(face(DONE_I, t('Copied'), 'is-copied'));
+        function copyLabel(done) {
             copy.classList.toggle('is-done', done);
         }
         copyLabel(false);

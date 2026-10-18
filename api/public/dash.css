@@ -5969,6 +5969,17 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
 .mfa-key-copy svg { width: 15px; height: 15px; }
 .mfa-key-copy:hover { background: var(--nav-on); color: var(--ink); }
 .mfa-key-copy.is-done { background: var(--risk-low-bg); color: var(--risk-low); }
+.mfa-key-copy { display: inline-grid; }
+.mfa-key-copy-f {
+    grid-area: 1 / 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+}
+.mfa-key-copy .is-copied,
+.mfa-key-copy.is-done .is-copy { visibility: hidden; }
+.mfa-key-copy.is-done .is-copied { visibility: visible; }
 
 /* the six digits, a box each: the sign up dialog's code, in the dashboard's
    colours so it reads in both themes */
