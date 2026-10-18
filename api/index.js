@@ -1628,7 +1628,7 @@ function reviewFlags(emailDomain, websiteHost) {
 
 function passwordProblem(password, email, firstName, lastName) {
     if (typeof password !== 'string' || password.length < 12) return 'Your password needs at least 12 characters.';
-    if (password.length > 200) return 'Your password needs at least 12 characters.';
+    if (password.length > 200) return 'Your password can be at most 200 characters.';
     const low = password.toLowerCase();
     const local = String(email || '').split('@')[0].toLowerCase();
     const parts = [local, String(email || '').toLowerCase(), String(firstName || '').toLowerCase(), String(lastName || '').toLowerCase(), 'sentinelpay']
@@ -2225,12 +2225,17 @@ app.post('/v1/account/password', requireCloudflareOrigin, accountLimiter, async 
     if (!me) return;
     if (secondStepOwed(me, res)) return;
     const b = req.body || {};
+    // every refusal says which field it is about, so the page can put the
+    // sentence under that field rather than at the foot of the form
     const next = typeof b.next === 'string' ? b.next : '';
+    if (typeof b.current !== 'string' || !b.current) {
+        return res.status(400).json({ error: 'Enter the password you use now.', field: 'current' });
+    }
     const known = String(me.name || '').split(' ');
     const problem = passwordProblem(next, me.email, known[0] || '', known.slice(1).join(' '));
-    if (problem) return res.status(400).json({ error: problem });
+    if (problem) return res.status(400).json({ error: problem, field: 'next' });
     if (await breached.isBreached(next)) {
-        return res.status(400).json({ error: 'That password has appeared in a data breach. Please choose a different one.' });
+        return res.status(400).json({ error: 'That password has appeared in a data breach. Please choose a different one.', field: 'next' });
     }
 
     const out = await accounts.changePassword(me.userId, String(b.current || ''), next);
@@ -2238,8 +2243,8 @@ app.post('/v1/account/password', requireCloudflareOrigin, accountLimiter, async 
         if (out.retryIn) res.set('Retry-After', String(out.retryIn));
         return res.status(429).json({ error: 'Too many attempts. Please wait a moment and try again.', retryIn: out.retryIn });
     }
-    if (out.reason === 'bad-password') return res.status(401).json({ error: 'That password is not right.' });
-    if (out.reason === 'same-password') return res.status(400).json({ error: 'That is the password you have now. Choose a new one.' });
+    if (out.reason === 'bad-password') return res.status(401).json({ error: 'That password is not right.', field: 'current' });
+    if (out.reason === 'same-password') return res.status(400).json({ error: 'That is the password you have now. Choose a new one.', field: 'next' });
     if (!out.ok) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
 
     // Every session ends, this one too, and this browser carries on in a new

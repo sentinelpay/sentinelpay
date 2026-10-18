@@ -980,6 +980,39 @@ button { font: inherit; color: inherit; }
 .fld-hint { margin-top: 0.15rem; font-size: 0.78rem; line-height: 1.5; color: var(--ink-4); }
 .fld-r { min-width: 0; }
 
+/* a password field: room at the end for the eye that shows what was typed,
+   and under it, in this order, Caps Lock, what is wrong, and the rules */
+.pw-wrap { position: relative; }
+.pw-wrap .fld-in { padding-right: 2.5rem; }
+.pw-eye {
+    position: absolute;
+    top: 50%;
+    right: 0.35rem;
+    display: grid;
+    place-items: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    padding: 0;
+    border: 0;
+    border-radius: 7px;
+    background: none;
+    color: var(--ink-4);
+    cursor: pointer;
+    transform: translateY(-50%);
+}
+.pw-eye svg { width: 16px; height: 16px; }
+.pw-eye:hover, .pw-eye[aria-pressed="true"] { color: var(--ink); background: var(--hover); }
+.fld-in.is-bad { border-color: var(--danger); }
+.fld-in.is-bad:focus { box-shadow: 0 0 0 3px var(--danger-bg); }
+.fld-err { margin-top: 0.4rem; font-size: 0.78rem; line-height: 1.45; color: var(--danger); }
+.fld-err[hidden], .pw-caps[hidden] { display: none; }
+.pw-caps { margin-top: 0.4rem; font-size: 0.76rem; font-weight: 600; color: var(--risk-mid); }
+.pw-rules { list-style: none; display: grid; gap: 0.25rem; margin: 0.55rem 0 0; padding: 0; }
+.pw-rules li { display: flex; align-items: center; gap: 0.4rem; font-size: 0.76rem; color: var(--ink-4); transition: color 0.16s ease; }
+.pw-rules svg { flex: none; width: 13px; height: 13px; opacity: 0.35; transition: opacity 0.16s ease; }
+.pw-rules li.is-met { color: var(--risk-low); }
+.pw-rules li.is-met svg { opacity: 1; }
+
 .fld-in {
     width: 100%;
     padding: 0.52rem 0.7rem;

@@ -581,13 +581,13 @@ test('a figure against a limit draws a bar, a plain count its line', () => {
 // code to scan or a key to type, and taken off on the password. No recovery
 // codes, so while there is one app the page asks for a second.
 test('the security page names, adds and removes authenticator apps', () => {
-    const page = body('function viewSecurity(me) {', 12000);
+    const page = body('function viewSecurity(me) {', 24000);
     assert.match(page, /sectionTitle\('Two-factor authentication'\)/);
     // the list of sessions stays off the page; the one button that signs the
     // others out is all of them it keeps
     assert.doesNotMatch(page, /\/v1\/account\/sessions'/, 'the sessions are back on the security page');
     assert.match(page, /postJson\('\/v1\/account\/sessions\/revoke'/);
-    assert.match(page, /postJson\('\/v1\/account\/password', \{ current: pwCur\.value, next: pwNew\.value \}\)/);
+    assert.match(page, /postJson\('\/v1\/account\/password', \{ current: cur, next: nw \}\)/);
     assert.doesNotMatch(page, /orghCard\(/, 'the page is drawn in the overview cards, not the settings ones');
     assert.doesNotMatch(SRC, /Recovery codes|recovery-codes\.txt|function showCodes/, 'recovery codes are shown again');
     // the apps a row each by name, the action to add one while there is room
@@ -655,4 +655,18 @@ test('the security page names, adds and removes authenticator apps', () => {
     // the sign in dialog no longer offers a recovery code
     const flowSrc = fs.readFileSync(path.join(__dirname, '..', 'public', 'auth-flow.js'), 'utf8');
     assert.doesNotMatch(flowSrc, /A recovery code works here/, 'sign in still offers a recovery code');
+});
+
+// Changing the password says what is wrong under the field it is about,
+// shows the rules as they are met, and waits out a hold with a countdown.
+// The server names the field of every refusal so the page can.
+test('the password form puts each refusal under its field', () => {
+    const page = body('function viewSecurity(me) {', 20000);
+    assert.match(page, /var into = \{ current: fCur, next: fNew \}\[err\.field\];/);
+    assert.match(page, /if \(err\.status === 429\) \{ holdFor\(err\.retryIn \|\| 60\); return; \}/);
+    assert.match(page, /getModifierState\('CapsLock'\)/);
+    const index = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
+    const route = index.slice(index.indexOf("app.post('/v1/account/password'"), index.indexOf("app.post('/v1/account/profile'"));
+    assert.match(route, /error: 'That password is not right\.', field: 'current'/);
+    assert.match(route, /error: problem, field: 'next'/);
 });

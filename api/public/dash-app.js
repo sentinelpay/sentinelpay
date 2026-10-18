@@ -10225,23 +10225,15 @@
         page.appendChild(pageHead('Security',
             'What it takes to sign in to this account, and how to shut out a device you no longer trust.'));
 
-        // ---- the password: the one in use, and the new one twice. The server
-        // checks it against the rules and the breach list, and signs every
-        // other device out when it changes.
+        // ---- the password: the one in use, and the new one twice. The rules
+        // are shown as they are met, each refusal is said under the field it
+        // is about, and the server has the last word: it checks the rules
+        // again, the breach list, and signs every other device out.
         page.appendChild(sectionTitle('Password'));
         page.appendChild(sectionNote('Changing it signs out every other device this account is signed in on, and we email you that it happened.'));
         var pwForm = document.createElement('form');
         pwForm.className = 'card';
         pwForm.setAttribute('novalidate', '');
-        function pwInput(id, auto) {
-            var i = document.createElement('input');
-            i.type = 'password';
-            i.id = id;
-            i.className = 'fld-in';
-            i.autocomplete = auto;
-            i.maxLength = 200;
-            return i;
-        }
         // the account's address, for the password manager to file the new
         // password under; never shown
         var pwUser = document.createElement('input');
@@ -10251,21 +10243,125 @@
         pwUser.hidden = true;
         pwUser.tabIndex = -1;
         pwForm.appendChild(pwUser);
-        var pwCur = pwInput('pw-cur', 'current-password');
-        var pwNew = pwInput('pw-new', 'new-password');
-        var pwTwo = pwInput('pw-two', 'new-password');
-        pwForm.appendChild(fieldRow({ label: 'Current password', id: 'pw-cur', control: pwCur }));
-        pwForm.appendChild(fieldRow({
-            label: 'New password',
-            hint: 'At least 12 characters, and not one that has turned up in a data breach.',
-            id: 'pw-new',
-            control: pwNew
-        }));
-        pwForm.appendChild(fieldRow({ label: 'Repeat the new password', id: 'pw-two', control: pwTwo }));
+
+        var EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" ' +
+            'stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/>' +
+            '<circle cx="12" cy="12" r="2.8"/></svg>';
+        var EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" ' +
+            'stroke-linejoin="round" aria-hidden="true"><path d="M3.5 3.5l17 17"/><path d="M10 6c.6-.1 1.3-.2 2-.2 6 0 9.5 6.2 9.5 6.2a17 17 0 0 1-3 3.8"/>' +
+            '<path d="M6.6 7.2A16.6 16.6 0 0 0 2.5 12S6 18.5 12 18.5c1.6 0 3-.4 4.2-1"/><path d="M9.9 10a2.8 2.8 0 0 0 4 4"/></svg>';
+        // a field with its own line for what is wrong with it, a way to see
+        // what was typed, and a word when Caps Lock is on
+        function pwField(id, auto, label, hint) {
+            var wrap = document.createElement('div');
+            wrap.className = 'pw-wrap';
+            var i = document.createElement('input');
+            i.type = 'password';
+            i.id = id;
+            i.className = 'fld-in';
+            i.autocomplete = auto;
+            i.maxLength = 200;
+            i.spellcheck = false;
+            i.setAttribute('autocapitalize', 'off');
+            wrap.appendChild(i);
+            var eye = document.createElement('button');
+            eye.type = 'button';
+            eye.className = 'pw-eye';
+            eye.setAttribute('aria-label', t('Show password'));
+            eye.setAttribute('aria-pressed', 'false');
+            eye.innerHTML = EYE;
+            eye.addEventListener('click', function () {
+                var showing = i.type === 'text';
+                i.type = showing ? 'password' : 'text';
+                eye.innerHTML = showing ? EYE : EYE_OFF;
+                eye.setAttribute('aria-pressed', showing ? 'false' : 'true');
+                eye.setAttribute('aria-label', t(showing ? 'Show password' : 'Hide password'));
+                i.focus();
+            });
+            wrap.appendChild(eye);
+            var box = document.createElement('div');
+            box.appendChild(wrap);
+            var caps = document.createElement('div');
+            caps.className = 'pw-caps';
+            caps.hidden = true;
+            caps.textContent = t('Caps Lock is on.');
+            box.appendChild(caps);
+            var err = document.createElement('div');
+            err.className = 'fld-err';
+            err.id = id + '-err';
+            err.setAttribute('role', 'alert');
+            err.hidden = true;
+            box.appendChild(err);
+            function capsCheck(e) {
+                if (e && e.getModifierState) caps.hidden = !e.getModifierState('CapsLock');
+            }
+            i.addEventListener('keydown', capsCheck);
+            i.addEventListener('keyup', capsCheck);
+            i.addEventListener('blur', function () { caps.hidden = true; });
+            pwForm.appendChild(fieldRow({ label: label, hint: hint, id: id, control: box }));
+            return {
+                input: i,
+                box: box,
+                say: function (text) {
+                    err.textContent = text || '';
+                    err.hidden = !text;
+                    i.classList.toggle('is-bad', Boolean(text));
+                    if (text) {
+                        i.setAttribute('aria-invalid', 'true');
+                        i.setAttribute('aria-describedby', err.id);
+                    } else {
+                        i.removeAttribute('aria-invalid');
+                        i.removeAttribute('aria-describedby');
+                    }
+                }
+            };
+        }
+        var fCur = pwField('pw-cur', 'current-password', 'Current password');
+        var fNew = pwField('pw-new', 'new-password', 'New password');
+        var fTwo = pwField('pw-two', 'new-password', 'Repeat the new password');
+
+        // what the new one has to be, ticked off as it is typed: the same
+        // rules the server holds it to, so nothing is refused that the page
+        // did not already say
+        var rules = document.createElement('ul');
+        rules.className = 'pw-rules';
+        function rule(text) {
+            var li = document.createElement('li');
+            li.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" ' +
+                'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.2 4.2L19 7"/></svg>';
+            var tx = document.createElement('span');
+            tx.textContent = t(text);
+            li.appendChild(tx);
+            rules.appendChild(li);
+            return li;
+        }
+        var rLen = rule('At least 12 characters');
+        var rOwn = rule('Not your name, your email or Sentinelpay');
+        var rDiff = rule('Different from the one you use now');
+        fNew.box.appendChild(rules);
+
+        var nameParts = (function () {
+            var email = String((me && me.email) || '').toLowerCase();
+            var names = String((me && me.name) || '').toLowerCase().split(/\s+/);
+            return [email.split('@')[0], email, 'sentinelpay'].concat(names)
+                .filter(function (p) { return p && p.length >= 4; });
+        })();
+        function ownWord(v) {
+            var low = v.toLowerCase();
+            return nameParts.some(function (p) { return low.indexOf(p) !== -1; });
+        }
+        function paintRules() {
+            var v = fNew.input.value;
+            rLen.classList.toggle('is-met', v.length >= 12 && v.length <= 200);
+            rOwn.classList.toggle('is-met', Boolean(v) && !ownWord(v));
+            rDiff.classList.toggle('is-met', Boolean(v) && Boolean(fCur.input.value) && v !== fCur.input.value);
+        }
+
         var pwFoot = document.createElement('div');
         pwFoot.className = 'card-foot';
         var pwMsg = document.createElement('span');
         pwMsg.className = 'card-msg';
+        pwMsg.setAttribute('role', 'status');
         pwFoot.appendChild(pwMsg);
         var pwSave = document.createElement('button');
         pwSave.type = 'submit';
@@ -10275,32 +10371,98 @@
         pwFoot.appendChild(pwSave);
         pwForm.appendChild(pwFoot);
         page.appendChild(pwForm);
+
+        var pwBusy = false;
+        var pwWaitUntil = 0;
+        var pwTimer = null;
         function pwSync() {
-            pwSave.disabled = !pwCur.value || !pwNew.value || !pwTwo.value;
-            if (pwMsg.textContent) { pwMsg.textContent = ''; pwMsg.className = 'card-msg'; }
+            paintRules();
+            pwSave.disabled = pwBusy || Date.now() < pwWaitUntil ||
+                !fCur.input.value || !fNew.input.value || !fTwo.input.value;
         }
-        [pwCur, pwNew, pwTwo].forEach(function (i) { i.addEventListener('input', pwSync); });
         function pwSay(text) {
-            pwMsg.textContent = text;
-            pwMsg.className = 'card-msg is-bad';
+            pwMsg.textContent = text || '';
+            pwMsg.className = 'card-msg' + (text ? ' is-bad' : '');
         }
+        // a field's own error goes the moment it is typed into again; the
+        // repeat is checked once it is as long as the new one, not before
+        fCur.input.addEventListener('input', function () { fCur.say(''); pwSay(''); pwSync(); });
+        fNew.input.addEventListener('input', function () {
+            fNew.say('');
+            pwSay('');
+            if (fTwo.input.value && fTwo.input.value === fNew.input.value) fTwo.say('');
+            pwSync();
+        });
+        fTwo.input.addEventListener('input', function () {
+            pwSay('');
+            var a = fNew.input.value;
+            var b = fTwo.input.value;
+            fTwo.say(b.length >= a.length && b !== a ? t('This does not match the new password.') : '');
+            pwSync();
+        });
+
+        // Too many tries: the button waits, counting down, and says so.
+        function holdFor(seconds) {
+            pwWaitUntil = Date.now() + seconds * 1000;
+            clearInterval(pwTimer);
+            function tick() {
+                var left = Math.ceil((pwWaitUntil - Date.now()) / 1000);
+                if (left <= 0) {
+                    clearInterval(pwTimer);
+                    pwWaitUntil = 0;
+                    pwSay('');
+                    pwSync();
+                    return;
+                }
+                var mm = Math.floor(left / 60);
+                var ss = String(left % 60).padStart(2, '0');
+                pwSay(fill('Too many attempts. Try again in {time}.', { time: mm + ':' + ss }));
+                pwSave.disabled = true;
+            }
+            tick();
+            pwTimer = setInterval(tick, 1000);
+        }
+
         pwForm.addEventListener('submit', function (e) {
             e.preventDefault();
             if (pwSave.disabled) return;
-            if (pwNew.value !== pwTwo.value) { pwSay(t('The two new passwords do not match.')); pwTwo.focus(); return; }
-            if (pwNew.value.length < 12) { pwSay(t('Your password needs at least 12 characters.')); pwNew.focus(); return; }
-            pwSave.disabled = true;
-            postJson('/v1/account/password', { current: pwCur.value, next: pwNew.value }).then(function () {
-                pwCur.value = '';
-                pwNew.value = '';
-                pwTwo.value = '';
-                pwSync();
+            var cur = fCur.input.value;
+            var nw = fNew.input.value;
+            var two = fTwo.input.value;
+            // everything that can be said before asking, said at once and
+            // under the field it is about; the first one wrong gets the cursor
+            var first = null;
+            if (!cur) { fCur.say(t('Enter the password you use now.')); first = first || fCur; }
+            if (nw.length < 12) { fNew.say(t('Your password needs at least 12 characters.')); first = first || fNew; }
+            else if (ownWord(nw)) { fNew.say(t('Please choose a password that is not your name or email')); first = first || fNew; }
+            else if (nw === cur) { fNew.say(t('That is the password you have now. Choose a new one.')); first = first || fNew; }
+            if (two !== nw) { fTwo.say(t('This does not match the new password.')); first = first || fTwo; }
+            if (first) { first.input.focus(); return; }
+            pwBusy = true;
+            pwSync();
+            pwSave.textContent = t('Changing…');
+            postJson('/v1/account/password', { current: cur, next: nw }).then(function () {
+                [fCur, fNew, fTwo].forEach(function (f) { f.input.value = ''; f.input.type = 'password'; f.say(''); });
+                pwSay('');
                 toast(t('Password changed. Every other device is signed out.'), 'good');
             }).catch(function (err) {
-                pwSay(err.message);
-                pwSave.disabled = false;
+                if (err.status === 429) { holdFor(err.retryIn || 60); return; }
+                var into = { current: fCur, next: fNew }[err.field];
+                if (into) {
+                    into.say(err.message);
+                    // a wrong current password is typed again from empty
+                    if (into === fCur) into.input.value = '';
+                    into.input.focus();
+                } else {
+                    pwSay(err.message);
+                }
+            }).then(function () {
+                pwBusy = false;
+                pwSave.textContent = t('Change password');
+                pwSync();
             });
         });
+        paintRules();
 
         // ---- two-factor: every authenticator app on the account in a row of
         // its own, up to three, and the way to add one at the head of the
@@ -10488,6 +10650,8 @@
                     err.status = r.status;
                     err.reason = (j && j.reason) || '';
                     err.code = Boolean(j && j.code);
+                    err.field = (j && j.field) || '';
+                    err.retryIn = (j && Number(j.retryIn)) || Number(r.headers.get('Retry-After')) || 0;
                     throw err;
                 }
                 return j;
