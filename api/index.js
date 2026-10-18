@@ -3334,11 +3334,25 @@ app.get('/v1/live', async (req, res) => {
 app.get('/v1/account/logs', async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
-    const rows = await accounts.recentAudit({ actor: String(me.userId), limit: 100 });
+    const q = req.query || {};
+    const groups = String(q.groups || '').split(',').map((g) => g.trim())
+        .filter((g) => Object.prototype.hasOwnProperty.call(accounts.AUDIT_GROUPS, g));
+    const out = await accounts.accountTrail(String(me.userId), {
+        from: String(q.from || ''),
+        to: String(q.to || ''),
+        groups,
+        order: q.order === 'asc' ? 'asc' : 'desc',
+        cursor: String(q.cursor || ''),
+        limit: q.limit,
+    });
     res.set('Cache-Control', 'no-store, private');
     res.json({
         ok: true,
-        rows: rows.map((r) => ({
+        groups: Object.keys(accounts.AUDIT_GROUPS),
+        more: out.more,
+        cursor: out.cursor || '',
+        rows: out.rows.map((r) => ({
+            id: String(r.id),
             at: r.at,
             kind: r.kind,
             detail: r.detail || '',
