@@ -168,7 +168,7 @@ function forgetInFiles(email) {
         if (keep.length === lines.length) continue;
         try {
             const tmp = full + '.tmp';
-            fs.writeFileSync(tmp, keep.length ? keep.join('\n') + '\n' : '');
+            fs.writeFileSync(tmp, keep.length ? keep.join('\n') + '\n' : '', { mode: 0o600 });
             fs.renameSync(tmp, full);
         } catch (err) {
             console.error('[submissions] cannot rewrite ' + file + ': ' + err.message);

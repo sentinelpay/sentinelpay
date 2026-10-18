@@ -22,7 +22,7 @@
 // not get an account of their own there at all. With --create the same link
 // is issued for an address nobody has; opening it asks for a name and a
 // password and makes the account, the way the reset page already does for an
-// address it does not know. Only where APP_ENV is staging:
+// address it does not know. Only where the database is marked staging:
 //
 //   railway run --environment staging node tools/reset-link.js them@example.com --create --site https://staging.sentinelpay.org
 
@@ -47,15 +47,14 @@ const email = (plain[0] || '').trim();
     // Staging runs with NODE_ENV=production too, for the secure cookie it
     // needs behind https, so that alone does not say this is production:
     // APP_ENV does.
-    const staging = String(process.env.APP_ENV || '').toLowerCase() === 'staging';
-    if (process.env.NODE_ENV === 'production' && !staging) {
-        console.error('refusing to run against production: there the reset email works, so use it');
-        process.exit(1);
-    }
     if (!db.available()) {
         console.error('no DATABASE_URL, nothing to do');
         process.exit(1);
     }
+    // A working reset link for any account, printed without an email, is
+    // for staging only, and the database says whether it is: in production
+    // the reset email works, so use it.
+    const staging = (await require('../api/app-env.js').requireTarget(db, ['staging', 'development'], 'reset-link')) === 'staging';
 
     const site = (value('site') || process.env.SITE_URL || '').replace(/\/+$/, '');
     if (!site) {
@@ -80,7 +79,7 @@ const email = (plain[0] || '').trim();
         console.error('no account with that address in this database.');
         console.error('check the address, and check that DATABASE_URL and SUBMISSIONS_KEY are the pair this site runs on:');
         console.error('a mismatched key hashes the address to something nobody has.');
-        if (create) console.error('--create only works where APP_ENV is staging.');
+        if (create) console.error('--create only works on a database marked staging.');
         else console.error('to let a new colleague make an account on staging, add --create.');
         process.exit(1);
     }

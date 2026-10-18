@@ -44,7 +44,10 @@
         });
     });
     window.addEventListener('hashchange', function () {
-        var target = document.querySelector(location.hash || '#none');
+        // read as an id, not as a selector: a hash that is not one threw here
+        var id = '';
+        try { id = decodeURIComponent(location.hash.slice(1)); } catch (e) { id = ''; }
+        var target = id ? document.getElementById(id) : null;
         if (!target) return;
         var item = target.closest && target.closest('.lp-faq-item');
         if (item) open(item);

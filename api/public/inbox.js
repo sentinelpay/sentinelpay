@@ -2,8 +2,6 @@
     var PER_PAGE = 10;
     var state = { kind: '', flagged: false, offset: 0, total: 0, ref: '' };
 
-    var token = new URLSearchParams(location.search).get('token') || '';
-
     var rowsEl = document.getElementById('rows');
     var pagerEl = document.getElementById('pager');
     var tabsEl = document.getElementById('tabs');
@@ -25,11 +23,9 @@
         state.flagged = q.get('flagged') === '1';
         state.ref = q.get('ref') || '';
         state.offset = Math.max(parseInt(q.get('offset') || '0', 10) || 0, 0);
-        token = q.get('token') || token;
     }
     function writeParams(push) {
         var q = new URLSearchParams();
-        if (token) q.set('token', token);
         if (state.kind) q.set('kind', state.kind);
         if (state.flagged) q.set('flagged', '1');
         if (state.ref) q.set('ref', state.ref);
@@ -89,7 +85,7 @@
             }
             del.disabled = true;
             del.textContent = 'deleting…';
-            fetch('/v1/submissions/delete' + (token ? '?token=' + encodeURIComponent(token) : ''), {
+            fetch('/v1/submissions/delete', {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/json' },
@@ -173,7 +169,6 @@
         if (state.kind) q.set('kind', state.kind);
         if (state.flagged) q.set('flagged', '1');
         if (state.ref) { q.set('limit', '200'); q.set('offset', '0'); }
-        if (token) q.set('token', token);
         return fetch('/v1/submissions?' + q.toString(), { credentials: 'same-origin' })
             .then(function (r) {
                 if (r.status === 404) { location.replace('/?signin=1'); return null; }
@@ -200,7 +195,7 @@
     }
     function live() {
         if (!window.EventSource) return;
-        var src = new EventSource('/v1/inbox/stream' + (token ? '?token=' + encodeURIComponent(token) : ''),
+        var src = new EventSource('/v1/inbox/stream',
             { withCredentials: true });
         var waiting = 0;
         src.addEventListener('open', function () {

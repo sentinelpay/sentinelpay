@@ -12,7 +12,7 @@
 // phone would be a lost account, and there would be no way back in at all.
 //
 //   DATABASE_URL=... SUBMISSIONS_KEY=... node tools/remove-2fa.js them@example.com
-//   DATABASE_URL=... SUBMISSIONS_KEY=... node tools/remove-2fa.js them@example.com --yes --why "ticket 1042, call with owner"
+//   DATABASE_URL=... SUBMISSIONS_KEY=... node tools/remove-2fa.js them@example.com --yes --by "Vibor" --why "ticket 1042, call with owner"
 //
 // Without --yes it says what it would do and does nothing. With it, every app
 // comes off the account, two-factor is off, every session the account has is
@@ -30,11 +30,12 @@ const value = (name) => {
     const at = args.indexOf('--' + name);
     return at === -1 ? '' : (args[at + 1] || '');
 };
-const TAKES_VALUE = ['--why'];
+const TAKES_VALUE = ['--why', '--by'];
 const plain = args.filter((a, i) => !a.startsWith('--') && !(i > 0 && TAKES_VALUE.indexOf(args[i - 1]) !== -1));
 const email = (plain[0] || '').trim();
 const yes = args.includes('--yes');
 const why = value('why').trim();
+const by = value('by').trim();
 
 (async () => {
     if (!email) {
@@ -70,16 +71,20 @@ const why = value('why').trim();
     if (!yes) {
         console.log('');
         console.log('nothing done. to take two-factor off and end every session, run it again with');
-        console.log('  --yes --why "what you checked to be sure this is the owner"');
+        console.log('  --yes --by "your name" --why "what you checked to be sure this is the owner"');
         process.exit(0);
     }
     if (!why) {
         console.error('--why is needed with --yes: the audit trail says why two-factor was taken off by hand.');
         process.exit(1);
     }
+    if (!by) {
+        console.error('--by is needed with --yes: the audit trail says who took two-factor off, not only whose it was.');
+        process.exit(1);
+    }
     await accounts.clearFactors(user.id);
     await db.query('DELETE FROM sessions WHERE user_id = $1', [user.id]);
-    accounts.audit('2fa-off-by-support', { actor: user.id, subject: hash, detail: why.slice(0, 200) });
+    accounts.audit('2fa-off-by-support', { actor: 'support:' + by.slice(0, 60), subject: hash, detail: ('for user ' + user.id + ': ' + why).slice(0, 200) });
     console.log('done: two-factor is off and every session is ended. they sign in with their password and add an app again.');
     // the audit write is not awaited by its caller; give it a moment to land
     setTimeout(() => process.exit(0), 500);

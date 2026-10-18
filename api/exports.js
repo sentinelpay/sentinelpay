@@ -252,10 +252,13 @@ function csvCell(value) {
     // it text in the program that reads it
     if (typeof value === 'number' && Number.isFinite(value)) return String(value);
     const s = String(value === null || value === undefined ? '' : value);
-    // a cell that begins with one of these is run as a formula by a spreadsheet,
-    // which is how a file of numbers becomes something that does things
+    // A cell that begins with one of these is run as a formula by a
+    // spreadsheet, which is how a file of numbers becomes something that does
+    // things. Excel in Croatian and German splits on ";" as well as ",", so a
+    // value holding a ";" is quoted too, or "Acme;=1+1" became two cells and
+    // the second one a formula.
     const safe = /^[=+\-@\t\r]/.test(s) ? "'" + s : s;
-    return /[",\n\r]/.test(safe) ? '"' + safe.replace(/"/g, '""') + '"' : safe;
+    return /[",;\n\r]/.test(safe) ? '"' + safe.replace(/"/g, '""') + '"' : safe;
 }
 
 // The numbers in their own columns and nothing else in them, so a column a
@@ -496,8 +499,10 @@ function zip(files) {
 
 function xmlText(v) {
     return String(v).replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]))
-        // characters XML 1.0 has no way to carry
-        .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '');
+        // characters XML 1.0 has no way to carry, and half a surrogate pair,
+        // any of which Excel reads as a corrupt file
+        .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\ufffe\uffff]/g, '')
+        .replace(/[\ud800-\udbff](?![\udc00-\udfff])|(^|[^\ud800-\udbff])[\udc00-\udfff]/g, '$1');
 }
 function colName(i) {
     let s = '';
@@ -1312,7 +1317,7 @@ function paperOf(key) {
 // the style element it sits in: an organisation named "</style>" stays a name.
 function cssStr(v) {
     return '"' + String(v === null || v === undefined ? '' : v)
-        .replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/[\r\n]+/g, ' ').replace(/</g, '\\3C ') + '"';
+        .replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/[\r\n\f]+/g, ' ').replace(/</g, '\\3C ') + '"';
 }
 
 function lastDay(iso) {
@@ -1816,6 +1821,10 @@ function report(list, meta, out) {
         '<div class="notes">' + notes.map((x, i) => '<div><span>' + (i + 1) + '</span><span>' + h(x[0]) + ': ' + h(x[1]) + '</span></div>').join('') + '</div>';
 
     return '<!doctype html><html lang="' + sp.lang + '"><head><meta charset="utf-8">' +
+        // the page the PDF is drawn from runs nothing and fetches nothing,
+        // said by the page itself as well as by the browser drawing it
+        (meta.forPdf ? '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; ' +
+            'style-src \'unsafe-inline\'; font-src data:; img-src data:; script-src \'none\'">' : '') +
         '<meta name="viewport" content="width=device-width,initial-scale=1">' +
         '<meta name="robots" content="noindex,nofollow">' +
         '<title>' + h('Usage report {from} to {to}', { from: day(out.period.from), to: periodEnd(out.period) }) + ' · ' + esc(org) + '</title>' +
@@ -1941,7 +1950,9 @@ function report(list, meta, out) {
         // at its centre, closing the report the way the cover opens it
         '<section class="sheet cover back" style="' + coverVars + '">' + coverArt(paper, theme, true) + '</section>' +
         '</main>' +
-        (meta.forPdf ? '' : '<script src="/report.js"></script>') + '</body></html>';
+        // a paper inside the usage page runs nothing: its frame is sandboxed, and
+        // the page around it hears Escape and prints it
+        (meta.forPdf || meta.embed ? '' : '<script src="/report.js"></script>') + '</body></html>';
 }
 
 const REPORT_CSS = `

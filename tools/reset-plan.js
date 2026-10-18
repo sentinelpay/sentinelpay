@@ -15,7 +15,7 @@
 //
 // The email is not stored anywhere in readable form, so it cannot be found with
 // a LIKE query: the users table keeps a keyed hash of it. This hashes what you
-// type with the same key and looks that up, which is why SP_INDEX_KEY has to be
+// type with the same key and looks that up, which is why the index key has to be
 // the one the environment uses. Get that wrong and it simply finds nobody.
 //
 // One thing this cannot do on its own: if the address is still in
@@ -43,14 +43,11 @@ async function main() {
         console.error('no DATABASE_URL, nothing to do');
         process.exit(1);
     }
-    if (process.env.NODE_ENV === 'production' && !process.env.RESET_PLAN_I_MEAN_IT) {
-        console.error('refusing to run against production');
-        process.exit(1);
-    }
+    await require('../api/app-env.js').requireTarget(db, ['staging', 'development'], 'reset-plan');
 
     const hash = db.blindIndex(email);
     if (!hash) {
-        console.error('SP_INDEX_KEY is not set, so the account cannot be looked up by email');
+        console.error('SUBMISSIONS_KEY (or SUBMISSIONS_INDEX_KEY) is not set, so the account cannot be looked up by email');
         process.exit(1);
     }
 

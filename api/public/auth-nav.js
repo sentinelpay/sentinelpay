@@ -34,7 +34,17 @@
     function done() { box.classList.remove('auth-nav-asking'); }
     fetch('/v1/auth/me', { credentials: 'same-origin' })
         .then(function (r) { return r.json(); })
-        .then(function (me) { if (me && me.signedIn) signedIn(me); })
+        .then(function (me) {
+            if (me && me.signedIn) { signedIn(me); return; }
+            // Signed out, or the session ran out: what the dashboard kept of
+            // the last person here goes, so the next one at this browser
+            // cannot read their name, address and organisations out of it.
+            if (me && me.signedIn === false) {
+                ['sp-me', 'sp-orgs', 'sp-projects'].forEach(function (k) {
+                    try { localStorage.removeItem(k); } catch (e) {  }
+                });
+            }
+        })
         .catch(function () {  })
         .then(done);
     setTimeout(done, 2500);

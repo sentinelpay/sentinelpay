@@ -53,6 +53,19 @@ async function main() {
         console.error('no DATABASE_URL: nothing to rotate');
         process.exit(1);
     }
+    // The email index and the session hashes are keyed by SUBMISSIONS_INDEX_KEY,
+    // or, where it is not set, by a key derived from SUBMISSIONS_KEY. Rotating
+    // that one would change every email's index and nothing here rewrites
+    // them: nobody could sign in, and an erasure request would find nothing
+    // and say it had succeeded. So the index key has to be its own first.
+    if (!process.env.SUBMISSIONS_INDEX_KEY) {
+        console.error('SUBMISSIONS_INDEX_KEY is not set, so the email index hangs off SUBMISSIONS_KEY and');
+        console.error('would change with it. Set SUBMISSIONS_INDEX_KEY on the server to the index key in use now,');
+        console.error('which with the old key in SUBMISSIONS_KEY is the output of:');
+        console.error("  node -e \"console.log(require('crypto').createHmac('sha256', Buffer.from(process.env.SUBMISSIONS_KEY, 'base64')).update('blind-index-v1').digest('base64'))\"");
+        console.error('then rotate.');
+        process.exit(1);
+    }
     if (!db.rotating()) {
         console.error('SUBMISSIONS_KEY_PREVIOUS is not set. Set it to the old key and try again;');
         console.error('without it this would read nothing and write nothing.');

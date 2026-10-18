@@ -154,12 +154,12 @@
     }
 
     function orgHome(slug) {
-        return ORG_ROOT + slug;
+        return ORG_ROOT + encodeURIComponent(slug);
     }
 
     // where a nav item lives for the organisation we are in
     function orgPath(slug, tail) {
-        return ORG_ROOT + slug + (tail ? '/' + tail : '');
+        return ORG_ROOT + encodeURIComponent(slug) + (tail ? '/' + tail : '');
     }
 
     // read straight from the address, so the first paint already knows where it
@@ -7206,9 +7206,18 @@
                 frame = document.createElement('iframe');
                 frame.className = 'rep-frame';
                 frame.title = t('PDF report');
+                // The paper is ours and read from here, so it keeps its origin,
+                // but nothing in it runs: an organisation's name that ever got
+                // past the escaping would be text in there, not a script with
+                // this page's session behind it. Escape is heard from here.
+                frame.setAttribute('sandbox', 'allow-same-origin allow-modals');
                 frame.addEventListener('load', function () {
                     var doc = null;
                     try { doc = frame.contentDocument; } catch (err) { doc = null; }
+                    if (doc && !doc.spEsc) {
+                        doc.spEsc = true;
+                        doc.addEventListener('keydown', function (e) { if (e.key === 'Escape') m.shut(); });
+                    }
                     // the empty page a frame starts with is not an answer
                     if (doc && doc.location && doc.location.href === 'about:blank') return;
                     var got = doc && doc.body && doc.body.getAttribute('data-ref');
@@ -7326,6 +7335,7 @@
         // anywhere else
         var onMsg = function (e) {
             if (e.origin !== location.origin || !e.data || e.data.sp !== 'report-close') return;
+            if (frame && e.source !== frame.contentWindow) return;
             m.shut();
         };
         window.addEventListener('message', onMsg);
@@ -12859,17 +12869,17 @@
                 for (var i = 0; i < ORG_ROLES.length; i++) {
                     if (ORG_ROLES[i].key === inv.role) role = t(ORG_ROLES[i].label);
                 }
-                var m = modalShell('Join an organisation', '');
-                var line = document.createElement('p');
-                line.className = 'modal-p';
-                line.textContent = fill('You were invited to join {org} as {role}.', { org: inv.org, role: role });
-                m.body.appendChild(line);
+                // the line under the title is already in the reader's language,
+                // and an organisation's name is in no dictionary, so it passes
+                // through the shell as it is
+                var m = modalShell('Join an organisation',
+                    fill('You were invited to join {org} as {role}.', { org: inv.org, role: role }));
                 var acts = document.createElement('div');
                 acts.className = 'mfa-form';
                 var msg = document.createElement('div');
                 msg.className = 'modal-msg';
                 acts.appendChild(msg);
-                var yes = wideBtn('Join');
+                var yes = wideBtn('Join', 'cta');
                 acts.appendChild(yes);
                 var quit = document.createElement('div');
                 quit.className = 'modal-quit';
@@ -12886,7 +12896,7 @@
                     msg.textContent = '';
                     msg.className = 'modal-msg';
                     postJson('/v1/invites/accept', {}).then(function (out) {
-                        location.assign(orgHome(encodeURIComponent(out.slug)));
+                        location.assign(orgHome(out.slug));
                     }).catch(function (err) {
                         yes.disabled = false;
                         msg.textContent = err.message;

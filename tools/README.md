@@ -22,15 +22,16 @@ croatian and german entry.
 Puts an account back to having no plan, so `/dashboard` sends it to
 `/choose-a-plan` again. For trying that path more than once.
 
-    DATABASE_URL=... SP_INDEX_KEY=... node tools/reset-plan.js you@example.com
-    DATABASE_URL=... SP_INDEX_KEY=... node tools/reset-plan.js you@example.com --yes
+    DATABASE_URL=... SUBMISSIONS_KEY=... node tools/reset-plan.js you@example.com
+    DATABASE_URL=... SUBMISSIONS_KEY=... node tools/reset-plan.js you@example.com --yes
 
-Without `--yes` it prints the current plan and stops. It refuses to run when
-`NODE_ENV=production`.
+Without `--yes` it prints the current plan and stops. It runs only on a database
+marked staging or development (see "which database this is" below).
 
 The address is never stored in readable form, so the lookup hashes what you type
-with `SP_INDEX_KEY` and matches that. The key has to be the one the environment
-uses, or it finds nobody.
+with the index key (`SUBMISSIONS_INDEX_KEY`, or one derived from `SUBMISSIONS_KEY`)
+and matches that. The key has to be the one the environment uses, or it finds
+nobody.
 
 An address listed in `DEV_PLAN_EMAILS` is granted enterprise again on the next
 dashboard load, because that grant is re-applied on every visit. Take it out of
@@ -48,9 +49,8 @@ account can get back in.
 
 It writes the row the normal forgot-password path writes: same table, same
 hashed token, same expiry, same single use. Nobody types a password anywhere --
-the link asks for one. It refuses to run on production, where the email works
-and is the path to use: when `NODE_ENV=production` and `APP_ENV` is not
-`staging` (staging runs with `NODE_ENV=production` too, for its secure cookie).
+the link asks for one. It runs only on a database marked staging or development;
+on production the email works and is the path to use.
 
 `--site` is the site that database belongs to. Get it wrong and the link points
 at a deployment where the token does not exist.
@@ -58,8 +58,8 @@ at a deployment where the token does not exist.
 `--create` lets a new colleague into staging. Signing up sends a code by email,
 which staging cannot do, so there was no way to make a second account there.
 With `--create` the link is issued for an address that has no account, and
-opening it asks for a name and a password and makes one. It only works where
-`APP_ENV=staging`:
+opening it asks for a name and a password and makes one. It only works on a
+database marked staging:
 
     railway run --environment staging node tools/reset-link.js them@example.com \
         --create --site https://staging.sentinelpay.org
@@ -85,15 +85,31 @@ not the owner -- this takes two-factor off:
 
     DATABASE_URL=... SUBMISSIONS_KEY=... node tools/remove-2fa.js them@example.com
     DATABASE_URL=... SUBMISSIONS_KEY=... node tools/remove-2fa.js them@example.com \
-        --yes --why "ticket 1042, call with the owner"
+        --yes --by "your name" --why "ticket 1042, call with the owner"
 
 Without `--yes` it lists the apps on the account and does nothing. With it,
 every app comes off, two-factor is off, every session the account has is ended,
-and the audit trail records `2fa-off-by-support` with the reason given in
-`--why`, which it will not run without. The person then signs in with their
+and the audit trail records `2fa-off-by-support` under the name given in `--by`,
+with the reason given in `--why`. It will not run without both. The person then signs in with their
 password and adds an app again.
 
 It runs against production: that is where people lose phones.
+
+# which database this is
+
+The tools that write invented or destructive things (`wipe-orgs`, `reset-plan`,
+`seed-usage`, `seed-staging`, `reset-link`, `snapshot-to-staging`) ask the
+database which environment it belongs to, not the shell. The server writes that
+into a one-row `app_env` table the first time it starts on a database:
+`staging` where `APP_ENV=staging`, otherwise what Railway calls the
+environment, otherwise `production` for a production build and `development`
+for anything else. A server that finds a different mark logs it as serious.
+
+So a shell that happens to hold production's `DATABASE_URL` cannot seed, wipe
+or print reset links into it, whatever `NODE_ENV` says, and there is no
+override variable. `snapshot-to-staging` needs a target marked `staging` and a
+source that is not. A database nobody has started a server on is marked as
+nothing, and the tools refuse it.
 
 # print fonts
 
