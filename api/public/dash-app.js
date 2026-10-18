@@ -11132,19 +11132,42 @@
             return row;
         }
 
-        // Deleted on the click, with no question in between: the row goes at
-        // once and comes back, with the reason, only if the server says no.
+        // Asked once, in the dialog the security page removes an app with:
+        // the token by name, that it cannot be undone, and the action with the
+        // way out a step below it. The row goes when the server says it went.
         function dropToken(r) {
-            var before = rows;
-            rows = rows.filter(function (x) { return x.id !== r.id; });
-            draw();
-            postJson('/v1/account/tokens/' + encodeURIComponent(r.id) + '/delete', {}).then(function () {
-                writeTokenCache(who, rows, scopes, groups);
-                toast(t('Token deleted'), 'good');
-            }).catch(function (err) {
-                rows = before;
-                draw();
-                toast(err.message, 'bad');
+            var m = modalShell('Delete token',
+                fill('This cannot be undone. Anything still using "{name}" stops working the moment it is deleted.', { name: r.name }));
+            m.box.classList.add('mfa-modal');
+            var acts = document.createElement('div');
+            acts.className = 'mfa-form';
+            var msg = document.createElement('div');
+            msg.className = 'modal-msg';
+            acts.appendChild(msg);
+            var yes = wideBtn('Delete token', 'danger');
+            acts.appendChild(yes);
+            var quit = document.createElement('div');
+            quit.className = 'modal-quit';
+            var no = wideBtn('Cancel', 'quiet');
+            no.addEventListener('click', m.shut);
+            quit.appendChild(no);
+            acts.appendChild(quit);
+            m.body.appendChild(acts);
+            yes.addEventListener('click', function () {
+                yes.disabled = true;
+                msg.textContent = '';
+                msg.className = 'modal-msg';
+                postJson('/v1/account/tokens/' + encodeURIComponent(r.id) + '/delete', {}).then(function () {
+                    m.shut();
+                    rows = rows.filter(function (x) { return x.id !== r.id; });
+                    writeTokenCache(who, rows, scopes, groups);
+                    draw();
+                    toast(t('Token deleted'), 'good');
+                }).catch(function (err) {
+                    yes.disabled = false;
+                    msg.textContent = err.message;
+                    msg.className = 'modal-msg is-bad';
+                });
             });
         }
 
