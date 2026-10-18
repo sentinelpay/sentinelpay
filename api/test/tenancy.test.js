@@ -79,6 +79,22 @@ test('a project token stops with its project and never reaches the rest', live, 
     await db.query('DELETE FROM users WHERE id = $1', [owner]);
 });
 
+test('a token is deleted only by its own organisation, and is gone at once', live, async () => {
+    await orgs.init();
+    const owner = await aPerson('del');
+    const a = (await orgs.create(owner, 'Del A ' + Date.now(), 'localhost', 'owner')).org.id;
+    const b = (await orgs.create(owner, 'Del B ' + Date.now(), 'localhost', 'owner')).org.id;
+    const made = await tokens.mint(owner, a, 'to delete', ['screenings:read'], 30, 'live');
+    const id = made.row.id;
+    assert.strictEqual((await tokens.remove(b, id)).reason, 'missing', 'another organisation deleted the token');
+    assert.strictEqual((await tokens.read(made.token)).ok, true);
+    assert.strictEqual((await tokens.remove(a, id)).ok, true);
+    assert.strictEqual((await tokens.read(made.token)).ok, false, 'a deleted token still works');
+    assert.ok(!(await tokens.list(a)).some((r) => r.id === id), 'a deleted token is still listed');
+    await db.query('DELETE FROM organisations WHERE id = ANY($1)', [[a, b]]);
+    await db.query('DELETE FROM users WHERE id = $1', [owner]);
+});
+
 test('an address is read out of what was pasted, and nothing else passes for one', () => {
     const eth = '0x8589427373D6D84E98730D7795D8f6f8731FDA16';
     assert.strictEqual(screening.normalise('​' + eth), eth, 'a zero-width space hides an address');

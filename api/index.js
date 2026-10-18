@@ -3275,6 +3275,28 @@ app.post('/v1/account/tokens/:id/revoke', requireCloudflareOrigin, accountLimite
     res.json({ ok: true });
 });
 
+// A token deleted on the click: gone from the list and from use at once.
+app.post('/v1/account/tokens/:id/delete', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const org = await orgFor(req, me);
+    if (!org) return res.status(409).json({ error: 'Choose an organisation first' });
+    if (!orgs.roleAtLeast(org.role, 'admin')) {
+        return res.status(403).json({ error: 'Only an admin can delete a token.' });
+    }
+    const out = await tokens.remove(org.id, req.params.id);
+    if (!out.ok) {
+        if (out.reason === 'missing') return res.status(404).json({ error: 'That token is already gone.' });
+        return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
+    }
+    await tellOrg(org.id, { topic: 'org', id: String(org.id) });
+    await accounts.audit('token-deleted', {
+        actor: String(me.userId), subject: String(req.params.id), ip: req.realIp,
+        detail: (out.token.kind === 'test' ? 'sp_test_' : 'sp_live_') + '...' + out.token.tail + ' ' + String(out.token.name || '').slice(0, 60),
+    });
+    res.json({ ok: true });
+});
+
 app.get('/v1/account/sessions', async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;

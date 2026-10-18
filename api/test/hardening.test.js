@@ -118,7 +118,8 @@ test('the token list keeps its permissions behind View permissions', () => {
     assert.doesNotMatch(list, /'Scopes'/, 'the scopes are back on the row');
     assert.match(list, /\[\['used', 'Last used'\], \['expires', 'Expires'\]\]/);
     assert.match(list, /item\('View permissions'/);
-    assert.match(list, /item\('Revoke token'/);
+    assert.match(list, /item\('Delete token'/);
+    assert.doesNotMatch(dash, /function askRevoke/, 'deleting asks first again');
     assert.match(dash, /function viewPermissions\(r, scopes, groups\) \{[\s\S]*?accessReview\(d\.body/);
     assert.match(dash, /function stepReview\(\) \{\n {12}d\.retitle\('Review access'\);[\s\S]*?accessReview\(d\.body/);
 });

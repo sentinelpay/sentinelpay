@@ -11132,8 +11132,24 @@
             return row;
         }
 
-        // The row's actions behind one button: what the token may do, and,
-        // while it still works, taking it away.
+        // Deleted on the click, with no question in between: the row goes at
+        // once and comes back, with the reason, only if the server says no.
+        function dropToken(r) {
+            var before = rows;
+            rows = rows.filter(function (x) { return x.id !== r.id; });
+            draw();
+            postJson('/v1/account/tokens/' + encodeURIComponent(r.id) + '/delete', {}).then(function () {
+                writeTokenCache(who, rows, scopes, groups);
+                toast(t('Token deleted'), 'good');
+            }).catch(function (err) {
+                rows = before;
+                draw();
+                toast(err.message, 'bad');
+            });
+        }
+
+        // The row's actions behind one button: what the token may do, and
+        // deleting it.
         function tokenMenu(r) {
             var wrap = document.createElement('div');
             wrap.className = 'tk-menu';
@@ -11166,16 +11182,14 @@
                 '<path d="m10.8 12.2 8.2-8.2M16 7l2.5 2.5M14 9l2 2"/></svg>', false, function () {
                 viewPermissions(r, scopes, groups);
             });
-            if (!r.revokedAt) {
-                var line = document.createElement('div');
-                line.className = 'tk-sep';
-                pop.appendChild(line);
-                item('Revoke token', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
-                    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 7h15M9.5 7V4.8h5V7"/>' +
-                    '<path d="M6.5 7l.9 12.2h9.2L17.5 7M10 11v5M14 11v5"/></svg>', true, function () {
-                    askRevoke(r, load);
-                });
-            }
+            var line = document.createElement('div');
+            line.className = 'tk-sep';
+            pop.appendChild(line);
+            item('Delete token', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+                'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 7h15M9.5 7V4.8h5V7"/>' +
+                '<path d="M6.5 7l.9 12.2h9.2L17.5 7M10 11v5M14 11v5"/></svg>', true, function () {
+                dropToken(r);
+            });
             wrap.appendChild(pop);
             pop.addEventListener('click', function (e) { e.stopPropagation(); });
             function open(on) {
@@ -11583,59 +11597,6 @@
             box.appendChild(p);
         }
         return box;
-    }
-
-    function askRevoke(row, done) {
-        var m = modalShell('Revoke this token',
-            'Anything still using it stops working the moment this goes through.');
-        var body = document.createElement('div');
-        body.className = 'vpanel';
-
-        var who = document.createElement('div');
-        who.className = 'modal-who mono';
-        who.textContent = row.name + '  ' + (row.kind === 'test' ? 'sp_test_' : 'sp_live_') + '\u2026' + row.tail;
-        body.appendChild(who);
-
-        var msg = document.createElement('p');
-        msg.className = 'verr';
-        msg.hidden = true;
-        body.appendChild(msg);
-
-        var yes = wideBtn('Revoke token', 'cta');
-        body.appendChild(yes);
-        var quit = document.createElement('div');
-        quit.className = 'modal-quit';
-        var no = wideBtn('Keep it', 'quiet');
-        no.addEventListener('click', m.shut);
-        quit.appendChild(no);
-        body.appendChild(quit);
-        m.body.appendChild(body);
-
-        yes.addEventListener('click', function () {
-            yes.disabled = true;
-            msg.hidden = true;
-            fetch('/v1/account/tokens/' + encodeURIComponent(row.id) + '/revoke', {
-                method: 'POST', credentials: 'same-origin'
-            }).then(function (r) {
-                return r.json().catch(function () { return {}; }).then(function (j) {
-                    return { ok: r.ok, body: j };
-                });
-            }).then(function (r) {
-                if (!r.ok) {
-                    msg.textContent = (r.body && r.body.error) || t('That did not work.');
-                    msg.hidden = false;
-                    yes.disabled = false;
-                    return;
-                }
-                m.shut();
-                toast(t('Token revoked'), 'good');
-                done();
-            }).catch(function () {
-                msg.textContent = t('That did not work.');
-                msg.hidden = false;
-                yes.disabled = false;
-            });
-        });
     }
 
     var RISK_ORDER = ['low', 'medium', 'high'];
