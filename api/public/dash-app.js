@@ -10969,7 +10969,7 @@
         sandboxItem.appendChild(siT);
         var siS = document.createElement('span');
         siS.className = 'split-opt-sub';
-        siS.textContent = t('Runs against the same lists, spends nothing, kept apart from your real history.');
+        siS.textContent = t('Answers from fixed test addresses, spends nothing, kept apart from your real history.');
         sandboxItem.appendChild(siS);
         pop.appendChild(sandboxItem);
         split.appendChild(pop);
@@ -10997,7 +10997,7 @@
         });
 
         var card = document.createElement('div');
-        card.className = 'card';
+        card.className = 'card tk-card';
         page.appendChild(card);
 
         var who = (me && me.email) || '';
@@ -11013,16 +11013,35 @@
             return key;
         }
 
+        // Sorted by a column when one is asked for, otherwise in the order
+        // the server keeps: live tokens first, newest first. A token never
+        // used sorts as the oldest use, one that never expires as the latest
+        // expiry, so the ones to look at come to the top when ascending.
+        var sortBy = '';
+        var sortUp = true;
+        function sortKey(r) {
+            if (sortBy === 'used') return r.lastUsedAt ? new Date(r.lastUsedAt).getTime() : 0;
+            return r.expiresAt ? new Date(r.expiresAt).getTime() : Infinity;
+        }
+
         function draw() {
             card.textContent = '';
             var q = findIn.value.trim().toLowerCase();
             var shown = rows.filter(function (r) {
-                return !q || (r.name + ' ' + r.scopes.join(' ')).toLowerCase().indexOf(q) !== -1;
+                return !q || (r.name + ' ' + r.scopes.join(' ') + ' ' +
+                    r.scopes.map(scopeLabel).join(' ')).toLowerCase().indexOf(q) !== -1;
             });
+            if (sortBy) {
+                shown = shown.slice().sort(function (x, y) {
+                    var d2 = sortKey(x) - sortKey(y);
+                    if (isNaN(d2)) d2 = sortKey(x) === sortKey(y) ? 0 : (sortKey(x) === Infinity ? 1 : -1);
+                    return sortUp ? d2 : -d2;
+                });
+            }
 
             if (!rows.length) {
                 card.appendChild(emptyState('No tokens yet',
-                    'When you create one it will appear here, with what it may do and when it expires.'));
+                    'When you create one it will appear here, with when it was last used and when it expires.'));
                 return;
             }
             if (!shown.length) {
@@ -11031,12 +11050,34 @@
             }
 
             var head = document.createElement('div');
-            head.className = 'tr';
-            head.classList.add('th');
-            ['Token', 'Scopes', 'Last used', 'Expires'].forEach(function (h) {
-                var c = document.createElement('div');
-                c.textContent = t(h);
-                head.appendChild(c);
+            head.className = 'tr is-tok th';
+            var h1 = document.createElement('div');
+            h1.textContent = t('Token');
+            head.appendChild(h1);
+            [['used', 'Last used'], ['expires', 'Expires']].forEach(function (c) {
+                var cell = document.createElement('div');
+                var b2 = document.createElement('button');
+                b2.type = 'button';
+                b2.className = 'tk-sort' + (sortBy === c[0] ? ' is-on' : '');
+                var on = sortBy === c[0];
+                cell.setAttribute('aria-sort', on ? (sortUp ? 'ascending' : 'descending') : 'none');
+                var tx = document.createElement('span');
+                tx.textContent = t(c[1]);
+                b2.appendChild(tx);
+                var ic = document.createElement('span');
+                ic.className = 'tk-sort-i';
+                ic.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+                    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                    '<path class="tk-up" d="m8 10 4-4 4 4"/><path class="tk-dn" d="m8 14 4 4 4-4"/></svg>';
+                if (on) ic.classList.add(sortUp ? 'is-up' : 'is-down');
+                b2.appendChild(ic);
+                b2.addEventListener('click', function () {
+                    if (sortBy === c[0]) sortUp = !sortUp;
+                    else { sortBy = c[0]; sortUp = true; }
+                    draw();
+                });
+                cell.appendChild(b2);
+                head.appendChild(cell);
             });
             head.appendChild(document.createElement('div'));
             card.appendChild(head);
@@ -11046,41 +11087,39 @@
 
         function tokenRow(r) {
             var row = document.createElement('div');
-            row.className = 'tr' + (r.revokedAt ? ' is-off' : '');
+            row.className = 'tr is-tok' + (r.revokedAt ? ' is-off' : '');
 
             var who = document.createElement('div');
             var nm = document.createElement('div');
             nm.className = 'tr-name';
-            nm.textContent = r.name;
+            nm.appendChild(document.createTextNode(r.name));
+            if (r.kind === 'test') nm.appendChild(tag(t('Sandbox'), 'sbx'));
+            if (r.revokedAt) nm.appendChild(tag(t('Revoked'), 'off'));
             who.appendChild(nm);
+            // the start every token of its kind shares, then a mask where the
+            // part nobody kept would be, then the four characters that are
+            // kept to tell one token from another
             var sub = document.createElement('div');
-            sub.className = 'tr-sub mono';
-            sub.textContent = (r.kind === 'test' ? 'sp_test_' : 'sp_live_') + '\u2026' + r.tail;
+            sub.className = 'tr-sub tk-mask';
+            sub.textContent = (r.kind === 'test' ? 'sp_test_' : 'sp_live_') + '••••••••' + r.tail;
             who.appendChild(sub);
             row.appendChild(who);
 
-            var sc = document.createElement('div');
-            sc.className = 'tr-tags';
-            if (r.kind === 'test') sc.appendChild(tag(t('Sandbox'), 'sbx'));
-            if (r.revokedAt) sc.appendChild(tag(t('Revoked'), 'off'));
-            else r.scopes.forEach(function (k) { sc.appendChild(tag(scopeLabel(k))); });
-            row.appendChild(sc);
-
-            var used = document.createElement('div');
-            used.className = 'tr-dim';
+            // each carries its column's name for a phone, where the heading
+            // row is gone and a date on its own does not say what it is
+            var used = dimCell('Last used');
             // the date keeps the row to one line; the hour is worth having when you
             // are working out whether a token leaked, so it waits on hover.
-            used.textContent = r.lastUsedAt ? whenText(r.lastUsedAt) : t('Never');
+            used.appendChild(document.createTextNode(r.lastUsedAt ? whenText(r.lastUsedAt) : t('Never used')));
             if (r.lastUsedAt) used.title = whenText(r.lastUsedAt, true);
             row.appendChild(used);
 
-            var exp = document.createElement('div');
-            exp.className = 'tr-dim';
+            var exp = dimCell('Expires');
             if (!r.expiresAt) {
-                exp.textContent = t('Does not expire');
+                exp.appendChild(document.createTextNode(t('Does not expire')));
             } else {
                 var left = daysUntil(r.expiresAt);
-                exp.textContent = whenText(r.expiresAt);
+                exp.appendChild(document.createTextNode(whenText(r.expiresAt)));
                 if (left !== null && left <= 0) exp.appendChild(tag(t('Expired'), 'off'));
                 else if (left !== null && left <= 14) exp.appendChild(tag(t('Soon'), 'warn'));
             }
@@ -11088,16 +11127,82 @@
 
             var act = document.createElement('div');
             act.className = 'tr-act';
-            if (!r.revokedAt) {
-                var kill = document.createElement('button');
-                kill.type = 'button';
-                kill.className = 'rowbtn is-bad';
-                kill.textContent = t('Revoke');
-                kill.addEventListener('click', function () { askRevoke(r, load); });
-                act.appendChild(kill);
-            }
+            act.appendChild(tokenMenu(r));
             row.appendChild(act);
             return row;
+        }
+
+        // The row's actions behind one button: what the token may do, and,
+        // while it still works, taking it away.
+        function tokenMenu(r) {
+            var wrap = document.createElement('div');
+            wrap.className = 'tk-menu';
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'tk-more';
+            btn.setAttribute('aria-haspopup', 'menu');
+            btn.setAttribute('aria-expanded', 'false');
+            btn.setAttribute('aria-label', t('Actions for') + ' ' + r.name);
+            btn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
+                '<circle cx="12" cy="5.5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="18.5" r="1.6"/></svg>';
+            wrap.appendChild(btn);
+            var pop = document.createElement('div');
+            pop.className = 'tk-pop';
+            pop.setAttribute('role', 'menu');
+            function item(label, svg, bad, run) {
+                var it = document.createElement('button');
+                it.type = 'button';
+                it.className = 'tk-opt' + (bad ? ' is-bad' : '');
+                it.setAttribute('role', 'menuitem');
+                it.innerHTML = svg;
+                var tx = document.createElement('span');
+                tx.textContent = t(label);
+                it.appendChild(tx);
+                it.addEventListener('click', function () { shut(); run(); });
+                pop.appendChild(it);
+            }
+            item('View permissions', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+                'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/>' +
+                '<path d="m10.8 12.2 8.2-8.2M16 7l2.5 2.5M14 9l2 2"/></svg>', false, function () {
+                viewPermissions(r, scopes, groups);
+            });
+            if (!r.revokedAt) {
+                var line = document.createElement('div');
+                line.className = 'tk-sep';
+                pop.appendChild(line);
+                item('Revoke token', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+                    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 7h15M9.5 7V4.8h5V7"/>' +
+                    '<path d="M6.5 7l.9 12.2h9.2L17.5 7M10 11v5M14 11v5"/></svg>', true, function () {
+                    askRevoke(r, load);
+                });
+            }
+            wrap.appendChild(pop);
+            pop.addEventListener('click', function (e) { e.stopPropagation(); });
+            function open(on) {
+                wrap.classList.toggle('is-open', on);
+                btn.setAttribute('aria-expanded', on ? 'true' : 'false');
+                if (on) {
+                    // drawn above the button where there is no room under it,
+                    // so the last row's menu is not cut off by the card
+                    var rc = btn.getBoundingClientRect();
+                    wrap.classList.toggle('is-up', window.innerHeight - rc.bottom < 140);
+                    popOpened(shut);
+                    document.addEventListener('click', outside, true);
+                    document.addEventListener('keydown', onEsc);
+                } else {
+                    popClosed(shut);
+                    document.removeEventListener('click', outside, true);
+                    document.removeEventListener('keydown', onEsc);
+                }
+            }
+            function shut() { open(false); }
+            function outside(e) { if (!wrap.contains(e.target)) shut(); }
+            function onEsc(e) { if (e.key === 'Escape') { shut(); btn.focus(); } }
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                open(!wrap.classList.contains('is-open'));
+            });
+            return wrap;
         }
 
         function load() {
@@ -11266,14 +11371,13 @@
     // Access tokens: column names, and a token per row.
     function skTokens(n) {
         var f = document.createDocumentFragment();
-        f.appendChild(skHead('tr', ['Token', 'Scopes', 'Last used', 'Expires'], true));
+        f.appendChild(skHead('tr is-tok', ['Token', 'Last used', 'Expires'], true));
         for (var i = 0; i < n; i++) {
-            f.appendChild(skEl('div', 'tr', [
-                skEl('div', '', [skEl('div', 'tr-name', [sk(skw(8, i), 12)]), skEl('div', 'tr-sub', [sk('6rem', 10)])]),
-                skEl('div', 'tr-tags', [sk(58, 20, 'pill')]),
+            f.appendChild(skEl('div', 'tr is-tok', [
+                skEl('div', '', [skEl('div', 'tr-name', [sk(skw(8, i), 12)]), skEl('div', 'tr-sub', [sk('8rem', 10)])]),
                 skEl('div', 'tr-dim', [sk('5rem', 11)]),
                 skEl('div', 'tr-dim', [sk('5rem', 11)]),
-                skEl('div', 'tr-act')
+                skEl('div', 'tr-act', [sk(30, 30, 'chip')])
             ]));
         }
         return f;
@@ -11489,7 +11593,7 @@
 
         var who = document.createElement('div');
         who.className = 'modal-who mono';
-        who.textContent = row.name + '  ' + 'sp_live_' + '\u2026' + row.tail;
+        who.textContent = row.name + '  ' + (row.kind === 'test' ? 'sp_test_' : 'sp_live_') + '\u2026' + row.tail;
         body.appendChild(who);
 
         var msg = document.createElement('p');
@@ -11710,6 +11814,291 @@
         txt.appendChild(p);
         b.appendChild(txt);
         return b;
+    }
+
+    // A token already made, read back: the same page as the last step of
+    // making one, with when it was made and last used in its summary.
+    function viewPermissions(r, scopes, groups) {
+        var d = drawer(r.name || 'Token');
+        d.steps(0, 0, '');
+        function draw(projectName) {
+            d.body.textContent = '';
+            var exp = r.expiresAt ? whenText(r.expiresAt) : t('Does not expire');
+            var summary = [
+                ['Screens against', tkrKind(r.kind)],
+                ['Created', whenText(r.createdAt)],
+                ['Last used', r.lastUsedAt ? whenText(r.lastUsedAt, true) : t('Never used')],
+                ['Expires', exp],
+                ['Project access', tkrChip(r.projectId ? (projectName || t('One project')) : t('Every project'), TKR_PROJECT_I)]
+            ];
+            if (r.revokedAt) summary.splice(1, 0, ['Revoked', whenText(r.revokedAt, true)]);
+            accessReview(d.body, {
+                picked: scopes.filter(function (sc) { return r.scopes.indexOf(sc.key) !== -1; }),
+                groups: groups,
+                oneProject: Boolean(r.projectId),
+                summary: summary
+            });
+        }
+        draw('');
+        var fin = document.createElement('button');
+        fin.type = 'button';
+        fin.className = 'btn btn-primary';
+        fin.textContent = t('Close');
+        fin.addEventListener('click', d.shut);
+        d.acts.appendChild(fin);
+        // the project's name, once the list of them arrives
+        var at = (lastMe && lastMe.org && lastMe.org.id) || '';
+        if (r.projectId && at) {
+            fetch('/v1/orgs/' + encodeURIComponent(at) + '/projects', { credentials: 'same-origin' })
+                .then(function (x) { return x.ok ? x.json() : null; })
+                .then(function (out) {
+                    ((out && out.rows) || []).forEach(function (pr) {
+                        if (String(pr.id) === String(r.projectId)) draw(pr.name || t('Unnamed project'));
+                    });
+                })
+                .catch(function () {  });
+        }
+    }
+
+    // What a token may do, laid out for reading: a risk card in the tone of
+    // its riskiest permission, the token as it is listed, and the permissions
+    // it holds a group at a time, each opening onto the calls it makes
+    // possible. The last step of a new token and View permissions on one
+    // already made are this same page, so they cannot come to disagree.
+    //   o.picked   the scope objects the token holds
+    //   o.groups   the scope groups, in order
+    //   o.oneProject  whether it is held to a single project
+    //   o.summary  [label, text or node] rows for the summary card
+    function accessReview(host, o) {
+        var picked = o.picked;
+        var groups = o.groups || [];
+        var RANK = { low: 0, medium: 1, high: 2 };
+        var level = 'low';
+        picked.forEach(function (sc) {
+            if ((RANK[sc.risk] || 0) > RANK[level]) level = sc.risk;
+        });
+        var reads = picked.filter(function (sc) { return !sc.writes; }).length;
+        var writes = picked.length - reads;
+
+        function block(label, extra) {
+            var sec = document.createElement('section');
+            sec.className = 'tkr-blk';
+            var head = document.createElement('div');
+            head.className = 'tkr-blk-h';
+            var h = document.createElement('h3');
+            h.textContent = t(label);
+            head.appendChild(h);
+            if (extra) head.appendChild(extra);
+            sec.appendChild(head);
+            host.appendChild(sec);
+            return sec;
+        }
+
+        var riskSec = block('Risk assessment');
+        var card = document.createElement('div');
+        card.className = 'tkr-risk is-' + level;
+        var ico = document.createElement('span');
+        ico.className = 'tkr-risk-i';
+        ico.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            (level === 'low'
+                ? '<path d="M12 3.5 5 6.2v5.3c0 4.3 2.9 7.6 7 9 4.1-1.4 7-4.7 7-9V6.2Z"/><path d="m9 12 2.1 2.1L15.2 10"/>'
+                : '<path d="M12 8.5v5M12 16.9v.1"/>' +
+                  '<path d="M10.3 4.3 2.8 18a1.8 1.8 0 0 0 1.6 2.7h15.2A1.8 1.8 0 0 0 21.2 18L13.7 4.3a1.9 1.9 0 0 0-3.4 0Z"/>') +
+            '</svg>';
+        card.appendChild(ico);
+        var rt = document.createElement('div');
+        rt.className = 'tkr-risk-t';
+        var rh = document.createElement('div');
+        rh.className = 'tkr-risk-h';
+        rh.textContent = t({ low: 'Low risk', medium: 'Medium risk', high: 'High risk' }[level]);
+        rt.appendChild(rh);
+        var rp = document.createElement('p');
+        rp.textContent = fill(o.oneProject
+            ? 'Read on {r}, write on {w}, in one project.'
+            : 'Read on {r}, write on {w}, across every project.', { r: reads, w: writes });
+        rt.appendChild(rp);
+        var high = picked.filter(function (sc) { return sc.risk === 'high'; });
+        var why = document.createElement('p');
+        why.className = 'tkr-risk-why';
+        why.textContent = high.length
+            ? t('Marked high risk:') + ' ' + high.map(function (sc) { return t(sc.label); }).join(', ') + '.'
+            : t(level === 'medium' ? 'Nothing in it is marked high risk.' : 'Everything in it is marked low risk.');
+        rt.appendChild(why);
+        card.appendChild(rt);
+        riskSec.appendChild(card);
+
+        var sumSec = block('Token summary');
+        var rows = document.createElement('dl');
+        rows.className = 'tkr-sum';
+        o.summary.forEach(function (pair) {
+            var r = document.createElement('div');
+            r.className = 'tkr-sum-r';
+            var dt = document.createElement('dt');
+            dt.textContent = t(pair[0]);
+            r.appendChild(dt);
+            var dd = document.createElement('dd');
+            if (typeof pair[1] === 'string') dd.textContent = pair[1];
+            else dd.appendChild(pair[1]);
+            r.appendChild(dd);
+            rows.appendChild(r);
+        });
+        sumSec.appendChild(rows);
+
+        // only what the token holds is listed: anything else is refused, so
+        // there is nothing to say about it here
+        var shown = 'all';
+        var seg = document.createElement('div');
+        seg.className = 'vseg tkr-seg';
+        seg.setAttribute('role', 'group');
+        seg.setAttribute('aria-label', t('Show permissions'));
+        [['all', 'All'], ['read', 'Read'], ['write', 'Read-write']].forEach(function (f) {
+            var b2 = document.createElement('button');
+            b2.type = 'button';
+            b2.className = 'vseg-b';
+            b2.textContent = t(f[1]);
+            b2.setAttribute('aria-pressed', String(f[0] === shown));
+            b2.addEventListener('click', function () {
+                shown = f[0];
+                seg.querySelectorAll('.vseg-b').forEach(function (x) {
+                    x.setAttribute('aria-pressed', String(x === b2));
+                });
+                paintCaps();
+            });
+            seg.appendChild(b2);
+        });
+        var capSec = block('Permissions', seg);
+        var caps = document.createElement('div');
+        caps.className = 'tkr-caps';
+        capSec.appendChild(caps);
+        var openCap = {};
+
+        function paintCaps() {
+            caps.textContent = '';
+            var any = false;
+            groups.forEach(function (g) {
+                var inG = picked.filter(function (sc) { return (sc.group || 'other') === g.key; });
+                if (!inG.length) return;
+                var writesHere = inG.some(function (sc) { return sc.writes; });
+                if (shown === 'read' && writesHere) return;
+                if (shown === 'write' && !writesHere) return;
+                any = true;
+                var box = document.createElement('div');
+                box.className = 'tkr-cap' + (openCap[g.key] ? ' is-open' : '');
+                var head = document.createElement('button');
+                head.type = 'button';
+                head.className = 'tkr-cap-head';
+                head.setAttribute('aria-expanded', openCap[g.key] ? 'true' : 'false');
+                var ht = document.createElement('span');
+                ht.className = 'tkr-cap-t';
+                var hn = document.createElement('span');
+                hn.className = 'tkr-cap-n';
+                hn.textContent = t(g.label);
+                ht.appendChild(hn);
+                var hs = document.createElement('span');
+                hs.className = 'tkr-cap-s';
+                hs.textContent = inG.map(function (sc) { return t(sc.label); }).join(', ');
+                ht.appendChild(hs);
+                head.appendChild(ht);
+                var badge = document.createElement('span');
+                badge.className = 'tkr-acc' + (writesHere ? ' is-w' : '');
+                badge.textContent = t(writesHere ? 'Read-write' : 'Read');
+                head.appendChild(badge);
+                var chev = document.createElement('span');
+                chev.className = 'grp-chev';
+                chev.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                    'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                    '<path d="m6 9 6 6 6-6"/></svg>';
+                head.appendChild(chev);
+                head.addEventListener('click', function () {
+                    openCap[g.key] = !openCap[g.key];
+                    box.classList.toggle('is-open', openCap[g.key]);
+                    head.setAttribute('aria-expanded', openCap[g.key] ? 'true' : 'false');
+                });
+                box.appendChild(head);
+
+                var body = document.createElement('div');
+                body.className = 'tkr-cap-body';
+                var inner = document.createElement('div');
+                inG.forEach(function (sc) {
+                    var one = document.createElement('div');
+                    one.className = 'tkr-perm';
+                    var top = document.createElement('div');
+                    top.className = 'tkr-perm-n';
+                    var nm = document.createElement('span');
+                    nm.textContent = t(sc.label);
+                    top.appendChild(nm);
+                    if (sc.risk) top.appendChild(riskPill(sc.risk));
+                    if (!sc.live) {
+                        var soon = document.createElement('span');
+                        soon.className = 'tick-soon';
+                        soon.textContent = t('Not live yet');
+                        top.appendChild(soon);
+                    }
+                    one.appendChild(top);
+                    var list = document.createElement('ul');
+                    list.className = 'tkr-eps';
+                    (sc.endpoints || []).forEach(function (ep) {
+                        var text = String(ep);
+                        var cut = text.indexOf(' ');
+                        var li = document.createElement('li');
+                        var verb = document.createElement('span');
+                        verb.className = 'tkr-verb is-' + text.slice(0, cut).toLowerCase();
+                        verb.textContent = text.slice(0, cut);
+                        li.appendChild(verb);
+                        var path = document.createElement('span');
+                        path.className = 'tkr-path';
+                        path.textContent = text.slice(cut + 1);
+                        li.appendChild(path);
+                        list.appendChild(li);
+                    });
+                    if (list.children.length) one.appendChild(list);
+                    inner.appendChild(one);
+                });
+                body.appendChild(inner);
+                box.appendChild(body);
+                caps.appendChild(box);
+            });
+            if (!any) {
+                var none = document.createElement('p');
+                none.className = 'tkr-none';
+                none.textContent = t(shown === 'read'
+                    ? 'Every group here can also change something.'
+                    : 'Nothing here changes anything. It only reads.');
+                caps.appendChild(none);
+            }
+        }
+        paintCaps();
+    }
+
+    // a pill in the summary card, with an optional icon before its words
+    function tkrChip(text, svg) {
+        var c = document.createElement('span');
+        c.className = 'tkr-chip';
+        if (svg) {
+            var i = document.createElement('span');
+            i.className = 'tkr-chip-i';
+            i.innerHTML = svg;
+            c.appendChild(i);
+        }
+        var tx = document.createElement('span');
+        tx.textContent = text;
+        c.appendChild(tx);
+        return c;
+    }
+    var TKR_PROJECT_I = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" ' +
+        'stroke-linejoin="round" aria-hidden="true"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9Z"/>' +
+        '<path d="m4 7.5 8 4.5 8-4.5M12 12v9"/></svg>';
+    // Live or Sandbox, after the prefix a token of that kind starts with
+    function tkrKind(kind) {
+        var box = document.createElement('span');
+        box.className = 'tkr-kind';
+        var pre = document.createElement('span');
+        pre.className = 'tkr-pre';
+        pre.textContent = kind === 'test' ? 'sp_test_' : 'sp_live_';
+        box.appendChild(pre);
+        box.appendChild(tkrChip(t(kind === 'test' ? 'Sandbox' : 'Live')));
+        return box;
     }
 
     function askToken(scopes, groups, done, kind) {
@@ -12050,248 +12439,24 @@
         function stepReview() {
             d.retitle('Review access');
             d.steps(2, 2, 'Review');
-
-            var picked = scopes.filter(function (sc) { return want.scopes[sc.key]; });
-            var RANK = { low: 0, medium: 1, high: 2 };
-            var level = 'low';
-            picked.forEach(function (sc) {
-                if ((RANK[sc.risk] || 0) > RANK[level]) level = sc.risk;
-            });
-            var reads = picked.filter(function (sc) { return !sc.writes; }).length;
-            var writes = picked.length - reads;
             var proj = null;
             mine.forEach(function (pr) { if (String(pr.id) === want.project) proj = pr; });
-
-            // One block of the review: a heading over a card, the whole width of
-            // the panel, where the first step sets a label beside its control.
-            function block(label, extra) {
-                var sec = document.createElement('section');
-                sec.className = 'tkr-blk';
-                var head = document.createElement('div');
-                head.className = 'tkr-blk-h';
-                var h = document.createElement('h3');
-                h.textContent = t(label);
-                head.appendChild(h);
-                if (extra) head.appendChild(extra);
-                sec.appendChild(head);
-                d.body.appendChild(sec);
-                return sec;
-            }
-
-            // What the token costs if it gets loose: the risk of the riskiest
-            // permission in it, in that risk's tone, with the counts and the
-            // names of the high risk ones, because those are what make somebody
-            // stop and take one off.
-            var riskSec = block('Risk assessment');
-            var card = document.createElement('div');
-            card.className = 'tkr-risk is-' + level;
-            var ico = document.createElement('span');
-            ico.className = 'tkr-risk-i';
-            ico.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
-                'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-                (level === 'low'
-                    ? '<path d="M12 3.5 5 6.2v5.3c0 4.3 2.9 7.6 7 9 4.1-1.4 7-4.7 7-9V6.2Z"/><path d="m9 12 2.1 2.1L15.2 10"/>'
-                    : '<path d="M12 8.5v5M12 16.9v.1"/>' +
-                      '<path d="M10.3 4.3 2.8 18a1.8 1.8 0 0 0 1.6 2.7h15.2A1.8 1.8 0 0 0 21.2 18L13.7 4.3a1.9 1.9 0 0 0-3.4 0Z"/>') +
-                '</svg>';
-            card.appendChild(ico);
-            var rt = document.createElement('div');
-            rt.className = 'tkr-risk-t';
-            var rh = document.createElement('div');
-            rh.className = 'tkr-risk-h';
-            rh.textContent = t({ low: 'Low risk', medium: 'Medium risk', high: 'High risk' }[level]);
-            rt.appendChild(rh);
-            var rp = document.createElement('p');
-            rp.textContent = fill(proj
-                ? 'Read on {r}, write on {w}, in one project.'
-                : 'Read on {r}, write on {w}, across every project.', { r: reads, w: writes });
-            rt.appendChild(rp);
-            var high = picked.filter(function (sc) { return sc.risk === 'high'; });
-            var why = document.createElement('p');
-            why.className = 'tkr-risk-why';
-            why.textContent = high.length
-                ? t('Marked high risk:') + ' ' + high.map(function (sc) { return t(sc.label); }).join(', ') + '.'
-                : t(level === 'medium' ? 'Nothing in it is marked high risk.' : 'Everything in it is marked low risk.');
-            rt.appendChild(why);
-            card.appendChild(rt);
-            riskSec.appendChild(card);
-
-            // The token as it will be listed.
-            var sumSec = block('Token summary');
-            var rows = document.createElement('dl');
-            rows.className = 'tkr-sum';
-            function row(k, v) {
-                var r = document.createElement('div');
-                r.className = 'tkr-sum-r';
-                var dt = document.createElement('dt');
-                dt.textContent = t(k);
-                r.appendChild(dt);
-                var dd = document.createElement('dd');
-                if (typeof v === 'string') dd.textContent = v;
-                else dd.appendChild(v);
-                r.appendChild(dd);
-                rows.appendChild(r);
-            }
-            function chip(text, svg) {
-                var c = document.createElement('span');
-                c.className = 'tkr-chip';
-                if (svg) {
-                    var i = document.createElement('span');
-                    i.className = 'tkr-chip-i';
-                    i.innerHTML = svg;
-                    c.appendChild(i);
-                }
-                var tx = document.createElement('span');
-                tx.textContent = text;
-                c.appendChild(tx);
-                return c;
-            }
-            row('Name', want.name.trim());
-            var kindBox = document.createElement('span');
-            kindBox.className = 'tkr-kind';
-            var pre = document.createElement('span');
-            pre.className = 'tkr-pre';
-            pre.textContent = want.kind === 'test' ? 'sp_test_' : 'sp_live_';
-            kindBox.appendChild(pre);
-            kindBox.appendChild(chip(t(want.kind === 'test' ? 'Sandbox' : 'Live')));
-            row('Screens against', kindBox);
             var days = Number(want.days);
-            row('Expires', days > 0
-                ? ttlLabel() + '  ·  ' + fill('until {date}', {
-                    date: whenText(new Date(Date.now() + days * 86400000).toISOString())
-                })
-                : ttlLabel());
-            row('Project access', chip(proj ? (proj.name || t('Unnamed project')) : t('Every project'),
-                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" ' +
-                'stroke-linejoin="round" aria-hidden="true"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9Z"/>' +
-                '<path d="m4 7.5 8 4.5 8-4.5M12 12v9"/></svg>'));
-            sumSec.appendChild(rows);
-
-            // What it may do, a group at a time, each opening onto the calls it
-            // makes possible. Only what was ticked is listed: anything else is
-            // refused, so there is nothing to say about it here.
-            var shown = 'all';
-            var seg = document.createElement('div');
-            seg.className = 'vseg tkr-seg';
-            seg.setAttribute('role', 'group');
-            seg.setAttribute('aria-label', t('Show permissions'));
-            [['all', 'All'], ['read', 'Read'], ['write', 'Read-write']].forEach(function (f) {
-                var b2 = document.createElement('button');
-                b2.type = 'button';
-                b2.className = 'vseg-b';
-                b2.textContent = t(f[1]);
-                b2.setAttribute('aria-pressed', String(f[0] === shown));
-                b2.addEventListener('click', function () {
-                    shown = f[0];
-                    seg.querySelectorAll('.vseg-b').forEach(function (x) {
-                        x.setAttribute('aria-pressed', String(x === b2));
-                    });
-                    paintCaps();
-                });
-                seg.appendChild(b2);
+            accessReview(d.body, {
+                picked: scopes.filter(function (sc) { return want.scopes[sc.key]; }),
+                groups: groups,
+                oneProject: Boolean(proj),
+                summary: [
+                    ['Name', want.name.trim()],
+                    ['Screens against', tkrKind(want.kind)],
+                    ['Expires', days > 0
+                        ? ttlLabel() + '  \u00b7  ' + fill('until {date}', {
+                            date: whenText(new Date(Date.now() + days * 86400000).toISOString())
+                        })
+                        : ttlLabel()],
+                    ['Project access', tkrChip(proj ? (proj.name || t('Unnamed project')) : t('Every project'), TKR_PROJECT_I)]
+                ]
             });
-            var capSec = block('Permissions', seg);
-            var caps = document.createElement('div');
-            caps.className = 'tkr-caps';
-            capSec.appendChild(caps);
-            var openCap = {};
-
-            function paintCaps() {
-                caps.textContent = '';
-                var any = false;
-                groups.forEach(function (g) {
-                    var inG = picked.filter(function (sc) { return (sc.group || 'other') === g.key; });
-                    if (!inG.length) return;
-                    var writesHere = inG.some(function (sc) { return sc.writes; });
-                    if (shown === 'read' && writesHere) return;
-                    if (shown === 'write' && !writesHere) return;
-                    any = true;
-                    var box = document.createElement('div');
-                    box.className = 'tkr-cap' + (openCap[g.key] ? ' is-open' : '');
-                    var head = document.createElement('button');
-                    head.type = 'button';
-                    head.className = 'tkr-cap-head';
-                    head.setAttribute('aria-expanded', openCap[g.key] ? 'true' : 'false');
-                    var ht = document.createElement('span');
-                    ht.className = 'tkr-cap-t';
-                    var hn = document.createElement('span');
-                    hn.className = 'tkr-cap-n';
-                    hn.textContent = t(g.label);
-                    ht.appendChild(hn);
-                    var hs = document.createElement('span');
-                    hs.className = 'tkr-cap-s';
-                    hs.textContent = inG.map(function (sc) { return t(sc.label); }).join(', ');
-                    ht.appendChild(hs);
-                    head.appendChild(ht);
-                    var badge = document.createElement('span');
-                    badge.className = 'tkr-acc' + (writesHere ? ' is-w' : '');
-                    badge.textContent = t(writesHere ? 'Read-write' : 'Read');
-                    head.appendChild(badge);
-                    var chev = document.createElement('span');
-                    chev.className = 'grp-chev';
-                    chev.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
-                        'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-                        '<path d="m6 9 6 6 6-6"/></svg>';
-                    head.appendChild(chev);
-                    head.addEventListener('click', function () {
-                        openCap[g.key] = !openCap[g.key];
-                        box.classList.toggle('is-open', openCap[g.key]);
-                        head.setAttribute('aria-expanded', openCap[g.key] ? 'true' : 'false');
-                    });
-                    box.appendChild(head);
-
-                    var body = document.createElement('div');
-                    body.className = 'tkr-cap-body';
-                    var inner = document.createElement('div');
-                    inG.forEach(function (sc) {
-                        var one = document.createElement('div');
-                        one.className = 'tkr-perm';
-                        var top = document.createElement('div');
-                        top.className = 'tkr-perm-n';
-                        var nm = document.createElement('span');
-                        nm.textContent = t(sc.label);
-                        top.appendChild(nm);
-                        if (sc.risk) top.appendChild(riskPill(sc.risk));
-                        if (!sc.live) {
-                            var soon = document.createElement('span');
-                            soon.className = 'tick-soon';
-                            soon.textContent = t('Not live yet');
-                            top.appendChild(soon);
-                        }
-                        one.appendChild(top);
-                        var list = document.createElement('ul');
-                        list.className = 'tkr-eps';
-                        (sc.endpoints || []).forEach(function (ep) {
-                            var text = String(ep);
-                            var cut = text.indexOf(' ');
-                            var li = document.createElement('li');
-                            var verb = document.createElement('span');
-                            verb.className = 'tkr-verb is-' + text.slice(0, cut).toLowerCase();
-                            verb.textContent = text.slice(0, cut);
-                            li.appendChild(verb);
-                            var path = document.createElement('span');
-                            path.className = 'tkr-path';
-                            path.textContent = text.slice(cut + 1);
-                            li.appendChild(path);
-                            list.appendChild(li);
-                        });
-                        if (list.children.length) one.appendChild(list);
-                        inner.appendChild(one);
-                    });
-                    body.appendChild(inner);
-                    box.appendChild(body);
-                    caps.appendChild(box);
-                });
-                if (!any) {
-                    var none = document.createElement('p');
-                    none.className = 'tkr-none';
-                    none.textContent = t(shown === 'read'
-                        ? 'Every group here can also change something.'
-                        : 'Nothing here changes anything. It only reads.');
-                    caps.appendChild(none);
-                }
-            }
-            paintCaps();
 
             var err = document.createElement('p');
             err.className = 'verr drw-err';

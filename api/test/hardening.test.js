@@ -103,8 +103,22 @@ test('a live permission lists exactly the routes that ask for it', () => {
         assert.deepStrictEqual(sc.endpoints.slice().sort(), (asking[sc.key] || []).sort(), sc.key + ' lists other calls than ask for it');
     }
     const dash = read('public/dash-app.js');
-    const review = dash.slice(dash.indexOf('    function askToken('), dash.indexOf('        function stepShow(secret)'));
+    const review = dash.slice(dash.indexOf('    function accessReview('), dash.indexOf('    function tkrChip('));
     assert.match(review, /block\('Risk assessment'\)/);
     assert.match(review, /block\('Token summary'\)/);
     assert.match(review, /\[\['all', 'All'\], \['read', 'Read'\], \['write', 'Read-write'\]\]/);
+});
+
+// The token list: a token, when it was last used, when it expires, and its
+// actions behind one button. What a token may do is read in View
+// permissions, the same page as the last step of making one.
+test('the token list keeps its permissions behind View permissions', () => {
+    const dash = read('public/dash-app.js');
+    const list = dash.slice(dash.indexOf('    function viewTokens('), dash.indexOf('    // on a cold visit there is nothing to show yet.'));
+    assert.doesNotMatch(list, /'Scopes'/, 'the scopes are back on the row');
+    assert.match(list, /\[\['used', 'Last used'\], \['expires', 'Expires'\]\]/);
+    assert.match(list, /item\('View permissions'/);
+    assert.match(list, /item\('Revoke token'/);
+    assert.match(dash, /function viewPermissions\(r, scopes, groups\) \{[\s\S]*?accessReview\(d\.body/);
+    assert.match(dash, /function stepReview\(\) \{\n {12}d\.retitle\('Review access'\);[\s\S]*?accessReview\(d\.body/);
 });
