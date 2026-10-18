@@ -2275,7 +2275,8 @@ button { font: inherit; color: inherit; }
 }
 
 .pg-note { margin: -0.55rem 0 1rem; font-size: 0.84rem; line-height: 1.6; color: var(--ink-3); }
-.card + .pg-h2 { margin-top: 2.6rem; }
+.card + .pg-h2,
+.card + .sec-head { margin-top: 2.6rem; }
 .card > .fld:last-child { border-bottom: 0; }
 
 .fld.is-wide { grid-template-columns: minmax(0, 1fr) minmax(0, 23rem); align-items: start; }

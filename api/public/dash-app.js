@@ -193,26 +193,23 @@
     }
 
     // What belongs to you and what belongs to the company are different things,
-    // and the address says which: your preferences follow you between
-    // organisations, the tokens and the log do not.
+    // and the address says which: your preferences, your sign-in and your own
+    // trail follow you between organisations. Access tokens do not: one is made
+    // for an organisation, by its admin, and spends that organisation's checks,
+    // so it lives in the organisation's own rail.
     var ACCOUNT_NAV = [
         { group: 'Account settings', items: [
             { key: 'preferences', label: 'Preferences', icon: 'prefs', href: ACCOUNT_ROOT + 'preferences' },
-            { key: 'security', label: 'Security', icon: 'lock', href: ACCOUNT_ROOT + 'security' }
-        ] },
-        { group: 'Developers', items: [
-            { key: 'tokens', label: 'Access tokens', icon: 'key', href: ACCOUNT_ROOT + 'tokens' },
+            { key: 'security', label: 'Security', icon: 'lock', href: ACCOUNT_ROOT + 'security' },
             { key: 'account-logs', label: 'Audit logs', icon: 'audit', href: ACCOUNT_ROOT + 'logs' }
         ] }
     ];
 
-    // The organisation's rail. Two sectors, because there are two kinds of
-    // thing in here: the work, and the company that owns it.
+    // The organisation's rail: the work, the company that owns it, and the
+    // keys its own software screens with.
     //
-    // Access tokens and your own account are not on it. Tokens belong to the
-    // organisation's settings, which is where the screen is reached from now,
-    // and your account is behind your own avatar in the corner, where it was
-    // always also reachable. A rail is for where the work is.
+    // Your own account is not on it: it is behind your avatar in the corner,
+    // and follows you from one organisation to the next.
     // Before an organisation is chosen there is no organisation to show, so this
     // rail is the two things that exist either way: the list you are standing on
     // and your own account. It is short because there is genuinely little here,
@@ -233,6 +230,9 @@
             { key: 'usage', label: 'Usage', icon: 'usage', org: 'usage' },
             { key: 'billing', label: 'Billing', icon: 'billing', org: 'billing' },
             { key: 'settings', label: 'Organization settings', icon: 'orgcog', org: 'settings' }
+        ] },
+        { group: 'Developers', items: [
+            { key: 'tokens', label: 'Access tokens', icon: 'key', org: 'tokens' }
         ] }
     ];
 
@@ -2064,7 +2064,7 @@
         txt.appendChild(h);
         var p = document.createElement('p');
         p.className = 'dz-p';
-        p.textContent = t('This cannot be undone. Your account, your screenings and your cases go with it. We keep the audit record of the deletion itself, because the law requires it of us.');
+        p.textContent = t('This cannot be undone. Your name, address, password and two-factor go with it. The checks and decisions you made stay with the organisations they were made for, no longer tied to you, and we keep the audit record of the deletion itself, because the law requires it of us.');
         txt.appendChild(p);
 
         var go2 = document.createElement('button');
@@ -10171,8 +10171,8 @@
         idCard.appendChild(orghStat('In the url', org.slug || '—'));
         page.appendChild(idCard);
 
-        // the rail no longer carries this, so it is reached from here. a screen
-        // that exists and cannot be got to is worse than one that does not.
+        // the tokens are on the rail too; here they sit beside the rest of
+        // what the organisation is set up with
         var tokCard = orghCard('Access tokens', 'key');
         var tb = document.createElement('div');
         tb.className = 'orgh-body';
@@ -10182,7 +10182,7 @@
         tb.appendChild(tp);
         var tlink = document.createElement('a');
         tlink.className = 'btn btn-quiet orgh-act';
-        tlink.href = ACCOUNT_ROOT + 'tokens';
+        tlink.href = orgPath(org.slug, 'tokens');
         tlink.textContent = t('Manage access tokens');
         tb.appendChild(tlink);
         tokCard.appendChild(tb);
@@ -10223,7 +10223,84 @@
         var page = document.createElement('div');
         page.className = 'pg';
         page.appendChild(pageHead('Security',
-            'What it takes to sign in to this account, beyond the password.'));
+            'What it takes to sign in to this account, and how to shut out a device you no longer trust.'));
+
+        // ---- the password: the one in use, and the new one twice. The server
+        // checks it against the rules and the breach list, and signs every
+        // other device out when it changes.
+        page.appendChild(sectionTitle('Password'));
+        page.appendChild(sectionNote('Changing it signs out every other device this account is signed in on, and we email you that it happened.'));
+        var pwForm = document.createElement('form');
+        pwForm.className = 'card';
+        pwForm.setAttribute('novalidate', '');
+        function pwInput(id, auto) {
+            var i = document.createElement('input');
+            i.type = 'password';
+            i.id = id;
+            i.className = 'fld-in';
+            i.autocomplete = auto;
+            i.maxLength = 200;
+            return i;
+        }
+        // the account's address, for the password manager to file the new
+        // password under; never shown
+        var pwUser = document.createElement('input');
+        pwUser.type = 'email';
+        pwUser.autocomplete = 'username';
+        pwUser.value = (me && me.email) || '';
+        pwUser.hidden = true;
+        pwUser.tabIndex = -1;
+        pwForm.appendChild(pwUser);
+        var pwCur = pwInput('pw-cur', 'current-password');
+        var pwNew = pwInput('pw-new', 'new-password');
+        var pwTwo = pwInput('pw-two', 'new-password');
+        pwForm.appendChild(fieldRow({ label: 'Current password', id: 'pw-cur', control: pwCur }));
+        pwForm.appendChild(fieldRow({
+            label: 'New password',
+            hint: 'At least 12 characters, and not one that has turned up in a data breach.',
+            id: 'pw-new',
+            control: pwNew
+        }));
+        pwForm.appendChild(fieldRow({ label: 'Repeat the new password', id: 'pw-two', control: pwTwo }));
+        var pwFoot = document.createElement('div');
+        pwFoot.className = 'card-foot';
+        var pwMsg = document.createElement('span');
+        pwMsg.className = 'card-msg';
+        pwFoot.appendChild(pwMsg);
+        var pwSave = document.createElement('button');
+        pwSave.type = 'submit';
+        pwSave.className = 'btn btn-primary';
+        pwSave.textContent = t('Change password');
+        pwSave.disabled = true;
+        pwFoot.appendChild(pwSave);
+        pwForm.appendChild(pwFoot);
+        page.appendChild(pwForm);
+        function pwSync() {
+            pwSave.disabled = !pwCur.value || !pwNew.value || !pwTwo.value;
+            if (pwMsg.textContent) { pwMsg.textContent = ''; pwMsg.className = 'card-msg'; }
+        }
+        [pwCur, pwNew, pwTwo].forEach(function (i) { i.addEventListener('input', pwSync); });
+        function pwSay(text) {
+            pwMsg.textContent = text;
+            pwMsg.className = 'card-msg is-bad';
+        }
+        pwForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (pwSave.disabled) return;
+            if (pwNew.value !== pwTwo.value) { pwSay(t('The two new passwords do not match.')); pwTwo.focus(); return; }
+            if (pwNew.value.length < 12) { pwSay(t('Your password needs at least 12 characters.')); pwNew.focus(); return; }
+            pwSave.disabled = true;
+            postJson('/v1/account/password', { current: pwCur.value, next: pwNew.value }).then(function () {
+                pwCur.value = '';
+                pwNew.value = '';
+                pwTwo.value = '';
+                pwSync();
+                toast(t('Password changed. Every other device is signed out.'), 'good');
+            }).catch(function (err) {
+                pwSay(err.message);
+                pwSave.disabled = false;
+            });
+        });
 
         // ---- two-factor: every authenticator app on the account in a row of
         // its own, up to three, and the way to add one at the head of the
@@ -10335,6 +10412,35 @@
             });
         }
         load();
+
+        // ---- every other device this account is signed in on, signed out on
+        // one click: for a laptop left somewhere, or a sign-in that was not
+        // yours. This browser stays signed in.
+        page.appendChild(sectionTitle('Other devices'));
+        page.appendChild(sectionNote('Signed in somewhere you no longer use, or not sure every sign-in was yours? This ends every session but the one you are using now.'));
+        var devCard = document.createElement('div');
+        devCard.className = 'card';
+        var devRow = document.createElement('div');
+        devRow.className = 'card-foot sec-dev';
+        var devMsg = document.createElement('span');
+        devMsg.className = 'card-msg';
+        devMsg.textContent = t('This browser stays signed in.');
+        devRow.appendChild(devMsg);
+        var devGo = document.createElement('button');
+        devGo.type = 'button';
+        devGo.className = 'btn btn-quiet';
+        devGo.textContent = t('Sign out other devices');
+        devGo.addEventListener('click', function () {
+            devGo.disabled = true;
+            postJson('/v1/account/sessions/revoke', {}).then(function () {
+                toast(t('Every other device is signed out.'), 'good');
+            }).catch(function (err) {
+                toast(err.message, 'bad');
+            }).then(function () { devGo.disabled = false; });
+        });
+        devRow.appendChild(devGo);
+        devCard.appendChild(devRow);
+        page.appendChild(devCard);
 
         // an app added or removed from another screen
         onLive(function (e) { if (e.topic === 'me') load(); });
@@ -13588,8 +13694,14 @@
         if (page) {
             if (page === 'preferences') canvas.appendChild(viewPreferences(lastMe));
             else if (page === 'security') canvas.appendChild(viewSecurity(lastMe));
-            else if (page === 'tokens') canvas.appendChild(viewTokens(lastMe));
             else if (page === 'logs') canvas.appendChild(viewLogs(lastMe));
+            // the tokens moved into the organisation: an old link or bookmark
+            // is taken to the tokens of the organisation in use, or to the
+            // choice of one
+            else if (page === 'tokens') {
+                var into = lastMe.org && lastMe.org.slug;
+                location.replace(into ? orgPath(into, 'tokens') : ORGS_PATH);
+            }
             return;
         }
         var slug = slugInPath();

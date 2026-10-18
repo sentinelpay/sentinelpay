@@ -583,7 +583,11 @@ test('a figure against a limit draws a bar, a plain count its line', () => {
 test('the security page names, adds and removes authenticator apps', () => {
     const page = body('function viewSecurity(me) {', 12000);
     assert.match(page, /sectionTitle\('Two-factor authentication'\)/);
-    assert.doesNotMatch(page, /account\/sessions/, 'the sessions are back on the security page');
+    // the list of sessions stays off the page; the one button that signs the
+    // others out is all of them it keeps
+    assert.doesNotMatch(page, /\/v1\/account\/sessions'/, 'the sessions are back on the security page');
+    assert.match(page, /postJson\('\/v1\/account\/sessions\/revoke'/);
+    assert.match(page, /postJson\('\/v1\/account\/password', \{ current: pwCur\.value, next: pwNew\.value \}\)/);
     assert.doesNotMatch(page, /orghCard\(/, 'the page is drawn in the overview cards, not the settings ones');
     assert.doesNotMatch(SRC, /Recovery codes|recovery-codes\.txt|function showCodes/, 'recovery codes are shown again');
     // the apps a row each by name, the action to add one while there is room
