@@ -191,3 +191,34 @@ test.after(async () => {
     await new Promise((r) => setTimeout(r, 250));
     await db.close();
 });
+
+// The audit logs page reads an account's own trail a page at a time. Lines
+// written in the same instant are neither read twice nor stepped over, a
+// group filter keeps only its kinds, and another account's lines never show.
+test('an account reads its own trail, filtered and a page at a time', live, async () => {
+    const accounts = require('../accounts');
+    const me = 'trail-' + crypto.randomBytes(4).toString('hex');
+    const other = me + '-other';
+    const kinds = ['login', 'token-created', '2fa-on', 'login', 'token-deleted', 'org-created', 'login'];
+    for (const k of kinds) {
+        await db.query("INSERT INTO audit_events (kind, actor, at) VALUES ($1, $2, now() - interval '1 minute')", [k, me]);
+    }
+    await db.query("INSERT INTO audit_events (kind, actor) VALUES ('login', $1)", [other]);
+    const seen = [];
+    let cursor = '';
+    for (let i = 0; i < 5; i++) {
+        const page = await accounts.accountTrail(me, { limit: 2, cursor });
+        page.rows.forEach((r) => seen.push(String(r.id)));
+        if (!page.more) break;
+        cursor = page.cursor;
+    }
+    assert.strictEqual(seen.length, kinds.length, 'a page read a line twice or skipped one');
+    assert.strictEqual(new Set(seen).size, kinds.length);
+    const tokensOnly = await accounts.accountTrail(me, { groups: ['tokens'] });
+    assert.deepStrictEqual(tokensOnly.rows.map((r) => r.kind).sort(), ['token-created', 'token-deleted']);
+    const asc = await accounts.accountTrail(me, { order: 'asc', limit: 50 });
+    assert.ok(asc.rows.every((r, i) => i === 0 || new Date(asc.rows[i - 1].at) <= new Date(r.at)));
+    const none = await accounts.accountTrail(me, { from: new Date(Date.now() + 3600000).toISOString() });
+    assert.strictEqual(none.rows.length, 0, 'a window in the future found lines');
+    await db.query('DELETE FROM audit_events WHERE actor = $1 OR actor = $2', [me, other]);
+});

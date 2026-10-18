@@ -1845,6 +1845,117 @@ button { font: inherit; color: inherit; }
    rows under it reads as broken */
 .tr.is-tok.is-off { opacity: 1; }
 .tr.is-tok.is-off > :not(.tr-act) { opacity: 0.55; }
+
+/* the audit logs: a bar of filters as chips, the lines as a table to the
+   second, and a count with a way to read further */
+.lgx-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.9rem;
+    padding: 0.45rem 0.5rem 0.45rem 0.8rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+}
+.lgx-ico { flex: none; display: flex; width: 15px; height: 15px; color: var(--ink-4); }
+.lgx-ico svg { width: 100%; height: 100%; }
+.lgx-chips { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem; }
+.lgx-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    max-width: 100%;
+    padding: 0.28rem 0.4rem 0.28rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--canvas);
+    font-family: var(--sp-text);
+    font-size: 0.78rem;
+    color: var(--ink-2);
+    cursor: pointer;
+    transition: border-color 0.16s ease;
+}
+.lgx-chip:hover, .lgx-menu.is-open .lgx-chip { border-color: var(--pill-line-hover); }
+.lgx-chip-k { flex: none; white-space: nowrap; color: var(--ink-3); }
+.lgx-chip-eq { flex: none; color: var(--ink-4); }
+.lgx-chip-x { flex: none; }
+.lgx-chip-v { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 600; color: var(--ink); }
+.lgx-chip-x { display: flex; width: 16px; height: 16px; padding: 2px; border-radius: 4px; color: var(--ink-4); }
+.lgx-chip-x:hover { background: var(--hover); color: var(--ink); }
+.lgx-chip-x svg { width: 100%; height: 100%; }
+.lgx-add {
+    padding: 0.3rem 0.4rem;
+    border: 0;
+    background: none;
+    font-family: var(--sp-text);
+    font-size: 0.78rem;
+    color: var(--ink-3);
+    cursor: pointer;
+}
+.lgx-add:hover, .lgx-menu.is-open .lgx-add { color: var(--ink); }
+.lgx-menu .tk-pop { left: 0; right: auto; min-width: 13rem; }
+.lgx-opt .lgx-tick { display: flex; width: 14px; height: 14px; color: var(--link); visibility: hidden; }
+.lgx-opt .lgx-tick svg { width: 100%; height: 100%; }
+.lgx-opt.is-on .lgx-tick { visibility: visible; }
+.lgx-opt.is-on { color: var(--ink); font-weight: 600; }
+.lgx-again { flex: none; }
+.lgx-again.is-busy svg { animation: lgxSpin 0.8s linear infinite; }
+@keyframes lgxSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .lgx-again.is-busy svg { animation: none; } }
+
+.tr.is-log { grid-template-columns: 10.5rem 4.8rem minmax(0, 1.6fr) minmax(0, 1.4fr) 8.2rem; }
+.th.is-log > * { white-space: nowrap; }
+.lgx-row {
+    width: 100%;
+    border: 0;
+    border-bottom: 1px solid var(--line-2);
+    background: none;
+    font-family: var(--sp-text);
+    text-align: left;
+    cursor: pointer;
+}
+.lgx-row:hover { background: var(--hover); }
+.lgx-card > .lgx-row:last-child { border-bottom: 0; border-radius: 0 0 calc(var(--r-lg) - 1px) calc(var(--r-lg) - 1px); }
+.lgx-when { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.lgx-ev { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 600; }
+.tr.is-log > :nth-child(2) { display: flex; align-items: center; }
+.lgx-det, .lgx-ip { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.lgx-foot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.8rem;
+    margin-top: 0.9rem;
+    font-size: 0.8rem;
+    color: var(--ink-4);
+}
+.lgx-foot:empty { display: none; }
+
+/* on a phone: when, what, and how it went; the details are in the line's
+   own panel, a tap away */
+@media (max-width: 800px) {
+    /* the event over the moment it happened, the result beside both: the
+       name is what is read first, and it gets the whole width to be read */
+    .tr.is-log {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas: "ev res" "when res";
+        gap: 0.15rem 0.8rem;
+        padding-left: 0.9rem;
+        padding-right: 0.9rem;
+    }
+    .tr.is-log > .lgx-ev { grid-area: ev; }
+    .tr.is-log > .lgx-when { grid-area: when; }
+    .tr.is-log > :nth-child(2) { grid-area: res; }
+    .tr.is-log .lgx-det, .tr.is-log .lgx-ip { display: none; }
+    /* the heading row over a stack would name columns that are not there;
+       its sort stays, beside the result's name */
+    .th.is-log { grid-template-areas: "when res"; }
+    .th.is-log > :nth-child(1) { grid-area: when; }
+    .th.is-log > :nth-child(3), .th.is-log > :nth-child(4), .th.is-log > :nth-child(5) { display: none; }
+    .tr.is-log .lgx-when { font-size: 0.74rem; white-space: nowrap; color: var(--ink-4); }
+    .tr.is-log .lgx-ev { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 0.82rem; }
+}
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
 .tag {
@@ -2001,11 +2112,11 @@ button { font: inherit; color: inherit; }
    exception: it keeps its columns and slides sideways instead, so its headings
    stay with the values they name. */
 @media (max-width: 800px) {
-    .tr:not(.is-team):not(.is-tok) { grid-template-columns: minmax(0, 1fr) auto; gap: 0.5rem 0.8rem; }
-    .th:not(.is-team):not(.is-tok) { display: none; }
-    .tr:not(.is-team):not(.is-tok) .tr-tags { grid-column: 1 / -1; }
-    .tr:not(.is-team):not(.is-tok) .tr-dim { grid-column: 1 / -1; font-size: 0.76rem; }
-    .tr:not(.is-team):not(.is-tok) .tr-act { grid-row: 1; grid-column: 2; }
+    .tr:not(.is-team):not(.is-tok):not(.is-log) { grid-template-columns: minmax(0, 1fr) auto; gap: 0.5rem 0.8rem; }
+    .th:not(.is-team):not(.is-tok):not(.is-log) { display: none; }
+    .tr:not(.is-team):not(.is-tok):not(.is-log) .tr-tags { grid-column: 1 / -1; }
+    .tr:not(.is-team):not(.is-tok):not(.is-log) .tr-dim { grid-column: 1 / -1; font-size: 0.76rem; }
+    .tr:not(.is-team):not(.is-tok):not(.is-log) .tr-act { grid-row: 1; grid-column: 2; }
 }
 
 /* The token list keeps its columns on a phone, as a table does: three
@@ -3663,7 +3774,7 @@ html.is-theming .btn {
 @media (max-width: 800px) {
     /* the team list is not in here: it keeps its columns and slides, so its
        values keep the headings above them */
-    .tr:not(.is-team):not(.is-tok) .tr-k {
+    .tr:not(.is-team):not(.is-tok):not(.is-log) .tr-k {
         /* a width rather than a gap, so the values line up under each other
            instead of starting wherever the word before them happened to end */
         display: inline-block;

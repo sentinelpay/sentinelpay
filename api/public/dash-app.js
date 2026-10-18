@@ -10810,98 +10810,429 @@
         });
     }
 
-    // What this account has done, newest first. It reads the same trail a
-    // regulator would be shown, filtered to one actor by the server.
+    // What this account has done. It reads the same trail a regulator would
+    // be shown, filtered to one actor by the server.
+    //
+    // What each kind of event is called on the page. A kind with no words
+    // here is shown by its own key rather than hidden: a trail with gaps in
+    // it is worth less than an ugly line.
     var LOG_SAID = {
-        'signed-in': 'Signed in',
-        'signed-out': 'Signed out',
-        'sign-in-refused': 'A sign in was refused',
+        'login': 'Signed in',
+        'login-refused': 'Sign-in refused',
+        'login-password-ok': 'Password accepted, code asked for',
+        'sessions-revoked': 'Other sessions signed out',
+        'reset-requested': 'Password reset asked for',
+        'signup-finished': 'Account created',
+        'account-created-by-reset': 'Account created from a reset link',
         'password-changed': 'Password changed',
-        'password-reset': 'Password reset',
-        'totp-on': 'Two-factor turned on',
-        'totp-off': 'Two-factor turned off',
-        'profile-changed': 'Profile changed',
+        'password-change-refused': 'Password change refused',
+        '2fa-started': 'Authenticator app setup started',
+        '2fa-on': 'Two-factor turned on',
+        '2fa-app-added': 'Authenticator app added',
+        '2fa-app-removed': 'Authenticator app removed',
+        '2fa-off': 'Two-factor turned off',
+        '2fa-off-refused': 'Turning off two-factor refused',
+        '2fa-refused': 'Two-factor code refused',
+        '2fa-recovery-used': 'Recovery code used',
+        'token-created': 'Access token created',
+        'token-deleted': 'Access token deleted',
+        'token-revoked': 'Access token revoked',
         'org-created': 'Organisation created',
         'org-renamed': 'Organisation renamed',
-        'org-removed': 'Organisation closed',
+        'org-closed': 'Organisation closed',
+        'org-risk-bands': 'Risk bands changed',
+        'member-role-changed': 'Member role changed',
+        'member-removed': 'Member removed',
+        'member-left': 'Left an organisation',
+        'invite-sent': 'Invitation sent',
+        'invite-withdrawn': 'Invitation withdrawn',
+        'invite-accepted': 'Invitation accepted',
         'project-created': 'Project created',
         'project-renamed': 'Project renamed',
         'project-archived': 'Project archived',
         'project-restored': 'Project restored',
         'project-removed': 'Project removed',
-        'token-minted': 'Access token issued',
-        'token-revoked': 'Access token revoked'
+        'plan-started': 'Plan started',
+        'plan-cancelled': 'Plan cancelled',
+        'plan-resumed': 'Plan resumed',
+        'trial-activated': 'Trial started',
+        'screening': 'Address checked',
+        'check-decided': 'Alert decided',
+        'usage-export': 'Report exported',
+        'usage-preview': 'Report viewed',
+        'account-deleted': 'Account deleted',
+        'account-delete-refused': 'Account deletion refused',
+        'staff-access': 'Staff page opened',
+        'staff-access-refused': 'Staff page refused'
     };
+    // the groups the server filters by, in the order they are offered
+    var LOG_GROUPS = [
+        ['signin', 'Sign-in'],
+        ['password', 'Password'],
+        ['twofactor', 'Two-factor'],
+        ['tokens', 'Access tokens'],
+        ['organisations', 'Organisations'],
+        ['projects', 'Projects'],
+        ['plan', 'Plan'],
+        ['checks', 'Checks'],
+        ['reports', 'Reports'],
+        ['account', 'Account'],
+        ['staff', 'Staff']
+    ];
+    var LOG_RANGES = [
+        ['1h', 'Last hour', 3600000],
+        ['24h', 'Last 24 hours', 86400000],
+        ['7d', 'Last 7 days', 7 * 86400000],
+        ['30d', 'Last 30 days', 30 * 86400000],
+        ['90d', 'Last 90 days', 90 * 86400000],
+        ['all', 'All time', 0]
+    ];
+    function logSaid(kind) { return LOG_SAID[kind] ? t(LOG_SAID[kind]) : kind; }
+    function logRefused(kind) { return /refused$/.test(String(kind || '')); }
+
+    // A moment to the second, in the zone the preferences name, on the
+    // dashboard's 24-hour clock: an audit line is read for exactly when.
+    function stampText(iso, withYear) {
+        if (!iso) return '';
+        var d = new Date(iso);
+        if (isNaN(d.getTime())) return '';
+        var o = { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' };
+        if (withYear) o.year = 'numeric';
+        try {
+            o.timeZone = zoneNow();
+            return new Intl.DateTimeFormat(navLang(), o).format(d);
+        } catch (err) {
+            return d.toISOString().replace('T', ' ').slice(0, 19);
+        }
+    }
+    function rangeText(ms) {
+        var o = { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' };
+        try {
+            o.timeZone = zoneNow();
+            return new Intl.DateTimeFormat(navLang(), o).format(new Date(ms));
+        } catch (err) {
+            return new Date(ms).toISOString().slice(0, 16).replace('T', ' ');
+        }
+    }
 
     function viewLogs(me) {
         var page = document.createElement('div');
         page.className = 'pg';
         page.appendChild(pageHead('Audit logs',
-            'Who did what, and when. The record is written once and never edited.'));
+            'Everything this account has done, and when. Each line is written once and never changed.'));
+
+        var state = { range: '7d', groups: [], order: 'desc', rows: [], more: false, cursor: '', busy: false, at: 0 };
+
+        // the filters: a date range, the kinds of event, and a way to ask again
+        var bar = document.createElement('div');
+        bar.className = 'lgx-bar';
+        var ico = document.createElement('span');
+        ico.className = 'lgx-ico';
+        ico.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
+            'stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle>' +
+            '<path d="m19.5 19.5-3.8-3.8"></path></svg>';
+        bar.appendChild(ico);
+        var chips = document.createElement('div');
+        chips.className = 'lgx-chips';
+        bar.appendChild(chips);
+        var again = document.createElement('button');
+        again.type = 'button';
+        again.className = 'tk-more lgx-again';
+        again.setAttribute('aria-label', t('Refresh'));
+        again.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
+            'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4h-4"/></svg>';
+        again.addEventListener('click', function () { load(false); });
+        bar.appendChild(again);
+        page.appendChild(bar);
 
         var card = document.createElement('div');
-        card.className = 'card';
+        card.className = 'card tk-card lgx-card';
         page.appendChild(card);
-        skBusy(card).appendChild(skLogs(10));
+        var foot = document.createElement('div');
+        foot.className = 'lgx-foot';
+        page.appendChild(foot);
+        skBusy(card).appendChild(skLogs(8));
 
-        function load() {
-            fetch('/v1/account/logs', { credentials: 'same-origin' })
-                .then(function (r) {
-                    if (!r.ok) throw new Error('bad-status-' + r.status);
-                    return r.json();
+        // a popover of options under a chip, the token list's menu
+        function menu(anchor, build) {
+            var wrap = document.createElement('div');
+            wrap.className = 'tk-menu lgx-menu';
+            wrap.appendChild(anchor);
+            var pop = document.createElement('div');
+            pop.className = 'tk-pop lgx-pop';
+            pop.setAttribute('role', 'menu');
+            wrap.appendChild(pop);
+            pop.addEventListener('click', function (e) { e.stopPropagation(); });
+            function open(on) {
+                wrap.classList.toggle('is-open', on);
+                anchor.setAttribute('aria-expanded', on ? 'true' : 'false');
+                if (on) {
+                    pop.textContent = '';
+                    build(pop, shut);
+                    popOpened(shut);
+                    document.addEventListener('click', outside, true);
+                } else {
+                    popClosed(shut);
+                    document.removeEventListener('click', outside, true);
+                }
+            }
+            function shut() { open(false); }
+            function outside(e) { if (!wrap.contains(e.target)) shut(); }
+            anchor.setAttribute('aria-haspopup', 'menu');
+            anchor.setAttribute('aria-expanded', 'false');
+            anchor.addEventListener('click', function (e) {
+                e.stopPropagation();
+                open(!wrap.classList.contains('is-open'));
+            });
+            return wrap;
+        }
+        function opt(pop, label, on, run) {
+            var it = document.createElement('button');
+            it.type = 'button';
+            it.className = 'tk-opt lgx-opt' + (on ? ' is-on' : '');
+            it.setAttribute('role', 'menuitemcheckbox');
+            it.setAttribute('aria-checked', on ? 'true' : 'false');
+            var tick = document.createElement('span');
+            tick.className = 'lgx-tick';
+            tick.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" ' +
+                'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.2 4.2L19 7"/></svg>';
+            it.appendChild(tick);
+            var tx = document.createElement('span');
+            tx.textContent = t(label);
+            it.appendChild(tx);
+            it.addEventListener('click', run);
+            pop.appendChild(it);
+        }
+        function chip(label, value, onClear) {
+            var c = document.createElement('button');
+            c.type = 'button';
+            c.className = 'lgx-chip';
+            var k = document.createElement('span');
+            k.className = 'lgx-chip-k';
+            k.textContent = t(label);
+            c.appendChild(k);
+            var eq = document.createElement('span');
+            eq.className = 'lgx-chip-eq';
+            eq.textContent = '=';
+            c.appendChild(eq);
+            var v = document.createElement('span');
+            v.className = 'lgx-chip-v';
+            v.textContent = value;
+            c.appendChild(v);
+            if (onClear) {
+                var x = document.createElement('span');
+                x.className = 'lgx-chip-x';
+                x.setAttribute('role', 'button');
+                x.setAttribute('aria-label', t('Remove filter'));
+                x.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+                    'stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg>';
+                x.addEventListener('click', function (e) { e.stopPropagation(); onClear(); });
+                c.appendChild(x);
+            }
+            return c;
+        }
+        function rangeOf(key) {
+            for (var i = 0; i < LOG_RANGES.length; i++) if (LOG_RANGES[i][0] === key) return LOG_RANGES[i];
+            return LOG_RANGES[2];
+        }
+        function paintChips() {
+            chips.textContent = '';
+            var r = rangeOf(state.range);
+            var now = state.at || Date.now();
+            var shown = r[2] ? rangeText(now - r[2]) + ' – ' + rangeText(now) : t('All time');
+            chips.appendChild(menu(chip('Date range', shown, r[2] ? function () {
+                state.range = 'all'; paintChips(); load(false);
+            } : null), function (pop, shut) {
+                LOG_RANGES.forEach(function (x) {
+                    opt(pop, x[1], state.range === x[0], function () {
+                        state.range = x[0]; shut(); paintChips(); load(false);
+                    });
+                });
+            }));
+            if (state.groups.length) {
+                var names = state.groups.map(function (g) {
+                    for (var i = 0; i < LOG_GROUPS.length; i++) if (LOG_GROUPS[i][0] === g) return t(LOG_GROUPS[i][1]);
+                    return g;
+                });
+                chips.appendChild(chip('Event', names.join(', '), function () {
+                    state.groups = []; paintChips(); load(false);
+                }));
+            }
+            var add = document.createElement('button');
+            add.type = 'button';
+            add.className = 'lgx-add';
+            add.textContent = t(state.groups.length ? 'Change filters…' : 'Add more filters…');
+            chips.appendChild(menu(add, function (pop) {
+                LOG_GROUPS.forEach(function (g) {
+                    var on = state.groups.indexOf(g[0]) !== -1;
+                    opt(pop, g[1], on, function () {
+                        if (on) state.groups = state.groups.filter(function (x) { return x !== g[0]; });
+                        else state.groups = state.groups.concat([g[0]]);
+                        on = !on;
+                        this.classList.toggle('is-on', on);
+                        this.setAttribute('aria-checked', on ? 'true' : 'false');
+                        load(false);
+                    });
+                });
+            }));
+        }
+
+        function draw() {
+            card.textContent = '';
+            foot.textContent = '';
+            if (!state.rows.length) {
+                card.appendChild(emptyState(state.groups.length || state.range !== 'all' ? 'Nothing in this view' : 'Nothing yet',
+                    state.groups.length || state.range !== 'all'
+                        ? 'Widen the date range or take a filter off.'
+                        : 'Anything this account does shows up here.'));
+                return;
+            }
+            var head = document.createElement('div');
+            head.className = 'tr is-log th';
+            var dc = document.createElement('div');
+            var sort = document.createElement('button');
+            sort.type = 'button';
+            sort.className = 'tk-sort is-on';
+            dc.setAttribute('aria-sort', state.order === 'asc' ? 'ascending' : 'descending');
+            var st = document.createElement('span');
+            st.textContent = t('Date');
+            sort.appendChild(st);
+            var si = document.createElement('span');
+            si.className = 'tk-sort-i ' + (state.order === 'asc' ? 'is-up' : 'is-down');
+            si.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+                'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                '<path class="tk-up" d="m8 10 4-4 4 4"/><path class="tk-dn" d="m8 14 4 4 4-4"/></svg>';
+            sort.appendChild(si);
+            sort.addEventListener('click', function () {
+                state.order = state.order === 'asc' ? 'desc' : 'asc';
+                load(false);
+            });
+            dc.appendChild(sort);
+            head.appendChild(dc);
+            ['Result', 'Event', 'Details', 'Network address'].forEach(function (h) {
+                var c = document.createElement('div');
+                c.textContent = t(h);
+                head.appendChild(c);
+            });
+            card.appendChild(head);
+            state.rows.forEach(function (r) { card.appendChild(logRow(r)); });
+
+            var count = document.createElement('span');
+            count.textContent = fill(state.more ? 'Viewing the first {n}' : 'Viewing {n}', { n: state.rows.length });
+            foot.appendChild(count);
+            if (state.more) {
+                var more = document.createElement('button');
+                more.type = 'button';
+                more.className = 'btn btn-flat lgx-more';
+                more.textContent = t('Load more');
+                more.addEventListener('click', function () { load(true); });
+                foot.appendChild(more);
+            }
+        }
+
+        function logRow(r) {
+            var row = document.createElement('button');
+            row.type = 'button';
+            row.className = 'tr is-log lgx-row';
+            var when = document.createElement('div');
+            when.className = 'tr-dim lgx-when';
+            when.textContent = stampText(r.at);
+            row.appendChild(when);
+            var res = document.createElement('div');
+            res.appendChild(tag(t(logRefused(r.kind) ? 'Refused' : 'Done'), logRefused(r.kind) ? 'off' : 'ok'));
+            row.appendChild(res);
+            var ev = document.createElement('div');
+            ev.className = 'tr-name lgx-ev';
+            ev.textContent = logSaid(r.kind);
+            row.appendChild(ev);
+            var det = document.createElement('div');
+            det.className = 'tr-dim lgx-det';
+            det.textContent = r.detail || '–';
+            row.appendChild(det);
+            var ip = document.createElement('div');
+            ip.className = 'tr-dim lgx-ip';
+            ip.textContent = r.ip || '–';
+            row.appendChild(ip);
+            row.addEventListener('click', function () { logDetail(r); });
+            return row;
+        }
+
+        // one line in full, for reading or for quoting to somebody
+        function logDetail(r) {
+            var d = drawer(logSaid(r.kind));
+            d.steps(0, 0, '');
+            var sec = document.createElement('section');
+            sec.className = 'tkr-blk';
+            var rows = document.createElement('dl');
+            rows.className = 'tkr-sum';
+            [['When', stampText(r.at, true) + '  ·  ' + zoneNow()],
+                ['Result', t(logRefused(r.kind) ? 'Refused' : 'Done')],
+                ['Event', logSaid(r.kind)],
+                ['Details', r.detail || '–'],
+                ['Network address', r.ip || '–'],
+                ['Event key', r.kind],
+                ['Line', '#' + r.id]].forEach(function (pair) {
+                var x = document.createElement('div');
+                x.className = 'tkr-sum-r';
+                var dt = document.createElement('dt');
+                dt.textContent = t(pair[0]);
+                x.appendChild(dt);
+                var dd = document.createElement('dd');
+                dd.textContent = pair[1];
+                x.appendChild(dd);
+                rows.appendChild(x);
+            });
+            sec.appendChild(rows);
+            d.body.appendChild(sec);
+            var fin = document.createElement('button');
+            fin.type = 'button';
+            fin.className = 'btn btn-primary';
+            fin.textContent = t('Close');
+            fin.addEventListener('click', d.shut);
+            d.acts.appendChild(fin);
+        }
+
+        var asked = 0;
+        function load(next) {
+            var mine = ++asked;
+            if (!next) state.at = Date.now();
+            var r = rangeOf(state.range);
+            var q = '?order=' + state.order + '&limit=50';
+            if (r[2]) q += '&from=' + encodeURIComponent(new Date(state.at - r[2]).toISOString()) +
+                '&to=' + encodeURIComponent(new Date(state.at).toISOString());
+            if (state.groups.length) q += '&groups=' + encodeURIComponent(state.groups.join(','));
+            if (next && state.cursor) q += '&cursor=' + encodeURIComponent(state.cursor);
+            again.classList.add('is-busy');
+            fetch('/v1/account/logs' + q, { credentials: 'same-origin' })
+                .then(function (x) {
+                    if (!x.ok) throw new Error('bad-status-' + x.status);
+                    return x.json();
                 })
                 .then(function (j) {
-                    var rows = (j && j.rows) || [];
-                    card.textContent = '';
-                    if (!rows.length) {
-                        card.appendChild(emptyState('Nothing yet',
-                            'Anything this account does shows up here.'));
-                        return;
-                    }
-                    rows.forEach(function (r) { card.appendChild(logRow(r)); });
+                    if (mine !== asked) return;
+                    var got = (j && j.rows) || [];
+                    state.rows = next ? state.rows.concat(got) : got;
+                    state.more = Boolean(j && j.more);
+                    state.cursor = (j && j.cursor) || '';
+                    if (!next) paintChips();
+                    draw();
                 })
                 .catch(function () {
+                    if (mine !== asked) return;
                     card.textContent = '';
+                    foot.textContent = '';
                     card.appendChild(emptyState('That did not load.', 'Reload the page to try again.'));
-                });
+                })
+                .then(function () { if (mine === asked) again.classList.remove('is-busy'); });
         }
 
-        // every notice means this account did something, which is a line here
-        onLive(load);
-        load();
+        // every notice means this account did something, which is a line here;
+        // asked again only while the first page is what is on screen
+        onLive(function () { if (!state.cursor || state.rows.length <= 50) load(false); });
+        paintChips();
+        load(false);
         return page;
-    }
-
-    function logRow(r) {
-        var row = document.createElement('div');
-        row.className = 'lg';
-        var when = document.createElement('span');
-        when.className = 'lg-when';
-        when.textContent = r.at
-            ? new Date(r.at).toISOString().slice(0, 16).replace('T', ' ') : '';
-        row.appendChild(when);
-        var txt = document.createElement('span');
-        txt.className = 'lg-t';
-        var n = document.createElement('span');
-        n.className = 'lg-n';
-        // an event we have no words for is shown by its own key rather than
-        // hidden: a trail with gaps in it is worth less than an ugly line.
-        n.textContent = LOG_SAID[r.kind] ? t(LOG_SAID[r.kind]) : r.kind;
-        txt.appendChild(n);
-        if (r.detail) {
-            var d = document.createElement('span');
-            d.className = 'lg-d';
-            d.textContent = r.detail;
-            txt.appendChild(d);
-        }
-        row.appendChild(txt);
-        if (r.ip) {
-            var ip = document.createElement('code');
-            ip.className = 'lg-ip';
-            ip.textContent = r.ip;
-            row.appendChild(ip);
-        }
-        return row;
     }
 
     function viewTokens(me) {
@@ -11461,11 +11792,14 @@
     // The audit trail: a time, what happened, and from where.
     function skLogs(n) {
         var f = document.createDocumentFragment();
+        f.appendChild(skHead('tr is-log', ['Date', 'Result', 'Event', 'Details', 'Network address']));
         for (var i = 0; i < n; i++) {
-            f.appendChild(skEl('div', 'lg', [
-                skEl('span', 'lg-when', [sk('6.5rem', 11)]),
-                skEl('span', 'lg-t', [skEl('span', 'lg-n', [sk(skw(6, i), 12)]), skEl('span', 'lg-d', [sk(skw(13, i + 2), 10)])]),
-                skEl('span', 'lg-ip', [sk('4rem', 10)])
+            f.appendChild(skEl('div', 'tr is-log', [
+                skEl('div', 'tr-dim lgx-when', [sk('7.5rem', 11)]),
+                skEl('div', '', [sk(44, 20, 'pill')]),
+                skEl('div', 'tr-name lgx-ev', [sk(skw(9, i), 12)]),
+                skEl('div', 'tr-dim lgx-det', [sk(skw(7, i + 2), 10)]),
+                skEl('div', 'tr-dim lgx-ip', [sk('5rem', 10)])
             ]));
         }
         return f;

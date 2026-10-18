@@ -574,6 +574,77 @@ async function recentAudit({ limit = 100, kind = '', subject = '', actor = '' } 
         return [];
     }
 }
+// An account's own trail, as the audit logs page asks for it: a window of
+// time, the kinds of event it wants, newest or oldest first, a page at a
+// time. The groups are prefixes of the event kinds, so an event added
+// later under a known prefix is found without being listed here.
+const AUDIT_GROUPS = {
+    signin: ['login', 'sessions-', 'reset-', 'signup-', 'account-created'],
+    password: ['password-'],
+    twofactor: ['2fa-'],
+    tokens: ['token-'],
+    organisations: ['org-', 'member-', 'invite-'],
+    projects: ['project-'],
+    plan: ['plan-', 'trial-'],
+    checks: ['screening', 'check-'],
+    reports: ['usage-'],
+    account: ['account-'],
+    staff: ['staff-'],
+};
+async function accountTrail(actor, q) {
+    if (!(await init())) return { rows: [], more: false };
+    const want = q || {};
+    const cap = Math.min(Math.max(Number(want.limit) || 50, 1), 200);
+    const asc = want.order === 'asc';
+    const args = [String(actor).slice(0, 120)];
+    const where = ['actor = $1'];
+    const from = want.from ? new Date(want.from) : null;
+    const to = want.to ? new Date(want.to) : null;
+    if (from && !isNaN(from)) { args.push(from.toISOString()); where.push('at >= $' + args.length); }
+    if (to && !isNaN(to)) { args.push(to.toISOString()); where.push('at <= $' + args.length); }
+    const prefixes = [];
+    (want.groups || []).forEach((g) => { (AUDIT_GROUPS[g] || []).forEach((p) => prefixes.push(p)); });
+    if ((want.groups || []).length) {
+        if (!prefixes.length) return { rows: [], more: false };
+        // a prefix is a constant from the table above, never what was asked
+        // for, and it goes in as a parameter all the same
+        const ors = prefixes.map((p) => { args.push(p.replace(/[%_]/g, '') + '%'); return 'kind LIKE $' + args.length; });
+        where.push('(' + ors.join(' OR ') + ')');
+    }
+    // the cursor is the pair the page is sorted by, so rows written in the
+    // same instant are neither read twice nor stepped over
+    const cur = /^(\d{4}-\d{2}-\d{2}T[0-9:.]+Z)_(\d{1,18})$/.exec(String(want.cursor || ''));
+    if (cur) {
+        args.push(cur[1]); const a = args.length;
+        args.push(cur[2]); const b = args.length;
+        where.push(asc ? '(at, id) > ($' + a + '::timestamptz, $' + b + '::bigint)'
+            : '(at, id) < ($' + a + '::timestamptz, $' + b + '::bigint)');
+    }
+    args.push(cap + 1);
+    try {
+        const res = await db.query(
+            // the cursor's moment is written by the database, to the
+            // microsecond it stores: a JavaScript date keeps milliseconds, and
+            // a cursor cut to those skipped lines written in the same one
+            "SELECT id, at, kind, ip, detail, to_char(at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS at_key" +
+            ' FROM audit_events WHERE ' + where.join(' AND ') +
+            ' ORDER BY at ' + (asc ? 'ASC' : 'DESC') + ', id ' + (asc ? 'ASC' : 'DESC') + ' LIMIT $' + args.length,
+            args
+        );
+        const more = res.rows.length > cap;
+        const rows = res.rows.slice(0, cap);
+        const last = rows[rows.length - 1];
+        return {
+            rows,
+            more,
+            cursor: more && last ? last.at_key + '_' + last.id : '',
+        };
+    } catch (err) {
+        console.error('[accounts] could not read the trail: ' + err.message);
+        return { rows: [], more: false };
+    }
+}
+
 const LOGIN_FREE_TRIES = 5;
 const LOGIN_BASE_WAIT_S = 30;
 const LOGIN_MAX_WAIT_S = 30 * 60;
@@ -1363,6 +1434,7 @@ module.exports = {
     audit, loginHold, recentAudit, noteDevice,
     startTotp, confirmTotp, disableTotp, startTotpPending, finishTotp, recoveryLeft,
     listFactors, removeFactor, clearFactors, markSessionMfa, freshSessionAfterTotp, MAX_FACTORS,
+    accountTrail, AUDIT_GROUPS,
     changePassword, listSessions, revokeOtherSessions, deleteAccount,
     startReset, readReset, finishReset, RESET_TTL_MIN, RESET_RESEND_WAIT_S,
     readUser,
