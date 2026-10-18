@@ -622,6 +622,132 @@ function newSignInMessage({ to, lang, when, ip, country }) {
 async function sendPasswordChanged(opts) { return send(passwordChangedMessage(opts)); }
 async function sendNewSignIn(opts) { return send(newSignInMessage(opts)); }
 
+// An authenticator app added or removed, or the last one gone and two-factor
+// with it. Mailed every time, so a change made from a taken session is seen.
+const TWOFA_COPY = {
+    en: {
+        eyebrow: 'Security',
+        added: {
+            subject: 'An authenticator app was added to your Sentinelpay account',
+            title: 'An app was added',
+            intro: (w) => 'A new authenticator app was added to your account on ' + w + '. Its codes now sign you in.',
+        },
+        removed: {
+            subject: 'An authenticator app was removed from your Sentinelpay account',
+            title: 'An app was removed',
+            intro: (w) => 'One of the authenticator apps on your account was removed on ' + w + '.',
+        },
+        off: {
+            subject: 'Two-factor sign-in is off on your Sentinelpay account',
+            title: 'Two-factor is off',
+            intro: (w) => 'The last authenticator app on your account was removed on ' + w + ', so signing in now asks for the password only.',
+        },
+        footnote: 'If this was you, there is nothing to do. If it was not, change your password now, which signs out every device, and add your own app again under Account, Security.',
+    },
+    hr: {
+        eyebrow: 'Sigurnost',
+        added: {
+            subject: 'Na vaš Sentinelpay račun dodana je aplikacija za autentifikaciju',
+            title: 'Dodana je aplikacija',
+            intro: (w) => 'Nova aplikacija za autentifikaciju dodana je na vaš račun ' + w + '. Od sada se možete prijaviti i njezinim kodovima.',
+        },
+        removed: {
+            subject: 'S vašeg Sentinelpay računa uklonjena je aplikacija za autentifikaciju',
+            title: 'Uklonjena je aplikacija',
+            intro: (w) => 'Jedna od aplikacija za autentifikaciju uklonjena je s vašeg računa ' + w + '.',
+        },
+        off: {
+            subject: 'Prijava u dva koraka isključena je na vašem Sentinelpay računu',
+            title: 'Prijava u dva koraka je isključena',
+            intro: (w) => 'Zadnja aplikacija za autentifikaciju uklonjena je s vašeg računa ' + w + ', pa prijava sada traži samo lozinku.',
+        },
+        footnote: 'Ako ste to bili vi, ne treba ništa raditi. Ako niste, odmah promijenite lozinku, čime se odjavljuju svi uređaji, pa ponovno dodajte svoju aplikaciju pod Račun, Sigurnost.',
+    },
+    de: {
+        eyebrow: 'Sicherheit',
+        added: {
+            subject: 'Ihrem Sentinelpay-Konto wurde eine Authenticator-App hinzugefügt',
+            title: 'Eine App wurde hinzugefügt',
+            intro: (w) => 'Am ' + w + ' wurde Ihrem Konto eine neue Authenticator-App hinzugefügt. Ihre Codes melden Sie jetzt an.',
+        },
+        removed: {
+            subject: 'Von Ihrem Sentinelpay-Konto wurde eine Authenticator-App entfernt',
+            title: 'Eine App wurde entfernt',
+            intro: (w) => 'Am ' + w + ' wurde eine der Authenticator-Apps von Ihrem Konto entfernt.',
+        },
+        off: {
+            subject: 'Die Zwei-Faktor-Anmeldung ist für Ihr Sentinelpay-Konto aus',
+            title: 'Zwei-Faktor ist aus',
+            intro: (w) => 'Am ' + w + ' wurde die letzte Authenticator-App von Ihrem Konto entfernt. Die Anmeldung verlangt jetzt nur noch das Passwort.',
+        },
+        footnote: 'Waren Sie das, ist nichts zu tun. Waren Sie es nicht, ändern Sie jetzt Ihr Passwort, das meldet jedes Gerät ab, und fügen Sie unter Konto, Sicherheit Ihre eigene App wieder hinzu.',
+    },
+};
+function twoFactorMessage({ to, lang, change, when, ip, country }) {
+    const copy = TWOFA_COPY[lang] || TWOFA_COPY.en;
+    const one = copy[change] || copy.added;
+    const label = (LABELS[lang] || LABELS.en);
+    return {
+        to: to,
+        lang: lang,
+        subject: one.subject,
+        eyebrow: copy.eyebrow,
+        title: one.title,
+        intro: one.intro(when),
+        pairs: [
+            [label.when, when],
+            [label.where, country || label.unknown],
+            [label.address, ip || label.unknown],
+        ],
+        footnote: copy.footnote,
+    };
+}
+async function sendTwoFactorChanged(opts) { return send(twoFactorMessage(opts)); }
+
+// Sign-up with an address that already has an account. The form answers it
+// as it answers any other, so it cannot be used to find out who is a
+// customer; the owner of the address learns of it here instead.
+const EXISTS_COPY = {
+    en: {
+        subject: 'You already have a Sentinelpay account',
+        eyebrow: 'Your account',
+        title: 'You already have an account',
+        intro: 'Somebody, most likely you, tried to create a Sentinelpay account with this address. It already has one, so nothing new was made.',
+        label: 'Sign in',
+        footnote: 'Forgotten the password? Ask for a new one from the sign-in page. If it was not you, ignore this email: nobody can get into the account with it.',
+    },
+    hr: {
+        subject: 'Već imate Sentinelpay račun',
+        eyebrow: 'Vaš račun',
+        title: 'Već imate račun',
+        intro: 'Netko, najvjerojatnije vi, pokušao je izraditi Sentinelpay račun s ovom adresom. Za nju račun već postoji, pa ništa novo nije izrađeno.',
+        label: 'Prijava',
+        footnote: 'Zaboravili ste lozinku? Zatražite novu na stranici za prijavu. Ako to niste bili vi, zanemarite ovaj mail: s njim nitko ne može ući u račun.',
+    },
+    de: {
+        subject: 'Sie haben bereits ein Sentinelpay-Konto',
+        eyebrow: 'Ihr Konto',
+        title: 'Sie haben bereits ein Konto',
+        intro: 'Jemand, wahrscheinlich Sie, wollte mit dieser Adresse ein Sentinelpay-Konto anlegen. Es gibt dafür schon eines, also wurde nichts Neues angelegt.',
+        label: 'Anmelden',
+        footnote: 'Passwort vergessen? Fordern Sie auf der Anmeldeseite ein neues an. Waren Sie es nicht, ignorieren Sie diese E-Mail: niemand kommt damit in das Konto.',
+    },
+};
+function accountExistsMessage({ to, lang }) {
+    const copy = EXISTS_COPY[lang] || EXISTS_COPY.en;
+    return {
+        to: to,
+        lang: lang,
+        subject: copy.subject,
+        eyebrow: copy.eyebrow,
+        title: copy.title,
+        intro: copy.intro,
+        cta: { href: SITE + '/?signin=1', label: copy.label },
+        footnote: copy.footnote,
+    };
+}
+async function sendAccountExists(opts) { return send(accountExistsMessage(opts)); }
+
 const PREVIEWS = {
     'signup-code': (lang) => signupCodeMessage({ to: 'ana@primjer.hr', code: '481902', lang, minutes: 15 }),
     'trial-welcome': (lang) => trialWelcomeMessage({ to: 'ana@primjer.hr', lang }),
@@ -635,6 +761,13 @@ const PREVIEWS = {
     'new-sign-in': (lang) => newSignInMessage({
         to: 'ana@primjer.hr', lang, when: '12.09.2026. 14:20 (UTC)', ip: '198.51.100.24', country: 'HR',
     }),
+    'two-factor-added': (lang) => twoFactorMessage({
+        to: 'ana@primjer.hr', lang, change: 'added', when: '12.09.2026. 14:20 (UTC)', ip: '198.51.100.24', country: 'HR',
+    }),
+    'two-factor-off': (lang) => twoFactorMessage({
+        to: 'ana@primjer.hr', lang, change: 'off', when: '12.09.2026. 14:20 (UTC)', ip: '198.51.100.24', country: 'HR',
+    }),
+    'account-exists': (lang) => accountExistsMessage({ to: 'ana@primjer.hr', lang }),
     'trial-notice': () => ({
         subject: 'Review: new trial sign-up: Ana Anić @ Primjer d.o.o.',
         eyebrow: 'Free trial',
@@ -667,5 +800,5 @@ function render(name, lang) {
 module.exports = {
     send, compose, sendTrialWelcome, sendSignupCode, sendResetLink, sendInvite,
     render, previewNames, isConfigured, domainStatus, MAIL_FROM, MAIL_TO,
-    sendPasswordChanged, sendNewSignIn,
+    sendPasswordChanged, sendNewSignIn, sendTwoFactorChanged, sendAccountExists,
 };

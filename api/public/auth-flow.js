@@ -1024,10 +1024,13 @@
                     lastName: pwLast.input.value.trim(),
                     consent: makingAccount ? Boolean(pwTick.checked) : undefined,
                     lang: lang()
-                }).then(function () {
+                }).then(function (out) {
                     try { delete window.__SP_RESET_TOKEN; } catch (e) { window.__SP_RESET_TOKEN = ''; }
                     lStep('setpwdone');
-                    setTimeout(function () { location.replace('/dashboard'); }, 1100);
+                    // an account with two-factor signs in with the new password
+                    // and a code; the email link alone does not open it
+                    var next = out && out.signIn ? '/?signin=1' : '/dashboard';
+                    setTimeout(function () { location.replace(next); }, 1100);
                 }).catch(function (failed) {
                     if (failed && failed.status === 410) { expired(); return; }
                     pwSay(reason(failed));
