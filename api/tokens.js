@@ -337,6 +337,26 @@ async function revoke(orgId, id) {
     }
 }
 
+// Deleting a token: the row goes, and with it any way to use or look up the
+// token. Revoked or not, it is taken out of the list at once; what it was
+// called and who deleted it stay in the audit trail.
+async function remove(orgId, id) {
+    if (!(await init())) return { ok: false, reason: 'unavailable' };
+    const n = Number(id);
+    if (!Number.isSafeInteger(n) || n < 1) return { ok: false, reason: 'missing' };
+    try {
+        const res = await db.query(
+            'DELETE FROM api_tokens WHERE id = $1 AND org_id = $2 RETURNING name, kind, tail',
+            [n, orgId]
+        );
+        if (!res.rowCount) return { ok: false, reason: 'missing' };
+        return { ok: true, token: res.rows[0] };
+    } catch (err) {
+        console.error('[tokens] could not delete: ' + err.message);
+        return { ok: false, reason: 'unavailable' };
+    }
+}
+
 // every token made before organisations existed belongs to whoever made it, so
 // it takes the organisation that person was given.
 async function adopt() {
@@ -415,5 +435,5 @@ async function read(raw) {
 module.exports = {
     SCOPES, SCOPE_KEYS, SCOPE_GROUPS, presetScopes, RISKS, groupRisk,
     TTL_CHOICES, PER_USER, NAME_MAX, KINDS, KIND_KEYS,
-    mint, list, revoke, read, splitToken, init, adopt,
+    mint, list, revoke, remove, read, splitToken, init, adopt,
 };
