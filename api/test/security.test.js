@@ -360,7 +360,9 @@ async function anOrg(userId, name) {
 }
 
 test('a new organisation has no plan and no quota until a trial is activated', { skip: !db.available() }, async () => {
-    const email = 'trial-' + crypto.randomBytes(6).toString('hex') + '@primjer-firma.hr';
+    // a company of its own each run: a trial outlives the people who made it
+    const firm = 'primjer-firma-' + crypto.randomBytes(4).toString('hex') + '.hr';
+    const email = 'trial-' + crypto.randomBytes(6).toString('hex') + '@' + firm;
     const userId = await aPerson(email);
     const orgId = await anOrg(userId, 'Primjer');
 
@@ -373,17 +375,17 @@ test('a new organisation has no plan and no quota until a trial is activated', {
     assert.strictEqual(refused.reason, 'no-trial');
 
     const halfway = await trial.activate(orgId, userId, {
-        email, website: 'primjer-firma.hr', consent: true, notGambling: false,
+        email, website: firm, consent: true, notGambling: false,
     });
     assert.strictEqual(halfway.reason, 'both-confirmations-required');
 
     const mismatch = await trial.activate(orgId, userId, {
-        email: 'someone@gmail.com', website: 'primjer-firma.hr', consent: true, notGambling: true,
+        email: 'someone@gmail.com', website: firm, consent: true, notGambling: true,
     });
     assert.strictEqual(mismatch.state, 'pending', 'a free address does not open a trial by itself');
 
     const started = await trial.activate(orgId, userId, {
-        email, website: 'https://www.primjer-firma.hr/o-nama', consent: true, notGambling: true,
+        email, website: 'https://www.' + firm + '/o-nama', consent: true, notGambling: true,
     });
     assert.strictEqual(started.state, 'starter');
     assert.strictEqual(started.liveLeft, 1);
@@ -400,6 +402,7 @@ test('a new organisation has no plan and no quota until a trial is activated', {
     assert.strictEqual(verified.historyOpen, true);
     assert.ok(verified.liveLeft > 0, 'verifying the number adds live checks');
 
+    await db.query('DELETE FROM trials WHERE org_id = $1', [orgId]);
     await db.query('DELETE FROM users WHERE id = $1', [userId]);
 });
 
@@ -425,6 +428,7 @@ test('one trial per company', { skip: !db.available() }, async () => {
     assert.strictEqual(second.ok, false);
     assert.strictEqual(second.reason, 'company-already-has-a-trial');
 
+    for (const u of ids) await db.query('DELETE FROM trials WHERE org_id = $1', [u.orgId]);
     for (const u of ids) await db.query('DELETE FROM users WHERE id = $1', [u.id]);
 });
 

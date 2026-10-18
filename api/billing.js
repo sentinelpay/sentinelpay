@@ -273,13 +273,20 @@ async function freshen(row) {
                     term_ends_at = $4::timestamptz,
                     renews_at = CASE WHEN renews_at IS NULL THEN NULL ELSE $4::timestamptz END
               WHERE id = $1 AND ended_at IS NULL
+                -- only from the row as it was read: two requests rolling the
+                -- same period at once renewed it twice
+                AND term_ends_at IS NOT DISTINCT FROM $5::timestamptz
           RETURNING *`,
             [row.id,
              next ? next.from.toISOString() : null,
              next ? next.to.toISOString() : null,
-             termEnds]
+             termEnds,
+             row.term_ends_at || null]
         );
-        if (!out.rowCount) return row;
+        if (!out.rowCount) {
+            const now2 = await db.query('SELECT * FROM subscriptions WHERE id = $1', [row.id]).catch(() => null);
+            return now2 && now2.rowCount ? now2.rows[0] : row;
+        }
         if (renewals) {
             await record(db, row.org_id, row.id, 'renewed', out.rows[0], null,
                 renewals > 1 ? renewals + ' terms at once' : '');

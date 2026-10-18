@@ -185,6 +185,10 @@ async function remove(orgId, projectId) {
     const found = await one(orgId, projectId);
     if (!found) return { ok: false, reason: 'missing' };
     try {
+        // its tokens go first: left to the foreign key they would lose their
+        // project and quietly reach the whole organisation
+        await db.query('UPDATE api_tokens SET revoked_at = now() WHERE project_id = $1 AND revoked_at IS NULL',
+            [Number(projectId)]).catch((err) => { if (!/does not exist/.test(err.message)) throw err; });
         await db.query('DELETE FROM projects WHERE id = $1', [Number(projectId)]);
         return { ok: true, project: found };
     } catch (err) {
