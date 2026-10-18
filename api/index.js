@@ -2171,7 +2171,9 @@ const accountLimiter = rateLimit({
     max: 20,
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => `account:${ipKey(req.realIp)}`,
+    // by the session making the changes: an office behind one address is many
+    // people, and somebody rotating addresses is still one session
+    keyGenerator: (req) => `account:${whoForLimit(req)}`,
     store: new PostgresStore(),
     message: { error: 'Too many attempts, please try again later' }
 });
@@ -2232,12 +2234,22 @@ app.post('/v1/account/password', requireCloudflareOrigin, accountLimiter, async 
     }
 
     const out = await accounts.changePassword(me.userId, String(b.current || ''), next);
+    if (out.reason === 'too-many-attempts') {
+        if (out.retryIn) res.set('Retry-After', String(out.retryIn));
+        return res.status(429).json({ error: 'Too many attempts. Please wait a moment and try again.', retryIn: out.retryIn });
+    }
     if (out.reason === 'bad-password') return res.status(401).json({ error: 'That password is not right.' });
+    if (out.reason === 'same-password') return res.status(400).json({ error: 'That is the password you have now. Choose a new one.' });
     if (!out.ok) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
 
-    const ended = await accounts.revokeOtherSessions(me.userId, readSessionCookie(req));
+    // Every session ends, this one too, and this browser carries on in a new
+    // one: a session token that existed before the change is worth nothing
+    // after it, wherever it was copied to.
+    const ended = await accounts.revokeOtherSessions(me.userId, '');
+    const fresh = await accounts.startSession(me.userId, { mfa: me.mfa });
+    if (fresh) setSessionCookie(res, fresh.token, fresh.maxAgeSeconds);
     tellMe(me.userId, { topic: 'me' });
-    res.json({ ok: true, otherSessionsEnded: ended });
+    res.json({ ok: true, otherSessionsEnded: Math.max(0, ended - 1) });
 
     if (out.email) {
         mailer.sendPasswordChanged({
@@ -3224,9 +3236,42 @@ app.get('/v1/account/tokens', async (req, res) => {
     });
 });
 
+// Some actions hand out access that outlives the session they were taken in:
+// an API token works until it expires, whoever holds it. Those ask the person
+// to have proved it is them within the last few minutes, by password or by a
+// code, as a signed-in session that was left open or taken is otherwise all
+// it would take.
+function confirmOwed(me, res) {
+    if (accounts.recentlyConfirmed(me)) return false;
+    res.status(403).json({
+        error: 'Confirm it is you to continue.',
+        reason: 'confirm',
+        code: Boolean(me.totpOn),
+    });
+    return true;
+}
+
+app.post('/v1/account/confirm', requireCloudflareOrigin, authTotpLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const b = req.body || {};
+    const out = await accounts.confirmSession(readSessionCookie(req), me.userId, {
+        password: typeof b.password === 'string' ? b.password.slice(0, 200) : '',
+        code: typeof b.code === 'string' ? b.code.slice(0, 12) : '',
+    });
+    if (out.reason === 'too-many-attempts') {
+        if (out.retryIn) res.set('Retry-After', String(out.retryIn));
+        return res.status(429).json({ error: 'Too many attempts. Please wait a moment and try again.', retryIn: out.retryIn });
+    }
+    if (out.reason === 'bad-answer') return res.status(401).json({ error: 'That is not right. Try again.' });
+    if (!out.ok) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
+    res.json({ ok: true, forMinutes: accounts.CONFIRM_FOR_MIN });
+});
+
 app.post('/v1/account/tokens', requireCloudflareOrigin, accountLimiter, async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
+    if (confirmOwed(me, res)) return;
     const b = req.body || {};
     const org = await orgFor(req, me);
     if (!org) return res.status(409).json({ error: 'Choose an organisation first' });
@@ -3253,11 +3298,26 @@ app.post('/v1/account/tokens', requireCloudflareOrigin, accountLimiter, async (r
     });
     res.set('Cache-Control', 'no-store, private');
     res.json({ ok: true, token: out.token, row: out.row });
+    // the maker hears of every token made in their name, so one made from a
+    // session somebody else had does not go unseen
+    if (me.email) {
+        mailer.sendTokenCreated({
+            to: me.email,
+            lang: me.lang || 'en',
+            name: out.row.name,
+            kind: out.row.kind,
+            org: org.name || '',
+            when: whenFor(me.lang),
+            ip: ipKey(req.realIp),
+            country: req.headers['cf-ipcountry'] || '',
+        }).catch((err) => console.error('[account] token-created notice failed: ' + err.message));
+    }
 });
 
 app.post('/v1/account/tokens/:id/revoke', requireCloudflareOrigin, accountLimiter, async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
+    if (confirmOwed(me, res)) return;
     const org = await orgFor(req, me);
     if (!org) return res.status(409).json({ error: 'Choose an organisation first' });
     if (!orgs.roleAtLeast(org.role, 'admin')) {
@@ -3279,6 +3339,7 @@ app.post('/v1/account/tokens/:id/revoke', requireCloudflareOrigin, accountLimite
 app.post('/v1/account/tokens/:id/delete', requireCloudflareOrigin, accountLimiter, async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
+    if (confirmOwed(me, res)) return;
     const org = await orgFor(req, me);
     if (!org) return res.status(409).json({ error: 'Choose an organisation first' });
     if (!orgs.roleAtLeast(org.role, 'admin')) {
