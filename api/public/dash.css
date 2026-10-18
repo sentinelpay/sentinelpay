@@ -1659,7 +1659,8 @@ button { font: inherit; color: inherit; }
 }
 
 .split { position: relative; margin-left: auto; display: flex; }
-.split-main { border-radius: 9px 0 0 9px; }
+.split-main { border-radius: 9px 0 0 9px; white-space: nowrap; }
+.split { flex: none; }
 .split-more {
     display: grid;
     place-items: center;
@@ -1747,6 +1748,102 @@ button { font: inherit; color: inherit; }
 .tr-dim { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; font-size: 0.8rem; color: var(--ink-3); }
 .tr-tags { display: flex; gap: 0.3rem; flex-wrap: wrap; }
 .tr-act { display: flex; justify-content: flex-end; }
+
+/* the token list: a token, when it was last used, when it expires, and its
+   actions behind one button */
+/* the last column as wide as its button whether the row has one or not, so
+   the heading row's columns fall where the rows' do */
+.tr.is-tok { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) 2rem; }
+.tk-mask { letter-spacing: 0.01em; overflow-wrap: anywhere; }
+.tk-sort {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    color: inherit;
+    cursor: pointer;
+}
+.tk-sort:hover, .tk-sort.is-on { color: var(--ink); }
+.tk-sort-i { display: flex; width: 13px; height: 13px; }
+.tk-sort-i svg { width: 100%; height: 100%; }
+.tk-sort-i .tk-up, .tk-sort-i .tk-dn { opacity: 0.45; transition: opacity 0.15s ease; }
+.tk-sort-i.is-up .tk-up, .tk-sort-i.is-down .tk-dn { opacity: 1; }
+.tk-sort-i.is-up .tk-dn, .tk-sort-i.is-down .tk-up { opacity: 0.18; }
+
+.tk-menu { position: relative; }
+.tk-more {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid var(--pill-line);
+    border-radius: 8px;
+    background: var(--pill-bg);
+    color: var(--ink-3);
+    cursor: pointer;
+    transition: border-color 0.18s ease, color 0.18s ease, background 0.18s ease;
+}
+.tk-more svg { width: 15px; height: 15px; }
+.tk-more:hover, .tk-menu.is-open .tk-more { border-color: var(--pill-line-hover); color: var(--ink); background: var(--pill-bg-hover); }
+.tk-pop {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 40;
+    min-width: 12.5rem;
+    padding: 0.3rem;
+    border: 1px solid var(--panel-line);
+    border-radius: 12px;
+    background: var(--panel);
+    box-shadow: var(--panel-shadow);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-4px);
+    pointer-events: none;
+    transition: opacity 0.16s ease, transform 0.16s ease, visibility 0s linear 0.16s;
+}
+.tk-menu.is-up .tk-pop { top: auto; bottom: calc(100% + 6px); transform: translateY(4px); }
+.tk-menu.is-open .tk-pop {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    pointer-events: auto;
+    transition: opacity 0.16s ease, transform 0.16s ease;
+}
+.tk-opt {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    width: 100%;
+    padding: 0.5rem 0.6rem;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    font-family: var(--sp-text);
+    font-size: 0.84rem;
+    font-weight: 500;
+    color: var(--opt);
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+.tk-opt svg { flex: none; width: 15px; height: 15px; color: var(--ink-4); }
+.tk-opt:hover { background: var(--opt-bg-hover); color: var(--opt-hover); }
+.tk-opt.is-bad, .tk-opt.is-bad svg { color: var(--danger); }
+.tk-opt.is-bad:hover { background: var(--danger-bg); }
+.tk-sep { height: 1px; margin: 0.3rem 0.2rem; background: var(--line-2); }
+.card.tk-card { overflow: visible; }
+.tk-card > .th:first-child { border-radius: calc(var(--r-lg) - 1px) calc(var(--r-lg) - 1px) 0 0; }
+/* a revoked token is dimmed, its menu is not: a see-through menu over the
+   rows under it reads as broken */
+.tr.is-tok.is-off { opacity: 1; }
+.tr.is-tok.is-off > :not(.tr-act) { opacity: 0.55; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
 .tag {
