@@ -89,6 +89,23 @@ CREATE TABLE IF NOT EXISTS check_decisions (
 );
 CREATE INDEX IF NOT EXISTS check_decisions_check_idx ON check_decisions (screening_id, at DESC);
 CREATE INDEX IF NOT EXISTS check_decisions_org_idx   ON check_decisions (org_id, at DESC);
+-- Who ran it is an attribution, and the record belongs to the organisation.
+-- A person deleting their account used to take this row with them through
+-- the foreign key; now the row stays and forgets who it was.
+DO $$
+DECLARE c text;
+BEGIN
+    FOR c IN SELECT con.conname FROM pg_constraint con
+              WHERE con.conrelid = 'screenings'::regclass AND con.contype = 'f'
+                AND con.confrelid = 'users'::regclass AND con.confdeltype = 'c'
+    LOOP
+        EXECUTE format('ALTER TABLE screenings DROP CONSTRAINT %I', c);
+    END LOOP;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'screenings_user_kept') THEN
+        ALTER TABLE screenings ADD CONSTRAINT screenings_user_kept
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL NOT VALID;
+    END IF;
+END $$;
 `;
 
 // The four states, and what each one means to the queue.
@@ -133,6 +150,32 @@ const SHAPES = [
     { asset: 'XMR', name: 'Monero', re: /^4[0-9AB][1-9A-HJ-NP-Za-km-z]{93}$/ },
 ];
 
+// What a person pastes is not always the address. A wallet's QR code gives
+// "ethereum:0x...@1?value=..", a chat client slips in a zero-width space, a
+// phone keyboard turns letters full width. Any of those missed the exact
+// list lookup and came back clear. The address is read out of all of them,
+// and whatever is left that is not plain ASCII is not an address at all.
+function normalise(address) {
+    let a = String(address || '').normalize('NFKC').replace(/[\p{Cf}\s]+/gu, '');
+    a = a.replace(/^[a-z][a-z0-9+.-]{1,20}:(\/\/)?/i, '');
+    a = a.replace(/[@?/#].*$/, '');
+    if (!/^[\x21-\x7e]+$/.test(a)) return '';
+    return a;
+}
+
+// The sandbox never asks the real list. It answers from these, so an
+// integration can see each verdict on purpose, and anything else comes back
+// clear and marked as the sandbox. A test token used to screen any address
+// against the real list for free.
+const SANDBOX_HITS = {
+    '0x000000000000000000000000000000000000dead': {
+        entity: 'SANDBOX TEST ENTITY (not a real designation)',
+        programs: ['SANDBOX'],
+        remarks: 'A fixed sandbox address that always comes back on the list.',
+        asset: 'ETH',
+    },
+};
+
 function identify(address) {
     const a = String(address || '').trim();
     for (const s of SHAPES) {
@@ -172,12 +215,15 @@ async function bandsFor(orgId) {
 }
 
 async function screen(userId, orgId, address, kind, sandbox, projectId, bands) {
-    const clean = String(address || '').trim();
+    const clean = normalise(address);
     if (!clean || clean.length > 128) return { ok: false, reason: 'bad-address' };
 
     const shape = identify(clean);
-    const hit = await sanctions.check(clean);
-    const meta = await sanctions.status();
+    const hit = sandbox ? (SANDBOX_HITS[clean.toLowerCase()] || null) : await sanctions.check(clean);
+    // A string that is no address we know and on no list is not a clear
+    // address: nothing was checked. It is refused rather than sealed as clear.
+    if (!shape && !hit) return { ok: false, reason: 'bad-address' };
+    const meta = sandbox ? { listDate: 'sandbox', addressCount: Object.keys(SANDBOX_HITS).length } : await sanctions.status();
 
     const reasons = [];
     let verdict = 'clear';
@@ -258,11 +304,20 @@ async function screen(userId, orgId, address, kind, sandbox, projectId, bands) {
     return { ok: true, id, ...sealed, digest, sandbox: Boolean(sandbox) };
 }
 
-async function recent(orgId, limit, sandbox) {
+// A token made for one project reads that project's checks and no other's.
+// The id is the token's own project id, made a safe integer here, so it can
+// stand in the statement as a literal.
+function projectScope(projectId, alias) {
+    const n = Number(projectId);
+    if (!projectId || !Number.isSafeInteger(n) || n < 1) return '';
+    return ' AND ' + (alias ? alias + '.' : '') + 'project_id = ' + n;
+}
+
+async function recent(orgId, limit, sandbox, projectId) {
     if (!(await init())) return [];
     const res = await db.query(
         `SELECT id, at, kind, asset, address, verdict, score, list_date, digest
-         FROM screenings WHERE org_id = $1 AND sandbox = $3 ORDER BY at DESC, id DESC LIMIT $2`,
+         FROM screenings WHERE org_id = $1 AND sandbox = $3` + projectScope(projectId) + ` ORDER BY at DESC, id DESC LIMIT $2`,
         [orgId, Math.min(Math.max(Number(limit) || 25, 1), 200), Boolean(sandbox)]
     );
     return res.rows.map((r) => ({
@@ -356,14 +411,14 @@ function spot(raw) {
     return { at: when.toISOString(), id };
 }
 
-async function byId(orgId, id, sandbox) {
+async function byId(orgId, id, sandbox, projectId) {
     if (!(await init())) return null;
     const res = await db.query(
         `SELECT s.id, s.detail_enc, s.digest, s.at, s.verdict, s.score, s.asset, s.address,
                 s.decision, s.decided_at, s.project_id, p.name AS project_name
            FROM screenings s
            LEFT JOIN projects p ON p.id = s.project_id
-          WHERE s.id = $1 AND s.org_id = $2 AND s.sandbox = $3`,
+          WHERE s.id = $1 AND s.org_id = $2 AND s.sandbox = $3` + projectScope(projectId, 's'),
         [id, orgId, Boolean(sandbox)]);
     if (!res.rows.length) return null;
     const row = res.rows[0];
@@ -376,6 +431,12 @@ async function byId(orgId, id, sandbox) {
     if (plain) {
         try { doc = JSON.parse(plain); } catch (err) { doc = null; }
     }
+    // Whether the record still says what it said when it was sealed: its
+    // digest taken again, and the columns the queue reads agreeing with it.
+    // Nothing looked before, so a verdict changed in the table read as the
+    // sealed one, under the sealed digest.
+    const intact = Boolean(doc && row.digest && digestOf(doc) === row.digest &&
+        doc.verdict === row.verdict && Number(doc.score) === Number(row.score) && doc.address === row.address);
     if (!doc) {
         doc = {
             address: row.address, asset: row.asset, chain: '',
@@ -383,6 +444,7 @@ async function byId(orgId, id, sandbox) {
             checkedAt: row.at, sealed: false,
         };
     }
+    doc.intact = intact;
     doc.id = row.id;
     doc.at = row.at;
     doc.digest = row.digest || doc.digest || '';
@@ -550,37 +612,38 @@ async function queue(orgId, sandbox, limit) {
     };
 }
 
-async function stats(orgId, days, sandbox) {
+async function stats(orgId, days, sandbox, projectId) {
     if (!(await init())) {
         return { total: 0, window: 0, days: [], verdicts: {}, assets: [], firstAt: null, lastAt: null };
     }
     const span = Math.min(Math.max(Number(days) || 30, 1), 365);
     const box = Boolean(sandbox);
+    const only = projectScope(projectId);
     const [totalRes, dayRes, verdictRes, assetRes, edgeRes] = await Promise.all([
-        db.query('SELECT count(*)::int AS n FROM screenings WHERE org_id = $1 AND sandbox = $2', [orgId, box]),
+        db.query('SELECT count(*)::int AS n FROM screenings WHERE org_id = $1 AND sandbox = $2' + only, [orgId, box]),
         db.query(
             `SELECT to_char(date_trunc('day', at), 'YYYY-MM-DD') AS d,
                     count(*)::int AS n,
                     count(*) FILTER (WHERE verdict <> 'clear')::int AS flagged
                FROM screenings
-              WHERE org_id = $1 AND sandbox = $3 AND at >= now() - ($2 || ' days')::interval
+              WHERE org_id = $1 AND sandbox = $3` + only + ` AND at >= now() - ($2 || ' days')::interval
            GROUP BY 1 ORDER BY 1`,
             [orgId, String(span), box]
         ),
         db.query(
             `SELECT verdict, count(*)::int AS n FROM screenings
-              WHERE org_id = $1 AND sandbox = $3 AND at >= now() - ($2 || ' days')::interval
+              WHERE org_id = $1 AND sandbox = $3` + only + ` AND at >= now() - ($2 || ' days')::interval
            GROUP BY 1`,
             [orgId, String(span), box]
         ),
         db.query(
             `SELECT COALESCE(NULLIF(asset, ''), 'other') AS asset, count(*)::int AS n
                FROM screenings
-              WHERE org_id = $1 AND sandbox = $3 AND at >= now() - ($2 || ' days')::interval
+              WHERE org_id = $1 AND sandbox = $3` + only + ` AND at >= now() - ($2 || ' days')::interval
            GROUP BY 1 ORDER BY n DESC`,
             [orgId, String(span), box]
         ),
-        db.query('SELECT min(at) AS first_at, max(at) AS last_at FROM screenings WHERE org_id = $1 AND sandbox = $2',
+        db.query('SELECT min(at) AS first_at, max(at) AS last_at FROM screenings WHERE org_id = $1 AND sandbox = $2' + only,
             [orgId, box]),
     ]);
 
@@ -633,8 +696,22 @@ async function adopt() {
     }
 }
 
+// Whether the list is there to screen against: loaded, not empty, and
+// refreshed recently enough to be the list in force. Without it every
+// address would come back clear and be sealed as clear, which is the one
+// answer a sanctions check must never give by accident.
+const STALE_AFTER_MS = Math.max(2 * sanctions.refreshEveryMs(), 36 * 60 * 60 * 1000);
+async function listReady() {
+    const meta = await sanctions.status().catch(() => ({ available: false }));
+    if (!meta.available || !Number(meta.addressCount)) return { ok: false, reason: 'list-missing' };
+    if (!meta.refreshedAt || Date.now() - new Date(meta.refreshedAt).getTime() > STALE_AFTER_MS) {
+        return { ok: false, reason: 'list-stale' };
+    }
+    return { ok: true };
+}
+
 module.exports = {
-    screen, recent, log, byId, countFor, stats, identify, adopt,
+    screen, recent, log, byId, countFor, stats, identify, normalise, listReady, adopt, SANDBOX_HITS,
     decide, decisionsFor, queue,
     // the vocabulary, so the routes and the tests hold to the same four words
     DECISIONS, DECIDED, NEEDS_WHY, NOTE_MAX,

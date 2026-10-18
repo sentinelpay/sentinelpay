@@ -154,6 +154,21 @@ async function refresh(opts) {
     if (!parsed.rows.length) {
         return { ok: false, reason: 'list parsed to zero addresses, refusing to replace what is there' };
     }
+    // A download cut short, or a change in how the list is laid out, parses
+    // to some addresses and not all of them. The list loses designations
+    // over time, but not a tenth of them between two refreshes, so a list
+    // that much smaller is kept out until somebody forces it in.
+    if (!force) {
+        const before = await status().catch(() => ({}));
+        if (Number(before.addressCount) > 0 && parsed.rows.length < 0.9 * Number(before.addressCount)) {
+            const why = 'new list has ' + parsed.rows.length + ' addresses against ' + before.addressCount + ', refusing to replace it';
+            await db.query(
+                `INSERT INTO sanctions_meta (id, last_error) VALUES (1, $1)
+                 ON CONFLICT (id) DO UPDATE SET last_error = $1`, [why]).catch(() => {});
+            console.error('[sanctions] ' + why);
+            return { ok: false, reason: why };
+        }
+    }
 
     const c = await db.connect();
     try {
@@ -282,7 +297,10 @@ function startRefresh() {
     const run = () => {
         refresh().catch((err) => console.error('[sanctions] scheduled refresh: ' + err.message));
     };
-    setTimeout(run, 15000).unref && setTimeout(run, 15000).unref();
+    // one first run, not two: the old line started a timer to ask whether it
+    // could be unref'd and then started a second one
+    const first = setTimeout(run, 15000);
+    if (first.unref) first.unref();
     timer = setInterval(run, REFRESH_EVERY_MS);
     if (timer.unref) timer.unref();
 }

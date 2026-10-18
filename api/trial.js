@@ -66,6 +66,47 @@ CREATE UNIQUE INDEX IF NOT EXISTS trials_org_uniq ON trials (org_id);
 -- from: one person can own two companies and each pays for itself.
 ALTER TABLE trials DROP CONSTRAINT IF EXISTS trials_pkey;
 CREATE INDEX IF NOT EXISTS trials_user_idx ON trials (user_id);
+-- Who ran it is an attribution, and the record belongs to the organisation.
+-- A person deleting their account used to take this row with them through
+-- the foreign key; now the row stays and forgets who it was.
+DO $$
+DECLARE c text;
+BEGIN
+    FOR c IN SELECT con.conname FROM pg_constraint con
+              WHERE con.conrelid = 'trials'::regclass AND con.contype = 'f'
+                AND con.confrelid = 'users'::regclass AND con.confdeltype = 'c'
+    LOOP
+        EXECUTE format('ALTER TABLE trials DROP CONSTRAINT %I', c);
+    END LOOP;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'trials_user_kept') THEN
+        ALTER TABLE trials ADD CONSTRAINT trials_user_kept
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL NOT VALID;
+    END IF;
+END $$;
+ALTER TABLE trials ALTER COLUMN user_id DROP NOT NULL;
+-- A company's trial is reserved once it has started, not while it waits for
+-- somebody to look at it: a request naming another company's website held
+-- that company's trial for as long as nobody did.
+DROP INDEX IF EXISTS trials_one_per_company;
+CREATE UNIQUE INDEX IF NOT EXISTS trials_one_started_per_company
+    ON trials (company_host)
+    WHERE company_host <> '' AND state IN ('starter', 'verified');
+-- and the row outlives the organisation, so closing one and opening another
+-- is not a second trial for the same company
+DO $$
+DECLARE c text;
+BEGIN
+    FOR c IN SELECT con.conname FROM pg_constraint con
+              WHERE con.conrelid = 'trials'::regclass AND con.contype = 'f'
+                AND con.confrelid = 'organisations'::regclass AND con.confdeltype = 'c'
+    LOOP
+        EXECUTE format('ALTER TABLE trials DROP CONSTRAINT %I', c);
+    END LOOP;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'trials_org_kept') THEN
+        ALTER TABLE trials ADD CONSTRAINT trials_org_kept
+            FOREIGN KEY (org_id) REFERENCES organisations(id) ON DELETE SET NULL NOT VALID;
+    END IF;
+END $$;
 `;
 
 let ready = null;
@@ -93,6 +134,17 @@ function hostOf(value) {
         .replace(/\/.*$/, '')
         .replace(/^www\./i, '')
         .toLowerCase();
+}
+
+// The part of a host a company actually owns: acme.com for shop.acme.com,
+// acme.co.uk for eu.acme.co.uk. A trial is one per company, and a new
+// subdomain typed into the form was a new company each time.
+const SECOND_LEVEL = new Set(['co', 'com', 'net', 'org', 'gov', 'ac', 'edu', 'or', 'ne', 'go']);
+function baseDomain(host) {
+    const parts = String(host || '').split('.').filter(Boolean);
+    if (parts.length <= 2) return parts.join('.');
+    const keep = parts[parts.length - 1].length === 2 && SECOND_LEVEL.has(parts[parts.length - 2]) ? 3 : 2;
+    return parts.slice(-keep).join('.');
 }
 
 function domainOf(email) {
@@ -205,19 +257,24 @@ async function activate(orgId, userId, input) {
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, reason: 'bad-email' };
 
-    const host = hostOf(website);
-    if (!host || host.indexOf('.') === -1) return { ok: false, reason: 'bad-website' };
+    const typed = hostOf(website);
+    if (!typed || typed.indexOf('.') === -1 || !/^[a-z0-9.-]+$/.test(typed)) return { ok: false, reason: 'bad-website' };
+    const host = baseDomain(typed);
 
+    // Starts at once only for an address at the company's own domain. A
+    // mailbox anyone can open, or a throwaway one, waits for a person: the
+    // website typed beside it proves nothing about who is asking.
     const emailDomain = domainOf(email);
-    const matches = emailDomain === host || emailDomain.endsWith('.' + host) || host.endsWith('.' + emailDomain);
+    const matches = !input.openMailbox && baseDomain(emailDomain) === host;
     const state = matches ? 'starter' : 'pending';
 
-    // one trial per company, and the company is the organisation now, so the
-    // row that would clash is one belonging to a different organisation.
+    // One trial per company, ever: one that started, or ran out, under any
+    // organisation, including one since closed. A request still waiting
+    // holds nothing.
     const existing = await db.query(
         `SELECT org_id FROM trials
          WHERE company_host = $1 AND org_id IS DISTINCT FROM $2
-           AND state IN ('pending','starter','verified')`,
+           AND state IN ('starter','verified','expired')`,
         [host, Number(orgId)]
     );
     if (existing.rows.length) return { ok: false, reason: 'company-already-has-a-trial' };

@@ -1057,6 +1057,8 @@ async function caller(req, res, scope) {
             const said = {
                 revoked: 'That token has been revoked',
                 expired: 'That token has expired',
+                left: 'The person who made that token is no longer an admin of its organisation',
+                archived: 'The project that token belongs to is archived or gone',
                 unavailable: 'Accounts are not available right now. Please try again shortly.',
             };
             res.status(out.reason === 'unavailable' ? 503 : 401)
@@ -1083,6 +1085,7 @@ async function caller(req, res, scope) {
             // under the part of the business that made it
             project: out.projectId || '',
             sandbox: out.sandbox,
+            scopes: out.scopes,
         };
     }
     const me = await currentUser(req);
@@ -2708,8 +2711,9 @@ app.post('/v1/orgs/:id/subscription', requireCloudflareOrigin, accountLimiter, a
     if (!me) return;
     const mine = await orgs.membership(me.userId, req.params.id);
     if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
-    if (!orgs.roleAtLeast(mine.role, 'admin')) {
-        return res.status(403).json({ error: 'Only an admin or the owner can change the plan.' });
+    // the plan is the contract and the invoice: the owner's, as the roles say
+    if (mine.role !== 'owner') {
+        return res.status(403).json({ error: 'Only the owner can change the plan.' });
     }
     const body = req.body || {};
     const out = await billing.start(mine.id, me.userId, { plan: body.plan, term: body.term });
@@ -2735,8 +2739,9 @@ app.post('/v1/orgs/:id/subscription/cancel', requireCloudflareOrigin, accountLim
     if (!me) return;
     const mine = await orgs.membership(me.userId, req.params.id);
     if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
-    if (!orgs.roleAtLeast(mine.role, 'admin')) {
-        return res.status(403).json({ error: 'Only an admin or the owner can change the plan.' });
+    // the plan is the contract and the invoice: the owner's, as the roles say
+    if (mine.role !== 'owner') {
+        return res.status(403).json({ error: 'Only the owner can change the plan.' });
     }
     const back = String((req.body || {}).resume || '') === 'yes';
     const out = back ? await billing.resume(mine.id, me.userId) : await billing.cancel(mine.id, me.userId);
@@ -3357,6 +3362,8 @@ app.post('/v1/trial/activate', trialActivateLimiter, async (req, res) => {
             company: b.company,
             consent: b.consent === true,
             notGambling: b.notGambling === true,
+            openMailbox: reviewFlags(String(me.email || '').split('@').pop().toLowerCase(), '')
+                .some((f) => f === 'free-email' || f === 'disposable-email'),
         });
         if (!out.ok) {
             const said = {
@@ -3389,9 +3396,17 @@ app.post('/v1/screen', screenLimiter, async (req, res) => {
 
         const address = String((req.body && req.body.address) || '').trim();
         if (!address) return res.status(400).json({ error: 'Paste an address first' });
-        if (address.length > 128) return res.status(400).json({ error: 'That is too long to be an address' });
+        if (address.length > 200) return res.status(400).json({ error: 'That is too long to be an address' });
+        // a viewer looks; a check spends the organisation's allowance and
+        // writes to its record, which is an analyst's work
+        if (!me.viaToken && !orgs.roleAtLeast(me.org.role, 'analyst')) {
+            return res.status(403).json({ error: 'Viewers cannot run checks. Ask an admin for the analyst role.' });
+        }
 
-        const kind = (req.body && req.body.kind) === 'history' ? 'history' : 'live';
+        // Which allowance a check is drawn from is the server's to say. This
+        // came from the request, and "history" was drawn from a separate
+        // allowance with no cap on some plans, for the same single check.
+        const kind = 'live';
 
         // a sandbox call is for writing an integration against, so it screens
         // against the same sanctions data but spends nothing and lands in its own
@@ -3407,6 +3422,15 @@ app.post('/v1/screen', screenLimiter, async (req, res) => {
             // somebody was working in front of it.
             await tellOrg(me.org.id, { topic: 'org', id: String(me.org.id) });
             return res.json({ ...out, sandbox: true, trial: null });
+        }
+
+        // checked before anything is spent: a check that cannot be made
+        // against the list in force is not made, and not charged
+        const ready = await screening.listReady();
+        if (!ready.ok) {
+            console.error('[screen] refused: the sanctions list is ' + (ready.reason === 'list-stale' ? 'out of date' : 'not loaded'));
+            res.set('Retry-After', '300');
+            return res.status(503).json({ error: 'Screening is paused while the sanctions list is brought up to date. Try again in a few minutes.', reason: ready.reason });
         }
 
         const spent = await trial.spend(me.org.id, kind);
@@ -3451,7 +3475,7 @@ app.get('/v1/screenings', async (req, res) => {
     try {
         const me = await caller(req, res, 'screenings:read');
         if (!me) return;
-        res.json({ sandbox: me.sandbox, rows: await screening.recent(me.org.id, req.query.limit, me.sandbox) });
+        res.json({ sandbox: me.sandbox, rows: await screening.recent(me.org.id, req.query.limit, me.sandbox, me.project) });
     } catch (err) {
         console.error('[screenings]', err.message);
         res.status(500).json({ error: 'Could not read the log' });
@@ -3464,7 +3488,7 @@ app.get('/v1/screenings/stats', async (req, res) => {
         const me = await caller(req, res, 'screenings:read');
         if (!me) return;
         const [numbers, listed] = await Promise.all([
-            screening.stats(me.org.id, req.query.days, me.sandbox),
+            screening.stats(me.org.id, req.query.days, me.sandbox, me.project),
             sanctions.status(),
         ]);
         res.json({
@@ -3498,7 +3522,7 @@ app.get('/v1/screenings/:id/evidence', async (req, res) => {
         if (!me) return;
         const id = Number(req.params.id);
         if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: 'Not a screening' });
-        const row = await screening.byId(me.org.id, id, me.sandbox);
+        const row = await screening.byId(me.org.id, id, me.sandbox, me.project);
         if (!row) return res.status(404).json({ error: 'Not found' });
         const doc = {
             document: 'Sentinelpay screening evidence',
@@ -3511,6 +3535,9 @@ app.get('/v1/screenings/:id/evidence', async (req, res) => {
             reasons: row.reasons,
             sources: row.sources,
             digest: row.digest,
+            // false where the stored record no longer matches its digest, or
+            // the queue's columns no longer match the record
+            intact: row.intact,
             note: 'The digest is taken over the sealed record as it was written. Recomputing it over this document will not match; it identifies the stored record.',
         };
         res.set('Content-Type', 'application/json; charset=utf-8');
@@ -3530,8 +3557,20 @@ app.get('/v1/screenings/:id', async (req, res) => {
         if (!me) return;
         const id = Number(req.params.id);
         if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: 'Not a screening' });
-        const row = await screening.byId(me.org.id, id, me.sandbox);
+        const row = await screening.byId(me.org.id, id, me.sandbox, me.project);
         if (!row) return res.status(404).json({ error: 'Not found' });
+        // A token that may read checks gets the check, as the list gives it.
+        // The sealed reasons and sources are evidence, behind evidence:read,
+        // and who decided what and why stays in the dashboard.
+        if (me.viaToken) {
+            const ev = (me.scopes || []).indexOf('evidence:read') !== -1;
+            return res.json({
+                id: row.id, at: row.at, asset: row.asset, address: row.address, chain: row.chain || '',
+                verdict: row.verdict, score: row.score, state: row.state, digest: row.digest,
+                projectId: row.projectId, intact: row.intact,
+                ...(ev ? { reasons: row.reasons, sources: row.sources, bands: row.bands, checkedAt: row.checkedAt } : {}),
+            });
+        }
         res.json(row);
     } catch (err) {
         console.error('[screening read]', err.message);

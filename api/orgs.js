@@ -383,11 +383,24 @@ async function setRole(actorId, orgId, userId, role) {
     try {
         await db.query('UPDATE memberships SET role = $1 WHERE org_id = $2 AND user_id = $3',
             [role, Number(orgId), Number(userId)]);
+        // only an admin may make a token, so one moved below admin keeps none
+        if (!roleAtLeast(role, 'admin')) await revokeTokens(orgId, userId);
         return { ok: true, role };
     } catch (err) {
         console.error('[orgs] could not change a role: ' + err.message);
         return { ok: false, reason: 'unavailable' };
     }
+}
+
+// The API tokens somebody made in an organisation, revoked when they leave it
+// or are moved below admin, so being put back later does not bring them back.
+async function revokeTokens(orgId, userId) {
+    await db.query(
+        'UPDATE api_tokens SET revoked_at = now() WHERE org_id = $1 AND user_id = $2 AND revoked_at IS NULL',
+        [Number(orgId), Number(userId)]
+    ).catch((err) => {
+        if (!/does not exist/.test(err.message)) console.error('[orgs] could not revoke the tokens: ' + err.message);
+    });
 }
 
 // Taking somebody out, and walking out yourself: the same row is removed, so it
@@ -409,6 +422,7 @@ async function removeMember(actorId, orgId, userId) {
     try {
         await db.query('DELETE FROM memberships WHERE org_id = $1 AND user_id = $2',
             [Number(orgId), Number(userId)]);
+        await revokeTokens(orgId, userId);
         return { ok: true, left: leaving };
     } catch (err) {
         console.error('[orgs] could not remove a member: ' + err.message);

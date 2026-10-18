@@ -348,6 +348,23 @@ async function read(raw) {
         if (row.expires_at && new Date(row.expires_at).getTime() <= Date.now()) {
             return { ok: false, reason: 'expired' };
         }
+        // A token speaks for the person who made it, in the organisation it
+        // was made in, only while that person is still an admin there. One who
+        // left, was removed or was moved down a role takes the token's reach
+        // with them on the next request, revoked row or not. A project token
+        // stops with its project.
+        if (row.org_id) {
+            const held = await db.query(
+                `SELECT m.role, p.archived_at, (p.id IS NULL) AS project_gone
+                   FROM memberships m
+              LEFT JOIN projects p ON p.id = $3 AND p.org_id = m.org_id
+                  WHERE m.org_id = $1 AND m.user_id = $2`,
+                [row.org_id, row.user_id, row.project_id || 0]
+            );
+            const m = held.rows[0];
+            if (!m || (m.role !== 'owner' && m.role !== 'admin')) return { ok: false, reason: 'left' };
+            if (row.project_id && (m.project_gone || m.archived_at)) return { ok: false, reason: 'archived' };
+        }
 
         const seen = row.last_used_at ? new Date(row.last_used_at).getTime() : 0;
         if (Date.now() - seen > TOUCH_AFTER_MS) {
