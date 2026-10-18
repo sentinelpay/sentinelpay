@@ -1566,22 +1566,18 @@ button { font: inherit; color: inherit; }
 .tkd { padding-top: 1.4rem; }
 .tkd-h { margin: 0; font-size: 0.9rem; font-weight: 650; color: var(--ink); }
 .tkd-p { margin: 0.25rem 0 0.9rem; font-size: 0.8rem; line-height: 1.55; color: var(--ink-3); overflow-wrap: anywhere; }
-.mfa-key.tkd-key { min-height: 0; padding: 1rem 1rem 0.85rem; }
+.tkd-secret { padding: 0.4rem 0.4rem 0.4rem 0.85rem; }
 .tkd-val {
-    padding: 0.2rem 0.3rem;
-    font-size: 0.86rem;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    line-height: 1.6;
-    text-align: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 0.8rem;
+    font-weight: 500;
     color: var(--ink);
     /* a token has no words to keep whole, so its lines run full rather
        than breaking early at the first hyphen */
     word-break: break-all;
-    /* and the two lines as near the same length as they go, so the last
-       is not one letter on its own */
-    text-wrap: balance;
 }
+.mfa-key-copy.tkd-copy { flex: none; margin-top: 0; padding: 0.45rem 0.7rem; }
 .tkd-warn { margin-top: 0.9rem; border-color: var(--risk-mid); background: var(--risk-mid-bg); animation: none; }
 .tkd-warn .warn-i { background: var(--risk-mid); }
 .tkd-warn .tkd-ack {

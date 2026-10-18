@@ -12357,15 +12357,17 @@
             sub.textContent = t('Copy your new token and keep it somewhere safe.');
             wrap.appendChild(sub);
 
-            // the token as the security page shows a key to type by hand: in
-            // a panel of its own, with the wide copy button beneath it
+            // the token in the face of the page, in its own field, with the
+            // copy button the security page gives a key to type by hand
             var box = document.createElement('div');
-            box.className = 'mfa-key tkd-key';
+            box.className = 'secret tkd-secret';
             var val = document.createElement('span');
             val.className = 'tkd-val';
             val.textContent = secret;
             box.appendChild(val);
-            box.appendChild(keyCopy(function () { return secret; }, 'Copy token'));
+            var copy = keyCopy(function () { return secret; }, 'Copy');
+            copy.classList.add('tkd-copy');
+            box.appendChild(copy);
             wrap.appendChild(box);
 
             // Once, and then only its hash is kept. Done waits for the tick,
