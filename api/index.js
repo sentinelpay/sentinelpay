@@ -696,7 +696,7 @@ app.get(['/dashboard', '/dashboard/*splat'], async (req, res, next) => {
     // journey is finished where it was going rather than left half done with a
     // cookie nobody looks at again.
     const pending = readCookie(req, INVITE_COOKIE);
-    if (pending) return res.redirect(302, '/invite/' + encodeURIComponent(pending));
+    if (pending && !req.query.join) return res.redirect(302, ORGS_JOIN);
 
     if (DASHBOARD_NEXT) {
         // A plan is not what lets you in, it is what lets you work. Choosing
@@ -810,31 +810,23 @@ app.get('/invite/:secret', async (req, res) => {
     }
 
     if (!me) {
-        res.cookie(INVITE_COOKIE, secret, {
-            httpOnly: true, sameSite: 'lax', secure: COOKIE_SECURE,
-            maxAge: 30 * 60 * 1000, path: '/',
-        });
+        setInviteCookie(res, secret);
         return res.redirect(302, '/?signin=1&invited=1');
     }
 
-    const out = await invites.accept(secret, me);
-    res.clearCookie(INVITE_COOKIE, { path: '/' });
-    if (!out.ok) {
-        const where = {
-            missing: 'gone', expired: 'expired', withdrawn: 'gone', accepted: 'used',
-            'not-yours': 'address', 'need-mfa': 'two-factor',
-        };
-        return res.redirect(302, '/dashboard/organisations?invite=' + (where[out.reason] || 'failed'));
-    }
-
-    setOrgCookie(res, out.invite.orgId);
-    await accounts.audit('invite-accepted', {
-        actor: String(me.userId), subject: out.invite.id, ip: req.realIp, detail: out.invite.role,
-    });
-    await tellOrg(out.invite.orgId, { topic: 'org', id: String(out.invite.orgId) });
-    tellMe(me.userId, { topic: 'orgs' });
-    return res.redirect(302, '/dashboard/org/' + out.invite.orgSlug);
+    // Signed in, the invitation waits in the cookie and the organisations page
+    // asks whether to join it. Nothing is joined by opening a link.
+    setInviteCookie(res, secret);
+    return res.redirect(302, ORGS_JOIN);
 });
+
+const ORGS_JOIN = '/dashboard/organisations?join=1';
+function setInviteCookie(res, secret) {
+    res.cookie(INVITE_COOKIE, secret, {
+        httpOnly: true, sameSite: 'lax', secure: COOKIE_SECURE,
+        maxAge: 30 * 60 * 1000, path: '/',
+    });
+}
 
 app.get('/reset-password', async (req, res) => {
     res.set('Referrer-Policy', 'no-referrer');
@@ -974,11 +966,17 @@ const SESSION_COOKIE_OLD = 'sp_session';
 function readCookie(req, name) {
     const raw = String(req.headers.cookie || '');
     const m = raw.match(new RegExp('(?:^|;\\s*)' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '=([^;]*)'));
-    return m ? decodeURIComponent(m[1]) : '';
+    if (!m) return '';
+    // a cookie a sibling host set with a stray % is no cookie, not a 500
+    try { return decodeURIComponent(m[1]); } catch (err) { return ''; }
 }
 
+// The __Host- name cannot be set by any other host under the domain. The
+// plain name can, so where the __Host- one is in use the plain one is not
+// read at all: a sibling subdomain could otherwise sign a visitor into an
+// account of its choosing.
 function readSessionCookie(req) {
-    return readCookie(req, SESSION_COOKIE) || readCookie(req, SESSION_COOKIE_OLD);
+    return readCookie(req, SESSION_COOKIE) || (COOKIE_SECURE ? '' : readCookie(req, SESSION_COOKIE_OLD));
 }
 
 function setSessionCookie(res, token, maxAgeSeconds) {
@@ -1623,10 +1621,6 @@ app.post('/v1/auth/register', requireCloudflareOrigin, authRegisterLimiter, asyn
             flags,
         });
 
-        if (started.reason === 'exists') {
-            console.log('[auth] register: address already has an account, said so');
-            return res.status(409).json({ error: 'That email address already has an account. Try logging in instead.' });
-        }
         if (started.reason === 'slow-down') {
             console.log('[auth] register: a code went out less than a minute ago, asked them to wait');
             return res.status(429).json({ error: 'A code was just sent. Check your inbox, or ask for another in a minute.', retryIn: started.retryIn });
@@ -1641,13 +1635,15 @@ app.post('/v1/auth/register', requireCloudflareOrigin, authRegisterLimiter, asyn
         }
 
         try {
-            await mailer.sendSignupCode({ to: email, code: started.code, lang, minutes: started.expiresInMin });
+            if (started.exists) await mailer.sendAccountExists({ to: email, lang });
+            else await mailer.sendSignupCode({ to: email, code: started.code, lang, minutes: started.expiresInMin });
         } catch (mailErr) {
             console.error('[auth register mail failed]', mailErr.code || '', mailErr.message);
             return res.status(500).json({ error: 'Could not send the code. Please try again shortly.' });
         }
 
-        console.log('[auth] register: code sent, flags: ' + (flags.join(',') || 'none'));
+        console.log('[auth] register: ' + (started.exists ? 'address has an account, told its owner' : 'code sent') +
+            ', flags: ' + (flags.join(',') || 'none'));
         if (started.origin) setSignupCookie(res, started.origin, (started.expiresInMin + 1) * 60);
         res.json({ ok: true, next: 'verify', expiresInMin: started.expiresInMin });
     } catch (err) {
@@ -1672,7 +1668,8 @@ app.post('/v1/auth/resend', requireCloudflareOrigin, authResendLimiter, async (r
         if (!again.ok) return res.json({ ok: true, expiresInMin: accounts.status().codeTtlMinutes });
 
         try {
-            await mailer.sendSignupCode({ to: email, code: again.code, lang: again.lang, minutes: again.expiresInMin });
+            if (again.exists) await mailer.sendAccountExists({ to: email, lang: again.lang });
+            else await mailer.sendSignupCode({ to: email, code: again.code, lang: again.lang, minutes: again.expiresInMin });
         } catch (mailErr) {
             console.error('[auth resend mail failed]', mailErr.code || '', mailErr.message);
             return res.status(500).json({ error: 'Could not send the code. Please try again shortly.' });
@@ -1942,7 +1939,7 @@ app.post('/v1/auth/reset', requireCloudflareOrigin, authResetLimiter, async (req
         console.log('[auth] reset: ' + (out.created ? 'account created' : 'password changed') + ', other sessions ended');
         if (out.session) setSessionCookie(res, out.session.token, out.session.maxAgeSeconds);
         clearSignupCookie(res);
-        res.json({ ok: true, created: out.created });
+        res.json({ ok: true, created: out.created, signIn: Boolean(out.signIn) });
 
         if (!out.created && out.email) {
             mailer.sendPasswordChanged({
@@ -2005,9 +2002,34 @@ async function requireSession(req, res) {
     return me;
 }
 
+// An account with two-factor on changes its apps only from a session that
+// passed the second step. Every session such an account has did, by signing
+// in with a code or by adding the first app; one that did not is a cookie
+// from before, or from somewhere else, and is asked to sign in again.
+function secondStepOwed(me, res) {
+    if (!me.totpOn || me.mfa) return false;
+    res.status(403).json({ error: 'Sign out and sign in again with a code from your app, then try this again.', reason: 'mfa' });
+    return true;
+}
+
+// The owner hears of every change to the apps by email, from the account it
+// was made on, so a change somebody else made does not go unseen.
+function tellTwoFactor(req, me, change) {
+    if (!me.email) return;
+    mailer.sendTwoFactorChanged({
+        to: me.email,
+        lang: me.lang || 'en',
+        change,
+        when: whenFor(me.lang),
+        ip: ipKey(req.realIp),
+        country: req.headers['cf-ipcountry'] || '',
+    }).catch((err) => console.error('[auth] two-factor notice failed: ' + err.message));
+}
+
 app.post('/v1/account/totp/start', requireCloudflareOrigin, authTotpLimiter, async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
+    if (secondStepOwed(me, res)) return;
     // another app beside the ones there are, up to three
     if ((await accounts.listFactors(me.userId)).length >= accounts.MAX_FACTORS) {
         return res.status(409).json({ error: 'This account already has three authenticator apps. Remove one first.' });
@@ -2028,16 +2050,23 @@ app.post('/v1/account/totp/start', requireCloudflareOrigin, authTotpLimiter, asy
 app.post('/v1/account/totp/confirm', requireCloudflareOrigin, authTotpLimiter, async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
+    if (secondStepOwed(me, res)) return;
     const b = req.body || {};
     const out = await accounts.confirmTotp(me.userId, String(b.code || ''), typeof b.name === 'string' ? b.name : '');
     if (out.reason === 'not-started') return res.status(400).json({ error: 'Start the setup again, then enter a code from the app.' });
     if (out.reason === 'too-many') return res.status(409).json({ error: 'This account already has three authenticator apps. Remove one first.' });
     if (out.reason === 'bad-code') return res.status(400).json({ error: 'That code is not right. Check your app and try again.' });
     if (!out.ok) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
-    // the code just shown is the second step, passed on this session
-    await accounts.markSessionMfa(readSessionCookie(req));
+    // The first app: every session the account had ends, and this browser
+    // carries on in a new one that has passed the second step. A later app
+    // is added from a session that already has.
+    if (out.first) {
+        const fresh = await accounts.freshSessionAfterTotp(me.userId);
+        if (fresh) setSessionCookie(res, fresh.token, fresh.maxAgeSeconds);
+    }
     res.set('Cache-Control', 'no-store, private');
     tellMe(me.userId, { topic: 'me' });
+    tellTwoFactor(req, me, 'added');
     res.json({ ok: true, factor: out.factor });
 });
 
@@ -2050,25 +2079,30 @@ app.get('/v1/account/totp', async (req, res) => {
     res.json({ ok: true, factors: await accounts.listFactors(me.userId) });
 });
 
-// One app off the account, on a click: the signed-in session is all it asks.
+// One app off the account, on a click, from a session that passed the
+// second step; the owner is mailed either way.
 app.post('/v1/account/totp/remove', requireCloudflareOrigin, authTotpLimiter, async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
+    if (secondStepOwed(me, res)) return;
     const b = req.body || {};
     const out = await accounts.removeFactor(me.userId, String(b.id || ''));
     if (out.reason === 'not-found') return res.status(404).json({ error: 'That app is not on this account.' });
     if (!out.ok) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
     tellMe(me.userId, { topic: 'me' });
+    tellTwoFactor(req, me, out.left ? 'removed' : 'off');
     res.json({ ok: true, left: out.left });
 });
 
 app.post('/v1/account/totp/off', requireCloudflareOrigin, authTotpLimiter, async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
+    if (secondStepOwed(me, res)) return;
     const out = await accounts.disableTotp(me.userId, String((req.body || {}).password || ''));
     if (out.reason === 'bad-password') return res.status(401).json({ error: 'That password is not right.' });
     if (!out.ok) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
     tellMe(me.userId, { topic: 'me' });
+    tellTwoFactor(req, me, 'off');
     res.json({ ok: true });
 });
 
@@ -2083,9 +2117,52 @@ const accountLimiter = rateLimit({
     message: { error: 'Too many attempts, please try again later' }
 });
 
+// What the waiting invitation is for, to the person it was sent to only.
+app.get('/v1/invites/pending', async (req, res) => {
+    res.set('Cache-Control', 'no-store, private');
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const found = await invites.read(readCookie(req, INVITE_COOKIE)).catch(() => null);
+    if (!found || found.state !== 'sent' || invites.cleanEmail(me.email) !== invites.cleanEmail(found.email)) {
+        res.clearCookie(INVITE_COOKIE, { path: '/' });
+        return res.json({ ok: true, org: null });
+    }
+    res.json({ ok: true, org: found.orgName, role: found.role });
+});
+
+app.post('/v1/invites/decline', requireCloudflareOrigin, async (req, res) => {
+    res.clearCookie(INVITE_COOKIE, { path: '/' });
+    res.json({ ok: true });
+});
+
+app.post('/v1/invites/accept', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const out = await invites.accept(readCookie(req, INVITE_COOKIE), me);
+    if (!out.ok) {
+        if (out.reason !== 'need-mfa' && out.reason !== 'unavailable') res.clearCookie(INVITE_COOKIE, { path: '/' });
+        const said = {
+            'not-yours': 'This invitation was sent to a different address.',
+            'need-mfa': 'This organisation asks its members to sign in with two-factor. Turn it on under Account, Security, then sign in again with a code.',
+            unavailable: 'Accounts are not available right now. Please try again shortly.',
+        };
+        return res.status(out.reason === 'unavailable' ? 503 : 409)
+            .json({ error: said[out.reason] || 'This invitation is no longer open.' });
+    }
+    res.clearCookie(INVITE_COOKIE, { path: '/' });
+    setOrgCookie(res, out.invite.orgId);
+    await accounts.audit('invite-accepted', {
+        actor: String(me.userId), subject: out.invite.id, ip: req.realIp, detail: out.invite.role,
+    });
+    await tellOrg(out.invite.orgId, { topic: 'org', id: String(out.invite.orgId) });
+    tellMe(me.userId, { topic: 'orgs' });
+    res.json({ ok: true, slug: out.invite.orgSlug });
+});
+
 app.post('/v1/account/password', requireCloudflareOrigin, accountLimiter, async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
+    if (secondStepOwed(me, res)) return;
     const b = req.body || {};
     const next = typeof b.next === 'string' ? b.next : '';
     const known = String(me.name || '').split(' ');
@@ -3156,8 +3233,12 @@ app.post('/v1/account/sessions/revoke', requireCloudflareOrigin, accountLimiter,
 app.post('/v1/account/delete', requireCloudflareOrigin, accountLimiter, async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
+    if (secondStepOwed(me, res)) return;
     const out = await accounts.deleteAccount(me.userId, String((req.body || {}).password || ''));
     if (out.reason === 'bad-password') return res.status(401).json({ error: 'That password is not right.' });
+    if (out.reason === 'owns-org') {
+        return res.status(409).json({ error: 'You own an organisation other people work in. Close it, or have it handed to someone else, before deleting your account.' });
+    }
     if (!out.ok) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
     clearSessionCookie(res);
     clearOrgCookie(res);

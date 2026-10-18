@@ -455,14 +455,135 @@ test('the setup code is a QR code of the authenticator address', () => {
     assert.ok(require('fs').existsSync(require('path').join(__dirname, '..', 'vendor', 'qrcode-generator-1.4.4', 'LICENSE.txt')), 'the encoder has no licence beside it');
 });
 
-// Removing an app is a click: no password and no fresh code, the signed-in
-// session is what it asks. Adding one still marks the session as having
-// passed the second step, which the sign-in record keeps.
-test('an app comes off on a click from the signed-in session', () => {
+// Removing an app is a click, from a session that passed the second step.
+// Every app change on an account with two-factor asks that of the session;
+// the first app replaces every session the account had with one that has.
+test('app changes need a session that passed the second step', () => {
     const index = require('fs').readFileSync(require('path').join(__dirname, '..', 'index.js'), 'utf8');
-    const route = index.slice(index.indexOf("app.post('/v1/account/totp/remove'"), index.indexOf("app.post('/v1/account/totp/off'"));
-    assert.match(route, /const me = await requireSession\(req, res\);/, 'an app can be removed signed out');
-    assert.doesNotMatch(route, /password|me\.mfa/, 'removing an app asks for more than the session');
+    for (const path of ['/v1/account/totp/start', '/v1/account/totp/confirm', '/v1/account/totp/remove',
+        '/v1/account/totp/off', '/v1/account/password', '/v1/account/delete']) {
+        const at = index.indexOf("app.post('" + path + "'");
+        assert.ok(at > 0, path + ' is gone');
+        const route = index.slice(at, index.indexOf('\n});\n', at));
+        assert.match(route, /if \(secondStepOwed\(me, res\)\) return;/, path + ' takes a session that skipped the second step');
+    }
+    const remove = index.slice(index.indexOf("app.post('/v1/account/totp/remove'"), index.indexOf("app.post('/v1/account/totp/off'"));
+    assert.doesNotMatch(remove, /password/, 'removing an app asks for the password');
+    assert.match(remove, /tellTwoFactor\(req, me, out\.left \? 'removed' : 'off'\)/, 'the owner is not told');
     const confirm = index.slice(index.indexOf("app.post('/v1/account/totp/confirm'"), index.indexOf("app.get('/v1/account/totp'"));
-    assert.match(confirm, /await accounts\.markSessionMfa\(readSessionCookie\(req\)\);/);
+    assert.match(confirm, /if \(out\.first\) \{\n\s+const fresh = await accounts\.freshSessionAfterTotp\(me\.userId\);/);
+    assert.doesNotMatch(confirm, /markSessionMfa/, 'a new app vouches for the session that added it');
+});
+
+test('the first app ends every older session and opens one that passed the second step', flow, async () => {
+    const email = freshEmail('fresh');
+    const started = await accounts.startSignup({ email, name: 'Ana Anic', password: 'a-very-long-password-1', lang: 'en', flags: [] });
+    const made = await accounts.verifySignup(email, await codeFor(db.blindIndex(email)), started.origin);
+    const other = await accounts.startSession(made.userId);
+    const fresh = await accounts.freshSessionAfterTotp(made.userId);
+    assert.strictEqual(await accounts.readSession(made.session.token), null, 'the session in hand survived');
+    assert.strictEqual(await accounts.readSession(other.token), null, 'another session survived');
+    assert.strictEqual((await accounts.readSession(fresh.token)).mfa, true);
+    await accounts.forget(email);
+});
+
+// A reset link proves the inbox and nothing else. An account with two-factor
+// gets its new password and signs in with it and a code.
+test('a reset on an account with two-factor opens no session', flow, async () => {
+    const email = freshEmail('reset2fa');
+    const pass = 'a-very-long-password-1';
+    const started = await accounts.startSignup({ email, name: 'Ana Anic', password: pass, lang: 'en', flags: [] });
+    const made = await accounts.verifySignup(email, await codeFor(db.blindIndex(email)), started.origin);
+    const secret = await accounts.startTotp(made.userId);
+    assert.ok((await accounts.confirmTotp(made.userId, totp.codeFor(secret, Math.floor(Date.now() / 30000)), 'phone')).ok);
+    const link = await accounts.startReset(email, 'en');
+    const done = await accounts.finishReset(link.token, 'another-very-long-password-2', {});
+    assert.strictEqual(done.ok, true);
+    assert.strictEqual(done.session, null, 'the reset link signed in past the second step');
+    assert.strictEqual(done.signIn, true);
+    assert.strictEqual((await accounts.signIn(email, 'another-very-long-password-2')).reason, 'totp-required');
+    await accounts.forget(email);
+});
+
+// Guesses at the second step are spent before they are checked, six to a
+// half finished sign-in, ten to the account in a quarter of an hour, so a
+// burst sent all at once gets no more than one sent a try at a time.
+test('a burst of second-step guesses gets six, and the account holds after ten', flow, async () => {
+    const email = freshEmail('burst');
+    const pass = 'a-very-long-password-1';
+    const started = await accounts.startSignup({ email, name: 'Ana Anic', password: pass, lang: 'en', flags: [] });
+    const made = await accounts.verifySignup(email, await codeFor(db.blindIndex(email)), started.origin);
+    const step = Math.floor(Date.now() / 30000);
+    const secret = await accounts.startTotp(made.userId);
+    assert.ok((await accounts.confirmTotp(made.userId, totp.codeFor(secret, step), 'phone')).ok);
+    const wrong = totp.codeFor(secret, step + 40);
+
+    const one = (await accounts.signIn(email, pass)).pending;
+    const burst = await Promise.all(Array.from({ length: 20 }, () => accounts.finishTotp(one, wrong)));
+    assert.strictEqual(burst.filter((r) => r.reason === 'bad-code').length, 6, 'more than six guesses were checked');
+
+    const two = (await accounts.signIn(email, pass)).pending;
+    for (let i = 0; i < 4; i++) assert.strictEqual((await accounts.finishTotp(two, wrong)).reason, 'bad-code');
+    const three = (await accounts.signIn(email, pass)).pending;
+    assert.strictEqual((await accounts.finishTotp(three, totp.codeFor(secret, step + 1))).reason, 'too-many-attempts',
+        'the account took an eleventh guess');
+
+    // past the quarter hour it signs in again, and a code is good once
+    await db.query("UPDATE users SET totp_fail_at = now() - interval '16 minutes' WHERE id = $1", [made.userId]);
+    const four = (await accounts.signIn(email, pass)).pending;
+    const twice = await Promise.all([accounts.finishTotp(four, totp.codeFor(secret, step + 1)),
+        accounts.finishTotp(four, totp.codeFor(secret, step + 1))]);
+    assert.strictEqual(twice.filter((r) => r.ok).length, 1, 'one code signed in twice');
+    const five = (await accounts.signIn(email, pass)).pending;
+    assert.strictEqual((await accounts.finishTotp(five, totp.codeFor(secret, step))).reason, 'code-used',
+        'the code before the last one used still works');
+    await accounts.forget(email);
+});
+
+// Signing up with an address that has an account looks exactly like signing
+// up with one that has not, and nothing a code can do opens the account.
+test('sign-up says nothing about which addresses have accounts', flow, async () => {
+    const email = freshEmail('exists');
+    const started = await accounts.startSignup({ email, name: 'Ana Anic', password: 'a-very-long-password-1', lang: 'en', flags: [] });
+    await accounts.verifySignup(email, await codeFor(db.blindIndex(email)), started.origin);
+
+    const again = await accounts.startSignup({ email, name: 'Eve Evil', password: 'evils-long-password-9', lang: 'en', flags: [] });
+    assert.strictEqual(again.ok, true, 'a taken address is answered differently');
+    assert.strictEqual(again.exists, true);
+    assert.strictEqual(again.code, null, 'a code was made for an address that has an account');
+    const tries = await Promise.all(Array.from({ length: 12 }, (_, i) =>
+        accounts.verifySignup(email, String(i).padStart(6, '0'), again.origin)));
+    assert.ok(tries.every((r) => !r.ok && !r.session), 'a sign-up code opened an existing account');
+    const index = require('fs').readFileSync(require('path').join(__dirname, '..', 'index.js'), 'utf8');
+    assert.doesNotMatch(index, /already has an account\. Try logging in instead/);
+    await accounts.forget(email);
+});
+
+test('an owner of an organisation others work in cannot delete their account out from under it', flow, async () => {
+    const email = freshEmail('owner');
+    const pass = 'a-very-long-password-1';
+    const started = await accounts.startSignup({ email, name: 'Ana Anic', password: pass, lang: 'en', flags: [] });
+    const made = await accounts.verifySignup(email, await codeFor(db.blindIndex(email)), started.origin);
+    await require('../orgs').init();
+    const orgId = await anOrg(made.userId, 'Shared');
+    const mate = await aPerson(freshEmail('mate'));
+    await db.query("INSERT INTO memberships (org_id, user_id, role) VALUES ($1, $2, 'analyst')", [orgId, mate]);
+    assert.strictEqual((await accounts.deleteAccount(made.userId, pass)).reason, 'owns-org');
+    await db.query('DELETE FROM memberships WHERE user_id = $1', [mate]);
+    assert.strictEqual((await accounts.deleteAccount(made.userId, pass)).ok, true, 'an owner alone in the organisation is kept');
+    await db.query('DELETE FROM organisations WHERE id = $1', [orgId]);
+    await db.query('DELETE FROM users WHERE id = $1', [mate]);
+});
+
+// Opening an invitation link joins nothing. The link can be put in front of
+// a signed-in person from any page; the organisations page asks, and the
+// join is a POST the cross-site check covers.
+test('an invitation is joined on a click, not by opening its link', () => {
+    const index = require('fs').readFileSync(require('path').join(__dirname, '..', 'index.js'), 'utf8');
+    const get = index.slice(index.indexOf("app.get('/invite/:secret'"), index.indexOf("const ORGS_JOIN"));
+    assert.doesNotMatch(get, /invites\.accept|setOrgCookie/, 'opening the link joins the organisation');
+    assert.match(index, /app\.post\('\/v1\/invites\/accept', requireCloudflareOrigin, accountLimiter,/);
+    const invites = require('fs').readFileSync(require('path').join(__dirname, '..', 'invites.js'), 'utf8');
+    assert.match(invites, /WHERE id = \$1 AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now\(\)/);
+    assert.match(invites, /ON CONFLICT \(org_id, user_id\) DO NOTHING/, 'accepting can change a role somebody already has');
 });

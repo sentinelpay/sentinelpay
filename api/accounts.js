@@ -140,6 +140,11 @@ CREATE INDEX IF NOT EXISTS totp_pending_expiry_idx ON totp_pending (expires_at);
 
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS mfa boolean NOT NULL DEFAULT false;
 
+-- wrong codes at the second step, counted on the account rather than on one
+-- half finished sign-in, so a new password round does not buy new guesses
+ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_fails   integer NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_fail_at timestamptz;
+
 CREATE TABLE IF NOT EXISTS known_devices (
     user_id     bigint      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     device_hash text        NOT NULL,
@@ -169,7 +174,9 @@ function init() {
     return ready;
 }
 
-const SCRYPT = { N: 32768, r: 8, p: 1, keylen: 64 };
+// OWASP's scrypt line for 32 MiB of memory: N=2^15, r=8, p=3. An older hash
+// is redone at this cost the next time its password is typed.
+const SCRYPT = { N: 32768, r: 8, p: 3, keylen: 64 };
 
 function hashPassword(password) {
     return new Promise((resolve, reject) => {
@@ -230,7 +237,11 @@ async function startSignup({ email, name, password, lang, flags }) {
     const emailHash = db.blindIndex(email);
     if (!emailHash) return { ok: false, reason: 'unavailable' };
 
-    if (await exists(email)) return { ok: false, reason: 'exists' };
+    // An address that already has an account is answered exactly as a new one
+    // is, with the same throttles, so the form cannot be used to learn who
+    // has an account. Its row holds a code no six digits can match, and the
+    // owner gets a "you already have an account" email instead of a code.
+    const taken = await exists(email);
 
     const prev = await db.query(
         'SELECT sends, last_sent_at FROM signup_codes WHERE email_hash = $1 AND created_at > now() - interval \'1 hour\'',
@@ -242,7 +253,7 @@ async function startSignup({ email, name, password, lang, flags }) {
         if (waited < CODE_RESEND_WAIT_S) return { ok: false, reason: 'slow-down', retryIn: Math.ceil(CODE_RESEND_WAIT_S - waited) };
     }
 
-    const code = newCode();
+    const code = taken ? null : newCode();
     const passwordHash = await hashPassword(password);
     const origin = crypto.randomBytes(32).toString('base64url');
     await db.query(
@@ -263,7 +274,7 @@ async function startSignup({ email, name, password, lang, flags }) {
              flags         = EXCLUDED.flags,
              origin_hash   = EXCLUDED.origin_hash`,
         [
-            emailHash, String(CODE_TTL_MIN), hashCode(code, emailHash),
+            emailHash, String(CODE_TTL_MIN), hashCode(code || crypto.randomBytes(32).toString('hex'), emailHash),
             db.seal('signup-email:' + emailHash, email),
             db.seal('signup-name:' + emailHash, name || ''),
             passwordHash,
@@ -272,8 +283,8 @@ async function startSignup({ email, name, password, lang, flags }) {
             hashToken(origin),
         ]
     );
-    audit('signup-started', { subject: emailHash });
-    return { ok: true, code, expiresInMin: CODE_TTL_MIN, origin };
+    audit(taken ? 'signup-for-existing' : 'signup-started', { subject: emailHash });
+    return { ok: true, code, exists: taken, expiresInMin: CODE_TTL_MIN, origin };
 }
 
 async function resendSignup(email) {
@@ -292,16 +303,18 @@ async function resendSignup(email) {
     const waited = (Date.now() - new Date(row.last_sent_at).getTime()) / 1000;
     if (waited < CODE_RESEND_WAIT_S) return { ok: false, reason: 'slow-down', retryIn: Math.ceil(CODE_RESEND_WAIT_S - waited) };
 
-    const code = newCode();
+    const taken = await exists(email);
+    const code = taken ? null : newCode();
     await db.query(
         `UPDATE signup_codes SET code_hash = $2, attempts = 0, sends = sends + 1, last_sent_at = now(),
                                  expires_at = now() + ($3 || ' minutes')::interval
          WHERE email_hash = $1`,
-        [emailHash, hashCode(code, emailHash), String(CODE_TTL_MIN)]
+        [emailHash, hashCode(code || crypto.randomBytes(32).toString('hex'), emailHash), String(CODE_TTL_MIN)]
     );
     return {
         ok: true,
         code,
+        exists: taken,
         expiresInMin: CODE_TTL_MIN,
         lang: row.lang || 'en',
         name: db.open('signup-name:' + emailHash, row.name_enc),
@@ -332,12 +345,15 @@ async function verifySignup(email, code, origin) {
         }
     }
 
+    // the attempt is spent before the code is looked at, in one statement, so
+    // a burst of guesses sent at once gets five between them and not five each
+    const claimed = await db.query(
+        'UPDATE signup_codes SET attempts = attempts + 1 WHERE email_hash = $1 AND attempts < $2 RETURNING attempts',
+        [emailHash, CODE_MAX_ATTEMPTS]
+    );
+    if (!claimed.rowCount) return { ok: false, reason: 'too-many-attempts' };
     if (!sameHash(row.code_hash, hashCode(String(code), emailHash))) {
-        const bumped = await db.query(
-            'UPDATE signup_codes SET attempts = attempts + 1 WHERE email_hash = $1 RETURNING attempts',
-            [emailHash]
-        );
-        const left = CODE_MAX_ATTEMPTS - (bumped.rows[0] ? bumped.rows[0].attempts : CODE_MAX_ATTEMPTS);
+        const left = CODE_MAX_ATTEMPTS - claimed.rows[0].attempts;
         if (left <= 0) {
             await db.query('DELETE FROM signup_codes WHERE email_hash = $1', [emailHash]);
             return { ok: false, reason: 'too-many-attempts' };
@@ -356,11 +372,10 @@ async function verifySignup(email, code, origin) {
              VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (email_hash) DO NOTHING RETURNING id`,
             [emailHash, row.email_enc, row.name_enc, row.password_hash, row.lang, row.flags]
         );
-        userId = made.rowCount ? made.rows[0].id : null;
-        if (userId === null) {
-            const found = await client.query('SELECT id FROM users WHERE email_hash = $1', [emailHash]);
-            userId = found.rowCount ? found.rows[0].id : null;
-        }
+        // An account made for this address in the meantime is not opened by a
+        // sign-up code: that would be a way in without its password.
+        if (!made.rowCount) { await client.query('ROLLBACK'); return { ok: false, reason: 'bad-code' }; }
+        userId = made.rows[0].id;
         await client.query('COMMIT');
     } catch (err) {
         try { await client.query('ROLLBACK'); } catch (rbErr) {  }
@@ -654,7 +669,6 @@ async function signIn(email, password) {
     if (row.totp_at) {
         const pending = await startTotpPending(row.id);
         if (!pending) return { ok: false, reason: 'unavailable' };
-        clearLoginFails(emailHash);
         audit('login-password-ok', { actor: row.id, subject: emailHash, detail: 'second factor asked for' });
         return { ok: false, reason: 'totp-required', pending };
     }
@@ -735,8 +749,10 @@ async function confirmTotp(userId, code, name) {
     } finally {
         client.release();
     }
-    audit(row.n ? '2fa-app-added' : '2fa-on', { actor: userId, detail: label || '' });
-    return { ok: true, factor };
+    // the name stays sealed in the audit as it is everywhere else: the log
+    // says an app came, not what it was called
+    audit(row.n ? '2fa-app-added' : '2fa-on', { actor: userId });
+    return { ok: true, factor, first: !row.n };
 }
 
 // The apps on an account, oldest first, by the names they were given.
@@ -763,19 +779,28 @@ async function listFactors(userId) {
 async function removeFactor(userId, factorId) {
     if (!(await init())) return { ok: false, reason: 'unavailable' };
     let left;
+    const id = /^[0-9]{1,18}$/.test(String(factorId)) ? String(factorId) : '0';
+    const client = await db.connect();
     try {
-        const gone = await db.query('DELETE FROM totp_factors WHERE user_id = $1 AND id = $2 RETURNING id',
-            [userId, Number(factorId) || 0]);
-        if (!gone.rowCount) return { ok: false, reason: 'not-found' };
-        const rest = await db.query('SELECT count(*)::int AS n FROM totp_factors WHERE user_id = $1', [userId]);
+        await client.query('BEGIN');
+        // the account row is held while it is decided, so two removals at once
+        // cannot each leave the other's app and switch two-factor off half way
+        await client.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [userId]);
+        const gone = await client.query('DELETE FROM totp_factors WHERE user_id = $1 AND id = $2 RETURNING id', [userId, id]);
+        if (!gone.rowCount) { await client.query('ROLLBACK'); return { ok: false, reason: 'not-found' }; }
+        const rest = await client.query('SELECT count(*)::int AS n FROM totp_factors WHERE user_id = $1', [userId]);
         left = rest.rows[0].n;
         if (!left) {
-            await db.query('UPDATE users SET totp_enc = NULL, totp_at = NULL, totp_last = NULL WHERE id = $1', [userId]);
-            await db.query('DELETE FROM recovery_codes WHERE user_id = $1', [userId]);
+            await client.query('UPDATE users SET totp_enc = NULL, totp_at = NULL, totp_last = NULL WHERE id = $1', [userId]);
+            await client.query('DELETE FROM recovery_codes WHERE user_id = $1', [userId]);
         }
+        await client.query('COMMIT');
     } catch (err) {
+        try { await client.query('ROLLBACK'); } catch (rbErr) {  }
         console.error('[accounts] could not remove the app: ' + err.message);
         return { ok: false, reason: 'unavailable' };
+    } finally {
+        client.release();
     }
     audit(left ? '2fa-app-removed' : '2fa-off', { actor: userId });
     return { ok: true, left };
@@ -787,6 +812,21 @@ async function markSessionMfa(token) {
     if (!token) return;
     await db.query('UPDATE sessions SET mfa = true WHERE token_hash = $1', [hashToken(String(token))])
         .catch((err) => console.error('[accounts] could not mark the session: ' + err.message));
+}
+
+// Two-factor coming on for the first time. Every session the account had is
+// ended, the one in hand too, and a new one is opened that has passed the
+// second step: a cookie somebody took before the app was added does not keep
+// working after it.
+async function freshSessionAfterTotp(userId) {
+    try {
+        await db.query('DELETE FROM sessions WHERE user_id = $1', [userId]);
+    } catch (err) {
+        console.error('[accounts] could not end the old sessions: ' + err.message);
+        return null;
+    }
+    audit('sessions-revoked', { actor: userId, detail: 'two-factor came on' });
+    return startSession(userId, { mfa: true });
 }
 
 // Every app at once, for the older screens that only knew on and off.
@@ -830,27 +870,50 @@ async function startTotpPending(userId) {
     }
     return token;
 }
+// Six tries at one half finished sign-in, and ten wrong codes on the account
+// in a quarter of an hour across all of them, after which it waits out the
+// quarter hour. Both are spent before the code is looked at, each in one
+// statement, so codes sent all at once cannot share a try between them.
+const TOTP_PENDING_TRIES = 6;
+const TOTP_ACCOUNT_TRIES = 10;
+const TOTP_HOLD_MIN = 15;
 async function finishTotp(pendingToken, code) {
     if (!(await init())) return { ok: false, reason: 'unavailable' };
+    const tokenHash = hashToken(String(pendingToken || ''));
     let row;
     try {
         const res = await db.query(
-            'SELECT p.token_hash, p.user_id, p.tries, u.email_hash, u.email_enc, u.name_enc, u.lang' +
-            ' FROM totp_pending p JOIN users u ON u.id = p.user_id' +
-            ' WHERE p.token_hash = $1 AND p.expires_at > now()',
-            [hashToken(String(pendingToken || ''))]
+            `UPDATE totp_pending p SET tries = p.tries + 1
+               FROM users u
+              WHERE u.id = p.user_id AND p.token_hash = $1 AND p.expires_at > now() AND p.tries < $2
+          RETURNING p.token_hash, p.user_id, u.email_hash, u.email_enc, u.name_enc, u.lang`,
+            [tokenHash, TOTP_PENDING_TRIES]
         );
-        if (!res.rowCount) return { ok: false, reason: 'expired' };
+        if (!res.rowCount) {
+            const spent = await db.query(
+                'DELETE FROM totp_pending WHERE token_hash = $1 AND expires_at > now() RETURNING user_id', [tokenHash]);
+            if (!spent.rowCount) return { ok: false, reason: 'expired' };
+            audit('2fa-refused', { actor: spent.rows[0].user_id, detail: 'out of tries' });
+            return { ok: false, reason: 'too-many-attempts' };
+        }
         row = res.rows[0];
+        const held = await db.query(
+            `UPDATE users SET
+                 totp_fails = CASE WHEN totp_fail_at > now() - ($2 || ' minutes')::interval THEN totp_fails + 1 ELSE 1 END,
+                 totp_fail_at = now()
+              WHERE id = $1
+                AND NOT (totp_fails >= $3 AND totp_fail_at > now() - ($2 || ' minutes')::interval)
+          RETURNING id`,
+            [row.user_id, String(TOTP_HOLD_MIN), TOTP_ACCOUNT_TRIES]
+        );
+        if (!held.rowCount) {
+            await db.query('DELETE FROM totp_pending WHERE token_hash = $1', [tokenHash]).catch(() => {});
+            audit('2fa-refused', { actor: row.user_id, detail: 'account on hold' });
+            return { ok: false, reason: 'too-many-attempts' };
+        }
     } catch (err) {
         console.error('[accounts] could not read a half finished sign-in: ' + err.message);
         return { ok: false, reason: 'unavailable' };
-    }
-
-    if (row.tries >= 6) {
-        await db.query('DELETE FROM totp_pending WHERE token_hash = $1', [row.token_hash]).catch(() => {});
-        audit('2fa-refused', { actor: row.user_id, detail: 'out of tries' });
-        return { ok: false, reason: 'too-many-attempts' };
     }
     // a code from any of the apps on the account; each app's own last step
     // keeps a code it showed from being used twice
@@ -865,11 +928,16 @@ async function finishTotp(pendingToken, code) {
     }
     let usedRecovery = false;
     if (step !== null) {
-        if (app.last_step !== null && String(app.last_step) === String(step)) {
+        // the step only moves forward: a code used once, or the one before
+        // it, does not work again, and of two sent together only one wins
+        const moved = await db.query(
+            'UPDATE totp_factors SET last_step = $1, used_at = now() WHERE id = $2 AND (last_step IS NULL OR last_step < $1) RETURNING id',
+            [String(step), app.id]
+        ).catch(() => ({ rowCount: 0 }));
+        if (!moved.rowCount) {
             audit('2fa-refused', { actor: row.user_id, detail: 'code reused' });
             return { ok: false, reason: 'code-used' };
         }
-        await db.query('UPDATE totp_factors SET last_step = $1, used_at = now() WHERE id = $2', [String(step), app.id]).catch(() => {});
     } else {
         // Recovery codes are no longer given out. One an older account was
         // given before then still works, once, so nobody is locked out by the
@@ -879,13 +947,13 @@ async function finishTotp(pendingToken, code) {
             [row.user_id, hashRecovery(row.user_id, code)]
         ).catch(() => ({ rowCount: 0 }));
         if (!spent.rowCount) {
-            await db.query('UPDATE totp_pending SET tries = tries + 1 WHERE token_hash = $1', [row.token_hash]).catch(() => {});
             audit('2fa-refused', { actor: row.user_id, detail: 'wrong code' });
             return { ok: false, reason: 'bad-code' };
         }
         usedRecovery = true;
     }
     await db.query('DELETE FROM totp_pending WHERE token_hash = $1', [row.token_hash]).catch(() => {});
+    await db.query('UPDATE users SET totp_fails = 0, totp_fail_at = NULL WHERE id = $1', [row.user_id]).catch(() => {});
     const session = await startSession(row.user_id, { mfa: true });
     if (!session) return { ok: false, reason: 'unavailable' };
     clearLoginFails(row.email_hash);
@@ -1004,20 +1072,36 @@ async function deleteAccount(userId, password) {
         return { ok: false, reason: 'bad-password' };
     }
     const email = db.open('signup-email:' + row.email_hash, row.email_enc);
+    const client = await db.connect();
     try {
-
-        await db.query('DELETE FROM users WHERE id = $1', [userId]);
-        await db.query('DELETE FROM reset_tokens WHERE email_hash = $1', [row.email_hash]);
-        await db.query('DELETE FROM signup_codes WHERE email_hash = $1', [row.email_hash]);
-        await db.query('DELETE FROM login_fails WHERE email_hash = $1', [row.email_hash]);
+        await client.query('BEGIN');
+        // An organisation other people work in is not left without an owner,
+        // where nobody could be made owner or close it again. The owner hands
+        // it on, or closes it, first.
+        const orgs = await client.query("SELECT to_regclass('memberships') IS NOT NULL AS there");
+        const owns = orgs.rows[0].there ? await client.query(
+            `SELECT 1 FROM memberships m
+              WHERE m.user_id = $1 AND m.role = 'owner'
+                AND EXISTS (SELECT 1 FROM memberships o WHERE o.org_id = m.org_id AND o.user_id <> $1)
+              LIMIT 1`, [userId]
+        ) : { rowCount: 0 };
+        if (owns.rowCount) { await client.query('ROLLBACK'); return { ok: false, reason: 'owns-org' }; }
+        await client.query('DELETE FROM users WHERE id = $1', [userId]);
+        await client.query('DELETE FROM reset_tokens WHERE email_hash = $1', [row.email_hash]);
+        await client.query('DELETE FROM signup_codes WHERE email_hash = $1', [row.email_hash]);
+        await client.query('DELETE FROM login_fails WHERE email_hash = $1', [row.email_hash]);
+        await client.query('COMMIT');
     } catch (err) {
+        try { await client.query('ROLLBACK'); } catch (rbErr) {  }
         console.error('[accounts] could not delete the account: ' + err.message);
         return { ok: false, reason: 'unavailable' };
+    } finally {
+        client.release();
     }
     audit('account-deleted', { actor: userId, subject: row.email_hash });
     return { ok: true, email };
 }
-const DUMMY_HASH = 'scrypt$32768$8$1$' +
+const DUMMY_HASH = 'scrypt$32768$8$3$' +
     Buffer.alloc(16, 7).toString('base64') + '$' + Buffer.alloc(64, 11).toString('base64');
 async function purge() {
     if (!(await init())) return 0;
@@ -1196,6 +1280,7 @@ async function finishReset(token, password, { name, flags } = {}) {
     let emailHash = '';
     let resetEmail = '';
     let resetLang = 'en';
+    let secondStep = false;
     try {
         await client.query('BEGIN');
 
@@ -1208,9 +1293,10 @@ async function finishReset(token, password, { name, flags } = {}) {
         emailHash = row.email_hash;
         resetLang = row.lang || 'en';
         resetEmail = db.open('reset-email:' + row.email_hash, row.email_enc);
-        const found = await client.query('SELECT id FROM users WHERE email_hash = $1 FOR UPDATE', [row.email_hash]);
+        const found = await client.query('SELECT id, totp_at FROM users WHERE email_hash = $1 FOR UPDATE', [row.email_hash]);
         if (found.rowCount) {
             userId = found.rows[0].id;
+            secondStep = Boolean(found.rows[0].totp_at);
             await client.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, userId]);
         } else {
             if (!name) { await client.query('ROLLBACK'); return { ok: false, reason: 'name-required' }; }
@@ -1239,11 +1325,16 @@ async function finishReset(token, password, { name, flags } = {}) {
     } finally {
         client.release();
     }
-    const session = await startSession(userId);
-    db.query('UPDATE users SET last_login_at = now() WHERE id = $1', [userId])
-        .catch((err) => console.error('[accounts] could not record the sign-in: ' + err.message));
+    // The link proves the inbox, not the authenticator app. An account with
+    // two-factor on gets its new password and then signs in with it and a
+    // code, like any other time; it is not handed a session by the email.
+    const session = secondStep ? null : await startSession(userId);
+    if (session) {
+        db.query('UPDATE users SET last_login_at = now() WHERE id = $1', [userId])
+            .catch((err) => console.error('[accounts] could not record the sign-in: ' + err.message));
+    }
     audit(made ? 'account-created-by-reset' : 'password-changed', { actor: userId, subject: emailHash });
-    return { ok: true, created: made, session, email: resetEmail, lang: resetLang };
+    return { ok: true, created: made, session, signIn: secondStep, email: resetEmail, lang: resetLang };
 }
 async function forget(email) {
     if (!(await init())) return 0;
@@ -1271,7 +1362,7 @@ module.exports = {
     init, startSignup, resendSignup, verifySignup, exists, inspect, purge, forget, status,
     audit, loginHold, recentAudit, noteDevice,
     startTotp, confirmTotp, disableTotp, startTotpPending, finishTotp, recoveryLeft,
-    listFactors, removeFactor, clearFactors, markSessionMfa, MAX_FACTORS,
+    listFactors, removeFactor, clearFactors, markSessionMfa, freshSessionAfterTotp, MAX_FACTORS,
     changePassword, listSessions, revokeOtherSessions, deleteAccount,
     startReset, readReset, finishReset, RESET_TTL_MIN, RESET_RESEND_WAIT_S,
     readUser,

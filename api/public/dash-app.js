@@ -12844,8 +12844,62 @@
             .catch(function () { return true; });
     }
 
+    // An invitation followed from a link is joined on a click here, never by
+    // opening the link: a link can be put in front of anyone, signed in, from
+    // any page, and joining an organisation is not something that happens to
+    // you. The server holds which invitation it was; this only asks.
+    function askJoin() {
+        if (!/[?&]join=1(&|$)/.test(location.search)) return;
+        try { history.replaceState(null, '', location.pathname); } catch (e) {  }
+        fetch('/v1/invites/pending', { credentials: 'same-origin' })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (inv) {
+                if (!inv || !inv.org) return;
+                var role = inv.role;
+                for (var i = 0; i < ORG_ROLES.length; i++) {
+                    if (ORG_ROLES[i].key === inv.role) role = t(ORG_ROLES[i].label);
+                }
+                var m = modalShell('Join an organisation', '');
+                var line = document.createElement('p');
+                line.className = 'modal-p';
+                line.textContent = fill('You were invited to join {org} as {role}.', { org: inv.org, role: role });
+                m.body.appendChild(line);
+                var acts = document.createElement('div');
+                acts.className = 'mfa-form';
+                var msg = document.createElement('div');
+                msg.className = 'modal-msg';
+                acts.appendChild(msg);
+                var yes = wideBtn('Join');
+                acts.appendChild(yes);
+                var quit = document.createElement('div');
+                quit.className = 'modal-quit';
+                var no = wideBtn('Not now', 'quiet');
+                no.addEventListener('click', function () {
+                    postJson('/v1/invites/decline', {}).catch(function () {  });
+                    m.shut();
+                });
+                quit.appendChild(no);
+                acts.appendChild(quit);
+                m.body.appendChild(acts);
+                yes.addEventListener('click', function () {
+                    yes.disabled = true;
+                    msg.textContent = '';
+                    msg.className = 'modal-msg';
+                    postJson('/v1/invites/accept', {}).then(function (out) {
+                        location.assign(orgHome(encodeURIComponent(out.slug)));
+                    }).catch(function (err) {
+                        yes.disabled = false;
+                        msg.textContent = err.message;
+                        msg.className = 'modal-msg is-bad';
+                    });
+                });
+            })
+            .catch(function () {  });
+    }
+
     settleOrg().then(function (allowed) {
         if (allowed) boot();
+        if (allowed) askJoin();
     });
 
     function boot() {

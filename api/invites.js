@@ -254,19 +254,35 @@ async function accept(secret, me) {
     if (cleanEmail(me.email) !== cleanEmail(found.email)) {
         return { ok: false, reason: 'not-yours' };
     }
-    if (found.needMfa && !me.totpOn) return { ok: false, reason: 'need-mfa' };
+    // an organisation that asks for two-factor wants it passed, not only set up
+    if (found.needMfa && !(me.totpOn && me.mfa)) return { ok: false, reason: 'need-mfa' };
 
+    // The invitation is spent in the same statement that checks it is still
+    // open, and the membership written only if it was: one withdrawn a moment
+    // ago is not honoured, and a role somebody already has is left as it is.
+    const client = await db.connect();
     try {
-        await db.query(
+        await client.query('BEGIN');
+        const spent = await client.query(
+            `UPDATE invites SET accepted_at = now()
+              WHERE id = $1 AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now()
+          RETURNING id`,
+            [Number(found.id)]
+        );
+        if (!spent.rowCount) { await client.query('ROLLBACK'); return { ok: false, reason: 'gone' }; }
+        await client.query(
             `INSERT INTO memberships (org_id, user_id, role) VALUES ($1, $2, $3)
-             ON CONFLICT (org_id, user_id) DO UPDATE SET role = EXCLUDED.role`,
+             ON CONFLICT (org_id, user_id) DO NOTHING`,
             [Number(found.orgId), Number(me.userId), found.role]
         );
-        await db.query('UPDATE invites SET accepted_at = now() WHERE id = $1', [Number(found.id)]);
+        await client.query('COMMIT');
         return { ok: true, invite: found };
     } catch (err) {
+        try { await client.query('ROLLBACK'); } catch (rbErr) {  }
         console.error('[invites] could not accept: ' + err.message);
         return { ok: false, reason: 'unavailable' };
+    } finally {
+        client.release();
     }
 }
 
