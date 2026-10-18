@@ -482,7 +482,7 @@ async function readSession(token, client) {
     if (!(await init())) return null;
     try {
         const res = await db.query(
-            `SELECT s.token_hash, s.user_id, s.mfa, s.confirmed_at, u.email_hash, u.email_enc, u.name_enc, u.lang, u.created_at, u.totp_at
+            `SELECT s.token_hash, s.user_id, s.mfa, s.confirmed_at, s.ua, u.email_hash, u.email_enc, u.name_enc, u.lang, u.created_at, u.totp_at
                FROM sessions s JOIN users u ON u.id = s.user_id
               WHERE s.token_hash = $1
                 AND s.expires_at > now()
@@ -494,7 +494,9 @@ async function readSession(token, client) {
         // when it was last used, and from where, at most once a minute; the
         // browser it is, once
         const c = client || {};
-        db.query(
+        // waited for on a session's first named request, so the list that
+        // this request tells about already has the browser in it
+        const seen = db.query(
             `UPDATE sessions SET last_seen_at = now(),
                     ip = COALESCE($2, ip), country = COALESCE($3, country), ua = COALESCE(ua, $4)
               WHERE token_hash = $1 AND (last_seen_at < now() - interval '1 minute' OR ua IS NULL)`,
@@ -502,6 +504,7 @@ async function readSession(token, client) {
              c.country ? String(c.country).slice(0, 2).toUpperCase() : null,
              c.ua ? String(c.ua).slice(0, 300) : null]
         ).catch(() => {  });
+        if (!row.ua && c.ua) await seen;
         let email = db.open('signup-email:' + row.email_hash, row.email_enc);
         if (!email) {
             const fromReset = db.open('reset-email:' + row.email_hash, row.email_enc);
@@ -522,6 +525,9 @@ async function readSession(token, client) {
             since: row.created_at,
             mfa: Boolean(row.mfa),
             confirmedAt: row.confirmed_at || null,
+            // the first request this session has made with a browser to name:
+            // the moment a new device can be shown in the owner's list
+            firstSeen: !row.ua && Boolean(c.ua),
             totpOn: Boolean(row.totp_at),
             totpSince: row.totp_at || null,
             emailHash: row.email_hash,

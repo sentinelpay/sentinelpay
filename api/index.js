@@ -1135,11 +1135,15 @@ async function currentUser(req) {
     const token = readSessionCookie(req);
     if (!token) return null;
     // where the session is being used from, for its owner's list of devices
-    return accounts.readSession(token, {
+    const me = await accounts.readSession(token, {
         ua: req.get('user-agent') || '',
         ip: ipKey(req.realIp),
         country: req.headers['cf-ipcountry'] || '',
     });
+    // a device just signed in: every page its owner has open hears of it,
+    // so the list of signed-in devices shows it without a reload
+    if (me && me.firstSeen) tellMe(me.userId, { topic: 'sessions' });
+    return me;
 }
 
 const authRegisterLimiter = rateLimit({
@@ -3469,13 +3473,17 @@ app.post('/v1/account/delete', requireCloudflareOrigin, accountLimiter, async (r
 });
 
 app.post('/v1/auth/logout', requireCloudflareOrigin, async (req, res) => {
+    let who = null;
     try {
+        who = await accounts.readSession(readSessionCookie(req));
         await accounts.endSession(readSessionCookie(req));
     } catch (err) {
         console.error('[auth logout error]', err.message);
     }
     clearSessionCookie(res);
     res.json({ ok: true });
+    // and a device signing out leaves the lists it is in, wherever they are open
+    if (who) tellMe(who.userId, { topic: 'sessions' });
 });
 
 const authMeLimiter = rateLimit({
