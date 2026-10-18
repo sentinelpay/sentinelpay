@@ -28,6 +28,10 @@ const SCOPE_GROUPS = [
       hint: 'Who is on the account and what they have done.' },
 ];
 
+// endpoints are the calls a scope opens, as METHOD and path. For a live scope
+// they are the routes that check it, and a test holds the two together; for
+// one not live yet they are the calls it will open, shown as not live.
+//
 // live is whether the endpoints behind a scope exist today. every scope here is
 // one we intend to serve; the flag is what tells the panel to mark the ones that
 // are not wired yet, and it is the only thing to change when they are.
@@ -43,51 +47,71 @@ const SCOPE_GROUPS = [
 //           reports, or delivers to
 const SCOPES = [
     { key: 'screenings:write', group: 'screening', writes: true, live: true, risk: 'medium',
-      label: 'Run screenings', hint: 'Check an address. On a live token this spends a check.' },
+      label: 'Run screenings', hint: 'Check an address. On a live token this spends a check.',
+      endpoints: ['POST /v1/screen'] },
     { key: 'screenings:read', group: 'screening', writes: false, live: true, risk: 'low',
-      label: 'Read screenings', hint: 'List past checks and read a single result.' },
+      label: 'Read screenings', hint: 'List past checks and read a single result.',
+      endpoints: ['GET /v1/screenings', 'GET /v1/screenings/stats', 'GET /v1/screenings/:id'] },
     { key: 'screenings:bulk', group: 'screening', writes: true, live: false, risk: 'medium',
-      label: 'Screen in bulk', hint: 'Submit many addresses in one call and collect them later.' },
+      label: 'Screen in bulk', hint: 'Submit many addresses in one call and collect them later.',
+      endpoints: ['POST /v1/screen/bulk', 'GET /v1/screen/bulk/:id'] },
 
     { key: 'evidence:read', group: 'evidence', writes: false, live: true, risk: 'high',
-      label: 'Download evidence', hint: 'Pull the full sealed record for a check, with its digest.' },
+      label: 'Download evidence', hint: 'Pull the full sealed record for a check, with its digest.',
+      endpoints: ['GET /v1/screenings/:id/evidence'] },
     { key: 'reports:read', group: 'evidence', writes: false, live: false, risk: 'high',
-      label: 'Read reports', hint: 'List and download reports that have already been built.' },
+      label: 'Read reports', hint: 'List and download reports that have already been built.',
+      endpoints: ['GET /v1/reports', 'GET /v1/reports/:id'] },
     { key: 'reports:generate', group: 'evidence', writes: true, live: false, risk: 'medium',
-      label: 'Build reports', hint: 'Ask for a new report over a period or a case.' },
+      label: 'Build reports', hint: 'Ask for a new report over a period or a case.',
+      endpoints: ['POST /v1/reports'] },
 
     { key: 'wallets:read', group: 'wallets', writes: false, live: false, risk: 'medium',
-      label: 'Read wallets', hint: 'List watched wallets and the addresses under them.' },
+      label: 'Read wallets', hint: 'List watched wallets and the addresses under them.',
+      endpoints: ['GET /v1/wallets', 'GET /v1/wallets/:id'] },
     { key: 'wallets:write', group: 'wallets', writes: true, live: false, risk: 'medium',
-      label: 'Manage wallets', hint: 'Add, rename and stop watching a wallet.' },
+      label: 'Manage wallets', hint: 'Add, rename and stop watching a wallet.',
+      endpoints: ['POST /v1/wallets', 'POST /v1/wallets/:id', 'POST /v1/wallets/:id/stop'] },
     { key: 'xpub:register', group: 'wallets', writes: true, live: false, risk: 'high',
-      label: 'Register an extended key', hint: 'Hand us an xpub or descriptor for us to derive and watch.' },
+      label: 'Register an extended key', hint: 'Hand us an xpub or descriptor for us to derive and watch.',
+      endpoints: ['POST /v1/wallets/xpub'] },
 
     { key: 'alerts:read', group: 'monitoring', writes: false, live: false, risk: 'medium',
-      label: 'Read alerts', hint: 'List what the watching has raised and read one.' },
+      label: 'Read alerts', hint: 'List what the watching has raised and read one.',
+      endpoints: ['GET /v1/alerts', 'GET /v1/alerts/:id'] },
     { key: 'alerts:triage', group: 'monitoring', writes: true, live: false, risk: 'high',
-      label: 'Work alerts', hint: 'Assign, escalate and clear an alert as a false positive.' },
+      label: 'Work alerts', hint: 'Assign, escalate and clear an alert as a false positive.',
+      endpoints: ['POST /v1/alerts/:id/assign', 'POST /v1/alerts/:id/escalate', 'POST /v1/alerts/:id/clear'] },
     { key: 'cases:read', group: 'monitoring', writes: false, live: false, risk: 'medium',
-      label: 'Read cases', hint: 'List cases and read what is attached to one.' },
+      label: 'Read cases', hint: 'List cases and read what is attached to one.',
+      endpoints: ['GET /v1/cases', 'GET /v1/cases/:id'] },
     { key: 'cases:write', group: 'monitoring', writes: true, live: false, risk: 'medium',
-      label: 'Work cases', hint: 'Open, note, attach to and close a case.' },
+      label: 'Work cases', hint: 'Open, note, attach to and close a case.',
+      endpoints: ['POST /v1/cases', 'POST /v1/cases/:id/notes', 'POST /v1/cases/:id/close'] },
 
     { key: 'policy:read', group: 'policy', writes: false, live: false, risk: 'low',
-      label: 'Read policy', hint: 'Read the thresholds and rules in force.' },
+      label: 'Read policy', hint: 'Read the thresholds and rules in force.',
+      endpoints: ['GET /v1/policy'] },
     { key: 'policy:write', group: 'policy', writes: true, live: false, risk: 'high',
-      label: 'Change policy', hint: 'Change what is flagged. This moves what the account reports.' },
+      label: 'Change policy', hint: 'Change what is flagged. This moves what the account reports.',
+      endpoints: ['POST /v1/policy'] },
     { key: 'watchlists:write', group: 'policy', writes: true, live: false, risk: 'high',
-      label: 'Manage watchlists', hint: 'Add and remove the account own addresses of interest.' },
+      label: 'Manage watchlists', hint: 'Add and remove the account own addresses of interest.',
+      endpoints: ['POST /v1/watchlists', 'POST /v1/watchlists/:id/remove'] },
 
     { key: 'webhooks:read', group: 'developers', writes: false, live: false, risk: 'low',
-      label: 'Read webhooks', hint: 'List endpoints we deliver to and their recent attempts.' },
+      label: 'Read webhooks', hint: 'List endpoints we deliver to and their recent attempts.',
+      endpoints: ['GET /v1/webhooks', 'GET /v1/webhooks/:id/deliveries'] },
     { key: 'webhooks:manage', group: 'developers', writes: true, live: false, risk: 'high',
-      label: 'Manage webhooks', hint: 'Add and remove endpoints, and replay a delivery.' },
+      label: 'Manage webhooks', hint: 'Add and remove endpoints, and replay a delivery.',
+      endpoints: ['POST /v1/webhooks', 'POST /v1/webhooks/:id/remove', 'POST /v1/webhooks/deliveries/:id/replay'] },
 
     { key: 'audit:read', group: 'organisation', writes: false, live: false, risk: 'medium',
-      label: 'Read the audit log', hint: 'Read what has been done on the account and by whom.' },
+      label: 'Read the audit log', hint: 'Read what has been done on the account and by whom.',
+      endpoints: ['GET /v1/audit-log'] },
     { key: 'members:read', group: 'organisation', writes: false, live: false, risk: 'low',
-      label: 'Read members', hint: 'List who is on the account and what they may do.' },
+      label: 'Read members', hint: 'List who is on the account and what they may do.',
+      endpoints: ['GET /v1/members'] },
 ];
 const SCOPE_KEYS = SCOPES.map((s) => s.key);
 
@@ -114,7 +138,7 @@ function presetScopes(name) {
 
 // two kinds, and the prefix says which at a glance: a live token touches the
 // customer's real screening history and spends their quota, a sandbox one does
-// neither. same endpoints, same sanctions data, separate world.
+// neither. same endpoints, fixed test addresses in place of the list, separate world.
 const KINDS = {
     live: { prefix: 'sp_live_', label: 'Live' },
     test: { prefix: 'sp_test_', label: 'Sandbox' },

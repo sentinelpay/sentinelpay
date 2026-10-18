@@ -86,3 +86,25 @@ test('the dashboard keeps nothing runnable in the report frame or prototype in a
     assert.doesNotMatch(read('public/index.html'), /sb-[a-z]+-auth-token/);
     assert.doesNotMatch(read('public/inbox.js'), /token/);
 });
+
+// What the review lists under a live permission is what that permission
+// opens: each of its calls is a route that asks for it, and no route asks for
+// a permission without being listed under it.
+test('a live permission lists exactly the routes that ask for it', () => {
+    const { SCOPES } = require('../tokens');
+    const index = read('index.js');
+    const asking = {};
+    const re = /app\.(get|post)\('([^']+)'[^\n]*\n(?:[^\n]*\n){0,6}?[^\n]*caller\(req, res, '([a-z:]+)'\)/g;
+    let m;
+    while ((m = re.exec(index))) (asking[m[3]] = asking[m[3]] || []).push(m[1].toUpperCase() + ' ' + m[2]);
+    for (const sc of SCOPES) {
+        assert.ok(Array.isArray(sc.endpoints) && sc.endpoints.length, sc.key + ' lists no calls');
+        if (!sc.live) continue;
+        assert.deepStrictEqual(sc.endpoints.slice().sort(), (asking[sc.key] || []).sort(), sc.key + ' lists other calls than ask for it');
+    }
+    const dash = read('public/dash-app.js');
+    const review = dash.slice(dash.indexOf('    function askToken('), dash.indexOf('        function stepShow(secret)'));
+    assert.match(review, /block\('Risk assessment'\)/);
+    assert.match(review, /block\('Token summary'\)/);
+    assert.match(review, /\[\['all', 'All'\], \['read', 'Read'\], \['write', 'Read-write'\]\]/);
+});
