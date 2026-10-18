@@ -11159,32 +11159,128 @@
         }
 
         // one line in full, for reading or for quoting to somebody
+        // One line in full, for reading or for quoting to somebody: an
+        // overview in groups, and the line exactly as the server sent it.
         function logDetail(r) {
             var d = drawer(logSaid(r.kind));
             d.steps(0, 0, '');
-            var sec = document.createElement('section');
-            sec.className = 'tkr-blk';
-            var rows = document.createElement('dl');
-            rows.className = 'tkr-sum';
-            [['When', stampText(r.at, true) + '  ·  ' + zoneNow()],
-                ['Result', t(logRefused(r.kind) ? 'Refused' : 'Done')],
-                ['Event', logSaid(r.kind)],
-                ['Details', r.detail || '–'],
-                ['Network address', r.ip || '–'],
-                ['Event key', r.kind],
-                ['Line', '#' + r.id]].forEach(function (pair) {
-                var x = document.createElement('div');
-                x.className = 'tkr-sum-r';
-                var dt = document.createElement('dt');
-                dt.textContent = t(pair[0]);
-                x.appendChild(dt);
-                var dd = document.createElement('dd');
-                dd.textContent = pair[1];
-                x.appendChild(dd);
-                rows.appendChild(x);
+            var tabs = document.createElement('div');
+            tabs.className = 'lgx-tabs';
+            var seg = document.createElement('div');
+            seg.className = 'vseg tkr-seg';
+            seg.setAttribute('role', 'tablist');
+            tabs.appendChild(seg);
+            d.body.appendChild(tabs);
+            var pane = document.createElement('div');
+            d.body.appendChild(pane);
+            var shown = 'overview';
+            [['overview', 'Overview'], ['raw', 'Raw JSON']].forEach(function (f) {
+                var b2 = document.createElement('button');
+                b2.type = 'button';
+                b2.className = 'vseg-b';
+                b2.setAttribute('role', 'tab');
+                b2.textContent = t(f[1]);
+                b2.setAttribute('aria-pressed', String(f[0] === shown));
+                b2.setAttribute('aria-selected', String(f[0] === shown));
+                b2.addEventListener('click', function () {
+                    shown = f[0];
+                    seg.querySelectorAll('.vseg-b').forEach(function (x) {
+                        x.setAttribute('aria-pressed', String(x === b2));
+                        x.setAttribute('aria-selected', String(x === b2));
+                    });
+                    paint();
+                });
+                seg.appendChild(b2);
             });
-            sec.appendChild(rows);
-            d.body.appendChild(sec);
+
+            // a small copy button beside a value worth quoting
+            function copyMini(text) {
+                var c = document.createElement('button');
+                c.type = 'button';
+                c.className = 'lgx-copy';
+                c.setAttribute('aria-label', t('Copy'));
+                var COPY_I = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
+                    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                    '<rect x="8.5" y="8.5" width="11" height="11" rx="2.2"/><path d="M15.5 8.5V6.7a2.2 2.2 0 0 0-2.2-2.2H6.7a2.2 2.2 0 0 0-2.2 2.2v6.6a2.2 2.2 0 0 0 2.2 2.2h1.8"/></svg>';
+                c.innerHTML = COPY_I;
+                c.addEventListener('click', function () {
+                    copyText(text).then(function () {
+                        c.classList.add('is-done');
+                        c.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
+                            'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.2 4.2L19 7"/></svg>';
+                        clearTimeout(c.spTimer);
+                        c.spTimer = setTimeout(function () { c.classList.remove('is-done'); c.innerHTML = COPY_I; }, 1400);
+                    }).catch(function () { toast(t('That did not work.'), 'bad'); });
+                });
+                return c;
+            }
+            function group(label, rowsIn) {
+                var sec = document.createElement('section');
+                sec.className = 'tkr-blk';
+                var head = document.createElement('div');
+                head.className = 'tkr-blk-h';
+                var h = document.createElement('h3');
+                h.textContent = t(label);
+                head.appendChild(h);
+                sec.appendChild(head);
+                var dl = document.createElement('dl');
+                dl.className = 'tkr-sum';
+                rowsIn.forEach(function (row) {
+                    var x = document.createElement('div');
+                    x.className = 'tkr-sum-r';
+                    var dt = document.createElement('dt');
+                    dt.textContent = t(row[0]);
+                    x.appendChild(dt);
+                    var dd = document.createElement('dd');
+                    dd.className = 'lgx-dd';
+                    var v = document.createElement('span');
+                    v.textContent = row[1] || '–';
+                    dd.appendChild(v);
+                    if (row[2] && row[1]) dd.appendChild(copyMini(row[1]));
+                    x.appendChild(dd);
+                    dl.appendChild(x);
+                });
+                sec.appendChild(dl);
+                pane.appendChild(sec);
+            }
+            function paint() {
+                pane.textContent = '';
+                if (shown === 'raw') {
+                    var sec = document.createElement('section');
+                    sec.className = 'tkr-blk';
+                    var head = document.createElement('div');
+                    head.className = 'tkr-blk-h';
+                    var h = document.createElement('h3');
+                    h.textContent = t('The line as it is stored');
+                    head.appendChild(h);
+                    sec.appendChild(head);
+                    var json = JSON.stringify(r, null, 2);
+                    var pre = document.createElement('pre');
+                    pre.className = 'lgx-json';
+                    pre.textContent = json;
+                    sec.appendChild(pre);
+                    var cp = keyCopy(function () { return json; }, 'Copy JSON');
+                    cp.classList.add('lgx-json-copy');
+                    sec.appendChild(cp);
+                    pane.appendChild(sec);
+                    return;
+                }
+                group('When', [
+                    ['Happened', stampText(r.at, true) + '  ·  ' + zoneNow()],
+                    ['Line', r.id, true]
+                ]);
+                group('Who', [
+                    ['Account', (me && me.email) || '', true],
+                    ['Network address', r.ip, true]
+                ]);
+                group('What', [
+                    ['Event', logSaid(r.kind)],
+                    ['Result', t(logRefused(r.kind) ? 'Refused' : 'Done')],
+                    ['Details', r.detail, true],
+                    ['Event key', r.kind, true]
+                ]);
+            }
+            paint();
             var fin = document.createElement('button');
             fin.type = 'button';
             fin.className = 'btn btn-primary';
