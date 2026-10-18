@@ -645,3 +645,27 @@ test('an audit line is written once and never edited', flow, async () => {
     await assert.rejects(db.query("UPDATE audit_events SET kind = 'changed' WHERE id = $1", [made.rows[0].id]), /append-only/);
     await db.query('DELETE FROM audit_events WHERE id = $1', [made.rows[0].id]);
 });
+
+// The devices list: each session as its owner would name it, where it was
+// last used from, and a way to sign out any one of them but the one asking.
+test('a device is named, listed and signed out on its own', flow, async () => {
+    const email = freshEmail('devices');
+    const started = await accounts.startSignup({ email, name: 'Ana Anic', password: 'a-very-long-password-1', lang: 'en', flags: [] });
+    const made = await accounts.verifySignup(email, await codeFor(db.blindIndex(email)), started.origin);
+    const phone = await accounts.startSession(made.userId);
+    await accounts.readSession(made.session.token, { ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/130.0 Safari/537.36', ip: '198.51.100.7', country: 'hr' });
+    await accounts.readSession(phone.token, { ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Version/17.0 Mobile/15E148 Safari/604.1', ip: '203.0.113.9', country: 'DE' });
+    await new Promise((r) => setTimeout(r, 150));
+    const list = await accounts.listSessions(made.userId, made.session.token);
+    const mine = list.find((x) => x.current);
+    const other = list.find((x) => !x.current);
+    assert.deepStrictEqual([mine.device.browser, mine.device.os, mine.country], ['Chrome', 'macOS', 'HR']);
+    assert.deepStrictEqual([other.device.browser, other.device.os, other.device.mobile], ['Safari', 'iOS', true]);
+    assert.match(other.id, /^[0-9a-f]{16}$/);
+    assert.strictEqual((await accounts.revokeSession(made.userId, mine.id, made.session.token)).reason, 'missing', 'the session asking signed itself out');
+    assert.strictEqual((await accounts.revokeSession(made.userId + 1, other.id, made.session.token)).reason, 'missing', 'another account signed this one out');
+    assert.strictEqual((await accounts.revokeSession(made.userId, other.id, made.session.token)).ok, true);
+    assert.strictEqual(await accounts.readSession(phone.token), null, 'the device signed out still works');
+    assert.ok(await accounts.readSession(made.session.token), 'the session asking was signed out');
+    await accounts.forget(email);
+});

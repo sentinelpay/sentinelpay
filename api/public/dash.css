@@ -6180,6 +6180,31 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
 .sec-add svg { width: 14px; height: 14px; }
 .sec-remove { color: var(--danger); }
 .sec-warn-host { margin-bottom: 0.8rem; }
+/* the devices the account is signed in on, one a row: what it is, where
+   and when it was last used, and the way to sign it out */
+.sec-dev-row {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.9rem 1.15rem;
+    border-bottom: 1px solid var(--line-2);
+}
+.sec-dev-i {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 2.15rem;
+    height: 2.15rem;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: var(--canvas);
+    color: var(--ink-3);
+}
+.sec-dev-i svg { width: 17px; height: 17px; }
+.sec-dev-t { flex: 1 1 auto; min-width: 0; }
+.sec-dev-n { display: flex; align-items: center; flex-wrap: wrap; gap: 0.45rem; font-size: 0.86rem; font-weight: 600; color: var(--ink); }
+.sec-dev-s { margin-top: 0.15rem; font-size: 0.78rem; color: var(--ink-4); overflow-wrap: anywhere; }
+.sec-dev-foot { border-top: 0; }
 /* the token drawer's warning, in the amber of a thing to do rather than the
    red of a thing being done; and without its entrance, which belongs to a
    warning that appears on a click, not to one that arrives with the page:

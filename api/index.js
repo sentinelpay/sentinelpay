@@ -1134,7 +1134,12 @@ async function caller(req, res, scope) {
 async function currentUser(req) {
     const token = readSessionCookie(req);
     if (!token) return null;
-    return accounts.readSession(token);
+    // where the session is being used from, for its owner's list of devices
+    return accounts.readSession(token, {
+        ua: req.get('user-agent') || '',
+        ip: ipKey(req.realIp),
+        country: req.headers['cf-ipcountry'] || '',
+    });
 }
 
 const authRegisterLimiter = rateLimit({
@@ -3425,6 +3430,18 @@ app.get('/v1/account/logs', async (req, res) => {
             ip: r.ip || '',
         })),
     });
+});
+
+// One device signed out from the list; the one asking cannot sign itself
+// out this way, that is what signing out is for.
+app.post('/v1/account/sessions/:id/revoke', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const out = await accounts.revokeSession(me.userId, String(req.params.id || ''), readSessionCookie(req));
+    if (out.reason === 'missing') return res.status(404).json({ error: 'That device is already signed out.' });
+    if (!out.ok) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
+    tellMe(me.userId, { topic: 'me' });
+    res.json({ ok: true });
 });
 
 app.post('/v1/account/sessions/revoke', requireCloudflareOrigin, accountLimiter, async (req, res) => {
