@@ -142,6 +142,11 @@ ALTER TABLE sessions ADD COLUMN IF NOT EXISTS mfa boolean NOT NULL DEFAULT false
 -- When the person at this session last proved it was them: at sign-in, and
 -- again by password or code before an action that hands out lasting access.
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS confirmed_at timestamptz;
+-- What the session is, as its owner would recognise it in a list: the
+-- browser it came from, and where it was last seen from.
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS ua      text;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS ip      text;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS country text;
 
 -- The audit trail is written once. A line can age out under the retention
 -- rule, or go with an erasure the law asks for, but it is never edited:
@@ -472,7 +477,7 @@ async function readUser(userId) {
     }
 }
 
-async function readSession(token) {
+async function readSession(token, client) {
     if (!token || typeof token !== 'string' || token.length > 200) return null;
     if (!(await init())) return null;
     try {
@@ -486,9 +491,16 @@ async function readSession(token) {
         );
         if (!res.rowCount) return null;
         const row = res.rows[0];
+        // when it was last used, and from where, at most once a minute; the
+        // browser it is, once
+        const c = client || {};
         db.query(
-            "UPDATE sessions SET last_seen_at = now() WHERE token_hash = $1 AND last_seen_at < now() - interval '1 minute'",
-            [row.token_hash]
+            `UPDATE sessions SET last_seen_at = now(),
+                    ip = COALESCE($2, ip), country = COALESCE($3, country), ua = COALESCE(ua, $4)
+              WHERE token_hash = $1 AND (last_seen_at < now() - interval '1 minute' OR ua IS NULL)`,
+            [row.token_hash, c.ip ? String(c.ip).slice(0, 64) : null,
+             c.country ? String(c.country).slice(0, 2).toUpperCase() : null,
+             c.ua ? String(c.ua).slice(0, 300) : null]
         ).catch(() => {  });
         let email = db.open('signup-email:' + row.email_hash, row.email_enc);
         if (!email) {
@@ -1157,26 +1169,68 @@ async function changePassword(userId, current, next) {
     };
 }
 
+// A browser as a person names it: "Chrome on macOS". Only the name and the
+// system are read out of the user agent; the rest of it is nobody's business.
+function deviceOf(ua) {
+    const u = String(ua || '');
+    const browser = /Edge?\/|EdgA\/|EdgiOS\//.test(u) ? 'Edge'
+        : /OPR\/|Opera/.test(u) ? 'Opera'
+            : /Firefox\/|FxiOS/.test(u) ? 'Firefox'
+                : /Chrome\/|CriOS/.test(u) ? 'Chrome'
+                    : /Safari\//.test(u) ? 'Safari' : '';
+    const os = /iPhone|iPad|iPod/.test(u) ? 'iOS'
+        : /Android/.test(u) ? 'Android'
+            : /Mac OS X|Macintosh/.test(u) ? 'macOS'
+                : /Windows/.test(u) ? 'Windows'
+                    : /CrOS/.test(u) ? 'ChromeOS'
+                        : /Linux/.test(u) ? 'Linux' : '';
+    return { browser, os, mobile: /Mobile|iPhone|Android.*Mobile/.test(u) };
+}
+
+// The sessions an account is signed in with, newest use first. Each is
+// named by the start of its hash, which says nothing about the token and is
+// enough to sign that one out.
 async function listSessions(userId, currentToken) {
     if (!(await init())) return [];
     try {
         const res = await db.query(
-            `SELECT token_hash, created_at, last_seen_at, mfa, expires_at
+            `SELECT token_hash, created_at, last_seen_at, mfa, expires_at, ua, ip, country
                FROM sessions WHERE user_id = $1 AND expires_at > now()
               ORDER BY last_seen_at DESC`,
             [userId]
         );
         const mine = currentToken ? hashToken(currentToken) : '';
         return res.rows.map((r) => ({
+            id: r.token_hash.slice(0, 16),
             startedAt: r.created_at,
             lastSeenAt: r.last_seen_at,
             expiresAt: r.expires_at,
             mfa: Boolean(r.mfa),
+            device: deviceOf(r.ua),
+            ip: r.ip || '',
+            country: r.country || '',
             current: r.token_hash === mine,
         }));
     } catch (err) {
         console.error('[accounts] could not list sessions: ' + err.message);
         return [];
+    }
+}
+// One session signed out, by the start of its hash; never the one asking.
+async function revokeSession(userId, id, currentToken) {
+    if (!(await init())) return { ok: false, reason: 'unavailable' };
+    if (!/^[0-9a-f]{16}$/.test(String(id || ''))) return { ok: false, reason: 'missing' };
+    try {
+        const res = await db.query(
+            'DELETE FROM sessions WHERE user_id = $1 AND left(token_hash, 16) = $2 AND token_hash <> $3 RETURNING 1',
+            [userId, String(id), currentToken ? hashToken(currentToken) : '']
+        );
+        if (!res.rowCount) return { ok: false, reason: 'missing' };
+        audit('session-revoked', { actor: userId });
+        return { ok: true };
+    } catch (err) {
+        console.error('[accounts] could not end the session: ' + err.message);
+        return { ok: false, reason: 'unavailable' };
     }
 }
 async function revokeOtherSessions(userId, currentToken) {
@@ -1501,6 +1555,7 @@ module.exports = {
     startTotp, confirmTotp, disableTotp, startTotpPending, finishTotp, recoveryLeft,
     listFactors, removeFactor, clearFactors, markSessionMfa, freshSessionAfterTotp, MAX_FACTORS,
     accountTrail, AUDIT_GROUPS, confirmSession, recentlyConfirmed, CONFIRM_FOR_MIN,
+    revokeSession, deviceOf,
     changePassword, listSessions, revokeOtherSessions, deleteAccount,
     startReset, readReset, finishReset, RESET_TTL_MIN, RESET_RESEND_WAIT_S,
     readUser,

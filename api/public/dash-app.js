@@ -10575,34 +10575,121 @@
         }
         load();
 
-        // ---- every other device this account is signed in on, signed out on
-        // one click: for a laptop left somewhere, or a sign-in that was not
-        // yours. This browser stays signed in.
-        page.appendChild(sectionTitle('Other devices'));
-        page.appendChild(sectionNote('Signed in somewhere you no longer use, or not sure every sign-in was yours? This ends every session but the one you are using now.'));
+        // ---- every device this account is signed in on: the browser and the
+        // system it runs, where it was last used from and when, and a way to
+        // sign out any of them but this one, or all of them at once.
+        page.appendChild(sectionTitle('Signed-in devices'));
+        page.appendChild(sectionNote('Signed in somewhere you no longer use, or not sure every sign-in was yours? Sign that device out here. This browser stays signed in.'));
         var devCard = document.createElement('div');
-        devCard.className = 'card';
-        var devRow = document.createElement('div');
-        devRow.className = 'card-foot sec-dev';
-        var devMsg = document.createElement('span');
-        devMsg.className = 'card-msg';
-        devMsg.textContent = t('This browser stays signed in.');
-        devRow.appendChild(devMsg);
-        var devGo = document.createElement('button');
-        devGo.type = 'button';
-        devGo.className = 'btn btn-quiet';
-        devGo.textContent = t('Sign out other devices');
-        devGo.addEventListener('click', function () {
-            devGo.disabled = true;
-            postJson('/v1/account/sessions/revoke', {}).then(function () {
-                toast(t('Every other device is signed out.'), 'good');
-            }).catch(function (err) {
-                toast(err.message, 'bad');
-            }).then(function () { devGo.disabled = false; });
-        });
-        devRow.appendChild(devGo);
-        devCard.appendChild(devRow);
+        devCard.className = 'card sec-devs';
         page.appendChild(devCard);
+        skBusy(devCard).appendChild(skDevices(2));
+        var devs = null;
+        var LAPTOP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" ' +
+            'stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="11" rx="1.6"/><path d="M2.5 19h19"/></svg>';
+        var PHONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" ' +
+            'stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.8" width="10" height="18.4" rx="2.2"/><path d="M11 17.8h2"/></svg>';
+        function regionName(code) {
+            if (!code || code === 'XX' || code === 'T1') return '';
+            try { return new Intl.DisplayNames([navLang()], { type: 'region' }).of(code) || code; } catch (err) { return code; }
+        }
+        function seenText(iso) {
+            var at = iso ? new Date(iso).getTime() : 0;
+            if (!at) return '';
+            var mins = Math.floor((Date.now() - at) / 60000);
+            if (mins < 2) return t('Active now');
+            return fill('Last active {date}', { date: whenText(iso, true) });
+        }
+        function devName(d) {
+            var dv = d.device || {};
+            if (dv.browser && dv.os) return fill('{browser} on {os}', { browser: dv.browser, os: dv.os });
+            return dv.browser || dv.os || t('Unknown browser');
+        }
+        function paintDevs() {
+            if (devs === null) return;
+            devCard.textContent = '';
+            devs.forEach(function (d) {
+                var row = document.createElement('div');
+                row.className = 'sec-dev-row';
+                var ic = document.createElement('span');
+                ic.className = 'sec-dev-i';
+                ic.innerHTML = d.device && d.device.mobile ? PHONE : LAPTOP;
+                row.appendChild(ic);
+                var txt = document.createElement('div');
+                txt.className = 'sec-dev-t';
+                var nm = document.createElement('div');
+                nm.className = 'sec-dev-n';
+                nm.appendChild(document.createTextNode(devName(d)));
+                if (d.current) nm.appendChild(tag(t('This device'), 'ok'));
+                txt.appendChild(nm);
+                var sub = document.createElement('div');
+                sub.className = 'sec-dev-s';
+                sub.textContent = [d.current ? t('Active now') : seenText(d.lastSeenAt), regionName(d.country), d.ip]
+                    .filter(Boolean).join('  ·  ');
+                txt.appendChild(sub);
+                row.appendChild(txt);
+                if (!d.current) {
+                    var out = document.createElement('button');
+                    out.type = 'button';
+                    out.className = 'rowbtn is-bad';
+                    out.textContent = t('Sign out');
+                    out.addEventListener('click', function () {
+                        out.disabled = true;
+                        postJson('/v1/account/sessions/' + encodeURIComponent(d.id) + '/revoke', {}).then(function () {
+                            devs = devs.filter(function (x) { return x.id !== d.id; });
+                            paintDevs();
+                            toast(fill('{device} is signed out.', { device: devName(d) }), 'good');
+                        }).catch(function (err) {
+                            out.disabled = false;
+                            toast(err.message, 'bad');
+                        });
+                    });
+                    row.appendChild(out);
+                }
+                devCard.appendChild(row);
+            });
+            var others = devs.filter(function (d) { return !d.current; }).length;
+            var foot = document.createElement('div');
+            foot.className = 'card-foot sec-dev-foot';
+            var note = document.createElement('span');
+            note.className = 'card-msg';
+            // a count after a colon reads the same for one and for many, in
+            // all three languages
+            note.textContent = others ? fill('Other devices signed in: {n}', { n: others })
+                : t('Only this browser is signed in.');
+            foot.appendChild(note);
+            if (others) {
+                var all = document.createElement('button');
+                all.type = 'button';
+                all.className = 'btn btn-quiet';
+                all.textContent = t('Sign out all other devices');
+                all.addEventListener('click', function () {
+                    all.disabled = true;
+                    postJson('/v1/account/sessions/revoke', {}).then(function () {
+                        devs = devs.filter(function (d) { return d.current; });
+                        paintDevs();
+                        toast(t('Every other device is signed out.'), 'good');
+                    }).catch(function (err) {
+                        all.disabled = false;
+                        toast(err.message, 'bad');
+                    });
+                });
+                foot.appendChild(all);
+            }
+            devCard.appendChild(foot);
+        }
+        function loadDevs() {
+            fetch('/v1/account/sessions', { credentials: 'same-origin' })
+                .then(function (r) { if (!r.ok) throw new Error('bad-status-' + r.status); return r.json(); })
+                .then(function (j) { devs = (j && j.sessions) || []; paintDevs(); })
+                .catch(function () {
+                    devs = devs || [];
+                    devCard.textContent = '';
+                    devCard.appendChild(emptyState('That did not load.', 'Reload the page to try again.'));
+                });
+        }
+        loadDevs();
+        onLive(function (e) { if (e.topic === 'me') loadDevs(); });
 
         // an app added or removed from another screen
         onLive(function (e) { if (e.topic === 'me') load(); });
@@ -12269,6 +12356,18 @@
         return f;
     }
 
+    // Signed-in devices: an icon, a browser on a system, where and when.
+    function skDevices(n) {
+        var f = document.createDocumentFragment();
+        for (var i = 0; i < n; i++) {
+            f.appendChild(skEl('div', 'sec-dev-row', [
+                skEl('span', 'sec-dev-i', [sk(34, 34, 'chip')]),
+                skEl('div', 'sec-dev-t', [skEl('div', 'sec-dev-n', [sk(skw(9, i), 13)]), skEl('div', 'sec-dev-s', [sk(skw(14, i + 1), 10)])])
+            ]));
+        }
+        return f;
+    }
+
     // The audit trail: a time, what happened, and from where.
     function skLogs(n) {
         var f = document.createDocumentFragment();
@@ -13918,7 +14017,17 @@
         if (refreshing) return;
         refreshing = true;
         fetch('/v1/entitlement', { credentials: 'same-origin' })
-            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (r) {
+                // this session was ended from another device, or by a
+                // password change: the page goes to the sign-in, rather
+                // than staying up with nothing behind it until a click
+                if (r.status === 401) {
+                    forgetMe();
+                    location.replace('/?signin=1');
+                    return null;
+                }
+                return r.ok ? r.json() : null;
+            })
             .then(function (me) {
                 if (!me) return;
                 writeMe(me);
