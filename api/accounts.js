@@ -139,6 +139,20 @@ CREATE TABLE IF NOT EXISTS totp_pending (
 CREATE INDEX IF NOT EXISTS totp_pending_expiry_idx ON totp_pending (expires_at);
 
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS mfa boolean NOT NULL DEFAULT false;
+-- When the person at this session last proved it was them: at sign-in, and
+-- again by password or code before an action that hands out lasting access.
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS confirmed_at timestamptz;
+
+-- The audit trail is written once. A line can age out under the retention
+-- rule, or go with an erasure the law asks for, but it is never edited:
+-- the database refuses the UPDATE, whoever sends it.
+CREATE OR REPLACE FUNCTION audit_events_written_once() RETURNS trigger AS $$
+BEGIN
+    RAISE EXCEPTION 'audit_events is append-only';
+END $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS audit_events_no_update ON audit_events;
+CREATE TRIGGER audit_events_no_update BEFORE UPDATE ON audit_events
+    FOR EACH ROW EXECUTE FUNCTION audit_events_written_once();
 
 -- wrong codes at the second step, counted on the account rather than on one
 -- half finished sign-in, so a new password round does not buy new guesses
@@ -412,8 +426,8 @@ async function startSession(userId, { mfa = false } = {}) {
     const token = crypto.randomBytes(32).toString('base64url');
     try {
         await db.query(
-            `INSERT INTO sessions (token_hash, user_id, expires_at, mfa)
-             VALUES ($1, $2, now() + ($3 || ' days')::interval, $4)`,
+            `INSERT INTO sessions (token_hash, user_id, expires_at, mfa, confirmed_at)
+             VALUES ($1, $2, now() + ($3 || ' days')::interval, $4, now())`,
             [hashToken(token), userId, String(SESSION_MAX_DAYS), Boolean(mfa)]
         );
         await db.query(
@@ -463,7 +477,7 @@ async function readSession(token) {
     if (!(await init())) return null;
     try {
         const res = await db.query(
-            `SELECT s.token_hash, s.user_id, s.mfa, u.email_hash, u.email_enc, u.name_enc, u.lang, u.created_at, u.totp_at
+            `SELECT s.token_hash, s.user_id, s.mfa, s.confirmed_at, u.email_hash, u.email_enc, u.name_enc, u.lang, u.created_at, u.totp_at
                FROM sessions s JOIN users u ON u.id = s.user_id
               WHERE s.token_hash = $1
                 AND s.expires_at > now()
@@ -495,6 +509,7 @@ async function readSession(token) {
             lang: row.lang || 'en',
             since: row.created_at,
             mfa: Boolean(row.mfa),
+            confirmedAt: row.confirmed_at || null,
             totpOn: Boolean(row.totp_at),
             totpSince: row.totp_at || null,
             emailHash: row.email_hash,
@@ -579,7 +594,7 @@ async function recentAudit({ limit = 100, kind = '', subject = '', actor = '' } 
 // time. The groups are prefixes of the event kinds, so an event added
 // later under a known prefix is found without being listed here.
 const AUDIT_GROUPS = {
-    signin: ['login', 'sessions-', 'reset-', 'signup-', 'account-created'],
+    signin: ['login', 'sessions-', 'reset-', 'signup-', 'account-created', 'confirm'],
     password: ['password-'],
     twofactor: ['2fa-'],
     tokens: ['token-'],
@@ -1060,6 +1075,49 @@ async function recoveryLeft(userId) {
     }
 }
 
+// Confirming it is still the person at the keyboard, before an action that
+// hands out lasting access: the password, or a code from an app when the
+// account has two-factor. Wrong answers count against the same throttle as
+// signing in, so a taken session cannot be used to guess the password.
+const CONFIRM_FOR_MIN = 15;
+async function confirmSession(token, userId, { password, code } = {}) {
+    if (!(await init())) return { ok: false, reason: 'unavailable' };
+    const res = await db.query('SELECT password_hash, email_hash, totp_at FROM users WHERE id = $1', [userId]).catch(() => null);
+    if (!res || !res.rowCount) return { ok: false, reason: 'unavailable' };
+    const row = res.rows[0];
+    const hold = await loginHold(row.email_hash);
+    if (hold > 0) return { ok: false, reason: 'too-many-attempts', retryIn: hold };
+    let good = false;
+    if (code && row.totp_at) {
+        const apps = await db.query('SELECT id, secret_enc, last_step FROM totp_factors WHERE user_id = $1', [userId]).catch(() => ({ rows: [] }));
+        for (const f of apps.rows) {
+            const secret = db.open('totp:' + userId, f.secret_enc);
+            const step = secret ? totp.checkCode(secret, String(code)) : null;
+            if (step === null) continue;
+            const moved = await db.query(
+                'UPDATE totp_factors SET last_step = $1, used_at = now() WHERE id = $2 AND (last_step IS NULL OR last_step < $1) RETURNING id',
+                [String(step), f.id]).catch(() => ({ rowCount: 0 }));
+            good = moved.rowCount > 0;
+            break;
+        }
+    } else if (password) {
+        good = await verifyPassword(String(password), row.password_hash);
+    }
+    if (!good) {
+        await noteLoginFail(row.email_hash);
+        audit('confirm-refused', { actor: userId, detail: code ? 'code' : 'password' });
+        return { ok: false, reason: 'bad-answer' };
+    }
+    await db.query('UPDATE sessions SET confirmed_at = now() WHERE token_hash = $1 AND user_id = $2',
+        [hashToken(String(token || '')), userId]).catch(() => {});
+    audit('confirmed', { actor: userId, detail: code ? 'code' : 'password' });
+    return { ok: true };
+}
+function recentlyConfirmed(me) {
+    const at = me && me.confirmedAt ? new Date(me.confirmedAt).getTime() : 0;
+    return at > 0 && Date.now() - at < CONFIRM_FOR_MIN * 60 * 1000;
+}
+
 async function changePassword(userId, current, next) {
     if (!(await init())) return { ok: false, reason: 'unavailable' };
     let row;
@@ -1071,9 +1129,17 @@ async function changePassword(userId, current, next) {
         console.error('[accounts] could not read the account: ' + err.message);
         return { ok: false, reason: 'unavailable' };
     }
+    // the current password is guessed at the pace of signing in, not of the
+    // account limit: a taken session is no faster a way to find it
+    const hold = await loginHold(row.email_hash);
+    if (hold > 0) return { ok: false, reason: 'too-many-attempts', retryIn: hold };
     if (!(await verifyPassword(String(current || ''), row.password_hash))) {
+        await noteLoginFail(row.email_hash);
         audit('password-change-refused', { actor: userId, detail: 'wrong current password' });
         return { ok: false, reason: 'bad-password' };
+    }
+    if (await verifyPassword(String(next || ''), row.password_hash)) {
+        return { ok: false, reason: 'same-password' };
     }
     const fresh = await hashPassword(next);
     try {
@@ -1434,7 +1500,7 @@ module.exports = {
     audit, loginHold, recentAudit, noteDevice,
     startTotp, confirmTotp, disableTotp, startTotpPending, finishTotp, recoveryLeft,
     listFactors, removeFactor, clearFactors, markSessionMfa, freshSessionAfterTotp, MAX_FACTORS,
-    accountTrail, AUDIT_GROUPS,
+    accountTrail, AUDIT_GROUPS, confirmSession, recentlyConfirmed, CONFIRM_FOR_MIN,
     changePassword, listSessions, revokeOtherSessions, deleteAccount,
     startReset, readReset, finishReset, RESET_TTL_MIN, RESET_RESEND_WAIT_S,
     readUser,

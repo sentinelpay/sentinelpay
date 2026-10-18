@@ -10483,8 +10483,117 @@
         }).then(function (r) {
             return r.json().catch(function () { return {}; }).then(function (j) {
                 // the sentence the server gave, in the language of the reader where we have it
-                if (!r.ok) throw new Error(j && j.error ? t(j.error) : t('That did not work.'));
+                if (!r.ok) {
+                    var err = new Error(j && j.error ? t(j.error) : t('That did not work.'));
+                    err.status = r.status;
+                    err.reason = (j && j.reason) || '';
+                    err.code = Boolean(j && j.code);
+                    throw err;
+                }
                 return j;
+            });
+        });
+    }
+
+    // An action the server will only take from somebody who has proved it is
+    // them in the last few minutes. Tried as it is; asked for, it opens a
+    // dialog for the password, or a code from an app where the account has
+    // two-factor, and then is tried again on its own. Closing the dialog
+    // rejects with a mark the caller can tell from a failure.
+    function confirmFirst(run) {
+        return run().catch(function (err) {
+            if (!err || err.reason !== 'confirm') throw err;
+            return new Promise(function (resolve, reject) {
+                var done = false;
+                var m = modalShell('Confirm it is you',
+                    'This hands out access that outlasts your session, so we ask once more. It will not be asked again for 15 minutes.');
+                m.box.classList.add('mfa-modal');
+                var form = document.createElement('form');
+                form.className = 'mfa-form';
+                var useCode = false;
+                var field = document.createElement('input');
+                field.className = 'modal-in';
+                var msg = document.createElement('div');
+                msg.className = 'modal-msg';
+                var go = wideBtn('Confirm', 'cta', 'submit');
+                var swapBtn = document.createElement('button');
+                swapBtn.type = 'button';
+                swapBtn.className = 'modal-link cf-swap';
+                function asPassword() {
+                    useCode = false;
+                    field.type = 'password';
+                    field.autocomplete = 'current-password';
+                    field.inputMode = 'text';
+                    field.maxLength = 200;
+                    field.value = '';
+                    field.placeholder = t('Your password');
+                    field.setAttribute('aria-label', t('Your password'));
+                    swapBtn.textContent = t('Use a code from your app instead');
+                }
+                function asCode() {
+                    useCode = true;
+                    field.type = 'text';
+                    field.autocomplete = 'one-time-code';
+                    field.inputMode = 'numeric';
+                    field.maxLength = 6;
+                    field.value = '';
+                    field.placeholder = '000000';
+                    field.setAttribute('aria-label', t('Six-digit code'));
+                    swapBtn.textContent = t('Use your password instead');
+                }
+                asPassword();
+                form.appendChild(field);
+                if (err.code) {
+                    swapBtn.addEventListener('click', function () {
+                        if (useCode) asPassword(); else asCode();
+                        msg.textContent = '';
+                        msg.className = 'modal-msg';
+                        field.focus();
+                    });
+                    form.appendChild(swapBtn);
+                }
+                form.appendChild(msg);
+                form.appendChild(go);
+                var quit = document.createElement('div');
+                quit.className = 'modal-quit';
+                var no = wideBtn('Cancel', 'quiet');
+                no.addEventListener('click', m.shut);
+                quit.appendChild(no);
+                form.appendChild(quit);
+                m.body.appendChild(form);
+                setTimeout(function () { field.focus(); }, 60);
+                // closed without confirming: the action did not happen
+                var watch = new MutationObserver(function () {
+                    if (document.body.contains(m.box)) return;
+                    watch.disconnect();
+                    if (!done) {
+                        var off = new Error('cancelled');
+                        off.cancelled = true;
+                        reject(off);
+                    }
+                });
+                watch.observe(document.body, { childList: true });
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    if (!field.value) { field.focus(); return; }
+                    go.disabled = true;
+                    msg.textContent = '';
+                    msg.className = 'modal-msg';
+                    postJson('/v1/account/confirm', useCode ? { code: field.value.trim() } : { password: field.value })
+                        .then(function () {
+                            done = true;
+                            m.shut();
+                            return run();
+                        })
+                        .then(resolve, function (err2) {
+                            if (done) { reject(err2); return; }
+                            go.disabled = false;
+                            field.value = '';
+                            field.focus();
+                            msg.textContent = err2.message;
+                            msg.className = 'modal-msg is-bad';
+                        });
+                });
             });
         });
     }
@@ -10927,6 +11036,8 @@
         'login-refused': 'Sign-in refused',
         'login-password-ok': 'Password accepted, code asked for',
         'sessions-revoked': 'Other sessions signed out',
+        'confirmed': 'Confirmed it was you',
+        'confirm-refused': 'Confirming it was you refused',
         'reset-requested': 'Password reset asked for',
         'signup-finished': 'Account created',
         'account-created-by-reset': 'Account created from a reset link',
@@ -11690,7 +11801,9 @@
                 yes.disabled = true;
                 msg.textContent = '';
                 msg.className = 'modal-msg';
-                postJson('/v1/account/tokens/' + encodeURIComponent(r.id) + '/delete', {}).then(function () {
+                confirmFirst(function () {
+                    return postJson('/v1/account/tokens/' + encodeURIComponent(r.id) + '/delete', {});
+                }).then(function () {
                     m.shut();
                     rows = rows.filter(function (x) { return x.id !== r.id; });
                     writeTokenCache(who, rows, scopes, groups);
@@ -11698,6 +11811,7 @@
                     toast(t('Token deleted'), 'good');
                 }).catch(function (err) {
                     yes.disabled = false;
+                    if (err && err.cancelled) return;
                     msg.textContent = err.message;
                     msg.className = 'modal-msg is-bad';
                 });
@@ -13004,34 +13118,22 @@
             go2.addEventListener('click', function () {
                 go2.disabled = true;
                 err.hidden = true;
-                fetch('/v1/account/tokens', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'same-origin',
-                    body: JSON.stringify({
+                confirmFirst(function () {
+                    return postJson('/v1/account/tokens', {
                         name: want.name,
                         kind: want.kind,
                         days: Number(want.days),
                         project: want.project,
                         scopes: chosen()
-                    })
-                }).then(function (r) {
-                    return r.json().catch(function () { return {}; }).then(function (j) {
-                        return { ok: r.ok, body: j };
                     });
-                }).then(function (r) {
-                    if (!r.ok) {
-                        err.textContent = (r.body && r.body.error) || t('That did not work.');
-                        err.hidden = false;
-                        go2.disabled = false;
-                        return;
-                    }
+                }).then(function (out) {
                     done();
-                    d.show(function () { stepShow(r.body.token); });
-                }).catch(function () {
-                    err.textContent = t('That did not work.');
-                    err.hidden = false;
+                    d.show(function () { stepShow(out.token); });
+                }).catch(function (e) {
                     go2.disabled = false;
+                    if (e && e.cancelled) return;
+                    err.textContent = (e && e.message) || t('That did not work.');
+                    err.hidden = false;
                 });
             });
             d.acts.appendChild(go2);

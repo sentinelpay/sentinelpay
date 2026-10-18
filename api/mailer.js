@@ -704,6 +704,56 @@ function twoFactorMessage({ to, lang, change, when, ip, country }) {
 }
 async function sendTwoFactorChanged(opts) { return send(twoFactorMessage(opts)); }
 
+// A new API token, told to the person it was made in the name of. A token
+// works until it expires, wherever it is, so one made from a session
+// somebody else had should not go unseen until it is used.
+const TOKEN_COPY = {
+    en: {
+        subject: 'A new Sentinelpay access token was created',
+        eyebrow: 'Security',
+        title: 'A new access token',
+        intro: (n, o, w) => 'An access token named "' + n + '" was created' + (o ? ' for ' + o : '') + ' on ' + w + ', in your name.',
+        kind: 'Kind', live: 'Live', test: 'Sandbox',
+        footnote: 'If this was you, there is nothing to do. If it was not, delete the token under Access tokens now and change your password, which signs out every device.',
+    },
+    hr: {
+        subject: 'Izrađen je novi Sentinelpay pristupni token',
+        eyebrow: 'Sigurnost',
+        title: 'Novi pristupni token',
+        intro: (n, o, w) => 'Pristupni token „' + n + '” izrađen je' + (o ? ' za ' + o : '') + ' ' + w + ', u vaše ime.',
+        kind: 'Vrsta', live: 'Live', test: 'Sandbox',
+        footnote: 'Ako ste to bili vi, ne treba ništa raditi. Ako niste, odmah izbrišite token pod Access tokens i promijenite lozinku, čime se odjavljuju svi uređaji.',
+    },
+    de: {
+        subject: 'Ein neuer Sentinelpay-Zugriffstoken wurde erstellt',
+        eyebrow: 'Sicherheit',
+        title: 'Ein neuer Zugriffstoken',
+        intro: (n, o, w) => 'Ein Zugriffstoken namens „' + n + '“ wurde' + (o ? ' für ' + o : '') + ' am ' + w + ' in Ihrem Namen erstellt.',
+        kind: 'Art', live: 'Live', test: 'Sandbox',
+        footnote: 'Waren Sie das, ist nichts zu tun. Waren Sie es nicht, löschen Sie den Token jetzt unter Access tokens und ändern Sie Ihr Passwort, das meldet jedes Gerät ab.',
+    },
+};
+function tokenCreatedMessage({ to, lang, name, kind, org, when, ip, country }) {
+    const copy = TOKEN_COPY[lang] || TOKEN_COPY.en;
+    const label = (LABELS[lang] || LABELS.en);
+    return {
+        to: to,
+        lang: lang,
+        subject: copy.subject,
+        eyebrow: copy.eyebrow,
+        title: copy.title,
+        intro: copy.intro(String(name || '').slice(0, 60), String(org || '').slice(0, 80), when),
+        pairs: [
+            [copy.kind, kind === 'test' ? copy.test : copy.live],
+            [label.when, when],
+            [label.where, country || label.unknown],
+            [label.address, ip || label.unknown],
+        ],
+        footnote: copy.footnote,
+    };
+}
+async function sendTokenCreated(opts) { return send(tokenCreatedMessage(opts)); }
+
 // Sign-up with an address that already has an account. The form answers it
 // as it answers any other, so it cannot be used to find out who is a
 // customer; the owner of the address learns of it here instead.
@@ -768,6 +818,10 @@ const PREVIEWS = {
         to: 'ana@primjer.hr', lang, change: 'off', when: '12.09.2026. 14:20 (UTC)', ip: '198.51.100.24', country: 'HR',
     }),
     'account-exists': (lang) => accountExistsMessage({ to: 'ana@primjer.hr', lang }),
+    'token-created': (lang) => tokenCreatedMessage({
+        to: 'ana@primjer.hr', lang, name: 'Billing service', kind: 'live', org: 'Primjer d.o.o.',
+        when: '12.09.2026. 14:20 (UTC)', ip: '198.51.100.24', country: 'HR',
+    }),
     'trial-notice': () => ({
         subject: 'Review: new trial sign-up: Ana Anić @ Primjer d.o.o.',
         eyebrow: 'Free trial',
@@ -800,5 +854,5 @@ function render(name, lang) {
 module.exports = {
     send, compose, sendTrialWelcome, sendSignupCode, sendResetLink, sendInvite,
     render, previewNames, isConfigured, domainStatus, MAIL_FROM, MAIL_TO,
-    sendPasswordChanged, sendNewSignIn, sendTwoFactorChanged, sendAccountExists,
+    sendPasswordChanged, sendNewSignIn, sendTwoFactorChanged, sendAccountExists, sendTokenCreated,
 };

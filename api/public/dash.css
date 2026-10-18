@@ -6195,6 +6195,8 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
 
 /* asked for as the sign in dialog asks after a forgotten password */
 .mfa-more { display: block; margin: 0 auto 1.15rem; font-size: 0.84rem; }
+/* confirming it is you: the way to the other kind of answer, under the field */
+.cf-swap { display: block; margin: 0.65rem auto 0; font-size: 0.82rem; }
 
 /* the key in the code's place: its groups of four as chips, two rows of
    four, the copy under them */

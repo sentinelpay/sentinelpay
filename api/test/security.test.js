@@ -591,3 +591,57 @@ test('an invitation is joined on a click, not by opening its link', () => {
     assert.match(invites, /WHERE id = \$1 AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now\(\)/);
     assert.match(invites, /ON CONFLICT \(org_id, user_id\) DO NOTHING/, 'accepting can change a role somebody already has');
 });
+
+// Before an action that hands out access outlasting the session, the person
+// proves it is still them: a password, or a code where the account has
+// two-factor. Wrong answers count like wrong sign-ins.
+test('confirming it is you: right answers open a window, wrong ones count', flow, async () => {
+    const email = freshEmail('confirm');
+    const pass = 'a-very-long-password-1';
+    const started = await accounts.startSignup({ email, name: 'Ana Anic', password: pass, lang: 'en', flags: [] });
+    const made = await accounts.verifySignup(email, await codeFor(db.blindIndex(email)), started.origin);
+    const tok = made.session.token;
+    // just signed in counts as confirmed; an hour later it does not
+    assert.strictEqual(accounts.recentlyConfirmed(await accounts.readSession(tok)), true);
+    await db.query("UPDATE sessions SET confirmed_at = now() - interval '1 hour' WHERE user_id = $1", [made.userId]);
+    assert.strictEqual(accounts.recentlyConfirmed(await accounts.readSession(tok)), false);
+    assert.strictEqual((await accounts.confirmSession(tok, made.userId, { password: 'wrong-password-here' })).reason, 'bad-answer');
+    const fails = await db.query('SELECT fails FROM login_fails WHERE email_hash = $1', [db.blindIndex(email)]);
+    assert.ok(fails.rowCount && fails.rows[0].fails >= 1, 'a wrong answer did not count');
+    assert.strictEqual((await accounts.confirmSession(tok, made.userId, { password: pass })).ok, true);
+    assert.strictEqual(accounts.recentlyConfirmed(await accounts.readSession(tok)), true);
+    // a code where there is no app is no answer
+    assert.strictEqual((await accounts.confirmSession(tok, made.userId, { code: '123456' })).ok, false);
+
+    const index = require('fs').readFileSync(require('path').join(__dirname, '..', 'index.js'), 'utf8');
+    for (const path of ['/v1/account/tokens', '/v1/account/tokens/:id/delete', '/v1/account/tokens/:id/revoke']) {
+        const at = index.indexOf("app.post('" + path + "'");
+        const route = index.slice(at, index.indexOf('\n});\n', at));
+        assert.match(route, /if \(confirmOwed\(me, res\)\) return;/, path + ' hands out access without asking');
+    }
+    await accounts.forget(email);
+});
+
+test('changing the password: not to itself, at the pace of signing in, and every session renewed', flow, async () => {
+    const email = freshEmail('pwchange');
+    const pass = 'a-very-long-password-1';
+    const started = await accounts.startSignup({ email, name: 'Ana Anic', password: pass, lang: 'en', flags: [] });
+    const made = await accounts.verifySignup(email, await codeFor(db.blindIndex(email)), started.origin);
+    assert.strictEqual((await accounts.changePassword(made.userId, pass, pass)).reason, 'same-password');
+    let last = null;
+    for (let i = 0; i < 8; i++) last = await accounts.changePassword(made.userId, 'not-the-password-' + i, 'another-long-password-9');
+    assert.strictEqual(last.reason, 'too-many-attempts', 'the current password could be guessed at the account limit');
+    const index = require('fs').readFileSync(require('path').join(__dirname, '..', 'index.js'), 'utf8');
+    const route = index.slice(index.indexOf("app.post('/v1/account/password'"), index.indexOf("app.post('/v1/account/profile'"));
+    assert.match(route, /revokeOtherSessions\(me\.userId, ''\);\n\s+const fresh = await accounts\.startSession\(me\.userId, \{ mfa: me\.mfa \}\);/,
+        'the session in hand survives a password change');
+    await db.query('DELETE FROM login_fails WHERE email_hash = $1', [db.blindIndex(email)]);
+    await accounts.forget(email);
+});
+
+test('an audit line is written once and never edited', flow, async () => {
+    await accounts.readUser(0);
+    const made = await db.query("INSERT INTO audit_events (kind, actor) VALUES ('test-line', 'nobody') RETURNING id");
+    await assert.rejects(db.query("UPDATE audit_events SET kind = 'changed' WHERE id = $1", [made.rows[0].id]), /append-only/);
+    await db.query('DELETE FROM audit_events WHERE id = $1', [made.rows[0].id]);
+});
