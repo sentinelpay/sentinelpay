@@ -33,6 +33,9 @@ function fakeReq(country) {
 }
 const wanted = Math.min(Math.max(Number(process.argv[2]) || 30, 1), 200);
 (async () => {
+    // the shell said staging; the database has to say it too
+    await require(path.join(__dirname, '..', 'api', 'app-env.js'))
+        .requireTarget(require(path.join(__dirname, '..', 'api', 'db.js')), ['staging', 'development'], 'seed-staging');
     let made = 0;
     for (let i = 0; i < wanted; i++) {
         const first = pick(FIRST);

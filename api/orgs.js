@@ -102,8 +102,14 @@ function init() {
     return ready;
 }
 
+// Whitespace collapsed, and the characters that are not text taken out:
+// controls, the invisible format marks (a right-to-left override makes a
+// name read backwards in a list and in an email), private use, half a
+// surrogate pair and the two non-characters a spreadsheet cannot hold.
 function cleanName(name) {
-    return String(name == null ? '' : name).replace(/\s+/g, ' ').trim().slice(0, NAME_MAX);
+    return String(name == null ? '' : name)
+        .replace(/[\p{Cc}\p{Cf}\p{Co}\p{Cs}\ufffe\uffff]/gu, '')
+        .replace(/\s+/g, ' ').trim().slice(0, NAME_MAX);
 }
 
 function hostOf(value) {

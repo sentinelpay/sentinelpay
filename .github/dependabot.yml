@@ -15,3 +15,16 @@ updates:
     directory: /
     schedule:
       interval: monthly
+
+  # the base images, so a rebuild picks up a patched Node and Chromium
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    labels: [dependencies]
+
+  - package-ecosystem: docker
+    directory: /help-center
+    schedule:
+      interval: monthly
+    labels: [dependencies]

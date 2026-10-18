@@ -50,8 +50,9 @@ COPY api/package.json api/package-lock.json ./api/
 # says and to rewrite the lockfile while it does it, which means the image can
 # end up with a dependency tree nobody reviewed. `npm ci` installs exactly the
 # tree in the lockfile or fails, so what runs in production is what was audited
-# in the pull request.
-RUN cd api && npm ci --omit=dev
+# in the pull request. Without lifecycle scripts: nothing the app runs on needs
+# one, and a dependency that started running code at install would not get to.
+RUN cd api && npm ci --omit=dev --ignore-scripts
 
 COPY . .
 

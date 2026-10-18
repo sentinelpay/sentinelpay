@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const crypto = require('crypto');
+const net = require('net');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const hpp = require('hpp');
@@ -72,9 +73,25 @@ app.use((req, res, next) => {
     return res.status(403).type('text/plain').send('forbidden');
 });
 
+// Cloudflare's published edge ranges (cloudflare.com/ips). With
+// ENFORCE_CLOUDFLARE and no origin secret, the address Cloudflare passes on
+// is believed only from a connection that came from one of these. It was
+// believed from anyone, so a request sent straight to the origin chose its
+// own address, and with it a fresh bucket in every rate limit.
+const CF_EDGES = new net.BlockList();
+['173.245.48.0/20', '103.21.244.0/22', '103.22.200.0/22', '103.31.4.0/22', '141.101.64.0/18', '108.162.192.0/18',
+    '190.93.240.0/20', '188.114.96.0/20', '197.234.240.0/22', '198.41.128.0/17', '162.158.0.0/15', '104.16.0.0/13',
+    '104.24.0.0/14', '172.64.0.0/13', '131.0.72.0/22'].forEach((r) => CF_EDGES.addSubnet(r.split('/')[0], Number(r.split('/')[1]), 'ipv4'));
+['2400:cb00::/32', '2606:4700::/32', '2803:f800::/32', '2405:b500::/32', '2405:8100::/32', '2a06:98c0::/29',
+    '2c0f:f248::/32'].forEach((r) => CF_EDGES.addSubnet(r.split('/')[0], Number(r.split('/')[1]), 'ipv6'));
+function fromCloudflareEdge(ip) {
+    const a = String(ip || '').replace(/^::ffff:/, '');
+    try { return CF_EDGES.check(a, net.isIPv6(a) ? 'ipv6' : 'ipv4'); } catch (err) { return false; }
+}
+
 app.use((req, res, next) => {
     const cfIp = req.headers['cf-connecting-ip'];
-    const trusted = fromOurCloudflare(req) || enforceCloudflare;
+    const trusted = fromOurCloudflare(req) || (enforceCloudflare && fromCloudflareEdge(req.ip));
     req.realIp = (trusted && typeof cfIp === 'string' && cfIp.length > 0) ? cfIp : req.ip;
     next();
 });
@@ -132,11 +149,13 @@ app.use(helmet({
                 "'self'",
                 ...(cspStrict ? scriptHashes : ["'unsafe-inline'"]),
                 'https://challenges.cloudflare.com',
+                // the hosts Intercom's own policy lists for its script, and no
+                // wildcard: a wildcard over a CDN that serves uploads is a
+                // way to run somebody's file as ours. No blob: either;
+                // nothing of ours runs a script from one.
+                'https://app.intercom.io',
                 'https://widget.intercom.io',
-                'https://js.intercomcdn.com',
-                'https://*.intercomcdn.com',
-                'https://*.intercom.io',
-                'blob:'
+                'https://js.intercomcdn.com'
             ],
             'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.intercomcdn.com'],
             'font-src': ["'self'", 'https://fonts.intercomcdn.com'],
@@ -190,27 +209,32 @@ function sameSite(origin, host) {
         return false;
     }
     const to = String(host).split(':')[0].toLowerCase();
-    if (from === to) return true;
-    const apex = (h) => h.split('.').slice(-2).join('.');
-    return apex(from) === apex(to) && apex(to).includes('.');
+    // The same host, or its www twin, and nothing else under the domain. Any
+    // host under it passed, so a page on a blog or help subdomain, or one a
+    // stale DNS record handed to somebody else, could post as the user.
+    return from === to || from === 'www.' + to || to === 'www.' + from;
 }
 
 app.use(cors((req, callback) => {
     const origin = req.headers.origin;
     const options = { methods: ['POST', 'GET'] };
 
+    // An origin not allowed gets no CORS headers, so its page cannot read the
+    // answer; it used to get an error, which became a 500 on every request a
+    // foreign page made. What it may change is decided below, not here.
+    const refuse = () => callback(null, Object.assign({ origin: false }, options));
     if (allowedOrigins.includes('*')) {
-        if (isProduction) return callback(new Error('Wildcard CORS disallowed in production.'));
+        if (isProduction) return refuse();
         return callback(null, Object.assign({ origin: true }, options));
     }
     if (!origin) return callback(null, Object.assign({ origin: true }, options));
     if (sameSite(origin, req.headers.host)) return callback(null, Object.assign({ origin: true }, options));
     if (allowedOrigins.length === 0) {
-        if (isProduction) return callback(new Error('ALLOWED_ORIGINS must be configured in production.'));
+        if (isProduction) return refuse();
         return callback(null, Object.assign({ origin: true }, options));
     }
     if (allowedOrigins.indexOf(origin) !== -1) return callback(null, Object.assign({ origin: true }, options));
-    callback(new Error('Not allowed by CORS'));
+    refuse();
 }));
 
 app.use((req, res, next) => {
@@ -218,7 +242,11 @@ app.use((req, res, next) => {
 
     const fetchSite = String(req.get('sec-fetch-site') || '').toLowerCase();
     if (fetchSite) {
-        if (fetchSite === 'same-origin' || fetchSite === 'same-site' || fetchSite === 'none') return next();
+        if (fetchSite === 'same-origin' || fetchSite === 'none') return next();
+        // another host under the same domain passes only as this host's www
+        // twin or by name in ALLOWED_ORIGINS, not for being under the domain
+        const from = req.get('origin');
+        if (fetchSite === 'same-site' && from && (sameSite(from, req.headers.host) || allowedOrigins.includes(from))) return next();
         console.warn('[origin] refused a ' + req.method + ' from ' + fetchSite + ' to ' + req.path);
         return res.status(403).json({ error: 'That request did not come from our site. Please reload the page and try again.' });
     }
@@ -605,8 +633,7 @@ app.get('/', (req, res, next) => {
     const host = String(req.headers.host || '').split(':')[0].toLowerCase();
     if (host.startsWith('blog.') || host.startsWith('help.')) return next();
 
-    const cookie = String(req.headers.cookie || '').match(/(?:^|;\s*)sp-lang=([^;]*)/);
-    const saved = cookie ? decodeURIComponent(cookie[1]) : '';
+    const saved = readCookie(req, 'sp-lang');
     const lang = HOMEPAGE_LANGS.includes(saved) ? saved : geoLang(req);
 
     res.set('Cache-Control', 'no-store');
@@ -927,7 +954,15 @@ const screenLimiter = rateLimit({
     max: SCREENS_PER_HOUR,
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => `screen:${ipKey(req.realIp)}`,
+    // by the token or the session making the checks: a customer's servers
+    // behind one address are one customer, and somebody else's traffic from
+    // the same office does not use up theirs
+    keyGenerator: (req) => {
+        const bearer = String(req.headers.authorization || '');
+        return 'screen:' + (/^Bearer\s+\S/i.test(bearer)
+            ? 't:' + crypto.createHash('sha256').update(bearer).digest('hex').slice(0, 32)
+            : whoForLimit(req));
+    },
     store: new PostgresStore(),
     message: { error: 'Too many requests, please try again later' }
 });
@@ -1198,8 +1233,33 @@ async function whoIsAsking(req) {
     return null;
 }
 
+// Wrong admin tokens, counted by address: ten in an hour and that address
+// is not asked again until the hour is up, so the token is not guessed at
+// the pace of the global limit.
+const BAD_ADMIN = new Map();
+function adminGuessesLeft(req) {
+    const key = ipKey(req.realIp);
+    const at = BAD_ADMIN.get(key);
+    if (at && at.until < Date.now()) BAD_ADMIN.delete(key);
+    return !at || at.until < Date.now() || at.n < 10;
+}
+function noteBadAdmin(req) {
+    const key = ipKey(req.realIp);
+    const at = BAD_ADMIN.get(key) || { n: 0, until: Date.now() + 60 * 60 * 1000 };
+    at.n++;
+    if (BAD_ADMIN.size > 5000) BAD_ADMIN.delete(BAD_ADMIN.keys().next().value);
+    BAD_ADMIN.set(key, at);
+}
+
 function requireStaff(action) {
     return async (req, res, next) => {
+        // the staff pages read other people's data, so they are reached
+        // through Cloudflare like every other change, not at the origin
+        if (cfOriginSecret && !fromOurCloudflare(req)) return res.status(403).json({ error: 'forbidden' });
+        if (req.get('x-admin-token')) {
+            if (!adminGuessesLeft(req)) return res.status(429).json({ error: 'Too many requests, please try again later' });
+            if (!adminOk(req)) noteBadAdmin(req);
+        }
         const asking = await whoIsAsking(req);
         if (asking && asking.kind === 'blocked') {
             accounts.audit('staff-access-refused', {
@@ -1274,10 +1334,6 @@ app.post('/v1/forget', requireStaff('erase'), async (req, res) => {
         res.status(500).json({ error: 'delete failed' });
     }
 });
-
-function escapeHtml(v) {
-    return String(v).replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
-}
 
 app.get('/v1/mail-preview', requireStaff('mail preview'), (req, res) => {
     const name = String(req.query.t || '');
@@ -1390,7 +1446,7 @@ app.get('/v1/inbox', requireStaff('inbox'), (req, res) => {
         '<div id="live" style="margin:0 0 16px;font-size:12px;color:#94a0bd;"></div>' +
         '<div id="rows"></div>' +
         '<div id="pager"></div>' +
-        '</div><script src="/inbox.js?v=2"></script></body>');
+        '</div><script src="/inbox.js?v=3"></script></body>');
 });
 
 app.get('/v1/security-status', requireStaff('security status'), (req, res) => {
@@ -2530,6 +2586,29 @@ const EXPORT_TYPES = {
     html: 'text/html; charset=utf-8',
     pdf: 'application/pdf',
 };
+// Who a limit counts: the signed-in session where there is one, so a person
+// behind many addresses is one person, and the address where there is not.
+function whoForLimit(req) {
+    const token = readSessionCookie(req);
+    return token ? 's:' + crypto.createHash('sha256').update(token).digest('hex').slice(0, 32) : ipKey(req.realIp);
+}
+
+// The references of reports this server drew for somebody, for a while, so a
+// report said to have been printed is one that was shown to them. Without it
+// any well formed reference could be filed as an export.
+const SHOWN = new Map();
+const SHOWN_MS = 6 * 60 * 60 * 1000;
+function noteShown(userId, orgId, ref) {
+    if (SHOWN.size > 20000) SHOWN.delete(SHOWN.keys().next().value);
+    SHOWN.set(userId + ':' + orgId + ':' + ref, Date.now() + SHOWN_MS);
+}
+function wasShown(userId, orgId, ref) {
+    const until = SHOWN.get(userId + ':' + orgId + ':' + ref);
+    return Boolean(until && until > Date.now());
+}
+// two PDFs at a time for one person, however many tabs they have open
+const DRAWING = new Map();
+
 // A PDF starts a browser on the server and holds it for a few seconds, which
 // none of the other shapes do. Sixty an hour is far more than anyone filing
 // reports needs and far less than it takes to keep that browser busy for
@@ -2540,7 +2619,7 @@ const pdfLimiter = rateLimit({
     max: 60,
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => `usage-pdf:${ipKey(req.realIp)}`,
+    keyGenerator: (req) => `usage-pdf:${whoForLimit(req)}`,
     store: new PostgresStore(),
     message: { error: 'Too many PDFs in an hour. Try again later.' }
 });
@@ -2587,7 +2666,7 @@ const previewLimiter = rateLimit({
     max: 240,
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => `usage-preview:${ipKey(req.realIp)}`,
+    keyGenerator: (req) => `usage-preview:${whoForLimit(req)}`,
     store: new PostgresStore(),
     message: { error: 'Too many requests, please try again later' }
 });
@@ -2626,11 +2705,21 @@ app.get('/v1/orgs/:id/usage.:format', (req, res, next) => {
     else if (format === 'xlsx') body = exportsFile.xlsx(list, meta, out);
     else if (format === 'json') body = exportsFile.json(list, meta, out);
     else if (format === 'pdf') {
+        const who = String(me.userId);
+        if ((DRAWING.get(who) || 0) >= 2) {
+            res.set('Retry-After', '5');
+            return res.status(429).send('A PDF is already being made for you. Try again in a moment.');
+        }
+        DRAWING.set(who, (DRAWING.get(who) || 0) + 1);
         try {
             body = await pdf.render(exportsFile.report(list, meta, out), exportsFile.PAPERS[meta.paper]);
         } catch (err) {
             console.error('[usage] pdf: ' + err.message);
+            if (err.code === 'BUSY') res.set('Retry-After', '30');
             return res.status(503).send('The PDF could not be made right now.');
+        } finally {
+            const n = (DRAWING.get(who) || 1) - 1;
+            if (n > 0) DRAWING.set(who, n); else DRAWING.delete(who);
         }
     }
     else body = exportsFile.report(list, meta, out);
@@ -2661,6 +2750,15 @@ app.get('/v1/orgs/:id/usage.:format', (req, res, next) => {
             actor: String(me.userId), subject: 'org:' + mine.id, ip: req.realIp,
             detail: format + ' ' + out.period.from.slice(0, 10) + ' ' + meta.reference.slice(0, 16),
         });
+    } else if (!sampleReport(req)) {
+        // Looked at, not exported: kept apart from the exports the evidence
+        // section counts, but kept. A preview is the same file as the
+        // download, and it used to leave no trace at all.
+        noteShown(me.userId, mine.id, meta.reference);
+        await accounts.audit('usage-preview', {
+            actor: String(me.userId), subject: 'org:' + mine.id, ip: req.realIp,
+            detail: format + ' ' + out.period.from.slice(0, 10) + ' ' + meta.reference.slice(0, 16),
+        });
     }
     res.send(body);
 });
@@ -2680,7 +2778,7 @@ app.post('/v1/orgs/:id/usage/printed', requireCloudflareOrigin, pdfLimiter, asyn
     const from = String(body.from || '').slice(0, 10);
     // printed from the browser, or the PDF the dialog showed, saved
     const format = body.format === 'pdf' ? 'pdf' : 'html';
-    if (!/^[0-9a-f]{64}$/.test(ref) || !/^\d{4}-\d{2}-\d{2}$/.test(from)) {
+    if (!/^[0-9a-f]{64}$/.test(ref) || !/^\d{4}-\d{2}-\d{2}$/.test(from) || !wasShown(me.userId, mine.id, ref)) {
         return res.status(400).json({ error: 'That is not a report this page showed.' });
     }
     await accounts.audit('usage-export', {
@@ -3345,7 +3443,7 @@ app.get('/v1/entitlement', async (req, res) => {
     }
 });
 
-app.post('/v1/trial/activate', trialActivateLimiter, async (req, res) => {
+app.post('/v1/trial/activate', requireCloudflareOrigin, trialActivateLimiter, async (req, res) => {
     res.set('Cache-Control', 'no-store, private');
     try {
         const me = await currentUser(req);
@@ -3388,7 +3486,7 @@ app.post('/v1/trial/activate', trialActivateLimiter, async (req, res) => {
     }
 });
 
-app.post('/v1/screen', screenLimiter, async (req, res) => {
+app.post('/v1/screen', requireCloudflareOrigin, screenLimiter, async (req, res) => {
     res.set('Cache-Control', 'no-store, private');
     try {
         const me = await caller(req, res, 'screenings:write');
@@ -3923,6 +4021,9 @@ app.listen(PORT, () => {
         db.startRetention();
         startRateSweep();
         sanctions.startRefresh();
+        // the database is told what it is, for the tools that ask before
+        // they write
+        require('./app-env').mark(db, process.env);
         setTimeout(() => { accounts.purge(); }, 45000).unref();
         setInterval(() => { accounts.purge(); }, 6 * 60 * 60 * 1000).unref();
     }

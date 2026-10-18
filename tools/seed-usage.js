@@ -183,10 +183,9 @@ async function main() {
         console.error('no DATABASE_URL, nothing to do');
         process.exit(1);
     }
-    if (process.env.NODE_ENV === 'production' || String(process.env.APP_ENV || '').toLowerCase() === 'production') {
-        console.error('refusing to write sample screenings into production');
-        process.exit(1);
-    }
+    // invented checks never go into a customer's record: the database has
+    // to say it is staging or a laptop's, whatever the shell says
+    await require('../api/app-env.js').requireTarget(db, ['staging', 'development'], 'seed-usage');
 
     const found = await db.query('SELECT id, name, slug FROM organisations WHERE slug = $1', [slug]);
     if (!found.rowCount) {

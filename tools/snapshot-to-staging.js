@@ -23,11 +23,9 @@ if (SRC_URL === DST_URL) {
     console.error('refusing to run: the source and the target are the same database.');
     process.exit(1);
 }
-if (/prod/i.test(DST_URL) && !process.env.I_KNOW_THE_TARGET_SAYS_PROD) {
-    console.error('refusing to run: the target url has "prod" in it.');
-    console.error('if that is genuinely the staging database, set I_KNOW_THE_TARGET_SAYS_PROD=1.');
-    process.exit(1);
-}
+// Which database is which is asked of the databases, below, before anything
+// is read: the target has to say it is staging and the source that it is
+// not. A url with "prod" in it said nothing, since Railway's never do.
 function readKey(value, what) {
     const buf = Buffer.from(String(value || ''), 'base64');
     if (buf.length !== 32) {
@@ -96,10 +94,41 @@ function sslFor(url) {
     let host = '';
     try { host = new URL(url).hostname; } catch (err) { return undefined; }
     const priv = host.endsWith('.railway.internal') || host === 'localhost' || host === '127.0.0.1' || host === '::1';
-    return priv ? false : { rejectUnauthorized: false };
+    if (priv) return false;
+    // checked against the certificate authority where one is given, as the
+    // server does; without one the connection is encrypted but whoever is in
+    // the middle could be answering, which the tool says out loud
+    if (process.env.DATABASE_CA_CERT) return { ca: process.env.DATABASE_CA_CERT, rejectUnauthorized: true };
+    console.warn('warning: ' + host + ' is reached without checking its certificate. Set DATABASE_CA_CERT.');
+    return { rejectUnauthorized: false };
 }
 
+async function markOf(pool) {
+    try {
+        const res = await pool.query('SELECT name FROM app_env WHERE id = 1');
+        return res.rowCount ? String(res.rows[0].name) : '';
+    } catch (err) {
+        return '';
+    }
+}
+
+// What of a lead's form is kept: the shape of the business, never what
+// identifies a person in it. The free text of a demo request, a job title
+// and a referring address all name people, so they are left behind.
+const KEEP_FIELDS = ['industry', 'country', 'formCountry', 'volume', 'size', 'lang', 'plan', 'interest', 'consent', 'kind'];
+
 async function main() {
+    const [from, to] = await Promise.all([markOf(src), markOf(dst)]);
+    if (to !== 'staging') {
+        console.error('refusing to run: the target database is marked ' + (to ? '"' + to + '"' : 'as nothing') +
+            ', and only one marked staging is emptied and filled.');
+        process.exit(1);
+    }
+    if (from === 'staging') {
+        console.error('refusing to run: the source is marked staging too. SRC_URL and DST_URL may be the wrong way round.');
+        process.exit(1);
+    }
+    console.log('from ' + (from || 'an unmarked database') + ' to staging (' + new URL(DST_URL).hostname + ')');
     console.log(WRITE ? 'copying, and the target will be emptied first' : 'dry run: reading only');
     const users = (await src.query(
         'SELECT id, created_at, email_hash, email_enc, name_enc, password_hash, lang, flags, verified_at, last_login_at FROM users ORDER BY id')).rows;
@@ -149,7 +178,10 @@ async function main() {
         const person = (known && known.person)
             || (r.email_hash ? invent(r.email_hash) : invent('00000000'));
 
-        const clean = Object.assign({}, fields, {
+        const kept = {};
+        KEEP_FIELDS.forEach((k) => { if (fields[k] !== undefined) kept[k] = fields[k]; });
+        const clean = Object.assign(kept, {
+            message: fields.message ? 'A sample message, written for staging.' : undefined,
             email: person.email,
             name: person.name,
             firstName: person.name.split(' ')[0],
@@ -191,11 +223,15 @@ async function main() {
             await c.query('UPDATE submissions SET payload = $1 WHERE id = $2',
                 [seal(DST_KEY, 'submission:' + id, JSON.stringify(s.clean)), id]);
         }
+        // What happened and when is kept, and nothing of who: the detail of
+        // an event names organisations, people who decided checks and the
+        // labels of their apps, and a staff actor is somebody's address.
         for (const a of audit) {
             const known = a.subject ? byOldHash[a.subject] : null;
+            const actor = String(a.actor || '').startsWith('staff:') ? 'staff' : a.actor;
             await c.query(
-                'INSERT INTO audit_events (at, kind, actor, subject, ip, detail) VALUES ($1,$2,$3,$4,NULL,$5)',
-                [a.at, a.kind, a.actor, known ? known.email_hash : a.subject, a.detail]);
+                'INSERT INTO audit_events (at, kind, actor, subject, ip, detail) VALUES ($1,$2,$3,$4,NULL,NULL)',
+                [a.at, a.kind, actor, known ? known.email_hash : a.subject]);
         }
         if (STAFF.length && process.env.STAFF_PASSWORD) {
             const hash = await scrypt(process.env.STAFF_PASSWORD);
@@ -215,7 +251,8 @@ async function main() {
     }
     console.log('');
     console.log('done. ' + rewritten.length + ' user(s), ' + subsOut.length + ' submission(s), ' + audit.length + ' audit event(s).');
-    console.log('nobody real is in there: every address and name outside the staff list was invented on the way through.');
+    console.log('addresses and names outside the staff list were invented on the way through; free text, job titles');
+    console.log('and the detail of audit events were left behind.');
 }
 function scrypt(password) {
     return new Promise((resolve, reject) => {

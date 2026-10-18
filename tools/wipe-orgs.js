@@ -16,6 +16,7 @@
 // belonged to.
 
 const db = require('../api/db.js');
+const appEnv = require('../api/app-env.js');
 
 const GO = process.argv.includes('--yes');
 
@@ -24,10 +25,8 @@ async function main() {
         console.error('no DATABASE_URL, nothing to do');
         process.exit(1);
     }
-    if (process.env.NODE_ENV === 'production' && !process.env.WIPE_ORGS_I_MEAN_IT) {
-        console.error('refusing to run against production');
-        process.exit(1);
-    }
+    // the database says what it is; the shell this runs in does not
+    await appEnv.requireTarget(db, ['staging', 'development'], 'wipe-orgs');
 
     const counts = await db.query(`
         SELECT

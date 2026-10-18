@@ -19,6 +19,11 @@ const fs = require('fs');
 const IDLE_MS = 60 * 1000;
 const AT_ONCE = 2;
 const RENDER_MS = 30 * 1000;
+// No more than this many wait behind the two being drawn. Beyond it a
+// request is told to come back rather than queued behind every other
+// customer's report, and nothing waits, or draws, longer than DEADLINE_MS.
+const QUEUE_MAX = 8;
+const DEADLINE_MS = 75 * 1000;
 
 // where the browser is: set by the image, or found in the usual places
 function executable() {
@@ -51,6 +56,11 @@ function browser() {
     launching = puppeteer.launch({
         executablePath: executable(),
         headless: true,
+        // The browser gets the few variables it needs to find its fonts and
+        // a place to write, and none of the server's: by default it inherits
+        // the whole environment, the database address and the keys with it.
+        env: Object.fromEntries(['PATH', 'HOME', 'LANG', 'LC_ALL', 'TMPDIR', 'FONTCONFIG_PATH', 'FONTCONFIG_FILE', 'XDG_CONFIG_HOME', 'XDG_CACHE_HOME']
+            .filter((k) => process.env[k] !== undefined).map((k) => [k, process.env[k]])),
         args: [
             // the container has no user namespaces for Chromium's sandbox;
             // what it renders is our own page with every request refused
@@ -87,6 +97,11 @@ function rest() {
 
 function slot() {
     if (busy < AT_ONCE) { busy++; return Promise.resolve(); }
+    if (waiting.length >= QUEUE_MAX) {
+        const err = new Error('the renderer is busy');
+        err.code = 'BUSY';
+        return Promise.reject(err);
+    }
     return new Promise((resolve) => waiting.push(resolve)).then(() => { busy++; });
 }
 function release() {
@@ -188,12 +203,38 @@ async function render(html, paper) {
         err.code = 'NO_BROWSER';
         throw err;
     }
+    let page = null;
+    let timer = null;
+    const late = new Promise((resolve, reject) => {
+        timer = setTimeout(() => {
+            const err = new Error('the render took too long');
+            err.code = 'BUSY';
+            reject(err);
+            // the page is closed under whatever it was waiting on, which
+            // ends that wait and frees the slot through the finally below
+            if (page) page.close().catch(() => {});
+        }, DEADLINE_MS);
+    });
+    late.catch(() => {});
+    try {
+        return await Promise.race([drawn(html, paper, (p) => { page = p; }), late]);
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+async function drawn(html, paper, hold) {
     await slot();
     clearTimeout(idleTimer);
     let page = null;
     try {
         const b = await browser();
         page = await b.newPage();
+        hold(page);
+        // The page is drawn with scripting off: the report the PDF is made
+        // from carries none, and a name that ever got past the escaping would
+        // then be text and not something the browser runs.
+        await page.setJavaScriptEnabled(false);
         // Nothing leaves this page. The report carries its fonts and its art
         // inline, so there is nothing to fetch, and a request that tried would
         // be a mistake in the page rather than something to allow.

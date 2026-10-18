@@ -5224,17 +5224,23 @@
         var secure = location.protocol === 'https:' ? '; secure' : '';
         document.cookie = n + '=' + encodeURIComponent(v) + '; path=/; max-age=31536000; samesite=lax' + domain + secure;
     }
+    // A word looked up is the dictionary's own entry or nothing: "constructor"
+    // or "toString" typed somewhere is not an entry, and reading one off the
+    // prototype handed a function to code expecting a string.
+    function own(o, k) {
+        return o && typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k) ? o[k] : undefined;
+    }
     function current() {
         var forced = document.documentElement.getAttribute('data-force-lang');
-        if (LANGS[forced]) {
+        if (own(LANGS, forced)) {
             if (readCookie(COOKIE) !== forced) persist(forced);
             return forced;
         }
         var v = readCookie(COOKIE);
         if (!v) { try { v = localStorage.getItem(COOKIE); } catch (e) {} }
-        if (LANGS[v]) return v;
+        if (own(LANGS, v)) return v;
         var geo = document.documentElement.getAttribute('data-geo-lang');
-        return LANGS[geo] ? geo : 'en';
+        return own(LANGS, geo) ? geo : 'en';
     }
     function persist(v) {
         writeCookie(COOKIE, v);
@@ -5274,7 +5280,7 @@
         var nodes = [], n;
         while ((n = walker.nextNode())) nodes.push(n);
         nodes.forEach(function (node) {
-            var hit = dict[norm(node.nodeValue)];
+            var hit = own(dict, norm(node.nodeValue));
             if (!hit) return;
             if (node.parentNode && node.parentNode.closest('[data-original-scope]')) {
                 originals.push({ node: node, text: node.nodeValue });
@@ -5493,7 +5499,7 @@
         },
         t: function (s) {
             var dict = T[current()];
-            var hit = dict && dict[norm(s)];
+            var hit = own(dict, norm(s));
             return hit ? matchCase(s, hit) : s;
         }
     };
@@ -5501,7 +5507,7 @@
         var dict = T[lang] || null;
         var pick = function (src) {
             if (!src) return '';
-            var hit = dict && dict[norm(src)];
+            var hit = own(dict, norm(src));
             return hit || src;
         };
         document.querySelectorAll('a[data-mail-subject]').forEach(function (a) {

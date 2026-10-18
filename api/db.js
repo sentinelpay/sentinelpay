@@ -39,6 +39,9 @@ function sslFor(rawUrl) {
 
     const ca = process.env.DATABASE_CA_CERT || '';
     if (ca) return { rejectUnauthorized: true, ca };
+    // Encrypted, but nobody checks who answers: whoever sits between here and
+    // a public host could take the password and everything read after it.
+    console.error('[security] the database at ' + host + ' is reached without checking its certificate; set DATABASE_CA_CERT');
     return { rejectUnauthorized: false };
 }
 
