@@ -12335,37 +12335,80 @@
         }
 
         function stepShow(secret) {
-            d.retitle('Copy it now');
+            d.retitle('Token created');
             d.steps(0, 0, '');
 
-            var head = document.createElement('div');
-            head.className = 'vhead drw-done';
-            var mark = document.createElement('div');
-            mark.className = 'vmark';
-            mark.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
-                'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-                '<polyline points="20 6 9 17 4 12"></polyline></svg>';
-            head.appendChild(mark);
-            var h3 = document.createElement('h3');
-            h3.textContent = t('Copy it now');
-            head.appendChild(h3);
-            var p = document.createElement('p');
-            p.textContent = t('This is the only time we can show you this token. We keep a hash of it, not the token itself.');
-            head.appendChild(p);
-            d.body.appendChild(head);
+            var wrap = document.createElement('section');
+            wrap.className = 'tkr-blk tkd';
+            var h = document.createElement('h3');
+            h.className = 'tkd-h';
+            h.textContent = t('Token created');
+            wrap.appendChild(h);
+            var sub = document.createElement('p');
+            sub.className = 'tkd-p';
+            sub.textContent = fill('Copy your new token "{name}" and keep it somewhere safe.', { name: want.name.trim() });
+            wrap.appendChild(sub);
 
-            var secretBox = document.createElement('div');
-            secretBox.className = 'secret drw-secret';
-            var code = document.createElement('code');
-            code.textContent = secret;
-            secretBox.appendChild(code);
-            secretBox.appendChild(copyBtn(function () { return secret; }));
-            d.body.appendChild(secretBox);
+            // the token in the face of the page, not a code face: it is a
+            // string to be copied, and the copy button is how it leaves
+            var box = document.createElement('div');
+            box.className = 'secret tkd-secret';
+            var val = document.createElement('span');
+            val.className = 'tkd-val';
+            val.textContent = secret;
+            box.appendChild(val);
+            var copy = copyBtn(function () { return secret; });
+            copy.classList.add('tkd-copy');
+            var ci = document.createElement('span');
+            ci.className = 'tkd-copy-i';
+            ci.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+                'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                '<rect x="8.5" y="8.5" width="11" height="11" rx="2.2"/>' +
+                '<path d="M15.5 8.5V6.7a2.2 2.2 0 0 0-2.2-2.2H6.7a2.2 2.2 0 0 0-2.2 2.2v6.6a2.2 2.2 0 0 0 2.2 2.2h1.8"/></svg>';
+            copy.insertBefore(ci, copy.firstChild);
+            box.appendChild(copy);
+            wrap.appendChild(box);
+
+            // Once, and then only its hash is kept. Done waits for the tick,
+            // so the token is not closed away by a click meant for something
+            // else before it has been copied anywhere.
+            var warn = document.createElement('div');
+            warn.className = 'warn tkd-warn';
+            var mark = document.createElement('span');
+            mark.className = 'warn-i';
+            mark.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                '<path d="M12 8.5v5M12 16.9v.1"/>' +
+                '<path d="M10.3 4.3 2.8 18a1.8 1.8 0 0 0 1.6 2.7h15.2A1.8 1.8 0 0 0 21.2 18L13.7 4.3a1.9 1.9 0 0 0-3.4 0Z"/></svg>';
+            warn.appendChild(mark);
+            var wt = document.createElement('div');
+            wt.className = 'warn-t';
+            var wh = document.createElement('div');
+            wh.className = 'warn-h';
+            wh.textContent = t('This is the only time the token is shown');
+            wt.appendChild(wh);
+            var wp = document.createElement('p');
+            wp.textContent = t('We keep a hash of it, not the token itself, so it cannot be shown again. If you lose it, revoke it and generate a new one.');
+            wt.appendChild(wp);
+            var ack = document.createElement('label');
+            ack.className = 'tick tkd-ack';
+            var tickBox = document.createElement('input');
+            tickBox.type = 'checkbox';
+            ack.appendChild(tickBox);
+            var at = document.createElement('span');
+            at.textContent = t('I have copied the token and stored it securely');
+            ack.appendChild(at);
+            wt.appendChild(ack);
+            warn.appendChild(wt);
+            wrap.appendChild(warn);
+            d.body.appendChild(wrap);
 
             var fin = document.createElement('button');
             fin.type = 'button';
             fin.className = 'btn btn-primary';
-            fin.textContent = t('I have copied it');
+            fin.textContent = t('Done');
+            fin.disabled = true;
+            tickBox.addEventListener('change', function () { fin.disabled = !tickBox.checked; });
             fin.addEventListener('click', d.shut);
             d.acts.appendChild(fin);
         }

@@ -1561,6 +1561,39 @@ button { font: inherit; color: inherit; }
 .tkr-path { min-width: 0; overflow-wrap: anywhere; }
 .tkr-none { margin: 0; padding: 0.9rem 0.95rem; font-size: 0.8rem; color: var(--ink-4); }
 
+/* the token, once: what it is called, the string with its copy button, and
+   the amber notice the security page uses, holding the tick Done waits on */
+.tkd { padding-top: 1.4rem; }
+.tkd-h { margin: 0; font-size: 0.9rem; font-weight: 650; color: var(--ink); }
+.tkd-p { margin: 0.25rem 0 0.9rem; font-size: 0.8rem; line-height: 1.55; color: var(--ink-3); overflow-wrap: anywhere; }
+.tkd-secret { padding: 0.45rem 0.45rem 0.45rem 0.85rem; }
+.tkd-val {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--ink);
+    /* a token has no words to keep whole, so its lines run full rather
+       than breaking early at the first hyphen */
+    word-break: break-all;
+}
+.tkd-copy { display: inline-flex; align-items: center; gap: 0.35rem; }
+.tkd-copy-i { display: flex; width: 14px; height: 14px; }
+.tkd-copy-i svg { width: 100%; height: 100%; }
+.tkd-warn { margin-top: 0.9rem; border-color: var(--risk-mid); background: var(--risk-mid-bg); animation: none; }
+.tkd-warn .warn-i { background: var(--risk-mid); }
+.tkd-warn .tkd-ack {
+    margin-top: 0.65rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--risk-mid);
+}
+.tkd-warn .tkd-ack:hover,
+.tkd-warn .tkd-ack:has(input:checked) { border: 0; background: none; }
+
 @media (max-width: 640px) {
     .tkr-blk { padding-left: 1rem; padding-right: 1rem; }
     .tkr-sum-r { align-items: flex-start; flex-direction: column; gap: 0.25rem; }
