@@ -669,3 +669,22 @@ test('a device is named, listed and signed out on its own', flow, async () => {
     assert.ok(await accounts.readSession(made.session.token), 'the session asking was signed out');
     await accounts.forget(email);
 });
+
+// A device signing in shows in its owner's open list of devices at once:
+// the first request it makes with a browser to name is told to every page
+// the owner has open, and so is a device signing out.
+test('a device signing in or out is told to the owner\'s open pages', flow, async () => {
+    const email = freshEmail('livedev');
+    const started = await accounts.startSignup({ email, name: 'Ana Anic', password: 'a-very-long-password-1', lang: 'en', flags: [] });
+    const made = await accounts.verifySignup(email, await codeFor(db.blindIndex(email)), started.origin);
+    const fresh = await accounts.startSession(made.userId);
+    const first = await accounts.readSession(fresh.token, { ua: 'Mozilla/5.0 (iPhone) Safari/604.1' });
+    assert.strictEqual(first.firstSeen, true);
+    const listed = await accounts.listSessions(made.userId, made.session.token);
+    assert.ok(listed.some((x) => x.device.os === 'iOS'), 'the device was told about before its browser was written');
+    assert.strictEqual((await accounts.readSession(fresh.token, { ua: 'Mozilla/5.0 (iPhone) Safari/604.1' })).firstSeen, false);
+    const index = require('fs').readFileSync(require('path').join(__dirname, '..', 'index.js'), 'utf8');
+    assert.match(index, /if \(me && me\.firstSeen\) tellMe\(me\.userId, \{ topic: 'sessions' \}\);/);
+    assert.match(index, /if \(who\) tellMe\(who\.userId, \{ topic: 'sessions' \}\);/);
+    await accounts.forget(email);
+});

@@ -10689,7 +10689,8 @@
                 });
         }
         loadDevs();
-        onLive(function (e) { if (e.topic === 'me') loadDevs(); });
+        // a device signing in or out anywhere, or one signed out from here
+        onLive(function (e) { if (e.topic === 'me' || e.topic === 'sessions') loadDevs(); });
 
         // an app added or removed from another screen
         onLive(function (e) { if (e.topic === 'me') load(); });
