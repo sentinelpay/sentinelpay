@@ -1932,6 +1932,45 @@ button { font: inherit; color: inherit; }
 }
 .lgx-foot:empty { display: none; }
 
+/* one line in its panel: two tabs, the overview in groups with a copy
+   beside what is worth quoting, and the line as JSON */
+.lgx-tabs { padding: 1rem 1.3rem 0; }
+.lgx-tabs .vseg { display: inline-flex; }
+.lgx-dd { display: inline-flex; align-items: center; justify-content: flex-end; gap: 0.4rem; }
+.lgx-dd > span { min-width: 0; overflow-wrap: anywhere; }
+.lgx-copy {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 1.6rem;
+    height: 1.6rem;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: var(--ink-4);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+.lgx-copy svg { width: 14px; height: 14px; }
+.lgx-copy:hover { background: var(--hover); color: var(--ink); }
+.lgx-copy.is-done { color: var(--risk-low); }
+.lgx-json {
+    margin: 0;
+    padding: 0.85rem 0.95rem;
+    border: 1px solid var(--field-line);
+    border-radius: 10px;
+    background: var(--canvas);
+    font-family: var(--sp-text);
+    font-size: 0.8rem;
+    line-height: 1.65;
+    color: var(--ink-2);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    tab-size: 2;
+}
+.mfa-key-copy.lgx-json-copy { width: 100%; margin-top: 0.6rem; }
+
 /* on a phone: when, what, and how it went; the details are in the line's
    own panel, a tap away */
 @media (max-width: 800px) {
