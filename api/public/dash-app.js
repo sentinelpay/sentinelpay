@@ -11120,8 +11120,8 @@
             } else {
                 var left = daysUntil(r.expiresAt);
                 exp.appendChild(document.createTextNode(whenText(r.expiresAt)));
-                if (left !== null && left <= 0) exp.appendChild(tag(t('Expired'), 'off'));
-                else if (left !== null && left <= 14) exp.appendChild(tag(t('Soon'), 'warn'));
+                if (left !== null && left <= 0) { exp.appendChild(tag(t('Expired'), 'off')); exp.classList.add('is-expired'); }
+                else if (left !== null && left <= 14) { exp.appendChild(tag(t('Soon'), 'warn')); exp.classList.add('is-soon'); }
             }
             row.appendChild(exp);
 
