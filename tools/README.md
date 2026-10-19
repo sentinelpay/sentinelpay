@@ -95,6 +95,20 @@ password and adds an app again.
 
 It runs against production: that is where people lose phones.
 
+# every email, to one inbox
+
+Sends each email the product sends, filled with example details, to one
+address, to read them side by side in a real mail client: Gmail and Outlook,
+phone and desktop, light and dark.
+
+    railway run --environment production node tools/send-mail-previews.js you@example.com
+    railway run --environment production node tools/send-mail-previews.js you@example.com --lang all --yes
+
+Without `--yes` it lists what it would send. `--lang` is `en`, `hr`, `de` or
+`all`; `--only invite,reset-link` sends just those. Subjects start with
+`[Preview]`, and no code or link in them works. It needs `RESEND_API_KEY`, so it
+runs where mail is set up; staging has none.
+
 # which database this is
 
 The tools that write invented or destructive things (`wipe-orgs`, `reset-plan`,
