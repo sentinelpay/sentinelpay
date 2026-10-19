@@ -123,3 +123,17 @@ test('the token list keeps its permissions behind View permissions', () => {
     assert.match(dash, /function viewPermissions\(r, scopes, groups\) \{[\s\S]*?accessReview\(d\.body/);
     assert.match(dash, /function stepReview\(\) \{\n {12}d\.retitle\('Review access'\);[\s\S]*?accessReview\(d\.body/);
 });
+
+// An invitation names who sent it, with their address beside the name, in
+// the language of the mail; and the link comes back to the inviter only
+// when no mail carried it.
+test('an invitation names its sender, and keeps its link to the mail', () => {
+    const mailer = require('../mailer');
+    const en = mailer.previewMessage('invite', 'en');
+    assert.match(en.subject, /^Ana Anić invited you to Primjer Exchange d\.o\.o\. on Sentinelpay$/);
+    assert.ok(en.pairs.some((p) => /Ana Anić \(ana@primjer\.hr\)/.test(p[1])), 'the sender\'s address is not beside the name');
+    assert.match(mailer.previewMessage('invite', 'hr').intro, /u ulozi analitičar/);
+    const index = read('index.js');
+    assert.match(index, /link: mailed \? '' : link/);
+    assert.match(index, /inviter: me\.name \|\| '', inviterEmail: me\.email \|\| ''/);
+});

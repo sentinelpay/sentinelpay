@@ -2977,12 +2977,6 @@ app.get('/v1/orgs/:id/members', async (req, res) => {
     res.json({ ok: true, rows, roles: orgs.ROLES });
 });
 
-// the word for a role, for a mail that has to read as a sentence
-function roleLabel(key) {
-    const found = orgs.ROLES.filter((r) => r.key === key)[0];
-    return found ? found.label : String(key || '');
-}
-
 app.get('/v1/orgs/:id/invites', async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
@@ -3042,8 +3036,9 @@ app.post('/v1/orgs/:id/invites', requireCloudflareOrigin, accountLimiter, async 
         try {
             if (mailer.isConfigured()) {
                 await mailer.sendInvite({
-                    to: email, link, lang: geoLang(req), org: mine.name,
-                    role: roleLabel(b.role), days: Number(b.days) || invites.DEFAULT_DAYS,
+                    to: email, link, lang: me.lang || geoLang(req), org: mine.name,
+                    role: made.invite.role, days: Number(b.days) || invites.DEFAULT_DAYS,
+                    inviter: me.name || '', inviterEmail: me.email || '',
                 });
                 mailed = true;
             }
@@ -3054,7 +3049,9 @@ app.post('/v1/orgs/:id/invites', requireCloudflareOrigin, accountLimiter, async 
             actor: String(me.userId), subject: made.invite.id, ip: req.realIp,
             detail: made.invite.role + (mailed ? ' mailed' : ' link only'),
         });
-        out.push({ email, ok: true, mailed, link, invite: made.invite });
+        // the link comes back only when no mail carried it: one that went by
+        // mail has no reason to sit in the inviter's browser as well
+        out.push({ email, ok: true, mailed, link: mailed ? '' : link, invite: made.invite });
     }
 
     await tellOrg(mine.id, { topic: 'org', id: String(mine.id) });
