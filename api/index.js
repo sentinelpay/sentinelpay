@@ -3032,19 +3032,7 @@ app.post('/v1/orgs/:id/invites', requireCloudflareOrigin, accountLimiter, async 
         // an environment with no mail configured can still invite somebody by
         // passing it along, and saying so beats a screen that looks like it
         // worked when nothing left the building.
-        let mailed = false;
-        try {
-            if (mailer.isConfigured()) {
-                await mailer.sendInvite({
-                    to: email, link, lang: me.lang || geoLang(req), org: mine.name,
-                    role: made.invite.role, days: Number(b.days) || invites.DEFAULT_DAYS,
-                    inviter: me.name || '', inviterEmail: me.email || '',
-                });
-                mailed = true;
-            }
-        } catch (err) {
-            console.error('[invites] mail failed: ' + err.message);
-        }
+        const mailed = await mailInvite(req, me, mine, email, link, made.invite.role, Number(b.days) || invites.DEFAULT_DAYS);
         await accounts.audit('invite-sent', {
             actor: String(me.userId), subject: made.invite.id, ip: req.realIp,
             detail: made.invite.role + (mailed ? ' mailed' : ' link only'),
@@ -3057,6 +3045,66 @@ app.post('/v1/orgs/:id/invites', requireCloudflareOrigin, accountLimiter, async 
     await tellOrg(mine.id, { topic: 'org', id: String(mine.id) });
     res.set('Cache-Control', 'no-store, private');
     res.json({ ok: out.some((r) => r.ok), results: out });
+});
+
+// The invitation mail, from the person sending it, in their language. True
+// when it went; false when there is no mail here or it failed, and then the
+// link is handed back to be passed on.
+async function mailInvite(req, me, mine, email, link, role, days) {
+    if (!mailer.isConfigured()) return false;
+    try {
+        await mailer.sendInvite({
+            to: email, link, lang: me.lang || geoLang(req), org: mine.name,
+            role, days, inviter: me.name || '', inviterEmail: me.email || '',
+        });
+        return true;
+    } catch (err) {
+        console.error('[invites] mail failed: ' + err.message);
+        return false;
+    }
+}
+
+// Sent again, with a new link and a new expiry; the old link stops working.
+app.post('/v1/orgs/:id/invites/:inviteId/resend', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const mine = await orgs.membership(me.userId, req.params.id);
+    if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
+    if (!orgs.roleAtLeast(mine.role, 'admin')) {
+        return res.status(403).json({ error: 'Only an admin or the owner can invite people.' });
+    }
+    const out = await invites.resend(mine.id, req.params.inviteId, me.userId, (req.body || {}).days);
+    if (out.reason === 'missing') return res.status(404).json({ error: 'That invitation is no longer open.' });
+    if (!out.ok) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
+    const link = SITE_URL + '/invite/' + out.secret;
+    const mailed = await mailInvite(req, me, mine, out.invite.email, link, out.invite.role, out.days);
+    await accounts.audit('invite-resent', {
+        actor: String(me.userId), subject: out.invite.id, ip: req.realIp,
+        detail: out.invite.role + (mailed ? ' mailed' : ' link only'),
+    });
+    await tellOrg(mine.id, { topic: 'org', id: String(mine.id) });
+    res.set('Cache-Control', 'no-store, private');
+    res.json({ ok: true, mailed, link: mailed ? '' : link, invite: out.invite });
+});
+
+// The role an invitation will give, changed while it is still open.
+app.post('/v1/orgs/:id/invites/:inviteId/role', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const mine = await orgs.membership(me.userId, req.params.id);
+    if (!mine) return res.status(404).json({ error: 'You are not in that organisation.' });
+    if (!orgs.roleAtLeast(mine.role, 'admin')) {
+        return res.status(403).json({ error: 'Only an admin or the owner can change a role.' });
+    }
+    const out = await invites.setRole(mine.id, req.params.inviteId, String((req.body || {}).role || ''));
+    if (out.reason === 'bad-role') return res.status(400).json({ error: 'That is not a role.' });
+    if (out.reason === 'missing') return res.status(404).json({ error: 'That invitation is no longer open.' });
+    if (!out.ok) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
+    await accounts.audit('invite-role-changed', {
+        actor: String(me.userId), subject: out.invite.id, ip: req.realIp, detail: out.invite.role,
+    });
+    await tellOrg(mine.id, { topic: 'org', id: String(mine.id) });
+    res.json({ ok: true, invite: out.invite });
 });
 
 app.post('/v1/orgs/:id/invites/:inviteId/revoke', requireCloudflareOrigin, accountLimiter, async (req, res) => {

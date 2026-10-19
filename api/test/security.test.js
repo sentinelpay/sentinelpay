@@ -592,6 +592,19 @@ test('an invitation is joined on a click, not by opening its link', () => {
     assert.match(invites, /ON CONFLICT \(org_id, user_id\) DO NOTHING/, 'accepting can change a role somebody already has');
 });
 
+// Sending an invitation again and changing the role it gives are an admin's
+// to do, behind the same cross-site check and limit as inviting.
+test('resending an invitation and changing its role need an admin', () => {
+    const index = require('fs').readFileSync(require('path').join(__dirname, '..', 'index.js'), 'utf8');
+    for (const what of ['resend', 'role']) {
+        const at = index.indexOf("app.post('/v1/orgs/:id/invites/:inviteId/" + what + "', requireCloudflareOrigin, accountLimiter,");
+        assert.ok(at !== -1, what + ' is not behind the origin check and the limit');
+        const body = index.slice(at, index.indexOf('\n});', at));
+        assert.match(body, /roleAtLeast\(mine\.role, 'admin'\)/, what + ' is open to analysts');
+        assert.match(body, /invites\.\w+\(mine\.id,/, what + ' acts outside the organisation it was asked through');
+    }
+});
+
 // Before an action that hands out access outlasting the session, the person
 // proves it is still them: a password, or a code where the account has
 // two-factor. Wrong answers count like wrong sign-ins.

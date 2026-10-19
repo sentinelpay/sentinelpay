@@ -192,6 +192,36 @@ test.after(async () => {
     await db.close();
 });
 
+// Sending an invitation again closes the link that went before it, and the
+// role it gives can be changed while it is open but never to owner, and
+// never through an organisation it does not belong to.
+test('a resent invitation kills the old link, and its role changes in its own organisation only', live, async () => {
+    const invites = require('../invites');
+    await orgs.init();
+    const owner = await aPerson('inv');
+    const orgId = (await orgs.create(owner, 'Invites ' + Date.now(), 'localhost', 'owner')).org.id;
+    const elsewhere = (await orgs.create(owner, 'Elsewhere ' + Date.now(), 'localhost', 'owner')).org.id;
+    const made = await invites.create(orgId, owner, { email: 'new' + Date.now() + '@primjer.hr', role: 'viewer', days: 7 });
+    assert.ok(made.ok, made.reason);
+    const id = made.invite.id;
+
+    const again = await invites.resend(orgId, id, owner, 14);
+    assert.ok(again.ok, again.reason);
+    assert.notStrictEqual(again.secret, made.secret);
+    assert.strictEqual(await invites.read(made.secret), null, 'the first link still opens');
+    assert.ok(await invites.read(again.secret));
+    assert.strictEqual((await invites.resend(elsewhere, id, owner, 7)).reason, 'missing');
+
+    assert.strictEqual((await invites.setRole(orgId, id, 'admin')).invite.role, 'admin');
+    assert.strictEqual((await invites.setRole(orgId, id, 'owner')).reason, 'bad-role');
+    assert.strictEqual((await invites.setRole(elsewhere, id, 'viewer')).reason, 'missing');
+
+    await invites.revoke(orgId, id);
+    assert.strictEqual((await invites.resend(orgId, id, owner, 7)).reason, 'missing', 'a cancelled invitation came back');
+    assert.strictEqual((await invites.setRole(orgId, id, 'viewer')).reason, 'missing');
+    assert.ok(!(await invites.listFor(orgId)).some((i) => String(i.id) === String(id)), 'a cancelled invitation is still listed');
+});
+
 // The audit logs page reads an account's own trail a page at a time. Lines
 // written in the same instant are neither read twice nor stepped over, a
 // group filter keeps only its kinds, and another account's lines never show.

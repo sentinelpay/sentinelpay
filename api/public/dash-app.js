@@ -122,7 +122,6 @@
         // coin, because what is counted is the network and not the money.
         // an invitation that has gone out and not been answered. deliberately
         // not the person mark: nobody is there yet, an envelope is.
-        mail: '<rect x="3" y="5.5" width="18" height="13" rx="2.2"/><path d="m3.8 7 7.1 5.3a1.8 1.8 0 0 0 2.2 0L20.2 7"/>',
         // a book held open: what is written down and can be looked up, rather
         // than a sheet of paper, which is what we call a report
         docs: '<path d="M12 6.7v13"/>' +
@@ -3978,8 +3977,103 @@
         return page;
     }
 
-    // Somebody who has been asked but has not arrived. The same row, set back,
-    // because they are not a member yet.
+    // A row's further actions behind one button. The menu is drawn on the page
+    // itself, fixed under the button, rather than inside the row: a table
+    // that slides sideways on a phone clips anything that hangs out of it.
+    //   items: [{ label, glyph, bad, run }] with null for a dividing line
+    var ROW_MENU_I = {
+        resend: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" ' +
+            'stroke-linejoin="round" aria-hidden="true"><path d="M15 6.5h4.5V2"/><path d="M19.5 6.5A8 8 0 1 0 20 13"/></svg>',
+        bin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" ' +
+            'stroke-linejoin="round" aria-hidden="true"><path d="M4.5 7h15M9.5 7V4.8h5V7"/>' +
+            '<path d="M6.5 7l.9 12.2h9.2L17.5 7M10 11v5M14 11v5"/></svg>',
+        out: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" ' +
+            'stroke-linejoin="round" aria-hidden="true"><path d="M15 4.5h3.5a1.5 1.5 0 0 1 1.5 1.5v12a1.5 1.5 0 0 1-1.5 1.5H15"/>' +
+            '<path d="M10 16.5 5.5 12 10 7.5M5.5 12H15"/></svg>'
+    };
+    function rowMenu(label, items) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'tk-more';
+        btn.setAttribute('aria-haspopup', 'menu');
+        btn.setAttribute('aria-expanded', 'false');
+        btn.setAttribute('aria-label', label);
+        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
+            '<circle cx="12" cy="5.5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="18.5" r="1.6"/></svg>';
+        var pop = null;
+        function shut() {
+            if (!pop) return;
+            if (pop.parentNode) pop.parentNode.removeChild(pop);
+            pop = null;
+            btn.setAttribute('aria-expanded', 'false');
+            btn.classList.remove('is-open');
+            popClosed(shut);
+            document.removeEventListener('click', outside, true);
+            document.removeEventListener('keydown', onKey);
+            window.removeEventListener('resize', shut);
+            window.removeEventListener('scroll', shut, true);
+        }
+        function outside(e) { if (pop && !pop.contains(e.target) && e.target !== btn && !btn.contains(e.target)) shut(); }
+        function onKey(e) { if (e.key === 'Escape') { shut(); btn.focus(); } }
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            if (pop) { shut(); return; }
+            pop = document.createElement('div');
+            pop.className = 'tk-pop is-fixed';
+            pop.setAttribute('role', 'menu');
+            items.forEach(function (it) {
+                if (!it) {
+                    var sep = document.createElement('div');
+                    sep.className = 'tk-sep';
+                    pop.appendChild(sep);
+                    return;
+                }
+                var o = document.createElement('button');
+                o.type = 'button';
+                o.className = 'tk-opt' + (it.bad ? ' is-bad' : '');
+                o.setAttribute('role', 'menuitem');
+                o.innerHTML = ROW_MENU_I[it.glyph] || '';
+                var tx = document.createElement('span');
+                tx.textContent = t(it.label);
+                o.appendChild(tx);
+                o.addEventListener('click', function () { shut(); it.run(); });
+                pop.appendChild(o);
+            });
+            pop.addEventListener('click', function (e) { e.stopPropagation(); });
+            document.body.appendChild(pop);
+            var rc = btn.getBoundingClientRect();
+            var h = pop.offsetHeight;
+            var w = pop.offsetWidth;
+            var up = window.innerHeight - rc.bottom < h + 12;
+            pop.style.top = (up ? rc.top - h - 6 : rc.bottom + 6) + 'px';
+            pop.style.left = Math.max(8, Math.min(rc.right - w, window.innerWidth - w - 8)) + 'px';
+            btn.setAttribute('aria-expanded', 'true');
+            btn.classList.add('is-open');
+            popOpened(shut);
+            document.addEventListener('click', outside, true);
+            document.addEventListener('keydown', onKey);
+            window.addEventListener('resize', shut);
+            window.addEventListener('scroll', shut, true);
+        });
+        return btn;
+    }
+
+    // A tick or a cross, said for a screen reader in words.
+    function yesNo(on, word) {
+        var c = document.createElement('span');
+        c.className = 'mem-yn' + (on ? ' is-on' : '');
+        c.innerHTML = on
+            ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.2 4.2L19 7"/></svg>'
+            : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg>';
+        var sr = document.createElement('span');
+        sr.className = 'sr-only';
+        sr.textContent = t(word);
+        c.appendChild(sr);
+        return c;
+    }
+
+    // Somebody who has been asked but has not arrived: their address, whether
+    // the invitation is still open or ran out, and the role it gives.
     function inviteRow(i, org, may, done) {
         var row = document.createElement('div');
         row.className = 'tr is-team is-asked';
@@ -3987,67 +4081,90 @@
         var who = document.createElement('div');
         who.className = 'mem-who';
         var av = document.createElement('span');
-        av.className = 'mem-av is-empty';
-        av.innerHTML = icon('mail');
+        av.className = 'mem-av is-asked';
+        av.textContent = String(i.email || '?').charAt(0).toUpperCase();
         who.appendChild(av);
         var txt = document.createElement('div');
         txt.className = 'tr-t';
         var nm = document.createElement('div');
         nm.className = 'tr-name';
-        nm.textContent = i.email;
-        nm.appendChild(tag(t(inviteWord(i.state)), i.state === 'sent' ? '' : 'mid'));
+        var em = document.createElement('span');
+        em.className = 'mem-name';
+        em.textContent = i.email;
+        nm.appendChild(em);
+        nm.appendChild(tag(t(i.state === 'expired' ? 'Expired' : 'Invited'), i.state === 'expired' ? 'off' : 'inv'));
         txt.appendChild(nm);
         var sub = document.createElement('div');
         sub.className = 'tr-sub';
-        sub.textContent = i.state === 'sent'
-            ? t('Invited') + '  \u00b7  ' + t('until') + ' ' + whenText(i.expiresAt)
-            : t('Invited') + '  \u00b7  ' + whenText(i.createdAt);
+        sub.textContent = (i.state === 'expired'
+            ? fill('Expired {date}', { date: whenText(i.expiresAt) })
+            : fill('Open until {date}', { date: whenText(i.expiresAt) })) +
+            (i.needMfa ? '  ·  ' + t('Two-factor required') : '') +
+            (i.sameDomain ? '  ·  ' + t('Same domain only') : '');
         txt.appendChild(sub);
         who.appendChild(txt);
         row.appendChild(who);
 
         var facts = factsBox();
-        var conds = document.createElement('div');
-        conds.className = 'tr-tags';
-        if (i.needMfa || i.sameDomain) {
-            var ck = document.createElement('span');
-            ck.className = 'tr-k';
-            ck.textContent = t('Conditions');
-            conds.appendChild(ck);
-        }
-        if (i.needMfa) conds.appendChild(tag(t('Two-factor first')));
-        if (i.sameDomain) conds.appendChild(tag(t('Same domain')));
-        facts.appendChild(conds);
-
+        var mfa = dimCell('Two-factor');
+        mfa.appendChild(yesNo(false, 'Not yet'));
+        facts.appendChild(mfa);
         var role = dimCell('Role');
         role.appendChild(document.createTextNode(orghRole(i.role)));
         facts.appendChild(role);
         row.appendChild(facts);
 
         var act = document.createElement('div');
-        act.className = 'tr-act';
-        if (may && i.state === 'sent') {
-            var pull = rowBtn('Withdraw', function () {
-                fetch('/v1/orgs/' + encodeURIComponent(org.id) + '/invites/' +
-                    encodeURIComponent(i.id) + '/revoke', {
-                    method: 'POST', credentials: 'same-origin',
-                    headers: { 'Content-Type': 'application/json' }, body: '{}'
-                }).then(function (r) {
-                    if (!r.ok) throw new Error('bad');
-                    toast(t('Invitation withdrawn'), 'good');
-                    done();
-                }).catch(function () { toast(t('That did not work.'), 'bad'); });
-            });
-            pull.classList.add('is-bad');
-            act.appendChild(pull);
+        act.className = 'tr-act mem-act';
+        if (may) {
+            act.appendChild(rowBtn('Manage access', function () { askAccess(org, i, done, true); }));
+            act.appendChild(rowMenu(t('More for') + ' ' + i.email, [
+                { label: 'Resend invitation', glyph: 'resend', run: function () { resendInvite(org, i, done); } },
+                null,
+                { label: 'Cancel invitation', glyph: 'bin', bad: true, run: function () { cancelInvite(org, i, done); } }
+            ]));
         }
         row.appendChild(act);
         return row;
     }
 
-    function inviteWord(state) {
-        var said = { sent: 'Waiting', expired: 'Expired', withdrawn: 'Withdrawn' };
-        return said[state] || state;
+    // A new link and a new expiry, the old link closed. Where mail went, it
+    // says so; where it could not, the new link is handed over to pass on.
+    function resendInvite(org, i, done) {
+        postJson('/v1/orgs/' + encodeURIComponent(org.id) + '/invites/' + encodeURIComponent(i.id) + '/resend', {})
+            .then(function (out) {
+                done();
+                if (out.mailed) { toast(fill('Invitation sent again to {email}', { email: i.email }), 'good'); return; }
+                var m = modalShell('A new link is ready',
+                    'No email went out from here, so send this link yourself. The old link no longer works.');
+                m.box.classList.add('mfa-modal');
+                var form = document.createElement('div');
+                form.className = 'mfa-form';
+                var line = document.createElement('div');
+                line.className = 'secret tkd-secret';
+                var val = document.createElement('span');
+                val.className = 'tkd-val';
+                val.textContent = out.link;
+                line.appendChild(val);
+                var cp = keyCopy(function () { return out.link; }, 'Copy');
+                cp.classList.add('tkd-copy');
+                line.appendChild(cp);
+                form.appendChild(line);
+                var fin = wideBtn('Done', 'cta');
+                fin.addEventListener('click', m.shut);
+                form.appendChild(fin);
+                m.body.appendChild(form);
+            })
+            .catch(function (err) { toast(err.message, 'bad'); });
+    }
+
+    function cancelInvite(org, i, done) {
+        postJson('/v1/orgs/' + encodeURIComponent(org.id) + '/invites/' + encodeURIComponent(i.id) + '/revoke', {})
+            .then(function () {
+                toast(fill('Invitation to {email} cancelled', { email: i.email }), 'good');
+                done();
+            })
+            .catch(function (err) { toast(err.message, 'bad'); });
     }
 
     function memberRow(m, org, may, done) {
@@ -4064,10 +4181,11 @@
         txt.className = 'tr-t';
         var nm = document.createElement('div');
         nm.className = 'tr-name';
-        // no mark on your own row: it carries your name and your address, and
-        // the action on it already says Leave where everybody else's says
-        // Manage access
-        nm.textContent = m.name || m.email || '—';
+        var nmT = document.createElement('span');
+        nmT.className = 'mem-name';
+        nmT.textContent = m.name || m.email || '—';
+        nm.appendChild(nmT);
+        if (m.you) nm.appendChild(tag(t('You'), 'you'));
         txt.appendChild(nm);
         // somebody who signed up without a name is shown by their address, so
         // the line under it would otherwise repeat the line above it
@@ -4080,31 +4198,31 @@
         who.appendChild(txt);
         row.appendChild(who);
 
-        // stated rather than coloured when it is on: an account without a second
-        // step is the one worth noticing on a screen about who can do what.
-        // the two facts about them travel together: side by side on a phone,
-        // and on a wide screen this box disappears into the grid so each one
-        // still lands under its own column heading
         var facts = factsBox();
         var mfa = dimCell('Two-factor');
-        mfa.appendChild(m.mfa ? tag(t('On'), 'ok') : tag(t('Off'), 'mid'));
+        mfa.appendChild(yesNo(m.mfa, m.mfa ? 'On' : 'Off'));
         facts.appendChild(mfa);
-
         var role = dimCell('Role');
         role.appendChild(document.createTextNode(orghRole(m.role)));
         facts.appendChild(role);
         row.appendChild(facts);
 
         var act = document.createElement('div');
-        act.className = 'tr-act';
+        act.className = 'tr-act mem-act';
         if (m.you) {
             // the owner has nowhere to walk out to: the organisation is theirs
-            // until it is closed
-            if (m.role !== 'owner') {
-                act.appendChild(rowBtn('Leave', function () { askLeave(org, m, done); }));
+            // until it is handed on or closed, and the button says why
+            var leave = rowBtn('Leave team', function () { askLeave(org, m, done); });
+            if (m.role === 'owner') {
+                leave.disabled = true;
+                leave.title = t('The owner cannot leave. Close the organisation, or hand it on first.');
             }
+            act.appendChild(leave);
         } else if (may && m.role !== 'owner') {
             act.appendChild(rowBtn('Manage access', function () { askAccess(org, m, done); }));
+            act.appendChild(rowMenu(t('More for') + ' ' + (m.name || m.email), [
+                { label: 'Remove from team', glyph: 'out', bad: true, run: function () { askRemoveMember(org, m, done); } }
+            ]));
         }
         row.appendChild(act);
         return row;
@@ -4366,7 +4484,7 @@
 
     // One panel for both things you can do to a colleague, because they are one
     // decision: what they may do here, or nothing at all.
-    function askAccess(org, m, done) {
+    function askAccess(org, m, done, invited) {
         var mdl = modalShell('Manage access', m.name || m.email);
         var form = document.createElement('form');
         form.className = 'vpanel';
@@ -4403,11 +4521,14 @@
 
         var quit = document.createElement('div');
         quit.className = 'modal-quit';
-        var out = wideBtn('Take out of this organisation', 'quiet');
+        // an invitation is not a member yet: what comes out of it is the
+        // invitation, and the role is what it will give them on arrival
+        var out = wideBtn(invited ? 'Cancel invitation' : 'Take out of this organisation', 'quiet');
         out.classList.add('is-danger');
         out.addEventListener('click', function () {
             mdl.shut();
-            askRemoveMember(org, m, done);
+            if (invited) cancelInvite(org, m, done);
+            else askRemoveMember(org, m, done);
         });
         quit.appendChild(out);
         form.appendChild(quit);
@@ -4418,7 +4539,7 @@
             if (save.disabled) return;
             save.disabled = true;
             err.hidden = true;
-            fetch('/v1/orgs/' + encodeURIComponent(org.id) + '/members/' +
+            fetch('/v1/orgs/' + encodeURIComponent(org.id) + (invited ? '/invites/' : '/members/') +
                 encodeURIComponent(m.id) + '/role', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
