@@ -44,9 +44,12 @@ CREATE TABLE IF NOT EXISTS invites (
     expires_at  timestamptz NOT NULL,
     accepted_at timestamptz,
     revoked_at  timestamptz,
-    need_mfa    boolean     NOT NULL DEFAULT false,
-    same_domain boolean     NOT NULL DEFAULT false
+    need_mfa    boolean     NOT NULL DEFAULT false
 );
+-- invitations once had a second condition, the inviter's own domain. Which
+-- address somebody uses is their company's business, and the link opens only
+-- for the address it was sent to anyway, so the condition went
+ALTER TABLE invites DROP COLUMN IF EXISTS same_domain;
 CREATE INDEX IF NOT EXISTS invites_org_idx ON invites (org_id);
 -- one live invitation per address per organisation. a second one is the same
 -- request repeated, and two working links to the same place is one more than
@@ -93,10 +96,6 @@ function looksLikeEmail(value) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-function domainOf(email) {
-    return String(email || '').split('@').pop().toLowerCase();
-}
-
 function state(row) {
     if (row.accepted_at) return 'accepted';
     if (row.revoked_at) return 'withdrawn';
@@ -115,7 +114,6 @@ function shape(row) {
         expiresAt: row.expires_at,
         state: state(row),
         needMfa: Boolean(row.need_mfa),
-        sameDomain: Boolean(row.same_domain),
     };
 }
 
@@ -138,7 +136,7 @@ async function listFor(orgId) {
 
 // Send one. Returns the secret exactly once, to be put in a link and then
 // forgotten: it is not stored and cannot be read back.
-async function create(orgId, byUserId, { email, role, days, needMfa, sameDomain, domain }) {
+async function create(orgId, byUserId, { email, role, days, needMfa }) {
     if (!(await init())) return { ok: false, reason: 'unavailable' };
 
     const to = cleanEmail(email);
@@ -146,9 +144,6 @@ async function create(orgId, byUserId, { email, role, days, needMfa, sameDomain,
     if (ROLE_KEYS.indexOf(role) === -1) return { ok: false, reason: 'bad-role' };
 
     const keep = DAY_OPTIONS.indexOf(Number(days)) === -1 ? DEFAULT_DAYS : Number(days);
-    if (sameDomain && domain && domainOf(to) !== String(domain).toLowerCase()) {
-        return { ok: false, reason: 'wrong-domain' };
-    }
 
     const hash = db.blindIndex(to);
     if (!hash) return { ok: false, reason: 'unavailable' };
@@ -176,8 +171,8 @@ async function create(orgId, byUserId, { email, role, days, needMfa, sameDomain,
         const res = await db.query(
             `INSERT INTO invites
                 (org_id, email_hash, email_enc, role, token_hash, invited_by,
-                 expires_at, need_mfa, same_domain)
-             VALUES ($1, $2, $3, $4, $5, $6, now() + ($7 || ' days')::interval, $8, $9)
+                 expires_at, need_mfa)
+             VALUES ($1, $2, $3, $4, $5, $6, now() + ($7 || ' days')::interval, $8)
              ON CONFLICT (org_id, email_hash) WHERE accepted_at IS NULL AND revoked_at IS NULL
              DO UPDATE SET
                 role = EXCLUDED.role,
@@ -185,11 +180,10 @@ async function create(orgId, byUserId, { email, role, days, needMfa, sameDomain,
                 invited_by = EXCLUDED.invited_by,
                 created_at = now(),
                 expires_at = EXCLUDED.expires_at,
-                need_mfa = EXCLUDED.need_mfa,
-                same_domain = EXCLUDED.same_domain
+                need_mfa = EXCLUDED.need_mfa
              RETURNING *`,
             [Number(orgId), hash, db.seal('invite:' + hash, to), role, hashSecret(secret),
-             Number(byUserId), String(keep), Boolean(needMfa), Boolean(sameDomain)]
+             Number(byUserId), String(keep), Boolean(needMfa)]
         );
         return { ok: true, invite: shape(res.rows[0]), secret };
     } catch (err) {
@@ -331,5 +325,5 @@ async function accept(secret, me) {
 module.exports = {
     init, listFor, create, resend, setRole, revoke, read, accept,
     ROLE_KEYS, DAY_OPTIONS, DEFAULT_DAYS, PENDING_PER_ORG,
-    cleanEmail, looksLikeEmail, domainOf,
+    cleanEmail, looksLikeEmail,
 };

@@ -3010,7 +3010,6 @@ app.post('/v1/orgs/:id/invites', requireCloudflareOrigin, accountLimiter, async 
         'bad-email': 'That is not an address.',
         'bad-role': 'That is not a role.',
         'already-in': 'They are already in this organisation.',
-        'wrong-domain': 'That address is not on this organisation\'s domain.',
         'too-many': 'There are as many open invitations as this organisation may have.',
     };
     const out = [];
@@ -3020,8 +3019,6 @@ app.post('/v1/orgs/:id/invites', requireCloudflareOrigin, accountLimiter, async 
             role: b.role,
             days: b.days,
             needMfa: b.needMfa === true,
-            sameDomain: b.sameDomain === true,
-            domain: invites.domainOf(me.email),
         });
         if (!made.ok) {
             out.push({ email, ok: false, error: said[made.reason] || 'Could not send that one.' });
