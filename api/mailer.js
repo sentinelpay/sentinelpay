@@ -814,6 +814,13 @@ const PREVIEWS = {
     'two-factor-added': (lang) => twoFactorMessage({
         to: 'ana@primjer.hr', lang, change: 'added', when: '12.09.2026. 14:20 (UTC)', ip: '198.51.100.24', country: 'HR',
     }),
+    'two-factor-removed': (lang) => twoFactorMessage({
+        to: 'ana@primjer.hr', lang, change: 'removed', when: '12.09.2026. 14:20 (UTC)', ip: '198.51.100.24', country: 'HR',
+    }),
+    'invite': (lang) => inviteMessage({
+        to: 'ana@primjer.hr', lang, org: 'Primjer Exchange d.o.o.', role: 'Analyst', days: 7,
+        link: SITE + '/invite/example-invite-not-a-real-one',
+    }),
     'two-factor-off': (lang) => twoFactorMessage({
         to: 'ana@primjer.hr', lang, change: 'off', when: '12.09.2026. 14:20 (UTC)', ip: '198.51.100.24', country: 'HR',
     }),
@@ -845,6 +852,12 @@ const PREVIEWS = {
     }),
 };
 function previewNames() { return Object.keys(PREVIEWS); }
+// The example message itself, for sending a preview somewhere to be looked
+// at in a real inbox.
+function previewMessage(name, lang) {
+    const make = PREVIEWS[name];
+    return make ? make(['hr', 'de', 'en'].includes(lang) ? lang : 'en') : null;
+}
 function render(name, lang) {
     const make = PREVIEWS[name];
     if (!make) return null;
@@ -853,6 +866,6 @@ function render(name, lang) {
 }
 module.exports = {
     send, compose, sendTrialWelcome, sendSignupCode, sendResetLink, sendInvite,
-    render, previewNames, isConfigured, domainStatus, MAIL_FROM, MAIL_TO,
+    render, previewNames, previewMessage, isConfigured, domainStatus, MAIL_FROM, MAIL_TO,
     sendPasswordChanged, sendNewSignIn, sendTwoFactorChanged, sendAccountExists, sendTokenCreated,
 };
