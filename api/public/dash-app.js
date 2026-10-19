@@ -4099,8 +4099,7 @@
         sub.textContent = (i.state === 'expired'
             ? fill('Expired {date}', { date: whenText(i.expiresAt) })
             : fill('Open until {date}', { date: whenText(i.expiresAt) })) +
-            (i.needMfa ? '  ·  ' + t('Two-factor required') : '') +
-            (i.sameDomain ? '  ·  ' + t('Same domain only') : '');
+            (i.needMfa ? '  ·  ' + t('Two-factor required') : '');
         txt.appendChild(sub);
         who.appendChild(txt);
         row.appendChild(who);
@@ -4233,16 +4232,16 @@
     // mail is out, and a page at the end saying what actually happened.
     //
     // What it asks is ours rather than copied. A single sign on upsell is not
-    // something we sell. Two conditions are, and both exist because of what
-    // this product is: nobody should hold a compliance tool behind a password
-    // alone, and a colleague's personal address should not become a way in.
+    // something we sell. The one condition is, because of what this product
+    // is: nobody should hold a compliance tool behind a password alone. Which
+    // address they use is theirs and their company's business; the link only
+    // works for the address it was sent to either way.
     function askInvite(org, done) {
         var want = {
             emails: '',
             role: 'analyst',
             days: 7,
-            needMfa: true,
-            sameDomain: false
+            needMfa: true
         };
 
         var d = drawer('Invite members');
@@ -4302,10 +4301,7 @@
             guards.appendChild(tickRow('Only with two-factor on',
                 'They cannot join until their own account has a second step.',
                 want.needMfa, function (on) { want.needMfa = on; }));
-            guards.appendChild(tickRow('Only from this company’s domain',
-                'A personal address cannot accept, even if the mail is forwarded.',
-                want.sameDomain, function (on) { want.sameDomain = on; }));
-            d.body.appendChild(drwSection('Conditions',
+            d.body.appendChild(drwSection('Two-factor',
                 'Checked when they accept, not when you send.', guards, true));
 
             var no = document.createElement('button');
