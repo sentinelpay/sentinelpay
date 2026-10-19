@@ -488,44 +488,65 @@ function resetLinkMessage({ to, link, lang, minutes }) {
 }
 async function sendResetLink(opts) { return send(resetLinkMessage(opts)); }
 
+// An invitation names the person who sent it as well as the organisation:
+// a mail that says who is asking is one a stranger can trust, and the
+// address beside the name is what a name made to look like ours cannot fake.
 const INVITE_COPY = {
     en: {
-        subject: (o) => o + ' invited you to Sentinelpay',
+        subject: (o, n) => n + ' invited you to ' + o + ' on Sentinelpay',
         eyebrow: 'Invitation',
         title: (o) => 'Join ' + o + ' on Sentinelpay',
-        intro: (o, r, d) => 'You have been invited to join ' + o + ' as ' + r.toLowerCase() +
-            '. The link below is meant for this address only and stops working in ' + d + ' days.',
+        intro: (o, r, d, n) => n + ' invited you to join ' + o + ' as ' + r.toLowerCase() +
+            '. The link below works for this address only and stops working in ' + d + ' days.',
+        org: 'Organisation', role: 'Role', by: 'Invited by', ends: 'Link works for', days: (d) => d + ' days',
         label: 'Join the team',
         footnote: 'If you were not expecting this, ignore the mail. Nothing happens until the link is used, and it expires on its own.',
     },
     hr: {
-        subject: (o) => o + ' vas poziva na Sentinelpay',
+        subject: (o, n) => n + ' vas poziva u ' + o + ' na Sentinelpayu',
         eyebrow: 'Pozivnica',
         title: (o) => 'Pridružite se organizaciji ' + o,
-        intro: (o, r, d) => 'Pozvani ste u organizaciju ' + o + ' u ulozi ' + r.toLowerCase() +
-            '. Poveznica ispod namijenjena je samo ovoj adresi i prestaje vrijediti za ' + d + ' dana.',
+        intro: (o, r, d, n) => n + ' vas poziva u organizaciju ' + o + ' u ulozi ' + r.toLowerCase() +
+            '. Poveznica ispod vrijedi samo za ovu adresu i prestaje vrijediti za ' + d + ' dana.',
+        org: 'Organizacija', role: 'Uloga', by: 'Poziva', ends: 'Poveznica vrijedi', days: (d) => d + ' dana',
         label: 'Pridruži se timu',
         footnote: 'Ako ovo niste očekivali, zanemarite mail. Ništa se ne događa dok se poveznica ne iskoristi, a ona istječe sama od sebe.',
     },
     de: {
-        subject: (o) => o + ' lädt Sie zu Sentinelpay ein',
+        subject: (o, n) => n + ' hat Sie zu ' + o + ' auf Sentinelpay eingeladen',
         eyebrow: 'Einladung',
         title: (o) => 'Treten Sie ' + o + ' bei',
-        intro: (o, r, d) => 'Sie wurden eingeladen, ' + o + ' als ' + r.toLowerCase() +
+        intro: (o, r, d, n) => n + ' hat Sie eingeladen, ' + o + ' als ' + r +
             ' beizutreten. Der Link unten gilt nur für diese Adresse und verfällt in ' + d + ' Tagen.',
+        org: 'Organisation', role: 'Rolle', by: 'Eingeladen von', ends: 'Link gültig', days: (d) => d + ' Tage',
         label: 'Dem Team beitreten',
         footnote: 'Wenn Sie das nicht erwartet haben, ignorieren Sie die E-Mail. Es geschieht nichts, bis der Link benutzt wird, und er verfällt von selbst.',
     },
 };
-function inviteMessage({ to, link, lang, org, role, days }) {
+// the role in the language of the mail, by its key
+const ROLE_NAMES = {
+    en: { owner: 'Owner', admin: 'Admin', analyst: 'Analyst', viewer: 'Viewer' },
+    hr: { owner: 'Vlasnik', admin: 'Administrator', analyst: 'Analitičar', viewer: 'Promatrač' },
+    de: { owner: 'Inhaber', admin: 'Administrator', analyst: 'Analyst', viewer: 'Betrachter' },
+};
+function inviteMessage({ to, link, lang, org, role, days, inviter, inviterEmail }) {
     const copy = INVITE_COPY[lang] || INVITE_COPY.en;
+    const names = ROLE_NAMES[lang] || ROLE_NAMES.en;
+    role = names[String(role || '').toLowerCase()] || String(role || '');
+    const who = String(inviter || '').trim() || String(inviterEmail || '').trim() || 'A colleague';
     return {
         to: to,
         lang: lang,
-        subject: copy.subject(org),
+        subject: copy.subject(org, who),
         eyebrow: copy.eyebrow,
         title: copy.title(org),
-        intro: copy.intro(org, role, days),
+        intro: copy.intro(org, role, days, who),
+        pairs: [
+            [copy.by, inviterEmail && inviterEmail !== who ? who + ' (' + inviterEmail + ')' : who],
+            [copy.org, org],
+            [copy.role, role],
+            [copy.ends, copy.days(days)],
+        ],
         cta: { href: link, label: copy.label },
         footnote: copy.footnote,
     };
@@ -818,7 +839,8 @@ const PREVIEWS = {
         to: 'ana@primjer.hr', lang, change: 'removed', when: '12.09.2026. 14:20 (UTC)', ip: '198.51.100.24', country: 'HR',
     }),
     'invite': (lang) => inviteMessage({
-        to: 'ana@primjer.hr', lang, org: 'Primjer Exchange d.o.o.', role: 'Analyst', days: 7,
+        to: 'ivo@primjer.hr', lang, org: 'Primjer Exchange d.o.o.', role: 'analyst', days: 7,
+        inviter: 'Ana Anić', inviterEmail: 'ana@primjer.hr',
         link: SITE + '/invite/example-invite-not-a-real-one',
     }),
     'two-factor-off': (lang) => twoFactorMessage({

@@ -4239,48 +4239,117 @@
             }
         }
 
-        // What happened, one line each. Addresses are answered for separately,
-        // so a typo among five does not throw the other four away, and this is
-        // where that is made visible rather than averaged into one message.
+        // What happened, one address a row. Addresses are answered for
+        // separately, so a typo among five does not throw the other four
+        // away; this says, above them, what the whole of it came to, and
+        // where no mail could go, hands over the links to pass on instead.
         function stepSent(results) {
-            d.retitle('Invitations');
+            var good = results.filter(function (r) { return r.ok; });
+            var mailed = good.filter(function (r) { return r.mailed; });
+            var linkOnly = good.filter(function (r) { return !r.mailed; });
+            var failed = results.filter(function (r) { return !r.ok; });
+            var title = !good.length ? 'No invitations went out'
+                : failed.length ? 'Some invitations did not go'
+                    : mailed.length === results.length ? 'Invitations sent' : 'Invitations ready';
+            d.retitle(title);
             d.steps(2, 2, 'Sent');
 
+            // the panel's title says what it came to; under it, what the
+            // links that went out are good for
+            var wrap = document.createElement('section');
+            wrap.className = 'tkr-blk tkd';
+            var sub = document.createElement('p');
+            sub.className = 'tkd-p';
+            var span = want.days + ' ' + t(want.days === 1 ? 'day' : 'days');
+            sub.textContent = good.length
+                ? fill('Each link works only for the address it was made for, for {span}, and joins {org} as {role}.', {
+                    span: span, org: org.name || t('This organisation'), role: roleName(want.role)
+                })
+                : t('Nothing was sent. The reason is beside each address.');
+            wrap.appendChild(sub);
+
+            // where no mail could go out, the links are the invitation, so
+            // the page says so before it lists them
+            if (linkOnly.length) {
+                var warn = document.createElement('div');
+                warn.className = 'warn tkd-warn invr-warn';
+                var mark = document.createElement('span');
+                mark.className = 'warn-i';
+                mark.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                    '<path d="M12 8.5v5M12 16.9v.1"/>' +
+                    '<path d="M10.3 4.3 2.8 18a1.8 1.8 0 0 0 1.6 2.7h15.2A1.8 1.8 0 0 0 21.2 18L13.7 4.3a1.9 1.9 0 0 0-3.4 0Z"/></svg>';
+                warn.appendChild(mark);
+                var wt = document.createElement('div');
+                wt.className = 'warn-t';
+                var wh = document.createElement('div');
+                wh.className = 'warn-h';
+                wh.textContent = t('No email went out for these');
+                wt.appendChild(wh);
+                var wp = document.createElement('p');
+                wp.textContent = t('Copy each link and send it to that person yourself. A link only opens for the address it was made for, so it is safe to send by any channel you use with them.');
+                wt.appendChild(wp);
+                warn.appendChild(wt);
+                wrap.appendChild(warn);
+            }
+
             var list = document.createElement('div');
-            list.className = 'inv-out';
+            list.className = 'invr-list';
             results.forEach(function (r) {
-                var line = document.createElement('div');
-                line.className = 'inv-line' + (r.ok ? '' : ' is-bad');
-
-                var who = document.createElement('div');
-                who.className = 'inv-who';
-                who.textContent = r.email;
-                line.appendChild(who);
-
-                var what = document.createElement('div');
-                what.className = 'inv-what';
-                what.textContent = r.ok
-                    ? (r.mailed ? t('Sent') : t('Link ready, no mail went out'))
+                var row = document.createElement('div');
+                row.className = 'invr-row' + (r.ok ? '' : ' is-bad');
+                var av = document.createElement('span');
+                av.className = 'invr-av';
+                av.textContent = String(r.email || '?').charAt(0).toUpperCase();
+                row.appendChild(av);
+                var txt = document.createElement('div');
+                txt.className = 'invr-t';
+                var em = document.createElement('div');
+                em.className = 'invr-email';
+                em.textContent = r.email;
+                txt.appendChild(em);
+                var st = document.createElement('div');
+                st.className = 'invr-s';
+                st.textContent = r.ok
+                    ? t(r.mailed ? 'Emailed. They join once they open the link and sign in.' : 'Link ready to pass on.')
                     : r.error;
-                line.appendChild(what);
-
-                // the link is shown whether or not the mail went, because an
-                // environment with no mail configured can still invite somebody
-                // by passing it along, and because a mail that silently failed
-                // should not leave you with nothing
-                if (r.ok && r.link) line.appendChild(copyBtn(function () { return r.link; }));
-                list.appendChild(line);
+                txt.appendChild(st);
+                row.appendChild(txt);
+                row.appendChild(tag(t(!r.ok ? 'Not sent' : r.mailed ? 'Emailed' : 'Link only'),
+                    !r.ok ? 'off' : r.mailed ? 'ok' : 'mid'));
+                if (r.ok && r.link) {
+                    var cp = keyCopy(function () { return r.link; }, 'Copy link');
+                    cp.classList.add('invr-copy');
+                    row.appendChild(cp);
+                }
+                list.appendChild(row);
             });
-            var sec = drwSection('What happened', '', list);
-            sec.classList.add('is-full');
-            d.body.appendChild(sec);
+            wrap.appendChild(list);
+            d.body.appendChild(wrap);
 
+            var again = document.createElement('button');
+            again.type = 'button';
+            again.className = 'btn btn-flat';
+            again.textContent = t('Invite more');
+            again.addEventListener('click', function () {
+                // the ones that did not go are put back to be fixed
+                want.emails = failed.map(function (r) { return r.email; }).join(', ');
+                done();
+                d.show(stepAsk, true);
+            });
+            d.acts.appendChild(again);
             var fin = document.createElement('button');
             fin.type = 'button';
             fin.className = 'btn btn-primary';
             fin.textContent = t('Done');
             fin.addEventListener('click', function () { d.shut(); done(); });
             d.acts.appendChild(fin);
+        }
+
+        function roleName(key) {
+            var list = ORG_ROLES || [];
+            for (var i = 0; i < list.length; i++) if (list[i].key === key) return t(list[i].label);
+            return key;
         }
 
         d.show(stepAsk);

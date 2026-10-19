@@ -3944,6 +3944,36 @@ html.is-theming .btn {
 .inv-who { font-size: 0.85rem; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; }
 .inv-what { font-size: 0.78rem; color: var(--ink-4); }
 .inv-line.is-bad .inv-what { color: var(--danger); }
+
+/* what an invitation round came to: a row an address, its state, and the
+   link where no mail carried it */
+.invr-warn { margin-bottom: 0.9rem; }
+.invr-list { border: 1px solid var(--field-line); border-radius: 10px; background: var(--canvas); overflow: hidden; }
+.invr-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0.9rem; }
+.invr-row + .invr-row { border-top: 1px solid var(--line-2); }
+.invr-av {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: var(--sel-bg);
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--link);
+}
+.invr-row.is-bad .invr-av { background: var(--danger-bg); color: var(--danger); }
+.invr-t { flex: 1 1 auto; min-width: 0; }
+.invr-email { font-size: 0.85rem; font-weight: 600; color: var(--ink); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.invr-s { margin-top: 0.1rem; font-size: 0.76rem; line-height: 1.45; color: var(--ink-4); }
+.invr-row.is-bad .invr-s { color: var(--danger); }
+.mfa-key-copy.invr-copy { flex: none; margin-top: 0; padding: 0.4rem 0.65rem; }
+@media (max-width: 640px) {
+    .invr-row { flex-wrap: wrap; }
+    .invr-t { flex-basis: calc(100% - 2.75rem); }
+    .invr-row .tag { margin-left: 2.75rem; }
+}
 @media (max-width: 560px) {
     /* the address and the one thing you can do with it stay on the same line;
        what happened to it goes underneath, where there is room to say it in
