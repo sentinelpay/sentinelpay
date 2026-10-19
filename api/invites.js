@@ -125,7 +125,7 @@ async function listFor(orgId) {
     try {
         const res = await db.query(
             `SELECT * FROM invites
-              WHERE org_id = $1 AND accepted_at IS NULL
+              WHERE org_id = $1 AND accepted_at IS NULL AND revoked_at IS NULL
            ORDER BY created_at DESC LIMIT 100`,
             [Number(orgId)]
         );
@@ -194,6 +194,48 @@ async function create(orgId, byUserId, { email, role, days, needMfa, sameDomain,
         return { ok: true, invite: shape(res.rows[0]), secret };
     } catch (err) {
         console.error('[invites] could not create: ' + err.message);
+        return { ok: false, reason: 'unavailable' };
+    }
+}
+
+// Sent again: a new link with a new expiry, from whoever sends it this time.
+// The old link stops working the moment this one exists, so a resend is also
+// the way to close a link that went somewhere it should not have.
+async function resend(orgId, inviteId, byUserId, days) {
+    if (!(await init())) return { ok: false, reason: 'unavailable' };
+    const keep = DAY_OPTIONS.indexOf(Number(days)) === -1 ? DEFAULT_DAYS : Number(days);
+    const secret = newSecret();
+    try {
+        const res = await db.query(
+            `UPDATE invites SET token_hash = $3, invited_by = $4, created_at = now(),
+                    expires_at = now() + ($5 || ' days')::interval
+              WHERE id = $1 AND org_id = $2 AND accepted_at IS NULL AND revoked_at IS NULL
+          RETURNING *`,
+            [Number(inviteId), Number(orgId), hashSecret(secret), Number(byUserId), String(keep)]
+        );
+        if (!res.rowCount) return { ok: false, reason: 'missing' };
+        return { ok: true, invite: shape(res.rows[0]), secret, days: keep };
+    } catch (err) {
+        console.error('[invites] could not resend: ' + err.message);
+        return { ok: false, reason: 'unavailable' };
+    }
+}
+
+// The role someone will have, changed before they arrive.
+async function setRole(orgId, inviteId, role) {
+    if (!(await init())) return { ok: false, reason: 'unavailable' };
+    if (ROLE_KEYS.indexOf(role) === -1) return { ok: false, reason: 'bad-role' };
+    try {
+        const res = await db.query(
+            `UPDATE invites SET role = $3
+              WHERE id = $1 AND org_id = $2 AND accepted_at IS NULL AND revoked_at IS NULL
+          RETURNING *`,
+            [Number(inviteId), Number(orgId), role]
+        );
+        if (!res.rowCount) return { ok: false, reason: 'missing' };
+        return { ok: true, invite: shape(res.rows[0]) };
+    } catch (err) {
+        console.error('[invites] could not change the role: ' + err.message);
         return { ok: false, reason: 'unavailable' };
     }
 }
@@ -287,7 +329,7 @@ async function accept(secret, me) {
 }
 
 module.exports = {
-    init, listFor, create, revoke, read, accept,
+    init, listFor, create, resend, setRole, revoke, read, accept,
     ROLE_KEYS, DAY_OPTIONS, DEFAULT_DAYS, PENDING_PER_ORG,
     cleanEmail, looksLikeEmail, domainOf,
 };

@@ -1872,6 +1872,37 @@ button { font: inherit; color: inherit; }
 .tk-opt.is-bad, .tk-opt.is-bad svg { color: var(--danger); }
 .tk-opt.is-bad:hover { background: var(--danger-bg); }
 .tk-sep { height: 1px; margin: 0.3rem 0.2rem; background: var(--line-2); }
+/* a row menu drawn on the page itself, fixed under its button, so a table
+   that slides sideways does not clip it */
+.tk-pop.is-fixed {
+    position: fixed;
+    right: auto;
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    pointer-events: auto;
+    z-index: 60;
+    animation: tkPopIn 0.14s ease both;
+}
+@keyframes tkPopIn { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .tk-pop.is-fixed { animation: none; } }
+.tk-more.is-open { border-color: var(--pill-line-hover); color: var(--ink); background: var(--pill-bg-hover); }
+
+/* the team: an initial in a ring, the name with what is worth knowing about
+   them beside it, a tick or a cross for two-factor, and the actions */
+.mem-av { background: var(--surface); border: 1px solid var(--line); color: var(--ink-3); }
+.mem-av.is-asked { border-style: dashed; color: var(--ink-4); }
+.mem-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tr.is-team .tr-name { display: flex; align-items: center; gap: 0.45rem; min-width: 0; }
+.tr.is-team .tr-name .tag { margin-left: 0; flex: none; }
+.tag-you { color: var(--ink-3); border-color: var(--line); background: var(--surface); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.6rem; }
+.tag-inv { color: var(--link); border-color: var(--link-line); background: var(--sel-bg); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.6rem; }
+.tr.is-team .tag-off { text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.6rem; }
+.mem-yn { display: inline-flex; width: 16px; height: 16px; color: var(--ink-4); }
+.mem-yn svg { width: 100%; height: 100%; }
+.mem-yn.is-on { color: var(--risk-low); }
+.mem-act { gap: 0.45rem; align-items: center; }
+.mem-act .rowbtn:disabled { opacity: 0.5; cursor: not-allowed; }
 .card.tk-card { overflow: visible; }
 .tk-card > .th:first-child { border-radius: calc(var(--r-lg) - 1px) calc(var(--r-lg) - 1px) 0 0; }
 /* a revoked token is dimmed, its menu is not: a see-through menu over the
@@ -3592,7 +3623,17 @@ html.is-theming .btn {
 /* The team table. Same component as the tokens list, four columns instead of
    five: who they are, whether their own account has a second step, what they
    may do, and the one thing you can do about it. */
-.tr.is-team { grid-template-columns: minmax(0, 2fr) minmax(0, 0.8fr) minmax(0, 0.8fr) auto; }
+/* every row is its own grid, so the actions get a fixed width: with auto, a
+   row holding only Leave team sized its columns differently from one holding
+   Manage access and a menu, and the ticks drifted out from under their
+   heading */
+.tr.is-team { grid-template-columns: minmax(0, 2fr) minmax(0, 0.7fr) minmax(0, 0.8fr) 12rem; }
+.tr.is-team .tr-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* on a phone the table slides, and the member column keeps room for an
+   address and its pill instead of cutting the address after eight letters */
+@media (max-width: 720px) {
+    .tbl-slide > .tr.is-team { min-width: 44rem; grid-template-columns: minmax(17rem, 2fr) 6rem 6rem 12rem; }
+}
 .mem-who { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
 /* the middle columns are held in one box so a phone can lay them out as a
    line. On a wide screen the box is not there at all: its children are the
@@ -3917,10 +3958,7 @@ html.is-theming .btn {
 .bar .bar-end + .btn { margin-left: 0; }
 
 /* a person who has been asked but has not arrived */
-.tr.is-team.is-asked { background: var(--canvas); }
 .tr.is-team.is-asked .tr-name { color: var(--ink-2); }
-.mem-av.is-empty { background: var(--canvas); border: 1px dashed var(--line); color: var(--ink-4); }
-.mem-av.is-empty .nav-i { width: 15px; height: 15px; margin-right: 0; }
 
 /* several addresses at once, so the field is a box rather than a line */
 .drw-area {
