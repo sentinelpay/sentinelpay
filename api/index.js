@@ -502,7 +502,11 @@ function renderPage(file, req, forcedLang, state) {
         pageCache.set(file, entry);
     }
     const html = entry.html;
-    const lang = forcedLang || geoLang(req);
+    // a signed-in page starts in the account's language, so a new browser
+    // shows the dashboard in the language its mail comes in; a choice already
+    // made in this browser still wins, in the page's own script
+    const own = state && ['en', 'hr', 'de'].indexOf(state.lang) !== -1 ? state.lang : '';
+    const lang = forcedLang || own || geoLang(req);
     const copy = NOSCRIPT_COPY[lang] || NOSCRIPT_COPY.en;
     const url = helpSearchUrl(lang, browserName(req.headers['user-agent']));
     const notice =
@@ -838,7 +842,16 @@ app.get('/invite/:secret', async (req, res) => {
 
     if (!me) {
         setInviteCookie(res, secret);
-        return res.redirect(302, '/?signin=1&invited=1');
+        // the site opens in the language the mail was written in, unless this
+        // browser has already chosen one; signing up there gives the account
+        // that language, and with it every mail after this one
+        const saved = readCookie(req, 'sp-lang');
+        let lang = '';
+        if (!HOMEPAGE_LANGS.includes(saved)) {
+            const found = await invites.read(secret).catch(() => null);
+            if (found && HOMEPAGE_LANGS.includes(found.lang)) lang = found.lang;
+        }
+        return res.redirect(302, (lang ? '/' + lang : '/') + '?signin=1&invited=1');
     }
 
     // Signed in, the invitation waits in the cookie and the organisations page
@@ -2276,6 +2289,21 @@ app.post('/v1/account/password', requireCloudflareOrigin, accountLimiter, async 
     }
 });
 
+// The dashboard's language, kept on the account rather than only in the
+// browser: every mail to this account is written in it, so switching to
+// English in the menu also means the next code arrives in English.
+app.post('/v1/account/lang', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const lang = String((req.body || {}).lang || '');
+    const out = await accounts.setLang(me.userId, lang);
+    if (out.reason === 'bad-lang') return res.status(400).json({ error: 'That language is not offered.' });
+    if (!out.ok) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
+    res.set('Cache-Control', 'no-store, private');
+    if (me.lang !== lang) tellMe(me.userId, { topic: 'me' });
+    res.json({ ok: true, lang });
+});
+
 app.post('/v1/account/profile', requireCloudflareOrigin, accountLimiter, async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
@@ -3012,13 +3040,18 @@ app.post('/v1/orgs/:id/invites', requireCloudflareOrigin, accountLimiter, async 
         'already-in': 'They are already in this organisation.',
         'too-many': 'There are as many open invitations as this organisation may have.',
     };
+    // the language the sender picked, for people we know nothing about; the
+    // sender's own when they picked none
+    const chosen = HOMEPAGE_LANGS.includes(b.lang) ? b.lang : (me.lang || geoLang(req));
     const out = [];
     for (const email of wanted) {
+        const lang = (await accounts.langOfEmail(email)) || chosen;
         const made = await invites.create(mine.id, me.userId, {
             email,
             role: b.role,
             days: b.days,
             needMfa: b.needMfa === true,
+            lang,
         });
         if (!made.ok) {
             out.push({ email, ok: false, error: said[made.reason] || 'Could not send that one.' });
@@ -3029,7 +3062,8 @@ app.post('/v1/orgs/:id/invites', requireCloudflareOrigin, accountLimiter, async 
         // an environment with no mail configured can still invite somebody by
         // passing it along, and saying so beats a screen that looks like it
         // worked when nothing left the building.
-        const mailed = await mailInvite(req, me, mine, email, link, made.invite.role, Number(b.days) || invites.DEFAULT_DAYS);
+        const mailed = await mailInvite(req, me, mine, email, link, made.invite.role,
+            Number(b.days) || invites.DEFAULT_DAYS, lang);
         await accounts.audit('invite-sent', {
             actor: String(me.userId), subject: made.invite.id, ip: req.realIp,
             detail: made.invite.role + (mailed ? ' mailed' : ' link only'),
@@ -3044,14 +3078,16 @@ app.post('/v1/orgs/:id/invites', requireCloudflareOrigin, accountLimiter, async 
     res.json({ ok: out.some((r) => r.ok), results: out });
 });
 
-// The invitation mail, from the person sending it, in their language. True
-// when it went; false when there is no mail here or it failed, and then the
-// link is handed back to be passed on.
-async function mailInvite(req, me, mine, email, link, role, days) {
+// The invitation mail, from the person sending it, in the language of the
+// person it is for: their account's, when they have one, since that is the
+// one they chose; otherwise the one picked when it was sent. True when it
+// went; false when there is no mail here or it failed, and then the link is
+// handed back to be passed on.
+async function mailInvite(req, me, mine, email, link, role, days, lang) {
     if (!mailer.isConfigured()) return false;
     try {
         await mailer.sendInvite({
-            to: email, link, lang: me.lang || geoLang(req), org: mine.name,
+            to: email, link, lang: (await accounts.langOfEmail(email)) || lang || me.lang || 'en', org: mine.name,
             role, days, inviter: me.name || '', inviterEmail: me.email || '',
         });
         return true;
@@ -3074,7 +3110,7 @@ app.post('/v1/orgs/:id/invites/:inviteId/resend', requireCloudflareOrigin, accou
     if (out.reason === 'missing') return res.status(404).json({ error: 'That invitation is no longer open.' });
     if (!out.ok) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
     const link = SITE_URL + '/invite/' + out.secret;
-    const mailed = await mailInvite(req, me, mine, out.invite.email, link, out.invite.role, out.days);
+    const mailed = await mailInvite(req, me, mine, out.invite.email, link, out.invite.role, out.days, out.lang);
     await accounts.audit('invite-resent', {
         actor: String(me.userId), subject: out.invite.id, ip: req.realIp,
         detail: out.invite.role + (mailed ? ' mailed' : ' link only'),
@@ -3579,6 +3615,8 @@ async function entitlementFor(req, me, known) {
     return {
         name: me.name,
         email: me.email,
+        // the language mail to this account is written in
+        lang: me.lang || 'en',
         since: me.since,
         // the security screen says whether a second step is on, so it has to be
         // told rather than left to guess and say no

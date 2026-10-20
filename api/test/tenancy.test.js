@@ -222,6 +222,36 @@ test('a resent invitation kills the old link, and its role changes in its own or
     assert.ok(!(await invites.listFor(orgId)).some((i) => String(i.id) === String(id)), 'a cancelled invitation is still listed');
 });
 
+// Mail is written in the language the account chose, and an invitation to
+// somebody with an account goes in theirs, whatever the sender picked. The
+// team page is never told which language that was: it would say the address
+// has an account.
+test('an account keeps its language, and an invitation follows the one it is for', live, async () => {
+    const accounts = require('../accounts');
+    const invites = require('../invites');
+    await orgs.init();
+    const owner = await aPerson('lng');
+    assert.deepStrictEqual(await accounts.setLang(owner, 'de'), { ok: true, lang: 'de' });
+    assert.strictEqual((await accounts.setLang(owner, 'fr')).reason, 'bad-lang');
+    assert.strictEqual((await accounts.readUser(owner)).lang, 'de');
+
+    const email = (await db.query('SELECT email_enc, email_hash FROM users WHERE id = $1', [owner])).rows[0];
+    const address = db.open('signup-email:' + email.email_hash, email.email_enc);
+    assert.strictEqual(await accounts.langOfEmail(address), 'de');
+    assert.strictEqual(await accounts.langOfEmail(address.toUpperCase()), 'de', 'the lookup cares about case');
+    assert.strictEqual(await accounts.langOfEmail('nobody' + Date.now() + '@primjer.hr'), '');
+
+    const orgId = (await orgs.create(owner, 'Lang ' + Date.now(), 'localhost', 'owner')).org.id;
+    const made = await invites.create(orgId, owner, { email: 'lng' + Date.now() + '@primjer.hr', role: 'viewer', days: 7, lang: 'hr' });
+    assert.ok(made.ok, made.reason);
+    assert.strictEqual((await invites.read(made.secret)).lang, 'hr');
+    const again = await invites.resend(orgId, made.invite.id, owner, 7);
+    assert.strictEqual(again.lang, 'hr', 'a resend forgot the language');
+    const listed = (await invites.listFor(orgId)).find((i) => String(i.id) === String(made.invite.id));
+    assert.ok(listed && !('lang' in listed), 'the team page is told the language');
+    assert.ok(!('lang' in made.invite));
+});
+
 // The audit logs page reads an account's own trail a page at a time. Lines
 // written in the same instant are neither read twice nor stepped over, a
 // group filter keeps only its kinds, and another account's lines never show.

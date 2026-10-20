@@ -50,6 +50,8 @@ CREATE TABLE IF NOT EXISTS invites (
 -- address somebody uses is their company's business, and the link opens only
 -- for the address it was sent to anyway, so the condition went
 ALTER TABLE invites DROP COLUMN IF EXISTS same_domain;
+-- the language the mail went out in, so the link opens the site in it too
+ALTER TABLE invites ADD COLUMN IF NOT EXISTS lang text;
 CREATE INDEX IF NOT EXISTS invites_org_idx ON invites (org_id);
 -- one live invitation per address per organisation. a second one is the same
 -- request repeated, and two working links to the same place is one more than
@@ -136,7 +138,15 @@ async function listFor(orgId) {
 
 // Send one. Returns the secret exactly once, to be put in a link and then
 // forgotten: it is not stored and cannot be read back.
-async function create(orgId, byUserId, { email, role, days, needMfa }) {
+// The language the mail went out in. Kept out of shape(), which the team page
+// is sent: for somebody with an account it is the one they chose, and an
+// admin who could see it would learn that the address has an account here.
+const LANGS = ['en', 'hr', 'de'];
+function langOf(row) {
+    return LANGS.indexOf(row.lang) === -1 ? '' : row.lang;
+}
+
+async function create(orgId, byUserId, { email, role, days, needMfa, lang }) {
     if (!(await init())) return { ok: false, reason: 'unavailable' };
 
     const to = cleanEmail(email);
@@ -171,8 +181,8 @@ async function create(orgId, byUserId, { email, role, days, needMfa }) {
         const res = await db.query(
             `INSERT INTO invites
                 (org_id, email_hash, email_enc, role, token_hash, invited_by,
-                 expires_at, need_mfa)
-             VALUES ($1, $2, $3, $4, $5, $6, now() + ($7 || ' days')::interval, $8)
+                 expires_at, need_mfa, lang)
+             VALUES ($1, $2, $3, $4, $5, $6, now() + ($7 || ' days')::interval, $8, $9)
              ON CONFLICT (org_id, email_hash) WHERE accepted_at IS NULL AND revoked_at IS NULL
              DO UPDATE SET
                 role = EXCLUDED.role,
@@ -180,10 +190,11 @@ async function create(orgId, byUserId, { email, role, days, needMfa }) {
                 invited_by = EXCLUDED.invited_by,
                 created_at = now(),
                 expires_at = EXCLUDED.expires_at,
-                need_mfa = EXCLUDED.need_mfa
+                need_mfa = EXCLUDED.need_mfa,
+                lang = EXCLUDED.lang
              RETURNING *`,
             [Number(orgId), hash, db.seal('invite:' + hash, to), role, hashSecret(secret),
-             Number(byUserId), String(keep), Boolean(needMfa)]
+             Number(byUserId), String(keep), Boolean(needMfa), LANGS.indexOf(lang) === -1 ? null : lang]
         );
         return { ok: true, invite: shape(res.rows[0]), secret };
     } catch (err) {
@@ -208,7 +219,7 @@ async function resend(orgId, inviteId, byUserId, days) {
             [Number(inviteId), Number(orgId), hashSecret(secret), Number(byUserId), String(keep)]
         );
         if (!res.rowCount) return { ok: false, reason: 'missing' };
-        return { ok: true, invite: shape(res.rows[0]), secret, days: keep };
+        return { ok: true, invite: shape(res.rows[0]), secret, days: keep, lang: langOf(res.rows[0]) };
     } catch (err) {
         console.error('[invites] could not resend: ' + err.message);
         return { ok: false, reason: 'unavailable' };
@@ -267,6 +278,7 @@ async function read(secret) {
         const row = res.rows[0];
         return {
             ...shape(row),
+            lang: langOf(row),
             orgId: String(row.org_id),
             orgName: row.org_name || '',
             orgSlug: row.org_slug,
