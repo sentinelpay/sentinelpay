@@ -3965,6 +3965,15 @@
             card.appendChild(foot);
         }
 
+        // A row coming apart is still in the list until it has gone, and the
+        // change that took it out reaches this page live while it is going.
+        // Drawing then would put the finished list down under the pieces and
+        // snap the gap shut, so the list waits for it.
+        function drawWhenStill() {
+            if (card.querySelector('.is-dust')) { setTimeout(drawWhenStill, 120); return; }
+            draw();
+        }
+
         function load() {
             fetch('/v1/orgs/' + encodeURIComponent(org.id) + '/members', { credentials: 'same-origin' })
                 .then(function (r) {
@@ -3981,7 +3990,7 @@
                         .then(function (r) { return r.ok ? r.json() : null; })
                         .then(function (j2) {
                             asked = (j2 && j2.rows) || [];
-                            draw();
+                            drawWhenStill();
                         });
                 })
                 .catch(function () {
@@ -4141,7 +4150,7 @@
             act.appendChild(rowMenu(t('More for') + ' ' + i.email, [
                 { label: 'Resend invitation', glyph: 'resend', run: function () { resendInvite(org, i, done); } },
                 null,
-                { label: 'Cancel invitation', glyph: 'bin', bad: true, run: function () { cancelInvite(org, i, done); } }
+                { label: 'Cancel invitation', glyph: 'bin', bad: true, run: function () { cancelInvite(org, i, done, row); } }
             ]));
         }
         row.appendChild(act);
@@ -4178,11 +4187,14 @@
             .catch(function (err) { toast(err.message, 'bad'); });
     }
 
-    function cancelInvite(org, i, done) {
+    // The row comes apart once the server has said it is gone, not before:
+    // a cancel that failed leaves the row where it was.
+    function cancelInvite(org, i, done, row) {
         postJson('/v1/orgs/' + encodeURIComponent(org.id) + '/invites/' + encodeURIComponent(i.id) + '/revoke', {})
             .then(function () {
                 toast(fill('Invitation to {email} cancelled', { email: i.email }), 'good');
-                done();
+                if (row) dissolve(row, done);
+                else done();
             })
             .catch(function (err) { toast(err.message, 'bad'); });
     }
@@ -4241,7 +4253,9 @@
         } else if (may && m.role !== 'owner') {
             act.appendChild(rowBtn('Manage access', function () { askAccess(org, m, done); }));
             act.appendChild(rowMenu(t('More for') + ' ' + (m.name || m.email), [
-                { label: 'Remove from team', glyph: 'out', bad: true, run: function () { askRemoveMember(org, m, done); } }
+                { label: 'Remove from team', glyph: 'out', bad: true, run: function () {
+                    askRemoveMember(org, m, function () { dissolve(row, done); });
+                } }
             ]));
         }
         row.appendChild(act);
@@ -12696,22 +12710,44 @@
         layer.style.width = box.width + 'px';
         layer.style.height = box.height + 'px';
 
+        // A table row takes its columns from a rule about its container, and a
+        // tile hangs off the page, so the columns are carried over as they
+        // were: otherwise a row on a phone comes apart laid out as on a laptop.
+        // It has no colour of its own, so only what is written on it comes
+        // apart and the card stays whole underneath.
+        var cs = window.getComputedStyle(el);
+        var cols = cs.display === 'grid' ? cs.gridTemplateColumns : '';
+        // A row in a table that slides sideways is partly out of sight. That
+        // part stays out of sight, is not built at all, and the sweep runs
+        // across the part that can be seen, so it starts where the eye is.
+        var seeL = 0;
+        var seeR = box.width;
+        var view = el.closest ? el.closest('.tbl-slide') : null;
+        if (view) {
+            var vb = view.getBoundingClientRect();
+            seeL = Math.max(0, vb.left - box.left);
+            seeR = Math.min(box.width, vb.right - box.left);
+            layer.style.clipPath = 'inset(-160px ' + (box.width - seeR) + 'px -60px ' + seeL + 'px)';
+        }
+
         var tw = box.width / DUST_COLS;
         var th = box.height / DUST_ROWS;
         for (var y = 0; y < DUST_ROWS; y++) {
             for (var x = 0; x < DUST_COLS; x++) {
+                if ((x + 1) * tw < seeL || x * tw > seeR) continue;
                 var tile = el.cloneNode(true);
                 tile.removeAttribute('id');
                 tile.className = el.className + ' dust-bit';
                 tile.style.width = box.width + 'px';
                 tile.style.height = box.height + 'px';
+                if (cols) tile.style.gridTemplateColumns = cols;
                 tile.style.clipPath = 'inset(' + (y * th) + 'px ' +
                     (box.width - (x + 1) * tw) + 'px ' +
                     (box.height - (y + 1) * th) + 'px ' + (x * tw) + 'px)';
                 // Upward, with only a little lean. Throwing the pieces sideways
                 // read as a row sliding off; rising and shrinking reads as one
                 // coming apart, which is what happened.
-                var lean = x / DUST_COLS;
+                var lean = Math.min(1, Math.max(0, ((x + 0.5) * tw - seeL) / Math.max(1, seeR - seeL)));
                 tile.style.setProperty('--dx', (lean * 10 + Math.random() * 7 - 2).toFixed(1) + 'px');
                 // the higher the tile started, the further it gets
                 var up = 14 + (DUST_ROWS - y) * 5 + Math.random() * 14;
