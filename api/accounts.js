@@ -738,6 +738,34 @@ async function setName(userId, name) {
     return { ok: true, name };
 }
 
+// The language this account reads the dashboard in, and so the one every
+// mail to it is written in.
+const LANGS = ['en', 'hr', 'de'];
+async function setLang(userId, lang) {
+    if (!db.available()) return { ok: false, reason: 'unavailable' };
+    if (LANGS.indexOf(lang) === -1) return { ok: false, reason: 'bad-lang' };
+    const res = await db.query('UPDATE users SET lang = $2 WHERE id = $1 RETURNING id', [Number(userId), lang]);
+    if (!res.rowCount) return { ok: false, reason: 'no-user' };
+    return { ok: true, lang };
+}
+
+// The language of whoever holds this address, or '' when nobody does. For
+// mail sent to somebody by another person, so it reaches them in their own
+// language; it is never shown, since it would say who has an account here.
+async function langOfEmail(email) {
+    if (!db.available()) return '';
+    const emailHash = db.blindIndex(String(email || '').trim().toLowerCase());
+    if (!emailHash) return '';
+    try {
+        const res = await db.query('SELECT lang FROM users WHERE email_hash = $1', [emailHash]);
+        const lang = res.rowCount ? String(res.rows[0].lang || '') : '';
+        return LANGS.indexOf(lang) === -1 ? '' : lang;
+    } catch (err) {
+        console.error('[accounts] language lookup failed: ' + err.message);
+        return '';
+    }
+}
+
 async function signIn(email, password) {
     if (!(await init())) return { ok: false, reason: 'unavailable' };
     const emailHash = db.blindIndex(email);
@@ -1567,4 +1595,4 @@ module.exports = {
     readUser,
     hashPassword, verifyPassword,
     signIn, startSession, readSession, endSession,
-    CODE_TTL_MIN, CODE_MAX_SENDS, CODE_RESEND_WAIT_S, setName };
+    CODE_TTL_MIN, CODE_MAX_SENDS, CODE_RESEND_WAIT_S, setName, setLang, langOfEmail };

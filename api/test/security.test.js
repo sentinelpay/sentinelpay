@@ -592,6 +592,17 @@ test('an invitation is joined on a click, not by opening its link', () => {
     assert.match(invites, /ON CONFLICT \(org_id, user_id\) DO NOTHING/, 'accepting can change a role somebody already has');
 });
 
+// The account's language is changed only by the account itself, behind the
+// same checks as the rest of the account, and only to one we write mail in.
+test('the language is set by the account, to one we have', () => {
+    const index = require('fs').readFileSync(require('path').join(__dirname, '..', 'index.js'), 'utf8');
+    const at = index.indexOf("app.post('/v1/account/lang', requireCloudflareOrigin, accountLimiter,");
+    assert.ok(at !== -1, 'the language route is not behind the origin check and the limit');
+    const body = index.slice(at, index.indexOf('\n});', at));
+    assert.match(body, /requireSession\(req, res\)/);
+    assert.match(body, /accounts\.setLang\(me\.userId,/, 'the language can be set for another account');
+});
+
 // Sending an invitation again and changing the role it gives are an admin's
 // to do, behind the same cross-site check and limit as inviting.
 test('resending an invitation and changing its role need an admin', () => {

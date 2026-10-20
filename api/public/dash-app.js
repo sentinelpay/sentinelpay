@@ -840,7 +840,7 @@
             var now = i18n.lang();
             i18n.langs().forEach(function (l) {
                 main.appendChild(acctPick(l.name, l.code === now, null, null,
-                    function () { i18n.setLang(l.code); }));
+                    function () { pickLang(l.code); }));
             });
         }
 
@@ -1668,6 +1668,27 @@
                 setSideMode(v);
                 toast(t('Appearance saved'), 'good');
             })
+        }));
+        frag.appendChild(card);
+        return frag;
+    }
+
+    // The one language setting: the dashboard and every mail we send you.
+    function viewLanguage() {
+        var frag = document.createDocumentFragment();
+        var i18n = window.SentinelI18n;
+        if (!i18n || !i18n.langs) return frag;
+        frag.appendChild(sectionTitle('Language'));
+        frag.appendChild(sectionNote('The dashboard is shown in it, and every email we send you is written in it.'));
+        var card = document.createElement('div');
+        card.className = 'card';
+        card.appendChild(fieldRow({
+            label: 'Dashboard and email',
+            hint: 'Changing it reloads the page.',
+            id: 'pf-lang',
+            control: selectBox('pf-lang', [{
+                options: i18n.langs().map(function (l) { return { value: l.code, label: l.name }; })
+            }], i18n.lang(), function (v) { pickLang(v); })
         }));
         frag.appendChild(card);
         return frag;
@@ -4241,7 +4262,8 @@
             emails: '',
             role: 'analyst',
             days: 7,
-            needMfa: true
+            needMfa: true,
+            lang: (window.SentinelI18n && window.SentinelI18n.lang()) || 'en'
         };
 
         var d = drawer('Invite members');
@@ -4286,6 +4308,17 @@
             box.value = want.emails;
             d.body.appendChild(drwSection('Email addresses',
                 'One or several, separated by commas. Each gets its own link.', box, true));
+
+            // whoever already has an account gets it in the language they
+            // chose for it, whatever is picked here
+            var langs = (window.SentinelI18n && window.SentinelI18n.langs) ? window.SentinelI18n.langs() : [];
+            if (langs.length) {
+                var langBox = selectBox('inv-lang', [{
+                    options: langs.map(function (l) { return { value: l.code, label: l.name }; })
+                }], want.lang, function (v) { want.lang = v; });
+                d.body.appendChild(drwSection('Email language',
+                    'Anyone who already has an account gets it in their own language.', langBox, true));
+            }
 
             var daysBox = selectBox('inv-days', [{
                 options: [1, 3, 7, 14, 30].map(function (n) {
@@ -14082,6 +14115,7 @@
         card.appendChild(foot);
         page.appendChild(card);
         page.appendChild(viewAppearance());
+        page.appendChild(viewLanguage());
         page.appendChild(viewTimezone(me));
         page.appendChild(viewShortcuts());
         page.appendChild(viewDashPrefs());
@@ -14195,6 +14229,30 @@
         });
         // EventSource reconnects on its own, so an error is not ours to handle:
         // stepping in would only race with it.
+    }
+
+    // The language belongs to the account, not only to this browser: the mail it is
+    // sent is written in it. A pick is saved before the page reloads into it,
+    // and failing to save does not stop the page from changing.
+    function pickLang(code) {
+        var i18n = window.SentinelI18n;
+        if (!i18n || !i18n.setLang) return;
+        postJson('/v1/account/lang', { lang: code })
+            .catch(function () {  })
+            .then(function () { i18n.setLang(code); });
+    }
+    // A page that opened in a language the account does not have was chosen
+    // in this browser, on the site or here before this was kept: the account
+    // takes it, once, so the mail matches what is on the screen.
+    var langKept = false;
+    function keepLang(me) {
+        var i18n = window.SentinelI18n;
+        if (langKept || !me || !me.lang || !i18n || !i18n.lang) return;
+        langKept = true;
+        var now = i18n.lang();
+        if (now !== me.lang && /^(en|hr|de)$/.test(now)) {
+            postJson('/v1/account/lang', { lang: now }).catch(function () {  });
+        }
     }
 
     // The shell: the name in the corner, the plan badge, the organisation. Asked
@@ -14463,6 +14521,7 @@
             if (me.org && !onOrgs()) markPicked();
             if (!sameMe(cached, me)) paintMe(me);
             writeMe(me);
+            keepLang(me);
         })
         .catch(function () {  });
     }
