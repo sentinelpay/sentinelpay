@@ -252,6 +252,37 @@ test('an account keeps its language, and an invitation follows the one it is for
     assert.ok(!('lang' in made.invite));
 });
 
+// Only the person an invitation is for can turn it down. Once they have, it
+// cannot be accepted, the team page still shows it with the answer, and
+// sending it again opens it again.
+test('an invitation is declined by the person it is for, and opened again by a resend', live, async () => {
+    const invites = require('../invites');
+    const accounts = require('../accounts');
+    await orgs.init();
+    const owner = await aPerson('dcl');
+    const orgId = (await orgs.create(owner, 'Decline ' + Date.now(), 'localhost', 'owner')).org.id;
+    const guest = await aPerson('gst');
+    const g = await accounts.readUser(guest);
+    const made = await invites.create(orgId, owner, { email: g.email, role: 'viewer', days: 7 });
+    assert.ok(made.ok, made.reason);
+
+    const stranger = { userId: owner, email: 'someone-else@primjer.hr', totpOn: false, mfa: false };
+    assert.strictEqual((await invites.decline(made.secret, stranger)).reason, 'not-yours');
+
+    const me = { userId: guest, email: g.email, totpOn: false, mfa: false };
+    assert.ok((await invites.decline(made.secret, me)).ok);
+    assert.strictEqual((await invites.read(made.secret)).state, 'declined');
+    assert.strictEqual((await invites.accept(made.secret, me)).reason, 'declined', 'a declined invitation was accepted');
+    assert.strictEqual((await invites.decline(made.secret, me)).reason, 'declined');
+    const row = (await invites.listFor(orgId)).find((i) => String(i.id) === String(made.invite.id));
+    assert.ok(row && row.state === 'declined' && row.declinedAt, 'the team page lost the answer');
+
+    const again = await invites.resend(orgId, made.invite.id, owner, 7);
+    assert.ok(again.ok, again.reason);
+    assert.strictEqual((await invites.read(again.secret)).state, 'sent');
+    assert.ok((await invites.accept(again.secret, me)).ok);
+});
+
 // The audit logs page reads an account's own trail a page at a time. Lines
 // written in the same instant are neither read twice nor stepped over, a
 // group filter keeps only its kinds, and another account's lines never show.

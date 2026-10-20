@@ -580,16 +580,35 @@ test('an owner of an organisation others work in cannot delete their account out
 });
 
 // Opening an invitation link joins nothing. The link can be put in front of
-// a signed-in person from any page; the organisations page asks, and the
-// join is a POST the cross-site check covers.
+// a signed-in person from any page; the invitation page asks, and the join
+// is a POST the cross-site check covers.
 test('an invitation is joined on a click, not by opening its link', () => {
     const index = require('fs').readFileSync(require('path').join(__dirname, '..', 'index.js'), 'utf8');
-    const get = index.slice(index.indexOf("app.get('/invite/:secret'"), index.indexOf("const ORGS_JOIN"));
+    const get = index.slice(index.indexOf("app.get('/invite/:secret'"), index.indexOf("const INVITE_KEEP_MAX"));
+    assert.ok(get.length > 200, 'could not find the invitation routes');
+    // and the address bar is cleared of the secret on the first response
+    assert.match(get, /res\.redirect\(302, '\/invite'\)/);
     assert.doesNotMatch(get, /invites\.accept|setOrgCookie/, 'opening the link joins the organisation');
     assert.match(index, /app\.post\('\/v1\/invites\/accept', requireCloudflareOrigin, accountLimiter,/);
     const invites = require('fs').readFileSync(require('path').join(__dirname, '..', 'invites.js'), 'utf8');
-    assert.match(invites, /WHERE id = \$1 AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now\(\)/);
+    assert.match(invites, /WHERE id = \$1 AND accepted_at IS NULL AND revoked_at IS NULL AND declined_at IS NULL\s+AND expires_at > now\(\)/);
     assert.match(invites, /ON CONFLICT \(org_id, user_id\) DO NOTHING/, 'accepting can change a role somebody already has');
+});
+
+// The invitation page is told about the invitation in this browser only, and
+// a no counts only from the person it was for: anyone else holding the link
+// just puts it down.
+test('the invitation page reads its own cookie, and only the invitee can say no', () => {
+    const index = require('fs').readFileSync(require('path').join(__dirname, '..', 'index.js'), 'utf8');
+    const cur = index.slice(index.indexOf("app.get('/v1/invites/current'"), index.indexOf('async function mailInviteAnswer'));
+    assert.match(cur, /invites\.read\(readCookie\(req, INVITE_COOKIE\)\)/);
+    assert.doesNotMatch(cur, /req\.(query|params|body)/, 'the page can ask about an invitation by naming it');
+    const dec = index.slice(index.indexOf("app.post('/v1/invites/decline'"), index.indexOf("app.post('/v1/invites/accept'"));
+    assert.match(dec, /requireCloudflareOrigin, accountLimiter/);
+    assert.match(dec, /answer !== 'no'/);
+    const invites = require('fs').readFileSync(require('path').join(__dirname, '..', 'invites.js'), 'utf8');
+    const fn = invites.slice(invites.indexOf('async function decline'), invites.indexOf('module.exports'));
+    assert.match(fn, /cleanEmail\(me\.email\) !== cleanEmail\(found\.email\)/, 'anyone with the link can decline it');
 });
 
 // The account's language is changed only by the account itself, behind the

@@ -581,8 +581,12 @@ test('a figure against a limit draws a bar, a plain count its line', () => {
 // code to scan or a key to type, and taken off on the password. No recovery
 // codes, so while there is one app the page asks for a second.
 test('the security page names, adds and removes authenticator apps', () => {
-    const page = body('function viewSecurity(me) {', 24000);
+    const page = body('function viewSecurity(me) {', 28000);
     assert.match(page, /sectionTitle\('Two-factor authentication'\)/);
+    // sent here by an invitation that asks for two-factor, the page says so
+    // above the section and the first app takes the reader back to it
+    assert.match(page, /INVITE_2FA\.test\(location\.search\)/);
+    assert.match(SRC, /if \(INVITE_2FA\.test\(location\.search\)\) \{\s+setTimeout\(function \(\) \{ location\.assign\('\/invite'\); \}/);
     // the devices the account is signed in on, each with a way out, and
     // all the others at once
     assert.match(page, /fetch\('\/v1\/account\/sessions'/);

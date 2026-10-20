@@ -1067,6 +1067,11 @@ button { font: inherit; color: inherit; }
 .notice-t { min-width: 0; }
 .notice-h { font-size: 0.86rem; font-weight: 650; color: var(--ink); }
 .notice-t p { margin: 0.25rem 0 0; font-size: 0.82rem; line-height: 1.6; color: var(--ink-3); }
+/* a notice placed between two sections, as on Security when an invitation
+   sent the reader there, keeps the gap a section heading would */
+.card + .notice { margin-top: 2rem; }
+.notice-a { display: inline-block; margin-top: 0.45rem; font-size: 0.82rem; font-weight: 600; color: var(--link); text-decoration: none; }
+.notice-a:hover { text-decoration: underline; }
 
 .bar { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.9rem; }
 /* the action sits at the far edge of the column, where the sentence above it
