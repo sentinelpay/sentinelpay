@@ -4122,11 +4122,16 @@
         em.className = 'mem-name';
         em.textContent = i.email;
         nm.appendChild(em);
-        nm.appendChild(tag(t(i.state === 'expired' ? 'Expired' : 'Invited'), i.state === 'expired' ? 'off' : 'inv'));
+        // what became of it, in the pill: still open, run out, or turned down
+        // by the person it was for
+        var said = { expired: 'Expired', declined: 'Declined' }[i.state] || 'Invited';
+        nm.appendChild(tag(t(said), i.state === 'expired' || i.state === 'declined' ? 'off' : 'inv'));
         txt.appendChild(nm);
         var sub = document.createElement('div');
         sub.className = 'tr-sub';
-        sub.textContent = (i.state === 'expired'
+        sub.textContent = (i.state === 'declined'
+            ? fill('Declined {date}', { date: whenText(i.declinedAt) })
+            : i.state === 'expired'
             ? fill('Expired {date}', { date: whenText(i.expiresAt) })
             : fill('Open until {date}', { date: whenText(i.expiresAt) })) +
             (i.needMfa ? '  ·  ' + t('Two-factor required') : '');
@@ -10452,6 +10457,9 @@
     // Security. Both of these addresses used to be in the rail with nothing
     // behind them, which is the thing I keep taking out of other people's
     // navigation, so they have screens now rather than a rename.
+    // the Security page opened from an invitation that needs two-factor
+    var INVITE_2FA = /[?&]invite=1(&|$)/;
+
     function viewSecurity(me) {
         var page = document.createElement('div');
         page.className = 'pg';
@@ -10696,6 +10704,36 @@
             });
         });
         paintRules();
+
+        // Sent here by an invitation that asks for two-factor: the page says
+        // why, right above the section it is about, and opens on it. Adding
+        // the app takes the reader back to the invitation on its own.
+        if (INVITE_2FA.test(location.search)) {
+            var forInv = document.createElement('div');
+            forInv.className = 'notice';
+            forInv.innerHTML = '<svg class="notice-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                '<path d="M12 3.5 5 6.2v5.3c0 4.3 2.9 7.6 7 9 4.1-1.4 7-4.7 7-9V6.2Z"/><path d="m9 12 2.1 2.1L15.2 10"/></svg>';
+            var forInvT = document.createElement('div');
+            forInvT.className = 'notice-t';
+            var forInvH = document.createElement('div');
+            forInvH.className = 'notice-h';
+            forInvH.textContent = t('Two-factor first, then your invitation');
+            forInvT.appendChild(forInvH);
+            var forInvP = document.createElement('p');
+            forInvP.textContent = t('The organisation that invited you asks every member to use two-factor. Add an authenticator app below, and you go straight back to the invitation to accept it.');
+            forInvT.appendChild(forInvP);
+            var forInvA = document.createElement('a');
+            forInvA.href = '/invite';
+            forInvA.className = 'notice-a';
+            forInvA.textContent = t('Back to the invitation');
+            forInvT.appendChild(forInvA);
+            forInv.appendChild(forInvT);
+            page.appendChild(forInv);
+            setTimeout(function () {
+                if (forInv.isConnected) forInv.scrollIntoView({ block: 'start' });
+            }, 250);
+        }
 
         // ---- two-factor: every authenticator app on the account in a row of
         // its own, up to three, and the way to add one at the head of the
@@ -11332,6 +11370,10 @@
                 postJson('/v1/account/totp/confirm', { code: value, name: appName }).then(function () {
                     m.shut();
                     toast(t('Authenticator app added'), 'good');
+                    if (INVITE_2FA.test(location.search)) {
+                        setTimeout(function () { location.assign('/invite'); }, 900);
+                        return;
+                    }
                     if (done) done();
                 }).catch(function (err) {
                     sending = false;
@@ -11549,6 +11591,9 @@
         'invite-sent': 'Invitation sent',
         'invite-withdrawn': 'Invitation withdrawn',
         'invite-accepted': 'Invitation accepted',
+        'invite-declined': 'Invitation declined',
+        'invite-resent': 'Invitation sent again',
+        'invite-role-changed': 'Invitation role changed',
         'project-created': 'Project created',
         'project-renamed': 'Project renamed',
         'project-archived': 'Project archived',
@@ -14465,62 +14510,25 @@
             .catch(function () { return true; });
     }
 
-    // An invitation followed from a link is joined on a click here, never by
-    // opening the link: a link can be put in front of anyone, signed in, from
-    // any page, and joining an organisation is not something that happens to
-    // you. The server holds which invitation it was; this only asks.
-    function askJoin() {
-        if (!/[?&]join=1(&|$)/.test(location.search)) return;
-        try { history.replaceState(null, '', location.pathname); } catch (e) {  }
-        fetch('/v1/invites/pending', { credentials: 'same-origin' })
-            .then(function (r) { return r.ok ? r.json() : null; })
-            .then(function (inv) {
-                if (!inv || !inv.org) return;
-                var role = inv.role;
-                for (var i = 0; i < ORG_ROLES.length; i++) {
-                    if (ORG_ROLES[i].key === inv.role) role = t(ORG_ROLES[i].label);
-                }
-                // the line under the title is already in the reader's language,
-                // and an organisation's name is in no dictionary, so it passes
-                // through the shell as it is
-                var m = modalShell('Join an organisation',
-                    fill('You were invited to join {org} as {role}.', { org: inv.org, role: role }));
-                var acts = document.createElement('div');
-                acts.className = 'mfa-form';
-                var msg = document.createElement('div');
-                msg.className = 'modal-msg';
-                acts.appendChild(msg);
-                var yes = wideBtn('Join', 'cta');
-                acts.appendChild(yes);
-                var quit = document.createElement('div');
-                quit.className = 'modal-quit';
-                var no = wideBtn('Not now', 'quiet');
-                no.addEventListener('click', function () {
-                    postJson('/v1/invites/decline', {}).catch(function () {  });
-                    m.shut();
-                });
-                quit.appendChild(no);
-                acts.appendChild(quit);
-                m.body.appendChild(acts);
-                yes.addEventListener('click', function () {
-                    yes.disabled = true;
-                    msg.textContent = '';
-                    msg.className = 'modal-msg';
-                    postJson('/v1/invites/accept', {}).then(function (out) {
-                        location.assign(orgHome(out.slug));
-                    }).catch(function (err) {
-                        yes.disabled = false;
-                        msg.textContent = err.message;
-                        msg.className = 'modal-msg is-bad';
-                    });
-                });
-            })
-            .catch(function () {  });
+    // Somebody who has just accepted an invitation arrives here from its page,
+    // and is told once where they are and as what.
+    function sayJoined() {
+        var got = null;
+        try {
+            got = JSON.parse(sessionStorage.getItem('sp-joined') || 'null');
+            sessionStorage.removeItem('sp-joined');
+        } catch (e) { got = null; }
+        if (!got || !got.org) return;
+        var role = got.role;
+        for (var i = 0; i < ORG_ROLES.length; i++) {
+            if (ORG_ROLES[i].key === got.role) role = t(ORG_ROLES[i].label);
+        }
+        toast(fill('You joined {org} as {role}.', { org: got.org, role: role }), 'good');
     }
 
     settleOrg().then(function (allowed) {
         if (allowed) boot();
-        if (allowed) askJoin();
+        if (allowed) sayJoined();
     });
 
     function boot() {

@@ -1,0 +1,414 @@
+// The page an invitation opens on.
+//
+// One card, drawn from /v1/invites/current: what the invitation is, who sent
+// it, and the one next step that belongs to whoever is holding the link. The
+// signing in and the signing up are the site's own, opened with the address
+// filled in and fixed, so the code, the second step and a forgotten password
+// all work the way they do everywhere else. When either finishes it goes to
+// /dashboard, and the server sends anyone with an open invitation back here,
+// so the page picks up where it was.
+(function () {
+    'use strict';
+
+    var body = document.getElementById('ivp-body');
+    if (!body) return;
+
+    function t(s) {
+        var i = window.SentinelI18n;
+        return i && i.t ? i.t(s) : s;
+    }
+    function fill(key, vals) {
+        return t(key).replace(/\{(\w+)\}/g, function (m, k) {
+            return Object.prototype.hasOwnProperty.call(vals, k) ? String(vals[k]) : m;
+        });
+    }
+    function lang() {
+        var i = window.SentinelI18n;
+        var l = i && i.lang ? i.lang() : 'en';
+        return /^(en|hr|de)$/.test(l) ? l : 'en';
+    }
+    function el(tag, cls, text) {
+        var n = document.createElement(tag);
+        if (cls) n.className = cls;
+        if (text != null) n.textContent = text;
+        return n;
+    }
+    function dateOf(iso) {
+        var d = new Date(iso);
+        if (isNaN(d.getTime())) return '';
+        try {
+            return new Intl.DateTimeFormat({ en: 'en-GB', hr: 'hr-HR', de: 'de-DE' }[lang()],
+                { day: 'numeric', month: 'long', year: 'numeric' }).format(d);
+        } catch (err) {
+            return d.toISOString().slice(0, 10);
+        }
+    }
+    var ROLES = { owner: 'Owner', admin: 'Admin', analyst: 'Analyst', viewer: 'Viewer' };
+    function roleName(key) { return t(ROLES[key] || key || ''); }
+
+    var ICON = {
+        info: '<path d="M12 10.5v6M12 7.4v.1"/><circle cx="12" cy="12" r="9"/>',
+        shield: '<path d="M12 3.5 5 6.2v5.3c0 4.3 2.9 7.6 7 9 4.1-1.4 7-4.7 7-9V6.2Z"/><path d="m9 12 2.1 2.1L15.2 10"/>',
+        swap: '<circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.7-3 2.9-4.6 5.5-4.6s4.8 1.6 5.5 4.6"/><path d="m16 8 2-2 2 2M18 6v7"/>',
+        clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+        x: '<circle cx="12" cy="12" r="8.5"/><path d="m9.2 9.2 5.6 5.6M14.8 9.2l-5.6 5.6"/>',
+        check: '<circle cx="12" cy="12" r="8.5"/><path d="m8.6 12.2 2.4 2.4 4.4-4.6"/>',
+        link: '<path d="M10 14a4 4 0 0 0 5.7 0l2.8-2.8a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-2.8 2.8a4 4 0 0 0 5.7 5.7l1-1"/>'
+    };
+    function svg(name, cls) {
+        var s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        s.setAttribute('viewBox', '0 0 24 24');
+        s.setAttribute('fill', 'none');
+        s.setAttribute('stroke', 'currentColor');
+        s.setAttribute('stroke-width', '1.9');
+        s.setAttribute('stroke-linecap', 'round');
+        s.setAttribute('stroke-linejoin', 'round');
+        s.setAttribute('aria-hidden', 'true');
+        if (cls) s.setAttribute('class', cls);
+        s.innerHTML = ICON[name] || '';
+        return s;
+    }
+
+    function post(url, data) {
+        return fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify(data || {})
+        }).then(function (r) {
+            return r.json().catch(function () { return {}; }).then(function (j) {
+                if (!r.ok) {
+                    var e = new Error(j && j.error ? t(j.error) : t('That did not work. Please try again.'));
+                    e.status = r.status;
+                    throw e;
+                }
+                return j;
+            });
+        });
+    }
+
+    var now = null;
+
+    function load() {
+        body.setAttribute('aria-busy', 'true');
+        return fetch('/v1/invites/current', { credentials: 'same-origin' })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (d) {
+                now = d || { state: 'missing', me: null };
+                draw();
+            })
+            .catch(function () {
+                now = { state: 'missing', me: null, broken: true };
+                draw();
+            });
+    }
+
+    // ---- the parts every state is built from
+
+    function start(markText, markIcon, tone) {
+        body.textContent = '';
+        body.removeAttribute('aria-busy');
+        var wrap = el('div', 'ivp-in');
+        var mark = el('div', 'ivp-mark' + (tone ? ' is-' + tone : ''));
+        mark.setAttribute('aria-hidden', 'true');
+        if (markIcon) mark.appendChild(svg(markIcon));
+        else mark.textContent = markText;
+        wrap.appendChild(mark);
+        body.appendChild(wrap);
+        return wrap;
+    }
+    function head(wrap, eyebrow, title, line) {
+        if (eyebrow) wrap.appendChild(el('p', 'ivp-eyebrow', eyebrow));
+        var h = el('h1', 'ivp-h', title);
+        wrap.appendChild(h);
+        if (line) wrap.appendChild(el('p', 'ivp-p', line));
+    }
+    function note(wrap, icon, title, text, tone) {
+        var n = el('div', 'ivp-note' + (tone ? ' is-' + tone : ''));
+        n.appendChild(svg(icon, 'ivp-note-i'));
+        var tx = el('div', 'ivp-note-t');
+        if (title) tx.appendChild(el('span', 'ivp-note-h', title));
+        tx.appendChild(document.createTextNode(text));
+        n.appendChild(tx);
+        wrap.appendChild(n);
+        return n;
+    }
+    function acts(wrap) {
+        var a = el('div', 'ivp-acts');
+        wrap.appendChild(a);
+        return a;
+    }
+    function primary(box, label, run, bad) {
+        var b = el('button', 'lp-demo-submit' + (bad ? ' is-bad' : ''), label);
+        b.type = 'button';
+        b.addEventListener('click', function () { run(b); });
+        box.appendChild(b);
+        return b;
+    }
+    function secondary(box, label, run, bad) {
+        var b = el('button', 'ivp-btn2' + (bad ? ' is-bad' : ''), label);
+        b.type = 'button';
+        b.addEventListener('click', function () { run(b); });
+        box.appendChild(b);
+        return b;
+    }
+    function errLine(wrap) {
+        var p = el('p', 'ivp-err');
+        p.setAttribute('role', 'alert');
+        p.hidden = true;
+        wrap.appendChild(p);
+        return {
+            say: function (text) { p.textContent = text || ''; p.hidden = !text; }
+        };
+    }
+    function busy(btn, on, label) {
+        if (!btn) return;
+        if (on) {
+            btn.dataset.label = btn.textContent;
+            btn.textContent = label || t('One moment…');
+            btn.disabled = true;
+        } else {
+            btn.textContent = btn.dataset.label || btn.textContent;
+            btn.disabled = false;
+        }
+    }
+    function home(box, me) {
+        var a = el('a', 'ivp-btn2', t(me ? 'Go to your dashboard' : 'Go to Sentinelpay'));
+        a.href = me ? '/dashboard' : '/';
+        box.appendChild(a);
+    }
+    function inviterName(d) {
+        var by = d.inviter || {};
+        return String(by.name || '').trim() || String(by.email || '').trim();
+    }
+
+    function signOut() {
+        return fetch('/v1/auth/logout', { method: 'POST', credentials: 'same-origin' })
+            .catch(function () {  })
+            .then(function () { return load(); });
+    }
+
+    // ---- the invitation itself, still open
+
+    function drawOpen(d) {
+        var org = (d.org && d.org.name) || t('this organisation');
+        var who = inviterName(d);
+        var wrap = start(String(org).trim().charAt(0).toUpperCase() || '?');
+        head(wrap, t('Invitation'), fill('Join {org}', { org: org }),
+            who ? fill('{name} invited you to join as {role}.', { name: who, role: roleName(d.role) })
+                : fill('You were invited to join as {role}.', { role: roleName(d.role) }));
+
+        var facts = el('dl', 'ivp-facts');
+        function fact(label, value, small) {
+            var r = el('div', 'ivp-fact');
+            r.appendChild(el('dt', null, label));
+            var dd = el('dd', null, value);
+            if (small) dd.appendChild(el('small', null, small));
+            r.appendChild(dd);
+            facts.appendChild(r);
+        }
+        if (d.inviter) {
+            var byName = String(d.inviter.name || '').trim();
+            fact(t('Invited by'), byName || d.inviter.email, byName && d.inviter.email ? d.inviter.email : '');
+        }
+        fact(t('Role'), roleName(d.role));
+        fact(t('For'), d.email);
+        fact(t('Open until'), dateOf(d.expiresAt));
+        if (d.needMfa) fact(t('Two-factor'), t('Required to join'));
+        wrap.appendChild(facts);
+
+        var me = d.me;
+        if (!me) return drawSignedOut(wrap, d, org);
+        if (!me.matches) return drawSomeoneElse(wrap, d);
+
+        var owes = d.needMfa && !(me.totpOn && me.mfa);
+        var err;
+        var box;
+        if (owes && !me.totpOn) {
+            note(wrap, 'shield', fill('{org} asks every member to use two-factor', { org: org }),
+                t('Add an authenticator app to your account first. It takes about a minute, and you come straight back here to accept.'));
+            box = acts(wrap);
+            primary(box, t('Set up two-factor'), function () {
+                location.assign('/account/security?invite=1');
+            });
+            secondary(box, t('Decline'), function () { askDecline(d, org, who); });
+        } else if (owes) {
+            note(wrap, 'shield', t('Sign in again with a code'),
+                fill('This session was opened without a code from your app, and {org} asks for one. Sign in again and you come straight back here.', { org: org }));
+            box = acts(wrap);
+            primary(box, t('Sign in again'), function (b) { busy(b, true); signOut(); });
+            secondary(box, t('Decline'), function () { askDecline(d, org, who); });
+        } else {
+            box = acts(wrap);
+            primary(box, t('Accept invitation'), function (b) { accept(b, err); });
+            secondary(box, t('Decline'), function () { askDecline(d, org, who); });
+        }
+        err = errLine(wrap);
+        signedInAs(wrap, me);
+    }
+
+    function signedInAs(wrap, me) {
+        var p = el('p', 'ivp-who');
+        p.appendChild(document.createTextNode(t('Signed in as') + ' '));
+        p.appendChild(el('b', null, me.email));
+        p.appendChild(document.createTextNode('. '));
+        var out = el('button', 'ivp-link', t('Not you?'));
+        out.type = 'button';
+        out.addEventListener('click', function () { signOut(); });
+        p.appendChild(out);
+        wrap.appendChild(p);
+    }
+
+    // Signed out: both ways in, always, with the address filled in. Which one
+    // fits is not said here, because saying it would tell whoever holds the
+    // link whether that address has an account.
+    function drawSignedOut(wrap, d, org) {
+        note(wrap, 'info', null,
+            fill('The invitation opens for {email} only. Create an account with that address, or sign in if you already have one.', { email: d.email }));
+        var box = acts(wrap);
+        primary(box, t('Create account and join'), function () { openAuth('create', d, org); });
+        secondary(box, t('I already have an account'), function () { openAuth('login', d, org); });
+    }
+
+    function openAuth(mode, d, org) {
+        var M = window.SentinelAuthModal;
+        if (!M) { location.assign('/?signin=' + (mode === 'create' ? 'create' : '1')); return; }
+        M.open(mode);
+        ['sp-authm-email', 'sp-authm-email2'].forEach(function (id) {
+            var i = document.getElementById(id);
+            if (!i) return;
+            i.value = d.email;
+            i.readOnly = true;
+            i.setAttribute('aria-readonly', 'true');
+            i.classList.add('ivp-locked');
+        });
+        var pIn = document.getElementById('sp-authm-p-in');
+        var pUp = document.getElementById('sp-authm-p-up');
+        if (pIn) pIn.textContent = fill('Sign in to accept the invitation to {org}.', { org: org });
+        if (pUp) pUp.textContent = fill('Create your account to join {org}.', { org: org });
+        if (mode !== 'create') {
+            setTimeout(function () {
+                var pass = document.getElementById('sp-authm-pass');
+                if (pass) pass.focus({ preventScroll: true });
+            }, 80);
+        }
+    }
+
+    function drawSomeoneElse(wrap, d) {
+        note(wrap, 'swap', t('Signed in with a different address'),
+            fill('This invitation is for {email}. You are signed in as {me}.', { email: d.email, me: d.me.email }),
+            'warn');
+        var box = acts(wrap);
+        primary(box, t('Sign out and continue'), function (b) { busy(b, true); signOut(); });
+        secondary(box, t('Not now'), function (b) {
+            busy(b, true);
+            post('/v1/invites/decline', {}).catch(function () {  }).then(function () {
+                location.assign('/dashboard');
+            });
+        });
+    }
+
+    function accept(btn, err) {
+        busy(btn, true, t('Joining…'));
+        if (err) err.say('');
+        post('/v1/invites/accept', {}).then(function (out) {
+            try {
+                sessionStorage.setItem('sp-joined', JSON.stringify({ org: out.org || '', role: out.role || '' }));
+            } catch (e) {  }
+            location.assign('/dashboard/org/' + encodeURIComponent(out.slug));
+        }).catch(function (e) {
+            busy(btn, false);
+            if (err) err.say(e.message);
+            // whatever changed on the way (cancelled, run out) is drawn as it is now
+            if (e.status === 409) setTimeout(load, 1800);
+        });
+    }
+
+    // Declining closes the invitation and tells whoever sent it, so it is
+    // asked once more, on the card, rather than done on the first click.
+    function askDecline(d, org, who) {
+        var wrap = start(null, 'x', 'off');
+        head(wrap, null, fill('Decline the invitation to {org}?', { org: org }),
+            who ? fill('{name} will be told, and the link stops working. They can send you a new one later.', { name: who })
+                : t('Whoever sent it will be told, and the link stops working.'));
+        var box = acts(wrap);
+        var err;
+        primary(box, t('Decline invitation'), function (b) {
+            busy(b, true);
+            err.say('');
+            post('/v1/invites/decline', { answer: 'no' }).then(function (out) {
+                if (!out.declined) { load(); return; }
+                var done = start(null, 'check', 'off');
+                head(done, null, t('Invitation declined'),
+                    who ? fill('{name} has been told. Nothing else happens.', { name: who }) : t('Nothing else happens.'));
+                home(acts(done), d.me);
+            }).catch(function (e) {
+                busy(b, false);
+                err.say(e.message);
+            });
+        }, true);
+        secondary(box, t('Back'), function () { draw(); });
+        err = errLine(wrap);
+    }
+
+    // ---- an invitation that can no longer be used, and why
+
+    function drawClosed(d) {
+        var who = d.state === 'missing' ? '' : inviterName(d);
+        var org = (d.org && d.org.name) || '';
+        var me = d.me;
+        var wrap;
+        var box;
+        if (d.state === 'accepted' && me && me.member && d.org && d.org.slug) {
+            wrap = start(null, 'check');
+            head(wrap, null, fill('You are already in {org}', { org: org }),
+                t('This invitation has been used, and the organisation is open to you.'));
+            box = acts(wrap);
+            var open = el('a', 'lp-demo-submit', fill('Open {org}', { org: org }));
+            open.href = '/dashboard/org/' + encodeURIComponent(d.org.slug);
+            open.style.display = 'block';
+            open.style.textAlign = 'center';
+            open.style.textDecoration = 'none';
+            box.appendChild(open);
+            return;
+        }
+        if (d.state === 'expired') {
+            wrap = start(null, 'clock', 'warn');
+            head(wrap, null, t('This invitation has expired'),
+                (who ? fill('It was open until {date}. Ask {name} to send you a new one.', { date: dateOf(d.expiresAt), name: who })
+                     : fill('It was open until {date}. Ask whoever invited you to send a new one.', { date: dateOf(d.expiresAt) })));
+        } else if (d.state === 'withdrawn') {
+            wrap = start(null, 'x', 'off');
+            head(wrap, null, t('This invitation was cancelled'),
+                who ? fill('Somebody in {org} cancelled it. If you still need access, ask {name}.', { org: org, name: who })
+                    : fill('Somebody in {org} cancelled it.', { org: org }));
+        } else if (d.state === 'declined') {
+            wrap = start(null, 'x', 'off');
+            head(wrap, null, t('You declined this invitation'),
+                who ? fill('If you change your mind, ask {name} to send it again.', { name: who })
+                    : t('If you change your mind, ask for it to be sent again.'));
+        } else if (d.state === 'accepted') {
+            wrap = start(null, 'check', 'off');
+            head(wrap, null, t('This invitation has been used'),
+                who ? fill('Each invitation opens once. Ask {name} for a new one if you need access.', { name: who })
+                    : t('Each invitation opens once. Ask for a new one if you need access.'));
+        } else {
+            wrap = start(null, 'link', 'off');
+            head(wrap, null, t(d.broken ? 'The invitation could not be read' : 'This invitation link does not work'),
+                t(d.broken ? 'Something went wrong on our side. Reload the page to try again.'
+                           : 'Open the link from the email again, all of it. If it still does not work, ask whoever invited you to send a new one.'));
+        }
+        home(acts(wrap), me);
+    }
+
+    function draw() {
+        if (!now) return;
+        if (now.state === 'sent') drawOpen(now);
+        else drawClosed(now);
+    }
+
+    // after every script on the page has run, so the words are in the
+    // reader's language from the first frame
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', load);
+    else load();
+})();

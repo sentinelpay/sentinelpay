@@ -553,6 +553,70 @@ function inviteMessage({ to, link, lang, org, role, days, inviter, inviterEmail 
 }
 async function sendInvite(opts) { return send(inviteMessage(opts)); }
 
+// The answer, to whoever sent the invitation: somebody accepted and is in, or
+// turned it down. Without it the only way to know was to keep the team page
+// open and watch a row.
+const ANSWER_COPY = {
+    en: {
+        subject: { accepted: (n, o) => n + ' joined ' + o, declined: (n, o) => n + ' declined your invitation to ' + o },
+        eyebrow: 'Team',
+        title: { accepted: (n) => n + ' accepted your invitation', declined: (n) => n + ' declined your invitation' },
+        intro: {
+            accepted: (n, o, r) => n + ' is now in ' + o + ' as ' + r.toLowerCase() + ', and can work there from now on.',
+            declined: (n, o) => n + ' turned down the invitation to ' + o + '. Nothing changed in the organisation. You can send it again from the team page.',
+        },
+        who: 'Member', whoDeclined: 'Invited', org: 'Organisation', role: 'Role',
+        label: 'Open the team',
+        footnote: 'You get this because you sent the invitation.',
+    },
+    hr: {
+        subject: { accepted: (n, o) => n + ' je sada u organizaciji ' + o, declined: (n, o) => 'Pozivnica u ' + o + ' je odbijena' },
+        eyebrow: 'Tim',
+        title: { accepted: () => 'Pozivnica je prihvaćena', declined: () => 'Pozivnica je odbijena' },
+        intro: {
+            accepted: (n, o, r) => n + ' je sada u organizaciji ' + o + ' u ulozi ' + r.toLowerCase() + ' i od sada može raditi u njoj.',
+            declined: (n, o) => n + ' se ne želi pridružiti organizaciji ' + o + '. U organizaciji se ništa nije promijenilo. Pozivnicu možete ponovno poslati sa stranice tima.',
+        },
+        who: 'Član', whoDeclined: 'Pozvana osoba', org: 'Organizacija', role: 'Uloga',
+        label: 'Otvori tim',
+        footnote: 'Ovo dobivate jer ste vi poslali pozivnicu.',
+    },
+    de: {
+        subject: { accepted: (n, o) => n + ' ist ' + o + ' beigetreten', declined: (n, o) => n + ' hat Ihre Einladung zu ' + o + ' abgelehnt' },
+        eyebrow: 'Team',
+        title: { accepted: (n) => n + ' hat Ihre Einladung angenommen', declined: (n) => n + ' hat Ihre Einladung abgelehnt' },
+        intro: {
+            accepted: (n, o, r) => n + ' ist jetzt als ' + r + ' in ' + o + ' und kann ab sofort dort arbeiten.',
+            declined: (n, o) => n + ' hat die Einladung zu ' + o + ' abgelehnt. In der Organisation hat sich nichts geändert. Sie können sie auf der Teamseite erneut senden.',
+        },
+        who: 'Mitglied', whoDeclined: 'Eingeladen', org: 'Organisation', role: 'Rolle',
+        label: 'Team öffnen',
+        footnote: 'Sie erhalten diese E-Mail, weil Sie die Einladung gesendet haben.',
+    },
+};
+function inviteAnswerMessage({ to, lang, answer, name, email, org, role, link }) {
+    const copy = ANSWER_COPY[lang] || ANSWER_COPY.en;
+    const said = answer === 'declined' ? 'declined' : 'accepted';
+    role = (ROLE_NAMES[lang] || ROLE_NAMES.en)[String(role || '').toLowerCase()] || String(role || '');
+    const who = String(name || '').trim() || String(email || '').trim();
+    return {
+        to: to,
+        lang: lang,
+        subject: copy.subject[said](who, org),
+        eyebrow: copy.eyebrow,
+        title: copy.title[said](who),
+        intro: copy.intro[said](who, org, role),
+        pairs: [
+            [said === 'declined' ? copy.whoDeclined : copy.who, email && email !== who ? who + ' (' + email + ')' : who],
+            [copy.org, org],
+            [copy.role, role],
+        ],
+        cta: link ? { href: link, label: copy.label } : null,
+        footnote: copy.footnote,
+    };
+}
+async function sendInviteAnswer(opts) { return send(inviteAnswerMessage(opts)); }
+
 const CHANGED_COPY = {
     en: {
         subject: 'Your Sentinelpay password was changed',
@@ -843,6 +907,14 @@ const PREVIEWS = {
         inviter: 'Ana Anić', inviterEmail: 'ana@primjer.hr',
         link: SITE + '/invite/example-invite-not-a-real-one',
     }),
+    'invite-accepted': (lang) => inviteAnswerMessage({
+        to: 'ana@primjer.hr', lang, answer: 'accepted', name: 'Ivo Ivić', email: 'ivo@primjer.hr',
+        org: 'Primjer Exchange d.o.o.', role: 'analyst', link: SITE + '/dashboard/org/primjer/team',
+    }),
+    'invite-declined': (lang) => inviteAnswerMessage({
+        to: 'ana@primjer.hr', lang, answer: 'declined', name: 'Ivo Ivić', email: 'ivo@primjer.hr',
+        org: 'Primjer Exchange d.o.o.', role: 'analyst', link: SITE + '/dashboard/org/primjer/team',
+    }),
     'two-factor-off': (lang) => twoFactorMessage({
         to: 'ana@primjer.hr', lang, change: 'off', when: '12.09.2026. 14:20 (UTC)', ip: '198.51.100.24', country: 'HR',
     }),
@@ -887,7 +959,7 @@ function render(name, lang) {
     return Object.assign({ name: name, lang: lang }, compose(msg));
 }
 module.exports = {
-    send, compose, sendTrialWelcome, sendSignupCode, sendResetLink, sendInvite,
+    send, compose, sendTrialWelcome, sendSignupCode, sendResetLink, sendInvite, sendInviteAnswer,
     render, previewNames, previewMessage, isConfigured, domainStatus, MAIL_FROM, MAIL_TO,
     sendPasswordChanged, sendNewSignIn, sendTwoFactorChanged, sendAccountExists, sendTokenCreated,
 };

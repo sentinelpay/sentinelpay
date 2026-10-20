@@ -726,8 +726,15 @@ app.get(['/dashboard', '/dashboard/*splat'], async (req, res, next) => {
     // somebody who followed an invitation, signed in, and landed here. the
     // journey is finished where it was going rather than left half done with a
     // cookie nobody looks at again.
+    // Only one still open: an invitation that ran out, was cancelled or was
+    // answered is let go here, or every visit would bounce off a page saying
+    // so.
     const pending = readCookie(req, INVITE_COOKIE);
-    if (pending && !req.query.join) return res.redirect(302, ORGS_JOIN);
+    if (pending) {
+        const waiting = await invites.read(pending).catch(() => null);
+        if (waiting && waiting.state === 'sent') return res.redirect(302, '/invite');
+        res.clearCookie(INVITE_COOKIE, { path: '/' });
+    }
 
     if (DASHBOARD_NEXT) {
         // A plan is not what lets you in, it is what lets you work. Choosing
@@ -822,9 +829,8 @@ app.get('/choose-a-plan', async (req, res) => {
 // Where an invitation link lands.
 //
 // The secret is in the path, so it must not survive the visit: whatever happens
-// the browser is sent somewhere without it, and the page that renders never
-// carries it. Signed out, the sign in modal opens first and the link is kept in
-// a short lived cookie so coming back completes the journey.
+// the browser is sent on to /invite without it, and the page that renders never
+// carries it.
 const INVITE_COOKIE = 'sp_invite';
 
 app.get('/invite/:secret', async (req, res) => {
@@ -833,38 +839,42 @@ app.get('/invite/:secret', async (req, res) => {
     res.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
 
     const secret = String(req.params.secret || '');
-    let me = null;
-    try {
-        me = await currentUser(req);
-    } catch (err) {
-        me = null;
-    }
 
-    if (!me) {
-        setInviteCookie(res, secret);
-        // the site opens in the language the mail was written in, unless this
-        // browser has already chosen one; signing up there gives the account
-        // that language, and with it every mail after this one
-        const saved = readCookie(req, 'sp-lang');
-        let lang = '';
-        if (!HOMEPAGE_LANGS.includes(saved)) {
-            const found = await invites.read(secret).catch(() => null);
-            if (found && HOMEPAGE_LANGS.includes(found.lang)) lang = found.lang;
-        }
-        return res.redirect(302, (lang ? '/' + lang : '/') + '?signin=1&invited=1');
-    }
-
-    // Signed in, the invitation waits in the cookie and the organisations page
-    // asks whether to join it. Nothing is joined by opening a link.
-    setInviteCookie(res, secret);
-    return res.redirect(302, ORGS_JOIN);
+    // The secret goes into a cookie only this site can read, and the address
+    // bar is cleared of it straight away: the link is a password for this
+    // invitation, and an address bar ends up in history, in screenshots and
+    // in whatever the next page sends as a referrer. The cookie lasts as long
+    // as the invitation does, so signing up, waiting for a code or setting up
+    // two-factor on the way does not lose it.
+    const found = await invites.read(secret).catch(() => null);
+    const left = found && found.state === 'sent'
+        ? new Date(found.expiresAt).getTime() - Date.now()
+        : 0;
+    setInviteCookie(res, secret, left);
+    return res.redirect(302, '/invite');
 });
 
-const ORGS_JOIN = '/dashboard/organisations?join=1';
-function setInviteCookie(res, secret) {
+// The page an invitation opens on. Whoever holds the link sees what it is for
+// and the one step that is theirs to take next; everything it says comes from
+// /v1/invites/current, so the page is the same for every case and holds no
+// secret of its own.
+app.get('/invite', async (req, res) => {
+    res.set('Cache-Control', 'no-store, private');
+    res.set('Referrer-Policy', 'no-referrer');
+    res.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
+    // the page opens in the language the mail went out in, unless this
+    // browser chose one; signing up here gives the account that language
+    const found = await invites.read(readCookie(req, INVITE_COOKIE)).catch(() => null);
+    return sendPage(res, req, 'invite.html', 200, undefined, 'no-store, private',
+        found && HOMEPAGE_LANGS.includes(found.lang) ? { lang: found.lang } : null);
+});
+
+const INVITE_KEEP_MAX = 30 * 24 * 60 * 60 * 1000;
+function setInviteCookie(res, secret, forMs) {
+    const keep = Math.max(30 * 60 * 1000, Math.min(INVITE_KEEP_MAX, Number(forMs) || 0));
     res.cookie(INVITE_COOKIE, secret, {
         httpOnly: true, sameSite: 'lax', secure: COOKIE_SECURE,
-        maxAge: 30 * 60 * 1000, path: '/',
+        maxAge: keep, path: '/',
     });
 }
 
@@ -2200,22 +2210,79 @@ const accountLimiter = rateLimit({
     message: { error: 'Too many attempts, please try again later' }
 });
 
-// What the waiting invitation is for, to the person it was sent to only.
-app.get('/v1/invites/pending', async (req, res) => {
+// What the invitation in this browser is for, and where the person holding it
+// stands: signed in or not, as the address it was sent to or another one, and
+// whether their account already meets what the organisation asks. The page
+// draws one next step from this and nothing else.
+//
+// Whoever holds the link already has the mail it came in, so the address,
+// the organisation and who sent it are theirs to see. Nothing here says
+// whether that address has an account: signed out, both ways in are offered.
+app.get('/v1/invites/current', async (req, res) => {
     res.set('Cache-Control', 'no-store, private');
-    const me = await requireSession(req, res);
-    if (!me) return;
     const found = await invites.read(readCookie(req, INVITE_COOKIE)).catch(() => null);
-    if (!found || found.state !== 'sent' || invites.cleanEmail(me.email) !== invites.cleanEmail(found.email)) {
-        res.clearCookie(INVITE_COOKIE, { path: '/' });
-        return res.json({ ok: true, org: null });
-    }
-    res.json({ ok: true, org: found.orgName, role: found.role });
+    let me = null;
+    try { me = await currentUser(req); } catch (err) { me = null; }
+    if (!found) return res.json({ ok: true, state: 'missing', me: me ? { email: me.email, name: me.name || '' } : null });
+
+    const by = found.invitedBy ? await accounts.readUser(Number(found.invitedBy)).catch(() => null) : null;
+    const member = me ? await orgs.membership(me.userId, found.orgId).catch(() => null) : null;
+    res.json({
+        ok: true,
+        state: found.state,
+        email: found.email,
+        role: found.role,
+        needMfa: found.needMfa,
+        expiresAt: found.expiresAt,
+        declinedAt: found.declinedAt,
+        org: { name: found.orgName, slug: member ? found.orgSlug : '' },
+        inviter: by ? { name: by.name || '', email: by.email || '' } : null,
+        me: me ? {
+            email: me.email,
+            name: me.name || '',
+            matches: invites.cleanEmail(me.email) === invites.cleanEmail(found.email),
+            totpOn: Boolean(me.totpOn),
+            mfa: Boolean(me.mfa),
+            member: Boolean(member),
+        } : null,
+    });
 });
 
-app.post('/v1/invites/decline', requireCloudflareOrigin, async (req, res) => {
+// The answer, to whoever sent the invitation, in their language. A mail that
+// fails is written down and the answer stands: it is a courtesy, not a step.
+async function mailInviteAnswer(found, me, answer) {
+    if (!mailer.isConfigured() || !found.invitedBy || String(found.invitedBy) === String(me.userId)) return;
+    try {
+        const by = await accounts.readUser(Number(found.invitedBy));
+        if (!by || !by.email) return;
+        await mailer.sendInviteAnswer({
+            to: by.email, lang: by.lang || 'en', answer,
+            name: me.name || '', email: me.email || '',
+            org: found.orgName, role: found.role,
+            link: SITE_URL + '/dashboard/org/' + encodeURIComponent(found.orgSlug) + '/team',
+        });
+    } catch (err) {
+        console.error('[invites] answer mail failed: ' + err.message);
+    }
+}
+
+// Not now, or no. Signed in as the address it was for, it is a no: the
+// invitation is closed and whoever sent it hears so. Anyone else holding the
+// link only puts it down, and this browser forgets it either way.
+app.post('/v1/invites/decline', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const secret = readCookie(req, INVITE_COOKIE);
     res.clearCookie(INVITE_COOKIE, { path: '/' });
-    res.json({ ok: true });
+    let me = null;
+    try { me = await currentUser(req); } catch (err) { me = null; }
+    if (!me || !secret || (req.body || {}).answer !== 'no') return res.json({ ok: true, declined: false });
+    const out = await invites.decline(secret, me);
+    if (!out.ok) return res.json({ ok: true, declined: false });
+    await accounts.audit('invite-declined', {
+        actor: String(me.userId), subject: out.invite.id, ip: req.realIp, detail: out.invite.role,
+    });
+    await tellOrg(out.invite.orgId, { topic: 'org', id: String(out.invite.orgId) });
+    await mailInviteAnswer(out.invite, me, 'declined');
+    res.json({ ok: true, declined: true });
 });
 
 app.post('/v1/invites/accept', requireCloudflareOrigin, accountLimiter, async (req, res) => {
@@ -2226,7 +2293,7 @@ app.post('/v1/invites/accept', requireCloudflareOrigin, accountLimiter, async (r
         if (out.reason !== 'need-mfa' && out.reason !== 'unavailable') res.clearCookie(INVITE_COOKIE, { path: '/' });
         const said = {
             'not-yours': 'This invitation was sent to a different address.',
-            'need-mfa': 'This organisation asks its members to sign in with two-factor. Turn it on under Account, Security, then sign in again with a code.',
+            'need-mfa': 'This organisation asks every member to use two-factor. Set it up first, then accept.',
             unavailable: 'Accounts are not available right now. Please try again shortly.',
         };
         return res.status(out.reason === 'unavailable' ? 503 : 409)
@@ -2239,7 +2306,8 @@ app.post('/v1/invites/accept', requireCloudflareOrigin, accountLimiter, async (r
     });
     await tellOrg(out.invite.orgId, { topic: 'org', id: String(out.invite.orgId) });
     tellMe(me.userId, { topic: 'orgs' });
-    res.json({ ok: true, slug: out.invite.orgSlug });
+    await mailInviteAnswer(out.invite, me, 'accepted');
+    res.json({ ok: true, slug: out.invite.orgSlug, org: out.invite.orgName, role: out.invite.role });
 });
 
 app.post('/v1/account/password', requireCloudflareOrigin, accountLimiter, async (req, res) => {

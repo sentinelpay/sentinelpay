@@ -52,6 +52,9 @@ CREATE TABLE IF NOT EXISTS invites (
 ALTER TABLE invites DROP COLUMN IF EXISTS same_domain;
 -- the language the mail went out in, so the link opens the site in it too
 ALTER TABLE invites ADD COLUMN IF NOT EXISTS lang text;
+-- turned down by the person it was for. It stays on the team page, so whoever
+-- asked can see the answer, and sending it again opens it again.
+ALTER TABLE invites ADD COLUMN IF NOT EXISTS declined_at timestamptz;
 CREATE INDEX IF NOT EXISTS invites_org_idx ON invites (org_id);
 -- one live invitation per address per organisation. a second one is the same
 -- request repeated, and two working links to the same place is one more than
@@ -101,6 +104,7 @@ function looksLikeEmail(value) {
 function state(row) {
     if (row.accepted_at) return 'accepted';
     if (row.revoked_at) return 'withdrawn';
+    if (row.declined_at) return 'declined';
     if (new Date(row.expires_at).getTime() < Date.now()) return 'expired';
     return 'sent';
 }
@@ -115,6 +119,7 @@ function shape(row) {
         // browser for a week does not go on claiming six days are left
         expiresAt: row.expires_at,
         state: state(row),
+        declinedAt: row.declined_at || null,
         needMfa: Boolean(row.need_mfa),
     };
 }
@@ -170,7 +175,7 @@ async function create(orgId, byUserId, { email, role, days, needMfa, lang }) {
         const open = await db.query(
             `SELECT count(*)::int AS n FROM invites
               WHERE org_id = $1 AND accepted_at IS NULL AND revoked_at IS NULL
-                AND expires_at > now()`,
+                AND declined_at IS NULL AND expires_at > now()`,
             [Number(orgId)]
         );
         if (open.rows[0] && open.rows[0].n >= PENDING_PER_ORG) {
@@ -191,7 +196,8 @@ async function create(orgId, byUserId, { email, role, days, needMfa, lang }) {
                 created_at = now(),
                 expires_at = EXCLUDED.expires_at,
                 need_mfa = EXCLUDED.need_mfa,
-                lang = EXCLUDED.lang
+                lang = EXCLUDED.lang,
+                declined_at = NULL
              RETURNING *`,
             [Number(orgId), hash, db.seal('invite:' + hash, to), role, hashSecret(secret),
              Number(byUserId), String(keep), Boolean(needMfa), LANGS.indexOf(lang) === -1 ? null : lang]
@@ -213,7 +219,7 @@ async function resend(orgId, inviteId, byUserId, days) {
     try {
         const res = await db.query(
             `UPDATE invites SET token_hash = $3, invited_by = $4, created_at = now(),
-                    expires_at = now() + ($5 || ' days')::interval
+                    expires_at = now() + ($5 || ' days')::interval, declined_at = NULL
               WHERE id = $1 AND org_id = $2 AND accepted_at IS NULL AND revoked_at IS NULL
           RETURNING *`,
             [Number(inviteId), Number(orgId), hashSecret(secret), Number(byUserId), String(keep)]
@@ -279,6 +285,7 @@ async function read(secret) {
         return {
             ...shape(row),
             lang: langOf(row),
+            invitedBy: row.invited_by ? String(row.invited_by) : '',
             orgId: String(row.org_id),
             orgName: row.org_name || '',
             orgSlug: row.org_slug,
@@ -313,7 +320,8 @@ async function accept(secret, me) {
         await client.query('BEGIN');
         const spent = await client.query(
             `UPDATE invites SET accepted_at = now()
-              WHERE id = $1 AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now()
+              WHERE id = $1 AND accepted_at IS NULL AND revoked_at IS NULL AND declined_at IS NULL
+                AND expires_at > now()
           RETURNING id`,
             [Number(found.id)]
         );
@@ -334,8 +342,31 @@ async function accept(secret, me) {
     }
 }
 
+// Turned down by the person it was for, and only by them: the link can be
+// forwarded, and somebody it was forwarded to has no say in it.
+async function decline(secret, me) {
+    if (!(await init())) return { ok: false, reason: 'unavailable' };
+    const found = await read(secret);
+    if (!found) return { ok: false, reason: 'missing' };
+    if (found.state !== 'sent') return { ok: false, reason: found.state };
+    if (cleanEmail(me.email) !== cleanEmail(found.email)) return { ok: false, reason: 'not-yours' };
+    try {
+        const res = await db.query(
+            `UPDATE invites SET declined_at = now()
+              WHERE id = $1 AND accepted_at IS NULL AND revoked_at IS NULL AND declined_at IS NULL
+          RETURNING id`,
+            [Number(found.id)]
+        );
+        if (!res.rowCount) return { ok: false, reason: 'gone' };
+        return { ok: true, invite: found };
+    } catch (err) {
+        console.error('[invites] could not decline: ' + err.message);
+        return { ok: false, reason: 'unavailable' };
+    }
+}
+
 module.exports = {
-    init, listFor, create, resend, setRole, revoke, read, accept,
+    init, listFor, create, resend, setRole, revoke, read, accept, decline,
     ROLE_KEYS, DAY_OPTIONS, DEFAULT_DAYS, PENDING_PER_ORG,
     cleanEmail, looksLikeEmail,
 };
