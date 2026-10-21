@@ -13505,7 +13505,11 @@
         c.appendChild(tx);
         return c;
     }
+    // a project in a token chip is drawn as it is in the rail, the layers: the
+    // cube that stood here is the organisation's, on the organisations page
     var TKR_PROJECT_I = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" ' +
+        'stroke-linejoin="round" aria-hidden="true">' + ICONS.projects + '</svg>';
+    var ORG_MARK_I = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" ' +
         'stroke-linejoin="round" aria-hidden="true"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9Z"/>' +
         '<path d="m4 7.5 8 4.5 8-4.5M12 12v9"/></svg>';
     // Live or Sandbox, after the prefix a token of that kind starts with
@@ -14118,16 +14122,11 @@
             var b = document.createElement('button');
             b.type = 'button';
             b.className = 'org-go';
-            // an organisation is a group of people, not an initial. the letter
-            // said nothing the name beside it was not already saying.
+            // an organisation is the box everything else sits in, not an
+            // initial: the letter said nothing the name beside it did not
             var mark = document.createElement('span');
             mark.className = 'org-mark';
-            mark.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
-                'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-                '<circle cx="12" cy="7" r="2.6"/>' +
-                '<circle cx="6.5" cy="16.5" r="2.6"/>' +
-                '<circle cx="17.5" cy="16.5" r="2.6"/>' +
-                '<path d="M10.1 8.7 8.4 14M13.9 8.7l1.7 5.3M9.1 16.5h5.8"/></svg>';
+            mark.innerHTML = ORG_MARK_I;
             b.appendChild(mark);
             var txt = document.createElement('span');
             txt.className = 'org-t';
