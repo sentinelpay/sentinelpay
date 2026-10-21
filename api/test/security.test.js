@@ -611,6 +611,14 @@ test('the invitation page reads its own cookie, and only the invitee can say no'
     assert.match(fn, /cleanEmail\(me\.email\) !== cleanEmail\(found\.email\)/, 'anyone with the link can decline it');
 });
 
+// The sign-in empties what a browser filled in on its own, but not an address
+// the page fixed: the invitation page locks the one the invitation is for,
+// and emptying it left a field that could be neither filled nor sent.
+test('the sign-in keeps an address the page fixed', () => {
+    const flow = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'auth-flow.js'), 'utf8');
+    assert.match(flow, /function clearPrefill\(\) \{\s+loginFields\.forEach\(function \(field\) \{ if \(!field\.readOnly\) field\.value = ''; \}\);/);
+});
+
 // The account's language is changed only by the account itself, behind the
 // same checks as the rest of the account, and only to one we write mail in.
 test('the language is set by the account, to one we have', () => {

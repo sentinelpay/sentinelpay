@@ -1217,8 +1217,10 @@
 
         var loginFields = [form.querySelector('input[type="email"]'), form.querySelector('input[type="password"]')]
             .filter(Boolean);
+        // a field the page has fixed, such as the address an invitation is
+        // for, is not something the browser filled in, and is left alone
         function clearPrefill() {
-            loginFields.forEach(function (field) { field.value = ''; });
+            loginFields.forEach(function (field) { if (!field.readOnly) field.value = ''; });
         }
         clearPrefill();
         setTimeout(clearPrefill, 120);
