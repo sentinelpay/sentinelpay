@@ -162,6 +162,9 @@ CREATE TRIGGER audit_events_no_update BEFORE UPDATE ON audit_events
 -- wrong codes at the second step, counted on the account rather than on one
 -- half finished sign-in, so a new password round does not buy new guesses
 ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_fails   integer NOT NULL DEFAULT 0;
+-- the picture the account chose, as the number the dashboard draws it from;
+-- empty until somebody picks one, and then the address decides
+ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar       bigint;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_fail_at timestamptz;
 
 CREATE TABLE IF NOT EXISTS known_devices (
@@ -482,7 +485,7 @@ async function readSession(token, client) {
     if (!(await init())) return null;
     try {
         const res = await db.query(
-            `SELECT s.token_hash, s.user_id, s.mfa, s.confirmed_at, s.ua, u.email_hash, u.email_enc, u.name_enc, u.lang, u.created_at, u.totp_at
+            `SELECT s.token_hash, s.user_id, s.mfa, s.confirmed_at, s.ua, u.email_hash, u.email_enc, u.name_enc, u.lang, u.created_at, u.totp_at, u.avatar
                FROM sessions s JOIN users u ON u.id = s.user_id
               WHERE s.token_hash = $1
                 AND s.expires_at > now()
@@ -528,6 +531,7 @@ async function readSession(token, client) {
             // the first request this session has made with a browser to name:
             // the moment a new device can be shown in the owner's list
             firstSeen: !row.ua && Boolean(c.ua),
+            avatar: row.avatar == null ? null : Number(row.avatar),
             totpOn: Boolean(row.totp_at),
             totpSince: row.totp_at || null,
             emailHash: row.email_hash,
@@ -752,6 +756,18 @@ async function setLang(userId, lang) {
 // The language of whoever holds this address, or '' when nobody does. For
 // mail sent to somebody by another person, so it reaches them in their own
 // language; it is never shown, since it would say who has an account here.
+// The picture, as the number it is drawn from, or none to go back to the one
+// the address gives.
+const AVATAR_MAX = 4294967295;
+async function setAvatar(userId, seed) {
+    if (!db.available()) return { ok: false, reason: 'unavailable' };
+    const n = seed == null ? null : Number(seed);
+    if (n !== null && !(Number.isSafeInteger(n) && n >= 0 && n <= AVATAR_MAX)) return { ok: false, reason: 'bad-avatar' };
+    const res = await db.query('UPDATE users SET avatar = $2 WHERE id = $1 RETURNING id', [Number(userId), n]);
+    if (!res.rowCount) return { ok: false, reason: 'no-user' };
+    return { ok: true, avatar: n };
+}
+
 async function langOfEmail(email) {
     if (!db.available()) return '';
     const emailHash = db.blindIndex(String(email || '').trim().toLowerCase());
@@ -1595,4 +1611,4 @@ module.exports = {
     readUser,
     hashPassword, verifyPassword,
     signIn, startSession, readSession, endSession,
-    CODE_TTL_MIN, CODE_MAX_SENDS, CODE_RESEND_WAIT_S, setName, setLang, langOfEmail };
+    CODE_TTL_MIN, CODE_MAX_SENDS, CODE_RESEND_WAIT_S, setName, setLang, langOfEmail, setAvatar };

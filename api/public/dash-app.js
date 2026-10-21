@@ -1040,7 +1040,7 @@
     // stale page survives a fetch that disagreed with it.
     function sameMe(a, b) {
         if (!a || !b) return false;
-        if (a.name !== b.name || a.email !== b.email) return false;
+        if (a.name !== b.name || a.email !== b.email || a.avatar !== b.avatar) return false;
         if (String(a.screeningsRun || 0) !== String(b.screeningsRun || 0)) return false;
         var ta = a.trial || {}, tb = b.trial || {};
         var keys = ['state', 'daysLeft', 'liveUsed', 'liveIncluded',
@@ -1064,7 +1064,7 @@
     // who you are, which organisation you are in and what you may do in it.
     function sameShell(a, b) {
         if (!a || !b) return false;
-        if (a.name !== b.name || a.email !== b.email) return false;
+        if (a.name !== b.name || a.email !== b.email || a.avatar !== b.avatar) return false;
         var ta = a.trial || {}, tb = b.trial || {};
         var keys = ['state', 'daysLeft', 'liveIncluded', 'historyIncluded', 'historyOpen'];
         for (var i = 0; i < keys.length; i++) {
@@ -1094,48 +1094,173 @@
         return d;
     }
 
-    function initials(name, email) {
-        var source = String(name || '').trim();
-        if (source) {
-            var parts = source.split(/\s+/).slice(0, 2);
-            return parts.map(function (p) { return p.charAt(0); }).join('').toUpperCase();
+    // ---- the picture in the corner. Not initials in a circle: a small
+    // sentinel, the guard on the logo, drawn from a number. The same number
+    // always draws the same one, so a person looks the same to everybody on
+    // every screen, and a new number is a different one. Nothing is fetched:
+    // it is built here, as markup, from parts chosen by a seeded generator.
+    var AV_SKIES = [
+        ['#0b1a45', '#1d4ed8'], ['#120f3d', '#6d28d9'], ['#04283a', '#0891b2'],
+        ['#1b1145', '#9333ea'], ['#0a2440', '#0ea5e9'], ['#2a0d3f', '#c026d3'],
+        ['#062b33', '#0d9488'], ['#141a46', '#4f46e5'], ['#0d1c3a', '#2563eb'],
+        ['#24103d', '#7c3aed'], ['#0b2a3a', '#06b6d4'], ['#1f1238', '#db2777']
+    ];
+    var AV_SHELLS = ['#eef4ff', '#e6fbff', '#f1ebff', '#ffffff', '#dceaff', '#eaf7f4', '#fff1e6', '#f4f6fb'];
+    var AV_GLOWS = [
+        ['#00e5ff', '#7c3aed'], ['#22d3ee', '#a855f7'], ['#38bdf8', '#6366f1'],
+        ['#2dd4bf', '#0ea5e9'], ['#f472b6', '#a855f7'], ['#facc15', '#f97316'],
+        ['#34d399', '#06b6d4'], ['#60a5fa', '#c084fc']
+    ];
+    var AV_INK = '#0e2358';
+    var avCount = 0;
+
+    function avRand(seed) {
+        var a = (seed >>> 0) || 1;
+        return function () {
+            a = (a + 0x6D2B79F5) >>> 0;
+            var t = a;
+            t = Math.imul(t ^ (t >>> 15), t | 1);
+            t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+    }
+    // the number for somebody who has not picked one: from their address, so
+    // it is the same on every screen and in every browser
+    function avSeedOf(person) {
+        if (person && person.avatar != null && isFinite(person.avatar)) return Number(person.avatar) >>> 0;
+        var s = String((person && person.email) || '').trim().toLowerCase();
+        var h = 2166136261;
+        for (var i = 0; i < s.length; i++) {
+            h ^= s.charCodeAt(i);
+            h = Math.imul(h, 16777619);
         }
-        return String(email || '?').charAt(0).toUpperCase();
+        return h >>> 0;
     }
 
-    function centreInk(host, inner) {
-        if (!host || !inner || !window.HTMLCanvasElement) return;
-        try {
-            var cs = getComputedStyle(host);
-            var g = document.createElement('canvas').getContext('2d');
-            if (!g || !g.measureText) return;
-            var scale = 20;
-            var size = parseFloat(cs.fontSize) * scale;
-            if (!size) return;
-            g.font = cs.fontWeight + ' ' + size + 'px ' + cs.fontFamily;
-            var m = g.measureText(inner.textContent);
-            if (m.actualBoundingBoxLeft == null || m.actualBoundingBoxRight == null) return;
+    function avatarArt(seed) {
+        var r = avRand(seed);
+        function pick(list) { return list[Math.floor(r() * list.length) % list.length]; }
+        var id = 'av' + (++avCount);
+        var sky = pick(AV_SKIES);
+        var shell = pick(AV_SHELLS);
+        var glow = pick(AV_GLOWS);
+        var tilt = Math.round(r() * 360);
 
-            inner.style.setProperty('--ink-x', '0px');
-            inner.style.setProperty('--ink-y', '0px');
+        var out = [];
+        out.push('<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">');
+        out.push('<defs>' +
+            '<linearGradient id="' + id + 's" gradientTransform="rotate(' + tilt + ' .5 .5)">' +
+            '<stop offset="0" stop-color="' + sky[0] + '"/><stop offset="1" stop-color="' + sky[1] + '"/></linearGradient>' +
+            '<linearGradient id="' + id + 'g" x1="0" y1="0" x2="1" y2="1">' +
+            '<stop offset="0" stop-color="' + glow[0] + '"/><stop offset="1" stop-color="' + glow[1] + '"/></linearGradient>' +
+            '<radialGradient id="' + id + 'h" cx=".5" cy=".42" r=".5">' +
+            '<stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>' +
+            '</defs>');
+        out.push('<rect width="64" height="64" fill="url(#' + id + 's)"/>');
+        // the dotted corner the cards on the site carry
+        if (r() < 0.55) {
+            var dots = '';
+            for (var dy = 0; dy < 4; dy++) {
+                for (var dx = 0; dx < 4 - dy; dx++) dots += '<circle cx="' + (7 + dx * 5) + '" cy="' + (7 + dy * 5) + '" r=".9"/>';
+            }
+            out.push('<g fill="#fff" opacity=".18">' + dots + '</g>');
+        }
+        out.push('<circle cx="32" cy="34" r="26" fill="url(#' + id + 'h)"/>');
+        // the figure a little larger than the frame would draw it, so a face
+        // still reads at the size of the corner of a page
+        out.push('<g transform="translate(32 40) scale(1.16) translate(-32 -40)">');
 
-            var inkMid = (m.actualBoundingBoxRight - m.actualBoundingBoxLeft) / 2;
-            var dx = (m.width / 2 - inkMid) / scale;
+        // shoulders, behind the head, in the colour of the glow
+        var shoulders = pick([
+            'M6 66C8 54 18 49 32 49s24 5 26 17Z',
+            'M10 66c1-11 9-16 22-16s21 5 22 16Z',
+            'M4 66c3-9 12-13 18-14l10 6 10-6c6 1 15 5 18 14Z'
+        ]);
+        out.push('<path d="' + shoulders + '" fill="url(#' + id + 'g)" opacity=".92"/>');
 
-            var probe = document.createElement('i');
-            probe.setAttribute('style', 'display:inline-block;width:0;height:0;');
-            inner.appendChild(probe);
-            var baseline = probe.getBoundingClientRect().bottom;
-            inner.removeChild(probe);
+        // the head, and where its crown is for whatever sits on it
+        var heads = [
+            { d: '<circle cx="32" cy="34" r="15"/>', top: 19, w: 15 },
+            { d: '<rect x="17" y="19" width="30" height="30" rx="10"/>', top: 19, w: 15 },
+            { d: '<path d="M32 17 47 23v11c0 9-6 15-15 18-9-3-15-9-15-18V23Z"/>', top: 17, w: 15 },
+            { d: '<rect x="19" y="16" width="26" height="36" rx="13"/>', top: 16, w: 13 },
+            { d: '<path d="M32 17 46 25v17l-14 8-14-8V25Z"/>', top: 17, w: 14 },
+            { d: '<path d="M16 36a16 16 0 0 1 32 0v7a7 7 0 0 1-7 7H23a7 7 0 0 1-7-7Z"/>', top: 20, w: 16 }
+        ];
+        var head = pick(heads);
 
-            var box = host.getBoundingClientRect();
-            var inkCentre = baseline +
-                ((m.actualBoundingBoxDescent - m.actualBoundingBoxAscent) / 2) / scale;
-            var dy = (box.top + box.height / 2) - inkCentre;
+        // what sits on top, drawn before the head so it tucks in behind it
+        var top = Math.floor(r() * 7);
+        var crown = head.top;
+        if (top === 1) {
+            out.push('<path d="M32 ' + crown + 'V' + (crown - 7) + '" stroke="' + shell + '" stroke-width="2.2" stroke-linecap="round"/>' +
+                '<circle cx="32" cy="' + (crown - 8.5) + '" r="2.8" fill="url(#' + id + 'g)"/>');
+        } else if (top === 2) {
+            out.push('<path d="M26 ' + (crown + 2) + 'l-4-8M38 ' + (crown + 2) + 'l4-8" stroke="' + shell + '" stroke-width="2.2" stroke-linecap="round"/>' +
+                '<circle cx="21.5" cy="' + (crown - 6.5) + '" r="2.2" fill="url(#' + id + 'g)"/>' +
+                '<circle cx="42.5" cy="' + (crown - 6.5) + '" r="2.2" fill="url(#' + id + 'g)"/>');
+        } else if (top === 3) {
+            out.push('<path d="M27 ' + (crown + 3) + 'C27 ' + (crown - 6) + ' 31 ' + (crown - 9) + ' 37 ' + (crown - 10) + 'C35 ' + (crown - 5) + ' 37 ' + (crown - 1) + ' 38 ' + (crown + 3) + 'Z" fill="url(#' + id + 'g)"/>');
+        } else if (top === 4) {
+            out.push('<ellipse cx="32" cy="' + (crown - 5) + '" rx="10" ry="2.6" fill="none" stroke="url(#' + id + 'g)" stroke-width="2"/>');
+        } else if (top === 5) {
+            out.push('<path d="M' + (32 - head.w + 1) + ' ' + (crown + 8) + 'l2-11 7 5ZM' + (32 + head.w - 1) + ' ' + (crown + 8) + 'l-2-11-7 5Z" fill="' + shell + '"/>');
+        }
 
-            inner.style.setProperty('--ink-x', dx.toFixed(3) + 'px');
-            inner.style.setProperty('--ink-y', dy.toFixed(3) + 'px');
-        } catch (err) {  }
+        out.push('<g fill="' + shell + '">' + head.d + '</g>');
+        // a stripe of colour over the crown, sometimes
+        if (r() < 0.35) {
+            out.push('<g fill="url(#' + id + 'g)" opacity=".9"><rect x="30" y="' + (crown - 0.5) + '" width="4" height="9" rx="2"/></g>');
+        }
+        // ear pieces, as on a headset
+        if (top === 6 || r() < 0.18) {
+            out.push('<rect x="' + (32 - head.w - 3) + '" y="30" width="5" height="10" rx="2.5" fill="url(#' + id + 'g)"/>' +
+                '<rect x="' + (32 + head.w - 2) + '" y="30" width="5" height="10" rx="2.5" fill="url(#' + id + 'g)"/>');
+        }
+
+        // the face: what it sees with, and sometimes a mouth
+        var eyeY = 34;
+        var face = Math.floor(r() * 7);
+        if (face === 0) {
+            out.push('<rect x="20" y="' + (eyeY - 5) + '" width="24" height="10" rx="5" fill="' + AV_INK + '"/>' +
+                '<rect x="22" y="' + (eyeY - 3) + '" width="20" height="6" rx="3" fill="url(#' + id + 'g)"/>' +
+                '<circle cx="27" cy="' + eyeY + '" r="1.3" fill="#fff"/><circle cx="37" cy="' + eyeY + '" r="1.3" fill="#fff"/>');
+        } else if (face === 1) {
+            out.push('<circle cx="26" cy="' + eyeY + '" r="3.4" fill="' + AV_INK + '"/><circle cx="38" cy="' + eyeY + '" r="3.4" fill="' + AV_INK + '"/>' +
+                '<circle cx="27.1" cy="' + (eyeY - 1.1) + '" r="1.1" fill="#fff"/><circle cx="39.1" cy="' + (eyeY - 1.1) + '" r="1.1" fill="#fff"/>');
+        } else if (face === 2) {
+            // the eye on the logo
+            out.push('<path d="M21 ' + eyeY + 'Q32 ' + (eyeY - 9) + ' 43 ' + eyeY + 'Q32 ' + (eyeY + 9) + ' 21 ' + eyeY + 'Z" fill="' + AV_INK + '"/>' +
+                '<circle cx="32" cy="' + eyeY + '" r="3.6" fill="url(#' + id + 'g)"/><circle cx="32" cy="' + eyeY + '" r="1.3" fill="#fff"/>');
+        } else if (face === 3) {
+            out.push('<rect x="22" y="' + (eyeY - 1.6) + '" width="7.5" height="3.2" rx="1.6" fill="' + AV_INK + '"/>' +
+                '<rect x="34.5" y="' + (eyeY - 1.6) + '" width="7.5" height="3.2" rx="1.6" fill="' + AV_INK + '"/>');
+        } else if (face === 4) {
+            out.push('<path d="M23 ' + (eyeY + 1.5) + 'q3-4 6 0M35 ' + (eyeY + 1.5) + 'q3-4 6 0" fill="none" stroke="' + AV_INK + '" stroke-width="2.4" stroke-linecap="round"/>');
+        } else if (face === 5) {
+            out.push('<rect x="19" y="' + (eyeY - 6) + '" width="26" height="13" rx="4" fill="' + AV_INK + '"/>' +
+                '<rect x="24" y="' + (eyeY - 2.5) + '" width="4" height="4" rx="1" fill="url(#' + id + 'g)"/>' +
+                '<rect x="36" y="' + (eyeY - 2.5) + '" width="4" height="4" rx="1" fill="url(#' + id + 'g)"/>');
+        } else {
+            out.push('<circle cx="26" cy="' + eyeY + '" r="4.6" fill="' + AV_INK + '"/><circle cx="38" cy="' + eyeY + '" r="4.6" fill="' + AV_INK + '"/>' +
+                '<circle cx="26" cy="' + eyeY + '" r="2.8" fill="url(#' + id + 'g)"/><circle cx="38" cy="' + eyeY + '" r="2.8" fill="url(#' + id + 'g)"/>' +
+                '<path d="M30.6 ' + eyeY + 'h2.8" stroke="' + AV_INK + '" stroke-width="1.6"/>');
+        }
+        var mouth = Math.floor(r() * 5);
+        var my = face === 5 ? 44 : 42;
+        if (mouth === 1) {
+            out.push('<path d="M28 ' + my + 'q4 3 8 0" fill="none" stroke="' + AV_INK + '" stroke-width="1.8" stroke-linecap="round"/>');
+        } else if (mouth === 2) {
+            out.push('<path d="M29 ' + (my - 1) + 'v3M32 ' + (my - 1) + 'v3M35 ' + (my - 1) + 'v3" stroke="' + AV_INK + '" stroke-width="1.5" stroke-linecap="round" opacity=".75"/>');
+        } else if (mouth === 3) {
+            out.push('<circle cx="32" cy="' + (my + 0.5) + '" r="1.6" fill="' + AV_INK + '"/>');
+        }
+        // a little colour in the cheeks, now and then
+        if (face !== 5 && r() < 0.3) {
+            out.push('<circle cx="22.5" cy="40" r="2" fill="#f472b6" opacity=".45"/><circle cx="41.5" cy="40" r="2" fill="#f472b6" opacity=".45"/>');
+        }
+        out.push('</g></svg>');
+        return out.join('');
     }
 
     function paintAvatar(me) {
@@ -1149,11 +1274,9 @@
         // the page is served with the avatar shimmering until there is a
         // somebody to draw in it
         avatar.classList.remove('is-wait');
-        inner.textContent = initials(me.name, me.email);
+        avatar.classList.add('has-art');
+        inner.innerHTML = avatarArt(avSeedOf(me));
         avatar.setAttribute('aria-label', me.email || 'Account');
-        var place = function () { centreInk(avatar, inner); };
-        place();
-        if (document.fonts && document.fonts.ready) document.fonts.ready.then(place);
     }
 
     function currentNav() {
@@ -1669,6 +1792,112 @@
                 toast(t('Appearance saved'), 'good');
             })
         }));
+        frag.appendChild(card);
+        return frag;
+    }
+
+    // The picture: the sentinel drawn for this account, and others to swap it
+    // for. The first one offered is always the one the address gives, so
+    // going back to it is a click like any other. A pick is saved at once.
+    function viewPicture(me) {
+        var frag = document.createDocumentFragment();
+        frag.appendChild(sectionTitle('Profile picture'));
+        frag.appendChild(sectionNote('A sentinel drawn for you, shown in the corner and to everybody on your team. Pick another, or shuffle for a new set.'));
+        var card = document.createElement('div');
+        card.className = 'card avp-card';
+        var who = lastMe || me;
+        var own = avSeedOf({ email: who.email });
+        var now = avSeedOf(who);
+
+        var topRow = document.createElement('div');
+        topRow.className = 'avp-top';
+        var big = document.createElement('span');
+        big.className = 'avp-now';
+        big.innerHTML = avatarArt(now);
+        topRow.appendChild(big);
+        var txt = document.createElement('div');
+        txt.className = 'avp-t';
+        var h = document.createElement('div');
+        h.className = 'avp-h';
+        h.textContent = who.name || who.email || '';
+        txt.appendChild(h);
+        var p = document.createElement('p');
+        p.className = 'avp-p';
+        p.textContent = t('Each one is drawn here from a number, out of millions of combinations. Nothing is uploaded.');
+        txt.appendChild(p);
+        topRow.appendChild(txt);
+        var mix = document.createElement('button');
+        mix.type = 'button';
+        mix.className = 'btn btn-quiet avp-mix';
+        mix.textContent = t('Shuffle');
+        topRow.appendChild(mix);
+        card.appendChild(topRow);
+
+        var grid = document.createElement('div');
+        grid.className = 'avp-grid';
+        grid.setAttribute('role', 'radiogroup');
+        grid.setAttribute('aria-label', t('Profile picture'));
+        card.appendChild(grid);
+
+        function fresh(n) {
+            var out = [];
+            try {
+                var buf = new Uint32Array(n);
+                window.crypto.getRandomValues(buf);
+                for (var i = 0; i < n; i++) out.push(buf[i] >>> 0);
+            } catch (e) {
+                for (var j = 0; j < n; j++) out.push(Math.floor(Math.random() * 4294967295));
+            }
+            return out;
+        }
+        // the one in use, the one the address gives, and the rest new
+        var offered = [];
+        function deal() {
+            offered = [now];
+            if (own !== now) offered.push(own);
+            offered = offered.concat(fresh(12 - offered.length));
+            paint();
+        }
+        function paint() {
+            grid.textContent = '';
+            offered.forEach(function (seed) {
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'avp-opt' + (seed === now ? ' is-on' : '');
+                b.setAttribute('role', 'radio');
+                b.setAttribute('aria-checked', seed === now ? 'true' : 'false');
+                b.setAttribute('aria-label', t(seed === own ? 'The one your address gives' : 'Pick this one'));
+                b.innerHTML = avatarArt(seed);
+                b.addEventListener('click', function () { choose(seed); });
+                grid.appendChild(b);
+            });
+        }
+        var saving = false;
+        function choose(seed) {
+            if (saving || seed === now) return;
+            saving = true;
+            var before = now;
+            now = seed;
+            big.innerHTML = avatarArt(now);
+            paint();
+            postJson('/v1/account/avatar', { avatar: seed === own ? null : seed }).then(function (out) {
+                var next = Object.assign({}, lastMe || me, { avatar: out.avatar });
+                lastMe = next;
+                writeMe(next);
+                paintAvatar(next);
+                toast(t('Picture saved'), 'good');
+            }).catch(function (err) {
+                now = before;
+                big.innerHTML = avatarArt(now);
+                paint();
+                toast(err.message, 'bad');
+            }).then(function () { saving = false; });
+        }
+        mix.addEventListener('click', function () {
+            offered = [now].concat(fresh(11));
+            paint();
+        });
+        deal();
         frag.appendChild(card);
         return frag;
     }
@@ -4211,8 +4440,8 @@
         var who = document.createElement('div');
         who.className = 'mem-who';
         var av = document.createElement('span');
-        av.className = 'mem-av';
-        av.textContent = initialsOf(m.name || m.email);
+        av.className = 'mem-av has-art';
+        av.innerHTML = avatarArt(avSeedOf(m));
         who.appendChild(av);
         var txt = document.createElement('div');
         txt.className = 'tr-t';
@@ -4695,14 +4924,6 @@
                 go.disabled = false;
             });
         });
-    }
-
-    function initialsOf(who) {
-        var bits = String(who || '').trim().split(/[\s@._-]+/).filter(Boolean);
-        if (!bits.length) return '?';
-        var out = bits[0].charAt(0);
-        if (bits.length > 1) out += bits[1].charAt(0);
-        return out.toUpperCase();
     }
 
     // The rail from the overview, with room to breathe and the figures it could
@@ -14195,6 +14416,7 @@
         foot.appendChild(save);
         card.appendChild(foot);
         page.appendChild(card);
+        page.appendChild(viewPicture(me));
         page.appendChild(viewAppearance());
         page.appendChild(viewLanguage());
         page.appendChild(viewTimezone(me));
@@ -14243,7 +14465,9 @@
                 msg.textContent = '';
                 msg.className = 'card-msg';
                 toast(t('Profile saved'), 'good');
-                var fresh = { name: r.body.name, email: me.email, trial: me.trial };
+                // everything else the account already had stays, the picture
+                // among it, which a bare object here used to drop
+                var fresh = Object.assign({}, lastMe || me, { name: r.body.name });
                 writeMe(fresh);
                 paintAvatar(fresh);
                 paintAccountMenu(fresh);
