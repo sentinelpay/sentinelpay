@@ -629,6 +629,24 @@ test('the picture is set by the account itself', () => {
     assert.match(body, /accounts\.setAvatar\(me\.userId,/);
 });
 
+// The sentinel shown on an invitation is the one the account starts with:
+// the server and the page hash an address the same way, and both ways an
+// account is made write that number onto it.
+test('the picture an address gives is the same on the server and the page', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'dash-app.js'), 'utf8');
+    const fn = src.slice(src.indexOf('function avSeedOf(person) {'), src.indexOf('function avatarArt(seed) {'));
+    const avSeedOf = new Function(fn + '; return avSeedOf;')();
+    const { avatarOf } = require('../accounts');
+    for (const email of ['ana@primjer.hr', ' Ivo.Ivic@Primjer.HR ', 'žana@primjer.hr', 'x', '']) {
+        assert.strictEqual(avSeedOf({ email }), avatarOf(email), 'the page and the server disagree on ' + JSON.stringify(email));
+    }
+    assert.strictEqual(avSeedOf({ email: 'a@b.c', avatar: 7 }), 7, 'a picked picture is not used');
+    const acc = fs.readFileSync(path.join(__dirname, '..', 'accounts.js'), 'utf8');
+    assert.strictEqual((acc.match(/INSERT INTO users \([^)]*avatar\)/g) || []).length, 2, 'an account is made without its picture');
+});
+
 // The account's language is changed only by the account itself, behind the
 // same checks as the rest of the account, and only to one we write mail in.
 test('the language is set by the account, to one we have', () => {
