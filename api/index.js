@@ -854,19 +854,20 @@ app.get('/invite/:secret', async (req, res) => {
     return res.redirect(302, '/invite');
 });
 
-// The page an invitation opens on. Whoever holds the link sees what it is for
-// and the one step that is theirs to take next; everything it says comes from
-// /v1/invites/current, so the page is the same for every case and holds no
-// secret of its own.
+// Where an invitation opens: the front page, with the invitation in a modal
+// over it. Whoever holds the link sees what it is for and the one step that
+// is theirs to take next; everything the modal says comes from
+// /v1/invites/current, so the page holds no secret of its own.
 app.get('/invite', async (req, res) => {
-    res.set('Cache-Control', 'no-store, private');
     res.set('Referrer-Policy', 'no-referrer');
     res.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
-    // the page opens in the language the mail went out in, unless this
-    // browser chose one; signing up here gives the account that language
+    // in the language the mail went out in, unless this browser chose one;
+    // signing up here gives the account that language
+    const saved = readCookie(req, 'sp-lang');
     const found = await invites.read(readCookie(req, INVITE_COOKIE)).catch(() => null);
-    return sendPage(res, req, 'invite.html', 200, undefined, 'no-store, private',
-        found && HOMEPAGE_LANGS.includes(found.lang) ? { lang: found.lang } : null);
+    const lang = HOMEPAGE_LANGS.includes(saved) ? saved
+        : (found && HOMEPAGE_LANGS.includes(found.lang) ? found.lang : geoLang(req));
+    return sendPage(res, req, 'index.html', 200, lang, 'no-store, private');
 });
 
 const INVITE_KEEP_MAX = 30 * 24 * 60 * 60 * 1000;

@@ -1,17 +1,79 @@
-// The page an invitation opens on.
+// An invitation, in a modal over the front page.
 //
-// One card, drawn from /v1/invites/current: what the invitation is, who sent
-// it, and the one next step that belongs to whoever is holding the link. The
-// signing in and the signing up are the site's own, opened with the address
+// /invite is the front page with this on top of it: one card, drawn from
+// /v1/invites/current, saying what the invitation is, who sent it, and the
+// one next step that belongs to whoever is holding the link. The signing in
+// and the signing up are the site's own modal, opened with the address
 // filled in and fixed, so the code, the second step and a forgotten password
 // all work the way they do everywhere else. When either finishes it goes to
 // /dashboard, and the server sends anyone with an open invitation back here,
-// so the page picks up where it was.
+// so the card picks up where it was.
 (function () {
     'use strict';
 
+    if (location.pathname !== '/invite') return;
+
+    var CLOSE_I = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">' +
+        '<path d="M6 6l12 12M18 6L6 18"></path></svg>';
+    var wrapEl = document.createElement('div');
+    wrapEl.className = 'sp-authm-backdrop ivp-backdrop sp-authm-arrive';
+    wrapEl.hidden = true;
+    wrapEl.innerHTML =
+        '<div class="sp-authm ivp-m" role="dialog" aria-modal="true" aria-labelledby="ivp-h">' +
+            '<div class="lp-demo-card sp-authm-panel ivp-card">' +
+                '<span class="lp-demo-dots" aria-hidden="true"></span>' +
+                '<span class="lp-demo-edge" aria-hidden="true"></span>' +
+                '<button type="button" class="sp-authm-x ivp-x" aria-label="Close">' + CLOSE_I + '</button>' +
+                '<div class="ivp-body" id="ivp-body" aria-live="polite" aria-busy="true">' +
+                    '<div class="ivp-wait" aria-hidden="true"><span class="w1"></span><span class="w2"></span><span class="w3"></span><span class="w4"></span></div>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+    (document.body || document.documentElement).appendChild(wrapEl);
     var body = document.getElementById('ivp-body');
-    if (!body) return;
+    var box = wrapEl.querySelector('.sp-authm');
+
+    // shown and put away the way the sign in is, and the front page behind it
+    // does not scroll while it is up
+    var shown = false;
+    var lastFocus = null;
+    function show() {
+        if (shown) return;
+        shown = true;
+        lastFocus = document.activeElement;
+        wrapEl.hidden = false;
+        void wrapEl.offsetWidth;
+        wrapEl.classList.add('is-open');
+        document.documentElement.classList.add('sp-authm-open');
+    }
+    function hide(done) {
+        if (!shown) { if (done) done(); return; }
+        shown = false;
+        wrapEl.classList.remove('is-open');
+        setTimeout(function () {
+            wrapEl.hidden = true;
+            wrapEl.classList.remove('sp-authm-arrive');
+            var auth = document.getElementById('sp-authm-backdrop');
+            if (!auth || auth.hidden) document.documentElement.classList.remove('sp-authm-open');
+            if (done) done();
+        }, 240);
+    }
+    // closing leaves the front page as the front page: the address bar goes
+    // to it, and the invitation waits in this browser for the next sign in
+    function close() {
+        hide(function () {
+            try { history.replaceState(null, '', '/'); } catch (e) {  }
+            if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
+        });
+    }
+    wrapEl.querySelector('.ivp-x').addEventListener('click', close);
+    wrapEl.addEventListener('mousedown', function (e) { if (e.target === wrapEl) close(); });
+    document.addEventListener('keydown', function (e) {
+        if (!shown || e.key !== 'Escape') return;
+        var auth = document.getElementById('sp-authm-backdrop');
+        if (auth && !auth.hidden) return;
+        close();
+    });
 
     function t(s) {
         var i = window.SentinelI18n;
@@ -92,9 +154,14 @@
     function load() {
         body.setAttribute('aria-busy', 'true');
         return fetch('/v1/invites/current', { credentials: 'same-origin' })
-            .then(function (r) { return r.ok ? r.json() : null; })
+            // a refusal from the server (too many requests, a restart) is
+            // not the same as a link that does not work, and is not said as one
+            .then(function (r) {
+                if (!r.ok) throw new Error(String(r.status));
+                return r.json();
+            })
             .then(function (d) {
-                now = d || { state: 'missing', me: null };
+                now = d || { state: 'missing', me: null, broken: true };
                 draw();
             })
             .catch(function () {
@@ -120,6 +187,7 @@
     function head(wrap, eyebrow, title, line) {
         if (eyebrow) wrap.appendChild(el('p', 'ivp-eyebrow', eyebrow));
         var h = el('h1', 'ivp-h', title);
+        h.id = 'ivp-h';
         wrap.appendChild(h);
         if (line) wrap.appendChild(el('p', 'ivp-p', line));
     }
@@ -172,10 +240,16 @@
             btn.disabled = false;
         }
     }
+    // the way on: into the dashboard for somebody signed in, and for anyone
+    // else the front page, which is already behind the card
     function home(box, me) {
-        var a = el('a', 'ivp-btn2', t(me ? 'Go to your dashboard' : 'Go to Sentinelpay'));
-        a.href = me ? '/dashboard' : '/';
-        box.appendChild(a);
+        if (me) {
+            var a = el('a', 'ivp-btn2', t('Go to your dashboard'));
+            a.href = '/dashboard';
+            box.appendChild(a);
+            return;
+        }
+        secondary(box, t('Close'), close);
     }
     function inviterName(d) {
         var by = d.inviter || {};
@@ -270,10 +344,26 @@
         secondary(box, t('I already have an account'), function () { openAuth('login', d, org); });
     }
 
+    // The sign in takes the card's place, and closing it without signing in
+    // brings the card back, so nobody is left on the front page wondering
+    // where the invitation went.
     function openAuth(mode, d, org) {
         var M = window.SentinelAuthModal;
         if (!M) { location.assign('/?signin=' + (mode === 'create' ? 'create' : '1')); return; }
+        hide();
         M.open(mode);
+        var auth = document.getElementById('sp-authm-backdrop');
+        if (auth && window.MutationObserver) {
+            var watch = new MutationObserver(function () {
+                if (!auth.hidden) return;
+                watch.disconnect();
+                show();
+            });
+            watch.observe(auth, { attributes: true, attributeFilter: ['hidden'] });
+        }
+        fillAuth(mode, d, org);
+    }
+    function fillAuth(mode, d, org) {
         ['sp-authm-email', 'sp-authm-email2'].forEach(function (id) {
             var i = document.getElementById(id);
             if (!i) return;
@@ -409,6 +499,7 @@
 
     // after every script on the page has run, so the words are in the
     // reader's language from the first frame
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', load);
-    else load();
+    function begin() { show(); load(); }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', begin);
+    else begin();
 })();
