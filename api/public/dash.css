@@ -4054,6 +4054,22 @@ html.is-theming .btn {
     color: var(--link);
 }
 .invr-row.is-bad .invr-av { background: var(--danger-bg); color: var(--danger); }
+/* somebody asked but not yet in: the sentinel they will have, quieter, inside
+   a dashed ring, on the team page and on the page that sent the invitation */
+.mem-av.is-asked.has-art,
+.invr-av.has-art { position: relative; overflow: visible; background: none; border: 0; }
+.mem-av.is-asked.has-art > svg,
+.invr-av.has-art > svg { display: block; width: 100%; height: 100%; border-radius: 50%; opacity: 0.62; filter: saturate(0.75); }
+.mem-av.is-asked.has-art::after,
+.invr-av.has-art::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border: 1.5px dashed var(--ink-4);
+    border-radius: 50%;
+    opacity: 0.75;
+    pointer-events: none;
+}
 .invr-t { flex: 1 1 auto; min-width: 0; }
 .invr-email { font-size: 0.85rem; font-weight: 600; color: var(--ink); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .invr-s { margin-top: 0.1rem; font-size: 0.76rem; line-height: 1.45; color: var(--ink-4); }
