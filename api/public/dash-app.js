@@ -14510,12 +14510,94 @@
 
     var canRoute = !!(window.history && history.pushState);
 
+    // ---- moving between pages. The page going away steps aside and the new
+    // one comes in from the side it is on: further in from the right, back
+    // from the left, so the motion says which way somebody went. Each entry in
+    // the history remembers how far down it was read, and going back to it
+    // opens it there rather than at the top.
+    var navAt = (history.state && typeof history.state.spAt === 'number') ? history.state.spAt : 0;
+    var navTop = navAt;
+    var navScroll = {};
+    if (canRoute) {
+        try { history.replaceState(Object.assign({}, history.state || {}, { spAt: navAt }), ''); } catch (e) {  }
+    }
+    function quietMotion() {
+        try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; }
+    }
+    function scrollBox() { return document.getElementById('canvas'); }
+
+    // the content of a page arrives after the page does, so the place it was
+    // left at is asked for again as it fills in, until it can be reached or
+    // the reader scrolls on their own
+    var scrollWant = null;
+    function putScroll(y) {
+        var box = scrollBox();
+        if (!box) return;
+        scrollWant = y;
+        box.scrollTop = y;
+        if (!y) return;
+        var mine = y;
+        [80, 200, 450, 900].forEach(function (ms) {
+            setTimeout(function () {
+                if (scrollWant !== mine) return;
+                box.scrollTop = mine;
+                if (Math.abs(box.scrollTop - mine) < 2) scrollWant = null;
+            }, ms);
+        });
+    }
+    ['wheel', 'touchstart', 'keydown'].forEach(function (ev) {
+        document.addEventListener(ev, function () { scrollWant = null; }, { passive: true });
+    });
+
+    function turnPage(way, then) {
+        var box = scrollBox();
+        var html = document.documentElement;
+        if (quietMotion() || !box) { render(); then(); return; }
+        if (document.startViewTransition) {
+            html.classList.add('is-paging');
+            html.setAttribute('data-way', way);
+            var run;
+            try {
+                run = document.startViewTransition(function () { render(); then(); });
+            } catch (e) {
+                html.classList.remove('is-paging');
+                render(); then();
+                return;
+            }
+            run.finished.catch(function () {  }).then(function () {
+                html.classList.remove('is-paging');
+                html.removeAttribute('data-way');
+            });
+            return;
+        }
+        // without view transitions the new page still comes in from its side
+        render();
+        then();
+        box.style.animation = 'none';
+        void box.offsetWidth;
+        box.style.animation = (way === 'back' ? 'pageInBack' : 'pageInOn') + ' 0.34s var(--ease) both';
+    }
+
     function go(path) {
         if (!canRoute) { location.assign(path); return; }
         if (path === location.pathname) { setMenu(false); return; }
-        history.pushState({}, '', path);
-        render();
+        var box = scrollBox();
+        navScroll[navAt] = box ? box.scrollTop : 0;
+        navAt = navTop + 1;
+        navTop = navAt;
+        history.pushState({ spAt: navAt }, '', path);
+        turnPage('on', function () { putScroll(0); });
     }
+
+    window.addEventListener('popstate', function (e) {
+        var box = scrollBox();
+        navScroll[navAt] = box ? box.scrollTop : 0;
+        var to = (e.state && typeof e.state.spAt === 'number') ? e.state.spAt : 0;
+        var way = to < navAt ? 'back' : 'on';
+        navAt = to;
+        if (to > navTop) navTop = to;
+        turnPage(way, function () { putScroll(navScroll[to] || 0); });
+    });
 
     var lastMe = null;
 
@@ -14677,12 +14759,6 @@
         applySideMode(sideMode());
         setMenu(false);
         paintCanvas();
-        var canvas = document.getElementById('canvas');
-        if (canvas) {
-            canvas.style.animation = 'none';
-            void canvas.offsetWidth;
-            canvas.style.animation = '';
-        }
         if (!rebuilt) return;
         var side = document.getElementById('side-nav');
         if (side) {
@@ -14692,7 +14768,6 @@
         }
     }
 
-    window.addEventListener('popstate', render);
 
     // the mark in the sidebar goes to the organisation you are in. it used to go
     // to /dashboard, which is now a door onto the picker, so it would have thrown
@@ -14708,7 +14783,7 @@
 
     function paintShell() {
         if (location.pathname === ORGS_PATH_ALT && canRoute) {
-            history.replaceState({}, '', ORGS_PATH);
+            history.replaceState({ spAt: navAt }, '', ORGS_PATH);
         }
         paintSideBrand();
         paintNav(currentNav());

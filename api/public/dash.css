@@ -3167,6 +3167,32 @@ a.btn { text-decoration: none; }
     animation: themeOut 0.42s ease 0.04s both;
 }
 
+/* Moving between pages. Only the content box is named, and only while a
+   page is being turned, so the theme change keeps its own whole-page fade.
+   The rail and the top stay put; the page going away steps aside and fades,
+   the new one comes in from the side it lies on. */
+html.is-paging .canvas { view-transition-name: sp-page; }
+html.is-paging::view-transition-old(root),
+html.is-paging::view-transition-new(root) { animation: none; }
+/* the rail and the top are already the new page's, so the old picture of
+   them is not shown at all: the item somebody picked lights up at once */
+html.is-paging::view-transition-old(root) { display: none; }
+/* one after the other, never both at once: two pages of text over each
+   other for a moment reads as a smear, not as a page being turned */
+::view-transition-group(sp-page) { animation-duration: 0.4s; }
+::view-transition-old(sp-page) { animation: pageOutOn 0.12s ease-in both; }
+::view-transition-new(sp-page) { animation: pageInOn 0.3s var(--ease) 0.11s both; }
+html[data-way="back"]::view-transition-old(sp-page) { animation-name: pageOutBack; }
+html[data-way="back"]::view-transition-new(sp-page) { animation-name: pageInBack; }
+@keyframes pageOutOn { to { opacity: 0; transform: translateX(-6px); } }
+@keyframes pageOutBack { to { opacity: 0; transform: translateX(6px); } }
+@keyframes pageInOn { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+@keyframes pageInBack { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-old(sp-page),
+    ::view-transition-new(sp-page) { animation: none !important; }
+}
+
 @keyframes themeOut {
     from { opacity: 1; }
     to { opacity: 0; }
