@@ -752,7 +752,40 @@ button { font: inherit; color: inherit; }
 
 .avatar-in {
     display: block;
-    transform: translate(var(--ink-x, 0px), var(--ink-y, 0px));
+}
+/* the drawn picture fills the circle; the colour behind it is its own */
+.avatar.has-art { background: none; overflow: hidden; }
+.avatar.has-art .avatar-in,
+.has-art > svg,
+.avatar-in > svg { display: block; width: 100%; height: 100%; }
+.mem-av.has-art { background: none; border: 0; overflow: hidden; }
+
+/* choosing the picture: the one in use, large, and a set to pick from */
+.avp-card { padding: 1.15rem 1.2rem 1.25rem; }
+.avp-top { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; align-items: center; gap: 1rem; }
+.avp-now {
+    flex: none; width: 64px; height: 64px; border-radius: 50%; overflow: hidden;
+    box-shadow: 0 0 0 3px var(--surface), 0 0 0 4px var(--line);
+}
+.avp-now svg, .avp-opt svg { display: block; width: 100%; height: 100%; }
+.avp-t { flex: 1; min-width: 0; }
+.avp-h { font-size: 0.9rem; font-weight: 650; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.avp-p { margin: 0.2rem 0 0; font-size: 0.8rem; line-height: 1.5; color: var(--ink-3); }
+.avp-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 0.7rem; margin-top: 1.1rem; }
+.avp-opt {
+    aspect-ratio: 1; padding: 0; border: 0; border-radius: 50%; overflow: hidden;
+    background: none; cursor: pointer;
+    box-shadow: 0 0 0 2px transparent;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.avp-opt:hover { transform: translateY(-1px); }
+.avp-opt.is-on { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--sel); }
+.avp-opt:focus-visible { outline: 2px solid var(--link); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .avp-opt { transition: none; } .avp-opt:hover { transform: none; } }
+@media (max-width: 720px) {
+    .avp-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .avp-top { grid-template-columns: 64px minmax(0, 1fr); }
+    .avp-mix { grid-column: 1 / -1; justify-self: start; }
 }
 
 .menu-btn {
@@ -3248,7 +3281,7 @@ html.is-theming .btn {
     .orgh { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* the team list. a row is a person: initials, who they are, what they may do. */
+/* the team list. a row is a person: their picture, who they are, what they may do. */
 .mem-av {
     flex: none;
     display: grid;

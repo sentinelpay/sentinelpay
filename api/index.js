@@ -2372,6 +2372,22 @@ app.post('/v1/account/lang', requireCloudflareOrigin, accountLimiter, async (req
     res.json({ ok: true, lang });
 });
 
+// The picture in the corner, picked from the ones the dashboard draws. Only
+// the number is kept; null goes back to the one the address gives.
+app.post('/v1/account/avatar', requireCloudflareOrigin, accountLimiter, async (req, res) => {
+    const me = await requireSession(req, res);
+    if (!me) return;
+    const seed = (req.body || {}).avatar;
+    const out = await accounts.setAvatar(me.userId, seed === null ? null : seed);
+    if (out.reason === 'bad-avatar') return res.status(400).json({ error: 'That picture is not one we draw.' });
+    if (!out.ok) return res.status(503).json({ error: 'Accounts are not available right now. Please try again shortly.' });
+    res.set('Cache-Control', 'no-store, private');
+    tellMe(me.userId, { topic: 'me' });
+    // the people who share an organisation see it on the team page
+    for (const o of await orgs.listFor(me.userId).catch(() => [])) await tellOrg(o.id, { topic: 'org', id: String(o.id) });
+    res.json({ ok: true, avatar: out.avatar });
+});
+
 app.post('/v1/account/profile', requireCloudflareOrigin, accountLimiter, async (req, res) => {
     const me = await requireSession(req, res);
     if (!me) return;
@@ -3685,6 +3701,7 @@ async function entitlementFor(req, me, known) {
         email: me.email,
         // the language mail to this account is written in
         lang: me.lang || 'en',
+        avatar: me.avatar == null ? null : me.avatar,
         since: me.since,
         // the security screen says whether a second step is on, so it has to be
         // told rather than left to guess and say no

@@ -619,6 +619,16 @@ test('the sign-in keeps an address the page fixed', () => {
     assert.match(flow, /function clearPrefill\(\) \{\s+loginFields\.forEach\(function \(field\) \{ if \(!field\.readOnly\) field\.value = ''; \}\);/);
 });
 
+// The picture is changed only by its own account, behind the usual checks.
+test('the picture is set by the account itself', () => {
+    const index = require('fs').readFileSync(require('path').join(__dirname, '..', 'index.js'), 'utf8');
+    const at = index.indexOf("app.post('/v1/account/avatar', requireCloudflareOrigin, accountLimiter,");
+    assert.ok(at !== -1, 'the picture route is not behind the origin check and the limit');
+    const body = index.slice(at, index.indexOf('\n});', at));
+    assert.match(body, /requireSession\(req, res\)/);
+    assert.match(body, /accounts\.setAvatar\(me\.userId,/);
+});
+
 // The account's language is changed only by the account itself, behind the
 // same checks as the rest of the account, and only to one we write mail in.
 test('the language is set by the account, to one we have', () => {

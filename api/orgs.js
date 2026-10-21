@@ -302,7 +302,7 @@ async function members(userId, orgId) {
     if (!mine) return null;
     try {
         const res = await db.query(
-            `SELECT u.id, u.email_hash, u.email_enc, u.name_enc, u.totp_at,
+            `SELECT u.id, u.email_hash, u.email_enc, u.name_enc, u.totp_at, u.avatar,
                     m.role, m.created_at
                FROM memberships m
                JOIN users u ON u.id = m.user_id
@@ -320,6 +320,8 @@ async function members(userId, orgId) {
             // that clears sanctions alerts should be able to see at a glance who
             // among them is protected by a password alone.
             mfa: Boolean(row.totp_at),
+            // the picture they picked, or none for the one their address gives
+            avatar: row.avatar == null ? null : Number(row.avatar),
             you: String(row.id) === String(userId),
         }));
     } catch (err) {

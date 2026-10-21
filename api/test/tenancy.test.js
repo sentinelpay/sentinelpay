@@ -283,6 +283,25 @@ test('an invitation is declined by the person it is for, and opened again by a r
     assert.ok((await invites.accept(again.secret, me)).ok);
 });
 
+// The picture is a number on the account, set by the account, shown to the
+// people it shares an organisation with, and only ever a number.
+test('an account keeps the picture it picked, and the team page is told', live, async () => {
+    const accounts = require('../accounts');
+    await orgs.init();
+    const owner = await aPerson('pic');
+    const orgId = (await orgs.create(owner, 'Pictures ' + Date.now(), 'localhost', 'owner')).org.id;
+    assert.strictEqual((await accounts.setAvatar(owner, 4294967295)).avatar, 4294967295);
+    assert.strictEqual((await accounts.setAvatar(owner, -1)).reason, 'bad-avatar');
+    assert.strictEqual((await accounts.setAvatar(owner, 1.5)).reason, 'bad-avatar');
+    assert.strictEqual((await accounts.setAvatar(owner, '<svg>')).reason, 'bad-avatar');
+    assert.strictEqual((await accounts.setAvatar(owner, 4294967296)).reason, 'bad-avatar');
+    await accounts.setAvatar(owner, 123456);
+    const rows = await orgs.members(owner, orgId);
+    assert.strictEqual(rows.find((r) => r.you).avatar, 123456);
+    assert.deepStrictEqual(await accounts.setAvatar(owner, null), { ok: true, avatar: null });
+    assert.strictEqual((await orgs.members(owner, orgId)).find((r) => r.you).avatar, null);
+});
+
 // The audit logs page reads an account's own trail a page at a time. Lines
 // written in the same instant are neither read twice nor stepped over, a
 // group filter keeps only its kinds, and another account's lines never show.
