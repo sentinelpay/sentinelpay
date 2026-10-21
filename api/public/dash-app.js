@@ -11889,13 +11889,15 @@
         }
     }
 
+    var LOG_PAGE = 25;
+
     function viewLogs(me) {
         var page = document.createElement('div');
         page.className = 'pg';
         page.appendChild(pageHead('Audit logs',
             'Everything this account has done, and when. Each line is written once and never changed.'));
 
-        var state = { range: '7d', groups: [], order: 'desc', rows: [], more: false, cursor: '', busy: false, at: 0 };
+        var state = { range: '7d', groups: [], order: 'desc', rows: [], more: false, page: 1, total: 0, size: LOG_PAGE, busy: false, at: 0 };
 
         // the filters: a date range, the kinds of event, and a way to ask again
         var bar = document.createElement('div');
@@ -12092,17 +12094,28 @@
             card.appendChild(head);
             state.rows.forEach(function (r) { card.appendChild(logRow(r)); });
 
+            // the pager the blog has: back, where in the whole you are, on
+            var first = (state.page - 1) * state.size + 1;
+            var prev = document.createElement('button');
+            prev.type = 'button';
+            prev.className = 'lgx-pg';
+            prev.textContent = t('Prev');
+            prev.disabled = state.page <= 1;
+            prev.addEventListener('click', function () { load(state.page - 1); });
+            foot.appendChild(prev);
             var count = document.createElement('span');
-            count.textContent = fill(state.more ? 'Viewing the first {n}' : 'Viewing {n}', { n: state.rows.length });
+            count.className = 'lgx-cnt';
+            count.textContent = fill('Viewing {a}–{b} of {n}', {
+                a: first, b: first + state.rows.length - 1, n: Math.max(state.total, first + state.rows.length - 1)
+            });
             foot.appendChild(count);
-            if (state.more) {
-                var more = document.createElement('button');
-                more.type = 'button';
-                more.className = 'btn btn-flat lgx-more';
-                more.textContent = t('Load more');
-                more.addEventListener('click', function () { load(true); });
-                foot.appendChild(more);
-            }
+            var next = document.createElement('button');
+            next.type = 'button';
+            next.className = 'lgx-pg';
+            next.textContent = t('Next');
+            next.disabled = !state.more;
+            next.addEventListener('click', function () { load(state.page + 1); });
+            foot.appendChild(next);
         }
 
         function logRow(r) {
@@ -12263,16 +12276,20 @@
             d.acts.appendChild(fin);
         }
 
+        // A page by its number. Every page after the first is read up to the
+        // moment the first one was, so lines written while somebody pages
+        // through do not push the rest along under them; asking afresh, or a
+        // change of filter, starts again at the top and at the present.
         var asked = 0;
-        function load(next) {
+        function load(page) {
             var mine = ++asked;
-            if (!next) state.at = Date.now();
+            var fresh = !page;
+            if (fresh) { state.at = Date.now(); page = 1; }
             var r = rangeOf(state.range);
-            var q = '?order=' + state.order + '&limit=50';
-            if (r[2]) q += '&from=' + encodeURIComponent(new Date(state.at - r[2]).toISOString()) +
+            var q = '?order=' + state.order + '&limit=' + LOG_PAGE + '&page=' + page +
                 '&to=' + encodeURIComponent(new Date(state.at).toISOString());
+            if (r[2]) q += '&from=' + encodeURIComponent(new Date(state.at - r[2]).toISOString());
             if (state.groups.length) q += '&groups=' + encodeURIComponent(state.groups.join(','));
-            if (next && state.cursor) q += '&cursor=' + encodeURIComponent(state.cursor);
             again.classList.add('is-busy');
             fetch('/v1/account/logs' + q, { credentials: 'same-origin' })
                 .then(function (x) {
@@ -12281,12 +12298,16 @@
                 })
                 .then(function (j) {
                     if (mine !== asked) return;
-                    var got = (j && j.rows) || [];
-                    state.rows = next ? state.rows.concat(got) : got;
+                    state.rows = (j && j.rows) || [];
                     state.more = Boolean(j && j.more);
-                    state.cursor = (j && j.cursor) || '';
-                    if (!next) paintChips();
+                    state.page = (j && j.page) || page;
+                    state.total = (j && j.total) || 0;
+                    state.size = (j && j.size) || LOG_PAGE;
+                    if (fresh) paintChips();
                     draw();
+                    // a page asked for from the pager opens at its first line;
+                    // the dashboard scrolls in a box, so it is moved there
+                    if (!fresh && card.isConnected) card.scrollIntoView({ block: 'start' });
                 })
                 .catch(function () {
                     if (mine !== asked) return;
@@ -12299,7 +12320,7 @@
 
         // every notice means this account did something, which is a line here;
         // asked again only while the first page is what is on screen
-        onLive(function () { if (!state.cursor || state.rows.length <= 50) load(false); });
+        onLive(function () { if (state.page === 1) load(false); });
         paintChips();
         load(false);
         return page;

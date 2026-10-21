@@ -3580,6 +3580,7 @@ app.get('/v1/account/logs', async (req, res) => {
         groups,
         order: q.order === 'asc' ? 'asc' : 'desc',
         cursor: String(q.cursor || ''),
+        page: q.page,
         limit: q.limit,
     });
     res.set('Cache-Control', 'no-store, private');
@@ -3588,6 +3589,9 @@ app.get('/v1/account/logs', async (req, res) => {
         groups: Object.keys(accounts.AUDIT_GROUPS),
         more: out.more,
         cursor: out.cursor || '',
+        total: out.total,
+        page: out.page,
+        size: out.size,
         rows: out.rows.map((r) => ({
             id: String(r.id),
             at: r.at,

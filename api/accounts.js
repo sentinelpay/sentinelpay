@@ -390,9 +390,10 @@ async function verifySignup(email, code, origin) {
         const gone = await client.query('DELETE FROM signup_codes WHERE email_hash = $1 RETURNING 1', [emailHash]);
         if (!gone.rowCount) { await client.query('ROLLBACK'); return { ok: false, reason: 'bad-code' }; }
         const made = await client.query(
-            `INSERT INTO users (email_hash, email_enc, name_enc, password_hash, lang, flags)
-             VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (email_hash) DO NOTHING RETURNING id`,
-            [emailHash, row.email_enc, row.name_enc, row.password_hash, row.lang, row.flags]
+            `INSERT INTO users (email_hash, email_enc, name_enc, password_hash, lang, flags, avatar)
+             VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (email_hash) DO NOTHING RETURNING id`,
+            [emailHash, row.email_enc, row.name_enc, row.password_hash, row.lang, row.flags,
+             avatarOf(db.open('signup-email:' + emailHash, row.email_enc))]
         );
         // An account made for this address in the meantime is not opened by a
         // sign-up code: that would be a way in without its password.
@@ -657,15 +658,26 @@ async function accountTrail(actor, q) {
         where.push(asc ? '(at, id) > ($' + a + '::timestamptz, $' + b + '::bigint)'
             : '(at, id) < ($' + a + '::timestamptz, $' + b + '::bigint)');
     }
+    // a numbered page, for the pager: the rows before it are skipped, and the
+    // total is counted under the same filters, without the cursor
+    const page = Math.min(Math.max(Math.floor(Number(want.page)) || 0, 0), 100000);
+    const countWhere = cur ? where.slice(0, -1) : where.slice();
+    const countArgs = cur ? args.slice(0, -2) : args.slice();
     args.push(cap + 1);
+    const lim = args.length;
+    let offset = '';
+    if (page > 1 && !cur) { args.push((page - 1) * cap); offset = ' OFFSET $' + args.length; }
     try {
+        const total = page
+            ? (await db.query('SELECT count(*)::int AS n FROM audit_events WHERE ' + countWhere.join(' AND '), countArgs)).rows[0].n
+            : null;
         const res = await db.query(
             // the cursor's moment is written by the database, to the
             // microsecond it stores: a JavaScript date keeps milliseconds, and
             // a cursor cut to those skipped lines written in the same one
             "SELECT id, at, kind, ip, detail, to_char(at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS at_key" +
             ' FROM audit_events WHERE ' + where.join(' AND ') +
-            ' ORDER BY at ' + (asc ? 'ASC' : 'DESC') + ', id ' + (asc ? 'ASC' : 'DESC') + ' LIMIT $' + args.length,
+            ' ORDER BY at ' + (asc ? 'ASC' : 'DESC') + ', id ' + (asc ? 'ASC' : 'DESC') + ' LIMIT $' + lim + offset,
             args
         );
         const more = res.rows.length > cap;
@@ -675,6 +687,9 @@ async function accountTrail(actor, q) {
             rows,
             more,
             cursor: more && last ? last.at_key + '_' + last.id : '',
+            total,
+            page: page || null,
+            size: cap,
         };
     } catch (err) {
         console.error('[accounts] could not read the trail: ' + err.message);
@@ -756,6 +771,21 @@ async function setLang(userId, lang) {
 // The language of whoever holds this address, or '' when nobody does. For
 // mail sent to somebody by another person, so it reaches them in their own
 // language; it is never shown, since it would say who has an account here.
+// The picture an address gives: the number the dashboard draws a sentinel
+// from for anybody who has not picked one. It is the dashboard's own hash,
+// done the same way here, so the sentinel shown on an invitation is the one
+// the account starts with, and it is written onto the account when it is
+// made: from then on it is the account's, whatever happens to the address.
+function avatarOf(email) {
+    const s = String(email || '').trim().toLowerCase();
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) {
+        h ^= s.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+}
+
 // The picture, as the number it is drawn from, or none to go back to the one
 // the address gives.
 const AVATAR_MAX = 4294967295;
@@ -1542,8 +1572,8 @@ async function finishReset(token, password, { name, flags } = {}) {
         } else {
             if (!name) { await client.query('ROLLBACK'); return { ok: false, reason: 'name-required' }; }
             const insert = await client.query(
-                `INSERT INTO users (email_hash, email_enc, name_enc, password_hash, lang, flags, verified_at)
-                 VALUES ($1, $2, $3, $4, $5, $6, now()) RETURNING id`,
+                `INSERT INTO users (email_hash, email_enc, name_enc, password_hash, lang, flags, verified_at, avatar)
+                 VALUES ($1, $2, $3, $4, $5, $6, now(), $7) RETURNING id`,
                 [
                     row.email_hash,
 
@@ -1551,6 +1581,7 @@ async function finishReset(token, password, { name, flags } = {}) {
                         db.open('reset-email:' + row.email_hash, row.email_enc)),
                     db.seal('signup-name:' + row.email_hash, name),
                     passwordHash, row.lang || 'en', (flags || []).join(',').slice(0, 200),
+                    avatarOf(db.open('reset-email:' + row.email_hash, row.email_enc)),
                 ]
             );
             userId = insert.rows[0].id;
@@ -1611,4 +1642,4 @@ module.exports = {
     readUser,
     hashPassword, verifyPassword,
     signIn, startSession, readSession, endSession,
-    CODE_TTL_MIN, CODE_MAX_SENDS, CODE_RESEND_WAIT_S, setName, setLang, langOfEmail, setAvatar };
+    CODE_TTL_MIN, CODE_MAX_SENDS, CODE_RESEND_WAIT_S, setName, setLang, langOfEmail, setAvatar, avatarOf };

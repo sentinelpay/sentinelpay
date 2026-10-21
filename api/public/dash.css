@@ -2033,6 +2033,18 @@ button { font: inherit; color: inherit; }
     color: var(--ink-4);
 }
 .lgx-foot:empty { display: none; }
+/* the pager, as the blog has it: back, where you are in the whole, on */
+.lgx-foot { gap: 1.2rem; margin-top: 1.2rem; }
+.lgx-pg {
+    font: inherit; font-size: 0.84rem; font-weight: 700; color: var(--ink);
+    padding: 0.55rem 1.3rem; border-radius: 10px; cursor: pointer;
+    background: var(--surface); border: 1px solid var(--line);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+.lgx-pg:hover:not(:disabled) { border-color: var(--link); box-shadow: 0 6px 18px rgba(14, 35, 88, 0.08); }
+.lgx-pg:disabled { opacity: 0.4; cursor: default; }
+.lgx-pg:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+.lgx-cnt { font-size: 0.82rem; font-weight: 600; color: var(--ink-3); }
 
 /* one line in its panel: two tabs, the overview in groups with a copy
    beside what is worth quoting, and the line as JSON */

@@ -302,6 +302,28 @@ test('an account keeps the picture it picked, and the team page is told', live, 
     assert.strictEqual((await orgs.members(owner, orgId)).find((r) => r.you).avatar, null);
 });
 
+// The pager reads a page by its number and says how many lines there are in
+// all, under the same filters; the pages between them hold every line once.
+test('the trail is read a numbered page at a time, with the total', live, async () => {
+    const accounts = require('../accounts');
+    const me = 'pages-' + crypto.randomBytes(4).toString('hex');
+    for (let i = 0; i < 7; i++) {
+        await db.query("INSERT INTO audit_events (kind, actor, at) VALUES ($1, $2, now() - ($3 || ' seconds')::interval)",
+            [i % 2 ? 'login' : 'token-created', me, String(i)]);
+    }
+    const p1 = await accounts.accountTrail(me, { limit: 3, page: 1 });
+    const p2 = await accounts.accountTrail(me, { limit: 3, page: 2 });
+    const p3 = await accounts.accountTrail(me, { limit: 3, page: 3 });
+    assert.strictEqual(p1.total, 7);
+    assert.deepStrictEqual([p1.rows.length, p2.rows.length, p3.rows.length], [3, 3, 1]);
+    assert.ok(p1.more && p2.more && !p3.more);
+    const ids = [].concat(p1.rows, p2.rows, p3.rows).map((r) => String(r.id));
+    assert.strictEqual(new Set(ids).size, 7, 'a line was on two pages');
+    const tokensOnly = await accounts.accountTrail(me, { limit: 3, page: 1, groups: ['tokens'] });
+    assert.strictEqual(tokensOnly.total, 4, 'the total ignored the filter');
+    await db.query('DELETE FROM audit_events WHERE actor = $1', [me]);
+});
+
 // The audit logs page reads an account's own trail a page at a time. Lines
 // written in the same instant are neither read twice nor stepped over, a
 // group filter keeps only its kinds, and another account's lines never show.
