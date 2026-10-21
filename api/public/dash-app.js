@@ -4340,8 +4340,11 @@
         var who = document.createElement('div');
         who.className = 'mem-who';
         var av = document.createElement('span');
-        av.className = 'mem-av is-asked';
-        av.textContent = String(i.email || '?').charAt(0).toUpperCase();
+        // the sentinel they will have once they arrive, drawn from the address
+        // as it is for anyone who has not picked one, held back behind a
+        // dashed ring until they do
+        av.className = 'mem-av is-asked has-art';
+        av.innerHTML = avatarArt(avSeedOf({ email: i.email }));
         who.appendChild(av);
         var txt = document.createElement('div');
         txt.className = 'tr-t';
@@ -4694,8 +4697,11 @@
                 var row = document.createElement('div');
                 row.className = 'invr-row' + (r.ok ? '' : ' is-bad');
                 var av = document.createElement('span');
-                av.className = 'invr-av';
-                av.textContent = String(r.email || '?').charAt(0).toUpperCase();
+                // an address that was asked gets the sentinel it will have; one
+                // that was refused keeps its letter, since nobody was asked
+                av.className = 'invr-av' + (r.ok ? ' has-art' : '');
+                if (r.ok) av.innerHTML = avatarArt(avSeedOf({ email: r.email }));
+                else av.textContent = String(r.email || '?').charAt(0).toUpperCase();
                 row.appendChild(av);
                 var txt = document.createElement('div');
                 txt.className = 'invr-t';
