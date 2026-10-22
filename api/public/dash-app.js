@@ -4709,12 +4709,14 @@
                 em.className = 'invr-email';
                 em.textContent = r.email;
                 txt.appendChild(em);
-                var st = document.createElement('div');
-                st.className = 'invr-s';
-                st.textContent = r.ok
-                    ? t(r.mailed ? 'Emailed. They join once they open the link and sign in.' : 'Link ready to pass on.')
-                    : r.error;
-                txt.appendChild(st);
+                // the tag beside it already says what happened; a line under
+                // the address is only for one that did not go, and why
+                if (!r.ok) {
+                    var st = document.createElement('div');
+                    st.className = 'invr-s';
+                    st.textContent = r.error;
+                    txt.appendChild(st);
+                }
                 row.appendChild(txt);
                 row.appendChild(tag(t(!r.ok ? 'Not sent' : r.mailed ? 'Emailed' : 'Link only'),
                     !r.ok ? 'off' : r.mailed ? 'ok' : 'mid'));
