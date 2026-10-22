@@ -115,7 +115,9 @@
         clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
         x: '<circle cx="12" cy="12" r="8.5"/><path d="m9.2 9.2 5.6 5.6M14.8 9.2l-5.6 5.6"/>',
         check: '<circle cx="12" cy="12" r="8.5"/><path d="m8.6 12.2 2.4 2.4 4.4-4.6"/>',
-        link: '<path d="M10 14a4 4 0 0 0 5.7 0l2.8-2.8a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-2.8 2.8a4 4 0 0 0 5.7 5.7l1-1"/>'
+        link: '<path d="M10 14a4 4 0 0 0 5.7 0l2.8-2.8a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-2.8 2.8a4 4 0 0 0 5.7 5.7l1-1"/>',
+        // the organisation's cube, as the dashboard draws it
+        org: '<path d="m12 3 8 4.5v9L12 21l-8-4.5v-9Z"/><path d="m4 7.5 8 4.5 8-4.5M12 12v9"/>'
     };
     function svg(name, cls) {
         var s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -184,8 +186,7 @@
         body.appendChild(wrap);
         return wrap;
     }
-    function head(wrap, eyebrow, title, line) {
-        if (eyebrow) wrap.appendChild(el('p', 'ivp-eyebrow', eyebrow));
+    function head(wrap, title, line) {
         var h = el('h1', 'ivp-h', title);
         h.id = 'ivp-h';
         wrap.appendChild(h);
@@ -267,10 +268,10 @@
     function drawOpen(d) {
         var org = (d.org && d.org.name) || t('this organisation');
         var who = inviterName(d);
-        var wrap = start(String(org).trim().charAt(0).toUpperCase() || '?');
+        var wrap = start(null, 'org');
         // who asked and as what are in the list below; a sentence saying it
         // again made the card taller than a laptop screen
-        head(wrap, t('Invitation'), fill('Join {org}', { org: org }));
+        head(wrap, fill('Join {org}', { org: org }));
 
         var facts = el('dl', 'ivp-facts');
         function fact(label, value, small) {
@@ -421,7 +422,7 @@
     // asked once more, on the card, rather than done on the first click.
     function askDecline(d, org, who) {
         var wrap = start(null, 'x', 'off');
-        head(wrap, null, fill('Decline the invitation to {org}?', { org: org }),
+        head(wrap, fill('Decline the invitation to {org}?', { org: org }),
             who ? fill('{name} will be told, and the link stops working. They can send you a new one later.', { name: who })
                 : t('Whoever sent it will be told, and the link stops working.'));
         var box = acts(wrap);
@@ -432,7 +433,7 @@
             post('/v1/invites/decline', { answer: 'no' }).then(function (out) {
                 if (!out.declined) { load(); return; }
                 var done = start(null, 'check', 'off');
-                head(done, null, t('Invitation declined'),
+                head(done, t('Invitation declined'),
                     who ? fill('{name} has been told. Nothing else happens.', { name: who }) : t('Nothing else happens.'));
                 home(acts(done), d.me);
             }).catch(function (e) {
@@ -454,7 +455,7 @@
         var box;
         if (d.state === 'accepted' && me && me.member && d.org && d.org.slug) {
             wrap = start(null, 'check');
-            head(wrap, null, fill('You are already in {org}', { org: org }),
+            head(wrap, fill('You are already in {org}', { org: org }),
                 t('This invitation has been used, and the organisation is open to you.'));
             box = acts(wrap);
             var open = el('a', 'lp-demo-submit', fill('Open {org}', { org: org }));
@@ -467,27 +468,27 @@
         }
         if (d.state === 'expired') {
             wrap = start(null, 'clock', 'warn');
-            head(wrap, null, t('This invitation has expired'),
+            head(wrap, t('This invitation has expired'),
                 (who ? fill('It was open until {date}. Ask {name} to send you a new one.', { date: dateOf(d.expiresAt), name: who })
                      : fill('It was open until {date}. Ask whoever invited you to send a new one.', { date: dateOf(d.expiresAt) })));
         } else if (d.state === 'withdrawn') {
             wrap = start(null, 'x', 'off');
-            head(wrap, null, t('This invitation was cancelled'),
+            head(wrap, t('This invitation was cancelled'),
                 who ? fill('Somebody in {org} cancelled it. If you still need access, ask {name}.', { org: org, name: who })
                     : fill('Somebody in {org} cancelled it.', { org: org }));
         } else if (d.state === 'declined') {
             wrap = start(null, 'x', 'off');
-            head(wrap, null, t('You declined this invitation'),
+            head(wrap, t('You declined this invitation'),
                 who ? fill('If you change your mind, ask {name} to send it again.', { name: who })
                     : t('If you change your mind, ask for it to be sent again.'));
         } else if (d.state === 'accepted') {
             wrap = start(null, 'check', 'off');
-            head(wrap, null, t('This invitation has been used'),
+            head(wrap, t('This invitation has been used'),
                 who ? fill('Each invitation opens once. Ask {name} for a new one if you need access.', { name: who })
                     : t('Each invitation opens once. Ask for a new one if you need access.'));
         } else {
             wrap = start(null, 'link', 'off');
-            head(wrap, null, t(d.broken ? 'The invitation could not be read' : 'This invitation link does not work'),
+            head(wrap, t(d.broken ? 'The invitation could not be read' : 'This invitation link does not work'),
                 t(d.broken ? 'Something went wrong on our side. Reload the page to try again.'
                            : 'Open the link from the email again, all of it. If it still does not work, ask whoever invited you to send a new one.'));
         }
