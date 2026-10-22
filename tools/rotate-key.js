@@ -159,12 +159,16 @@ async function main() {
     }
 
     console.log(touched + ' row(s) ' + (WRITE ? 'rewritten' : 'read'));
-    console.log(stale + ' value(s) still under the previous key.');
+    // after --write these were under the previous key when they were read and
+    // are under the current one now; the run without it is what checks
+    console.log(stale + ' value(s) ' + (WRITE ? 'moved off' : 'still under') + ' the previous key.');
     if (unreadable) {
         console.error(unreadable + ' value(s) could not be opened with either key and were left alone.');
         console.error('That is data written under a key neither variable holds. Find that key before dropping anything.');
     }
-    if (!unreadable) {
+    if (!unreadable && WRITE) {
+        console.log('Run again without --write to check.');
+    } else if (!unreadable) {
         console.log(stale
             ? 'Not finished: run again with --write, then run without it to check.'
             : 'Finished: nothing is under the previous key, so SUBMISSIONS_KEY_PREVIOUS can be removed.');
