@@ -46,6 +46,40 @@ const WORK = [
         columns: [{ column: 'email_enc', label: (row) => 'reset-email:' + row.email_hash }],
         extra: ['email_hash'],
     },
+    // These four were missing, and the dry run that came after said nothing
+    // was left under the previous key, because it only looked where this list
+    // told it to. Removing the previous key then made every invitation
+    // address, check detail, decision note and trial company written before
+    // the rotation unreadable. A test now holds this list against every label
+    // the server seals with.
+    {
+        table: 'invites',
+        id: 'id',
+        columns: [{ column: 'email_enc', label: (row) => 'invite:' + row.email_hash }],
+        extra: ['email_hash'],
+    },
+    {
+        table: 'screenings',
+        id: 'id',
+        columns: [{ column: 'detail_enc', label: (row) => 'screening:' + row.id }],
+    },
+    {
+        table: 'check_decisions',
+        id: 'id',
+        columns: [
+            { column: 'actor_enc', label: (row) => 'decided-by:' + row.id },
+            { column: 'note_enc', label: (row) => 'decision:' + row.id },
+        ],
+    },
+    {
+        table: 'trials',
+        id: 'org_id',
+        columns: [
+            { column: 'company_enc', label: (row) => 'trial-company:' + row.org_id },
+            { column: 'phone_enc', label: (row) => 'trial-phone:' + row.org_id },
+        ],
+        where: 'org_id IS NOT NULL',
+    },
 ];
 
 async function main() {
@@ -138,7 +172,11 @@ async function main() {
     process.exit(unreadable ? 2 : 0);
 }
 
-main().catch((err) => {
-    console.error('rotation failed: ' + err.message);
-    process.exit(1);
-});
+if (require.main === module) {
+    main().catch((err) => {
+        console.error('rotation failed: ' + err.message);
+        process.exit(1);
+    });
+}
+
+module.exports = { WORK };

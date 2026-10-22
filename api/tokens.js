@@ -197,9 +197,7 @@ function init() {
 // to store it. scrypt guards passwords because people choose those; nobody
 // chooses this one, and every api call would have to pay for it.
 function hashSecret(secret) {
-    return crypto.createHmac('sha256', db.indexKey() || Buffer.alloc(32))
-        .update('api-token:' + secret, 'utf8')
-        .digest('hex');
+    return db.tokenHash('api-token:' + secret);
 }
 
 function sameHash(a, b) {

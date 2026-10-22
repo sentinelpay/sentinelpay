@@ -88,9 +88,7 @@ function newSecret() {
 }
 
 function hashSecret(secret) {
-    return crypto.createHmac('sha256', db.indexKey() || Buffer.alloc(32))
-        .update('invite:' + secret, 'utf8')
-        .digest('hex');
+    return db.tokenHash('invite:' + secret);
 }
 
 function cleanEmail(value) {

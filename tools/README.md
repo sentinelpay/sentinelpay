@@ -137,3 +137,38 @@ fixed weights it is about 160 KB and the PDF lists its fonts by name.
 
 Run it again when the site's fonts change or the report starts setting a weight
 it did not before. A test fails if the report asks for a weight that has no file.
+
+# rotating keys
+
+Two tools, one per key. Each is run on the server, where the variables are,
+first without `--write` to see what it would do, then with it, then without
+it again to check. Neither removes a variable: that is the last step, and the
+check run says when it is safe.
+
+The data key, which seals the personal fields:
+
+    SUBMISSIONS_KEY=<new> SUBMISSIONS_KEY_PREVIOUS=<old> node tools/rotate-key.js [--write]
+
+Every table with a sealed column is on its list, and a test fails when the
+server seals a label the list does not cover. The first version missed four
+tables and its check run said nothing was left, because it only looked where
+the list said.
+
+The index key, which turns an address into the hash it is found by:
+
+    SUBMISSIONS_INDEX_KEY=<new> SUBMISSIONS_INDEX_KEY_PREVIOUS=<old> \
+    SUBMISSIONS_TOKEN_KEY=<old> node tools/rotate-index-key.js [--write]
+
+1. Set all three on the server and deploy. With the previous key set, the
+   server keeps reading addresses under it, so nothing changes yet.
+2. Run the tool with `--write`. It rewrites every address, phone number and
+   audit subject in one transaction and moves the marker in `hash_keys`. The
+   server follows within two seconds.
+3. Run it again without `--write`. When it says nothing is left, remove
+   `SUBMISSIONS_INDEX_KEY_PREVIOUS`. Keep `SUBMISSIONS_TOKEN_KEY` for good:
+   sessions and API tokens stay under it, so nobody is signed out.
+
+Unfinished sign-ups are dropped and those people ask for a new code. A
+recovery code from before the switch works only while the previous key is
+set; the check run says how many accounts still hold one.
+

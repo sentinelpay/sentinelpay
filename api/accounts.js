@@ -237,9 +237,7 @@ function newCode() {
 }
 
 function hashCode(code, emailHash) {
-    return crypto.createHmac('sha256', db.indexKey() || Buffer.alloc(32))
-        .update('signup-code:' + emailHash + ':' + code, 'utf8')
-        .digest('hex');
+    return db.indexHash('signup-code:' + emailHash + ':' + code);
 }
 
 function sameHash(a, b) {
@@ -425,9 +423,7 @@ async function verifySignup(email, code, origin) {
 }
 
 function hashToken(token) {
-    return crypto.createHmac('sha256', db.indexKey() || Buffer.alloc(32))
-        .update('session:' + token, 'utf8')
-        .digest('hex');
+    return db.tokenHash('session:' + token);
 }
 
 async function startSession(userId, { mfa = false } = {}) {
@@ -551,16 +547,20 @@ async function endSession(token) {
     }
 }
 
-function deviceHash(parts) {
-    return crypto.createHmac('sha256', db.indexKey() || Buffer.alloc(32))
-        .update('device:' + (parts || []).join('|'), 'utf8')
-        .digest('hex');
+function deviceHashes(parts) {
+    return db.indexHashes('device:' + (parts || []).join('|'));
 }
 
 async function noteDevice(userId, parts) {
     if (!userId) return false;
-    const hash = deviceHash(parts);
+    const [hash, before] = deviceHashes(parts);
     try {
+        // a device remembered under the previous index key is moved over the
+        // first time it is seen, rather than being greeted as a new one
+        if (before) {
+            await db.query('UPDATE known_devices SET device_hash = $3 WHERE user_id = $1 AND device_hash = $2',
+                [userId, before, hash]).catch(() => {});
+        }
         const res = await db.query(
             `INSERT INTO known_devices (user_id, device_hash) VALUES ($1, $2)
              ON CONFLICT (user_id, device_hash) DO UPDATE SET last_at = now()
@@ -1030,10 +1030,11 @@ async function clearFactors(userId) {
     await db.query('UPDATE users SET totp_enc = NULL, totp_at = NULL, totp_last = NULL WHERE id = $1', [userId]);
     await db.query('DELETE FROM recovery_codes WHERE user_id = $1', [userId]);
 }
-function hashRecovery(userId, code) {
-    return crypto.createHmac('sha256', db.indexKey() || Buffer.alloc(32))
-        .update('recovery:' + userId + ':' + totp.normaliseRecovery(code), 'utf8')
-        .digest('hex');
+// Ten digits, few enough that a copy of the table with the key could be
+// searched, so they are under the index key. They cannot be rewritten when it
+// changes, so one made under the previous key is let in while that key is set.
+function recoveryHashes(userId, code) {
+    return db.indexHashes('recovery:' + userId + ':' + totp.normaliseRecovery(code));
 }
 async function startTotpPending(userId) {
     const token = crypto.randomBytes(32).toString('base64url');
@@ -1121,8 +1122,8 @@ async function finishTotp(pendingToken, code) {
         // given before then still works, once, so nobody is locked out by the
         // change; when the last of them is spent there are no more.
         const spent = await db.query(
-            'UPDATE recovery_codes SET used_at = now() WHERE user_id = $1 AND code_hash = $2 AND used_at IS NULL RETURNING 1',
-            [row.user_id, hashRecovery(row.user_id, code)]
+            'UPDATE recovery_codes SET used_at = now() WHERE user_id = $1 AND code_hash = ANY($2) AND used_at IS NULL RETURNING 1',
+            [row.user_id, recoveryHashes(row.user_id, code)]
         ).catch(() => ({ rowCount: 0 }));
         if (!spent.rowCount) {
             audit('2fa-refused', { actor: row.user_id, detail: 'wrong code' });
@@ -1463,9 +1464,7 @@ async function inspect(email) {
 }
 
 function hashResetToken(token) {
-    return crypto.createHmac('sha256', db.indexKey() || Buffer.alloc(32))
-        .update('reset-token:' + token, 'utf8')
-        .digest('hex');
+    return db.tokenHash('reset-token:' + token);
 }
 async function startReset(email, lang) {
     if (!(await init())) return { ok: false, reason: 'unavailable' };
