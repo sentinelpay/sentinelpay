@@ -4301,7 +4301,9 @@ app.listen(PORT, () => {
     // These are a handful of one-time DDL statements on an idle connection.
     // Running them in a line costs milliseconds and cannot deadlock, and boot
     // is not the place to be clever about concurrency.
-    [accounts.init, orgs.init, orgs.reslug,
+    // db.init first: it reads which index key the addresses are under, and
+    // every lookup by email after it depends on the answer.
+    [db.init, accounts.init, orgs.init, orgs.reslug,
      projects.init, invites.init, billing.init,
      tokens.adopt, screening.adopt, trial.adopt]
         .reduce((before, step) => before.then(() => step()), Promise.resolve())

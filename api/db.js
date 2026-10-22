@@ -93,6 +93,17 @@ const DATA_KEY_PREVIOUS = readKey('SUBMISSIONS_KEY_PREVIOUS');
 const INDEX_KEY = readKey('SUBMISSIONS_INDEX_KEY') || (DATA_KEY
     ? crypto.createHmac('sha256', DATA_KEY).update('blind-index-v1').digest()
     : null);
+// Set only while the index key is being changed. Until tools/rotate-index-key.js
+// has rewritten every address, the addresses in the database are still under
+// this one, so it is the key in use; the database says when that changes.
+const INDEX_KEY_PREVIOUS = readKey('SUBMISSIONS_INDEX_KEY_PREVIOUS');
+// Sessions, API tokens, invitation links and reset links are 256 random bits
+// each. Their hash cannot be turned back into them with the key or without it,
+// so they keep the key they were made under when the index key changes, and
+// nobody is signed out or has an integration stop working. Unset, it is the
+// index key as it was before any rotation.
+const TOKEN_KEY = readKey('SUBMISSIONS_TOKEN_KEY') || INDEX_KEY_PREVIOUS || INDEX_KEY;
+let liveIndex = INDEX_KEY_PREVIOUS || INDEX_KEY;
 
 function encrypt(plain, aad) {
     const nonce = crypto.randomBytes(12);
@@ -122,11 +133,35 @@ function decrypt(blob, aad) {
     }
 }
 
+function macWith(key, text) {
+    return crypto.createHmac('sha256', key || Buffer.alloc(32)).update(String(text), 'utf8').digest('hex');
+}
+// The hash under the index key in use. Low-entropy things go here, where a
+// copy of the database without the key cannot be searched: addresses, phone
+// numbers, six-digit codes, recovery codes, a device's description.
+function indexHash(text) {
+    return macWith(liveIndex, text);
+}
+// While the key is changing, the same thing under both keys, the one in use
+// first, for what can only be moved over when somebody next presents it.
+function indexHashes(text) {
+    const out = [indexHash(text)];
+    const other = liveIndex === INDEX_KEY ? INDEX_KEY_PREVIOUS : INDEX_KEY;
+    if (other && !other.equals(liveIndex || Buffer.alloc(0))) out.push(macWith(other, text));
+    return out;
+}
+function tokenHash(text) {
+    return macWith(TOKEN_KEY, text);
+}
 function blindIndex(email) {
-    if (!INDEX_KEY || !email) return null;
-    return crypto.createHmac('sha256', INDEX_KEY)
-        .update(String(email).trim().toLowerCase(), 'utf8')
-        .digest('hex');
+    if (!liveIndex || !email) return null;
+    return indexHash(String(email).trim().toLowerCase());
+}
+// What the database records about a key, so a server can tell it was started
+// with the wrong one before anybody tries to sign in. A keyed hash of a fixed
+// string: it says which key, and nothing about the key.
+function fingerprint(key) {
+    return key ? macWith(key, 'sentinelpay key fingerprint').slice(0, 24) : '';
 }
 
 const ENCRYPTED = Boolean(DATA_KEY);
@@ -149,17 +184,66 @@ CREATE INDEX IF NOT EXISTS submissions_email_idx    ON submissions (email_hash);
 
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS flags text;
 CREATE INDEX IF NOT EXISTS submissions_flags_idx    ON submissions (flags) WHERE flags <> '';
+
+-- Which keys the hashes in this database were made under, as fingerprints.
+-- The first server to start writes it; tools/rotate-index-key.js moves the
+-- index one over in the same transaction that rewrites the addresses.
+CREATE TABLE IF NOT EXISTS hash_keys (
+    id          integer     PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    index_fp    text        NOT NULL,
+    token_fp    text        NOT NULL,
+    index_since timestamptz NOT NULL DEFAULT now()
+);
 `;
 
 let ready = null;
+
+// Reads which index key the database is under and uses that one. Run once at
+// start, and every two seconds while a rotation is under way, so the server
+// follows the tool's commit without a restart.
+let keyWarned = '';
+function warnOnce(text) {
+    if (keyWarned === text) return;
+    keyWarned = text;
+    console.error('[db] ' + text);
+}
+async function readKeys() {
+    if (!pool || !INDEX_KEY) return null;
+    await pool.query('INSERT INTO hash_keys (id, index_fp, token_fp) VALUES (1, $1, $2) ON CONFLICT (id) DO NOTHING',
+        [fingerprint(INDEX_KEY_PREVIOUS || INDEX_KEY), fingerprint(TOKEN_KEY)]);
+    const row = (await pool.query('SELECT index_fp, token_fp, index_since FROM hash_keys WHERE id = 1')).rows[0];
+    if (row.index_fp === fingerprint(INDEX_KEY)) liveIndex = INDEX_KEY;
+    else if (INDEX_KEY_PREVIOUS && row.index_fp === fingerprint(INDEX_KEY_PREVIOUS)) liveIndex = INDEX_KEY_PREVIOUS;
+    else warnOnce('the addresses in this database are indexed under a key this server does not have, so nobody can be ' +
+        'found by email. Put the key they are under back, as SUBMISSIONS_INDEX_KEY or SUBMISSIONS_INDEX_KEY_PREVIOUS.');
+    if (row.token_fp !== fingerprint(TOKEN_KEY)) {
+        warnOnce('sessions and API tokens in this database were made under a different key than this server hashes them ' +
+            'with, so none of them work. SUBMISSIONS_TOKEN_KEY has to be the index key from before the first rotation.');
+    }
+    return row;
+}
+let keyTimer = null;
+function followKeys() {
+    if (!INDEX_KEY_PREVIOUS || keyTimer) return;
+    keyTimer = setInterval(() => {
+        readKeys().catch((err) => console.error('[db] could not read the key marker: ' + err.message));
+    }, 2000);
+    keyTimer.unref();
+}
 
 function init() {
     if (!pool) return Promise.resolve(false);
     if (ready) return ready;
     ready = pool.query(SCHEMA)
+        .then(() => readKeys())
         .then(() => {
             console.log('[db] connected, submissions table ready, payload ' +
                 (ENCRYPTED ? 'encrypted (aes-256-gcm)' : 'IN THE CLEAR: set SUBMISSIONS_KEY'));
+            if (INDEX_KEY_PREVIOUS) {
+                console.log('[db] index key rotation under way, addresses read under the ' +
+                    (liveIndex === INDEX_KEY ? 'new' : 'previous') + ' key');
+                followKeys();
+            }
             return true;
         })
         .catch((err) => {
@@ -356,6 +440,17 @@ function open(aad, blob) {
     }
 }
 
+// open, but null where it could not be opened, so an empty value and a value
+// nobody can read are told apart
+function tryOpen(aad, blob) {
+    if (!ENCRYPTED) return String(blob == null ? '' : blob);
+    try {
+        return decrypt(blob, aad);
+    } catch (err) {
+        return null;
+    }
+}
+
 function openCurrent(aad, blob) {
     if (!ENCRYPTED) return String(blob == null ? '' : blob);
     try {
@@ -368,11 +463,13 @@ function openCurrent(aad, blob) {
 }
 
 module.exports = {
-    insert, recent, count, remove, purge, forget, startRetention, status,
+    init, insert, recent, count, remove, purge, forget, startRetention, status,
     available: () => Boolean(pool),
     close: () => (pool ? pool.end() : Promise.resolve()),
     rotating: () => Boolean(DATA_KEY_PREVIOUS),
-    query, connect, seal, open, openCurrent, blindIndex,
-    indexKey: () => INDEX_KEY,
+    query, connect, seal, open, tryOpen, openCurrent, blindIndex, indexHash, indexHashes, tokenHash, readKeys,
+    indexKey: () => liveIndex,
+    keys: () => ({ index: INDEX_KEY, previous: INDEX_KEY_PREVIOUS, token: TOKEN_KEY, live: liveIndex }),
+    fingerprint,
     encrypted: () => ENCRYPTED,
 };

@@ -222,7 +222,10 @@ nothing is required to boot. everything below changes behaviour when set.
 | `DATABASE_CA_CERT` | the provider's ca certificate, so the tls chain is verified rather than merely encrypted |
 | `DATABASE_POOL_MAX` | connection pool ceiling, 8 by default |
 | `SUBMISSIONS_KEY` | 32 bytes base64. encrypts the personal fields at rest. without it they are stored in the clear and the log says so at boot |
+| `SUBMISSIONS_KEY_PREVIOUS` | the data key being replaced, set only while `tools/rotate-key.js` runs |
 | `SUBMISSIONS_INDEX_KEY` | 32 bytes base64 for the blind index. derived from `SUBMISSIONS_KEY` when unset |
+| `SUBMISSIONS_INDEX_KEY_PREVIOUS` | the index key being replaced, set only while `tools/rotate-index-key.js` runs |
+| `SUBMISSIONS_TOKEN_KEY` | hashes sessions, API tokens and invitation and reset links. unset, it is the index key; set it to the index key before the first rotation and keep it |
 | `SUBMISSIONS_RETENTION_DAYS` | how long a lead is kept, 365 by default |
 | `SIGNUP_CODE_TTL_MIN` | how long a verification code is good for, 15 by default, clamped to 5 to 60 |
 | `ACCOUNT_RETENTION_MONTHS` | how long an account survives without a sign-in, 24 by default |
