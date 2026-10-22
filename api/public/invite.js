@@ -501,9 +501,56 @@
         else drawClosed(now);
     }
 
-    // after every script on the page has run, so the words are in the
-    // reader's language from the first frame
-    function begin() { show(); load(); }
+    // After every script on the page has run, so the words are in the
+    // reader's language from the first frame. The card used to open at once,
+    // over the front page's loader, and fill in while the loader was still
+    // spinning behind it. Now the invitation is asked for straight away and
+    // the card comes up once the loader has gone, the way the sign in from a
+    // reset link does, with the answer already in it. If the answer is slow
+    // the card opens with its placeholder rather than keep anyone waiting.
+    function begin() {
+        var answered = false;
+        var clear = false;
+        var slow = null;
+        function up() {
+            if (shown || !clear) return;
+            clearTimeout(slow);
+            show();
+        }
+        load().then(function () { answered = true; up(); });
+        loaderGone(function () {
+            clear = true;
+            if (answered) up();
+            else slow = setTimeout(up, 700);
+        });
+    }
+    // The loader is gone once it is out of the page, or faded to nothing.
+    // This script runs before the sign in's, which has the same wait, so it
+    // keeps its own. Eight seconds is the most anyone is kept waiting.
+    function loaderGone(go) {
+        var done = false;
+        var obs = null;
+        function gone() {
+            var l = document.getElementById('sp-loader');
+            if (!l) return true;
+            return l.classList.contains('spl-done') && !(parseFloat(getComputedStyle(l).opacity) > 0.01);
+        }
+        function settle() {
+            if (done) return;
+            done = true;
+            if (obs) obs.disconnect();
+            document.removeEventListener('transitionend', look, true);
+            go();
+        }
+        function look() { if (!done && gone()) settle(); }
+        if (window.MutationObserver) {
+            obs = new MutationObserver(look);
+            obs.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+        }
+        document.addEventListener('transitionend', look, true);
+        setTimeout(settle, 8000);
+        look();
+    }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', begin);
     else begin();
 })();
