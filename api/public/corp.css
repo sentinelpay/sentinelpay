@@ -2201,10 +2201,14 @@ table.pp-table td { padding: 0.7rem 0.75rem; }}
     max-height: calc(100vh - 2.5rem);
     overflow-y: auto;
     overscroll-behavior: contain;
+    /* on a screen too short for it the card still scrolls, by wheel, touch
+       or keys, without a bar standing outside its rounded corner */
+    scrollbar-width: none;
     transform: translateY(10px) scale(0.985);
     opacity: 0;
     transition: opacity 0.16s ease, transform 0.16s ease;
 }
+.sp-authm::-webkit-scrollbar { display: none; }
 .sp-authm-backdrop.is-open .sp-authm {
     transition: opacity 0.26s ease, transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -4483,14 +4487,14 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
 .sp-authm.ivp-m { max-width: 28rem; }
 .ivp-card {
     display: block !important;
-    padding: 2rem 2rem 1.8rem !important;
+    padding: 1.75rem 2rem 1.6rem !important;
     border-radius: 22px;
     text-align: left;
 }
 .ivp-body { position: relative; z-index: 1; }
 .ivp-mark {
     display: grid; place-items: center;
-    width: 3rem; height: 3rem; margin: 0 auto 1.1rem;
+    width: 2.75rem; height: 2.75rem; margin: 0 auto 0.9rem;
     border-radius: 14px;
     background: linear-gradient(135deg, rgba(0, 190, 220, 0.16), rgba(160, 32, 240, 0.16));
     border: 1px solid rgba(14, 35, 88, 0.08);
@@ -4510,10 +4514,10 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
 }
 .ivp-p { margin: 0 auto; max-width: 34ch; text-align: center; font-size: 0.92rem; line-height: 1.6; color: rgba(14, 35, 88, 0.62); }
 .ivp-p b { color: #0e2358; font-weight: 600; }
-.ivp-facts { margin: 1.4rem 0 0; padding: 0; border-top: 1px solid rgba(14, 35, 88, 0.08); }
+.ivp-facts { margin: 1.2rem 0 0; padding: 0; border-top: 1px solid rgba(14, 35, 88, 0.08); }
 .ivp-fact {
     display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: 0.8rem;
-    padding: 0.62rem 0; border-bottom: 1px solid rgba(14, 35, 88, 0.08);
+    padding: 0.55rem 0; border-bottom: 1px solid rgba(14, 35, 88, 0.08);
     font-size: 0.86rem;
 }
 .ivp-fact dt { margin: 0; color: rgba(14, 35, 88, 0.55); }
@@ -4531,8 +4535,13 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
 .ivp-note-i { flex: none; width: 18px; height: 18px; margin-top: 0.1rem; color: #0091c8; }
 .ivp-note.is-warn { border-color: rgba(176, 112, 0, 0.28); background: #fff8eb; }
 .ivp-note.is-warn .ivp-note-i { color: #9a6400; }
-.ivp-acts { display: grid; gap: 0.55rem; margin-top: 1.4rem; }
+.ivp-acts { display: grid; gap: 0.55rem; margin-top: 1.25rem; }
 .ivp-acts .lp-demo-submit { width: 100%; }
+/* a short second choice, Decline, sits beside the first rather than under it */
+@media (min-width: 561px) {
+    .ivp-acts.is-row { grid-template-columns: minmax(0, 1fr) auto; align-items: stretch; }
+    .ivp-acts.is-row .ivp-btn2 { width: auto; padding-left: 1.4rem; padding-right: 1.4rem; }
+}
 .ivp-btn2 {
     width: 100%; padding: 0.78rem 1rem; border-radius: 10px;
     border: 1px solid rgba(14, 35, 88, 0.14); background: #fff;
@@ -4564,6 +4573,12 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
 @media (prefers-reduced-motion: reduce) { .ivp-in, .ivp-wait span { animation: none; } }
 /* the address the invitation is for, fixed in the sign in */
 .sp-authm input.ivp-locked { background: #f3f5f9 !important; color: rgba(14, 35, 88, 0.7) !important; cursor: default; }
+/* a laptop screen: the organisation's letter goes before anything that
+   says what the invitation is, so the card fits without scrolling */
+@media (min-width: 561px) and (max-height: 720px) {
+    .ivp-mark { display: none; }
+    .ivp-card { padding-top: 1.5rem !important; }
+}
 @media (max-width: 560px) {
     .ivp-card { padding: 1.6rem 1.25rem 1.4rem !important; }
     .ivp-h { font-size: 1.35rem; }
