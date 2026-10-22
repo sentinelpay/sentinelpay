@@ -268,9 +268,9 @@
         var org = (d.org && d.org.name) || t('this organisation');
         var who = inviterName(d);
         var wrap = start(String(org).trim().charAt(0).toUpperCase() || '?');
-        head(wrap, t('Invitation'), fill('Join {org}', { org: org }),
-            who ? fill('{name} invited you to join as {role}.', { name: who, role: roleName(d.role) })
-                : fill('You were invited to join as {role}.', { role: roleName(d.role) }));
+        // who asked and as what are in the list below; a sentence saying it
+        // again made the card taller than a laptop screen
+        head(wrap, t('Invitation'), fill('Join {org}', { org: org }));
 
         var facts = el('dl', 'ivp-facts');
         function fact(label, value, small) {
@@ -285,17 +285,18 @@
             var byName = String(d.inviter.name || '').trim();
             fact(t('Invited by'), byName || d.inviter.email, byName && d.inviter.email ? d.inviter.email : '');
         }
+        var me = d.me;
+        var owes = Boolean(me && me.matches && d.needMfa && !(me.totpOn && me.mfa));
         fact(t('Role'), roleName(d.role));
         fact(t('For'), d.email);
         fact(t('Open until'), dateOf(d.expiresAt));
-        if (d.needMfa) fact(t('Two-factor'), t('Required to join'));
+        // where the note below is about two-factor, the row would say it twice
+        if (d.needMfa && !owes) fact(t('Two-factor'), t('Required to join'));
         wrap.appendChild(facts);
 
-        var me = d.me;
         if (!me) return drawSignedOut(wrap, d, org);
         if (!me.matches) return drawSomeoneElse(wrap, d);
 
-        var owes = d.needMfa && !(me.totpOn && me.mfa);
         var err;
         var box;
         if (owes && !me.totpOn) {
@@ -306,16 +307,19 @@
                 location.assign('/account/security?invite=1');
             });
             secondary(box, t('Decline'), function () { askDecline(d, org, who); });
+            box.classList.add('is-row');
         } else if (owes) {
             note(wrap, 'shield', t('Sign in again with a code'),
                 fill('This session was opened without a code from your app, and {org} asks for one. Sign in again and you come straight back here.', { org: org }));
             box = acts(wrap);
             primary(box, t('Sign in again'), function (b) { busy(b, true); signOut(); });
             secondary(box, t('Decline'), function () { askDecline(d, org, who); });
+            box.classList.add('is-row');
         } else {
             box = acts(wrap);
             primary(box, t('Accept invitation'), function (b) { accept(b, err); });
             secondary(box, t('Decline'), function () { askDecline(d, org, who); });
+            box.classList.add('is-row');
         }
         err = errLine(wrap);
         signedInAs(wrap, me);
@@ -333,12 +337,10 @@
         wrap.appendChild(p);
     }
 
-    // Signed out: both ways in, always, with the address filled in. Which one
-    // fits is not said here, because saying it would tell whoever holds the
-    // link whether that address has an account.
+    // Signed out: both ways in, always, with the address filled in and fixed.
+    // Which one fits is not said here, because saying it would tell whoever
+    // holds the link whether that address has an account.
     function drawSignedOut(wrap, d, org) {
-        note(wrap, 'info', null,
-            fill('The invitation opens for {email} only. Create an account with that address, or sign in if you already have one.', { email: d.email }));
         var box = acts(wrap);
         primary(box, t('Create account and join'), function () { openAuth('create', d, org); });
         secondary(box, t('I already have an account'), function () { openAuth('login', d, org); });
@@ -396,6 +398,7 @@
                 location.assign('/dashboard');
             });
         });
+        box.classList.add('is-row');
     }
 
     function accept(btn, err) {
