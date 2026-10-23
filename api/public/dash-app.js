@@ -4365,8 +4365,7 @@
             ? fill('Declined {date}', { date: whenText(i.declinedAt) })
             : i.state === 'expired'
             ? fill('Expired {date}', { date: whenText(i.expiresAt) })
-            : fill('Open until {date}', { date: whenText(i.expiresAt) })) +
-            (i.needMfa ? '  ·  ' + t('Two-factor required') : '');
+            : fill('Open until {date}', { date: whenText(i.expiresAt) }));
         txt.appendChild(sub);
         who.appendChild(txt);
         row.appendChild(who);
