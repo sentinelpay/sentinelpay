@@ -11,6 +11,8 @@ const mailer = require('./mailer');
 const submissions = require('./submissions-log');
 const db = require('./db');
 const accounts = require('./accounts');
+const i18nSplit = require('./i18n-split');
+const slim = require('./slim');
 const breached = require('./breached');
 const totp = require('./totp');
 const { qrPath } = require('./qr');
@@ -531,7 +533,13 @@ function renderPage(file, req, forcedLang, state) {
         (forcedLang ? ' data-force-lang="' + forcedLang + '"' : '') +
         (STATUS_MESSAGE ? ' data-status' : '') +
         (STATUS_BLOCKS_MAIL ? ' data-mail-down' : '');
-    return html
+    // the language this reader's page will be in, worked out the way the page
+    // works it out (i18n.js current()), so it arrives with that dictionary
+    // and no other: a choice made on the page, then the account's, then where
+    // they are
+    const saved = readCookie(req, 'sp-lang');
+    const reads = forcedLang || (['en', 'hr', 'de'].indexOf(saved) !== -1 ? saved : '') || lang;
+    return i18nSplit.scriptTags(html, reads)
         .replace('<!--SP_STATE-->', () => stateBlock(state))
         .replace('<!--SP_NOSCRIPT-->', notice)
         .replace('<!--SP_HREFLANG-->', () => homepageLinkTags(forcedLang))
@@ -542,7 +550,7 @@ function renderPage(file, req, forcedLang, state) {
 function sendPage(res, req, file, status, forcedLang, cache, state) {
     res.status(status || 200)
         .set('Cache-Control', cache || 'no-cache')
-        .set('Vary', 'CF-IPCountry, CF-Timezone, User-Agent')
+        .set('Vary', 'CF-IPCountry, CF-Timezone, User-Agent, Cookie')
         .type('html')
         .send(renderPage(file, req, forcedLang, state));
 }
@@ -558,6 +566,11 @@ app.use(rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => `all:${ipKey(req.realIp)}`,
+    // a page is thirty-odd files, so counting every script, sheet, image and
+    // font let someone reading ten pages in a minute run into the limit meant
+    // for the API. Files from public/ cost nothing to serve and are not counted.
+    skip: (req) => (req.method === 'GET' || req.method === 'HEAD') &&
+        /\.(?:js|css|png|jpe?g|webp|avif|gif|svg|ico|woff2?)$/i.test(req.path) && !req.path.startsWith('/v1/'),
     message: { error: 'Too many requests, please slow down' }
 }));
 
@@ -911,10 +924,28 @@ app.use((req, res, next) => {
     return sendPage(res, req, file);
 });
 
+// the dictionary cut by language, see i18n-split.js
+app.get(/^\/i18n-(core|hr|de)\.\d+\.js$/, (req, res, next) => {
+    const body = i18nSplit.file(req.params[0]);
+    if (body === null) return next();
+    res.set('Cache-Control', 'public, max-age=86400').type('application/javascript; charset=utf-8').send(body);
+});
+
 app.use((req, res, next) => {
     const m = req.path.match(/^\/((?:[a-z0-9-]+\/)*[a-z0-9-]+)\.(\d+)\.(css|js|png|jpe?g|webp|gif|svg|avif)$/i);
     if (m) req.url = '/' + m[1] + '.' + m[3];
     next();
+});
+
+// our own scripts and sheets without their comments, see slim.js
+app.use((req, res, next) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+    const rel = req.path.replace(/^\//, '');
+    const body = slim.slimmed(rel);
+    if (body === null) return next();
+    res.set('Cache-Control', 'public, max-age=86400')
+        .type(rel.endsWith('.css') ? 'text/css; charset=utf-8' : 'application/javascript; charset=utf-8')
+        .send(body);
 });
 
 // What is actually running here.
@@ -4277,6 +4308,8 @@ app.listen(PORT, () => {
     }
 
     submissions.startRetention();
+    // the slimmed scripts and sheets, made now rather than for the first visitor
+    setTimeout(() => slim.warm(), 500).unref();
 
     // Work that predates organisations joins whichever one its owner belongs to,
     // once they have made it. Nothing here invents an organisation: an account

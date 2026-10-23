@@ -16,9 +16,9 @@
     <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/fonts/jakarta-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="/fonts.2.css">
-    <link rel="stylesheet" href="/style.27.css">
-    <link rel="stylesheet" href="/landing.149.css">
-    <link rel="stylesheet" href="/corp.388.css">
+    <link rel="stylesheet" href="/style.30.css">
+    <link rel="stylesheet" href="/landing.150.css">
+    <link rel="stylesheet" href="/corp.396.css">
     <style>
         #sp-loader{position:fixed;inset:0;z-index:99999;background:#050505;display:flex;align-items:center;justify-content:center;transition:opacity 0.55s ease;}
         #sp-loader.spl-done{opacity:0;pointer-events:none;}
@@ -100,6 +100,20 @@
         .pp-table td { padding: 0.85rem 1rem; vertical-align: top; color: #2a3550; line-height: 1.55; border-bottom: 1px solid rgba(14,35,88,0.08); }
         .pp-table tr:last-child td { border-bottom: none; }
         .pp-table td:first-child { color: #0e2358; font-weight: 600; }
+        /* a phone: each row its own card, the column names written in, so the
+           legal basis is read rather than scrolled to and missed */
+        .pp-cell-k { display: none; }
+        @media (max-width: 640px) {
+            .pp-table-wrap { overflow: visible; border: none; border-radius: 0; }
+            .pp-table-wrap::after { display: none; }
+            .pp-table-wrap table.pp-table { min-width: 0; font-size: 0.95rem; }
+            .pp-table thead { display: none; }
+            .pp-table, .pp-table tbody, .pp-table tr, .pp-table td { display: block; width: auto; }
+            .pp-table tr { padding: 0.95rem 1.05rem; margin-bottom: 0.6rem; border: 1px solid rgba(14,35,88,0.12); border-radius: 12px; background: rgba(255,255,255,0.6); }
+            .pp-table-wrap table.pp-table td { padding: 0; border: none; }
+            .pp-table td + td { margin-top: 0.6rem; }
+            .pp-cell-k { display: block; margin-bottom: 0.1rem; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(14,35,88,0.5); }
+        }
         .pp-callout { margin: 2rem 0; padding: 1.1rem 1.4rem; border-left: 3px solid rgba(0,145,200,0.4); background: linear-gradient(90deg, rgba(0,145,200,0.06), transparent); border-radius: 0 10px 10px 0; font-size: 0.98rem; line-height: 1.7; color: #0e2358; }
         .pp-contact { margin: 1.4rem 0; padding: 1.3rem 1.5rem; border: 1px solid rgba(14,35,88,0.12); border-radius: 14px; background: rgba(255,255,255,0.6); }
         .pp-contact p { margin: 0.4rem 0; font-size: 0.98rem; }
@@ -376,14 +390,14 @@
                 <table class="pp-table">
                     <thead><tr><th>Data</th><th>Why we use it</th><th>Legal basis</th></tr></thead>
                     <tbody>
-                        <tr><td>Identity, contact</td><td>To onboard you and assess your suitability as a customer</td><td>Performance of a contract</td></tr>
-                        <tr><td>Identity, contact, crypto activity</td><td>To provide the service you signed up for and manage your account</td><td>Performance of a contract</td></tr>
-                        <tr><td>Contact, payment</td><td>To bill you for the service</td><td>Performance of a contract</td></tr>
-                        <tr><td>Crypto activity</td><td>To detect and prevent potentially illegal or prohibited activity, including sanctions exposure</td><td>Legitimate interests, with a substantial public interest condition</td></tr>
-                        <tr><td>Contact, marketing, technical, usage</td><td>Product updates, events and newsletters, some of it using cookies</td><td>Consent or legitimate interests</td></tr>
-                        <tr><td>Contact</td><td>To send service and security messages about the product</td><td>Legitimate interests</td></tr>
-                        <tr><td>Technical, usage</td><td>To secure, measure and improve the service and the site</td><td>Legitimate interests</td></tr>
-                        <tr><td>Identity, contact, crypto activity</td><td>To comply with court orders, warrants, laws and regulations, or to bring or defend legal claims</td><td>Legal obligation / legitimate interests</td></tr>
+                        <tr><td>Identity, contact</td><td><span class="pp-cell-k">Why we use it</span>To onboard you and assess your suitability as a customer</td><td><span class="pp-cell-k">Legal basis</span>Performance of a contract</td></tr>
+                        <tr><td>Identity, contact, crypto activity</td><td><span class="pp-cell-k">Why we use it</span>To provide the service you signed up for and manage your account</td><td><span class="pp-cell-k">Legal basis</span>Performance of a contract</td></tr>
+                        <tr><td>Contact, payment</td><td><span class="pp-cell-k">Why we use it</span>To bill you for the service</td><td><span class="pp-cell-k">Legal basis</span>Performance of a contract</td></tr>
+                        <tr><td>Crypto activity</td><td><span class="pp-cell-k">Why we use it</span>To detect and prevent potentially illegal or prohibited activity, including sanctions exposure</td><td><span class="pp-cell-k">Legal basis</span>Legitimate interests, with a substantial public interest condition</td></tr>
+                        <tr><td>Contact, marketing, technical, usage</td><td><span class="pp-cell-k">Why we use it</span>Product updates, events and newsletters, some of it using cookies</td><td><span class="pp-cell-k">Legal basis</span>Consent or legitimate interests</td></tr>
+                        <tr><td>Contact</td><td><span class="pp-cell-k">Why we use it</span>To send service and security messages about the product</td><td><span class="pp-cell-k">Legal basis</span>Legitimate interests</td></tr>
+                        <tr><td>Technical, usage</td><td><span class="pp-cell-k">Why we use it</span>To secure, measure and improve the service and the site</td><td><span class="pp-cell-k">Legal basis</span>Legitimate interests</td></tr>
+                        <tr><td>Identity, contact, crypto activity</td><td><span class="pp-cell-k">Why we use it</span>To comply with court orders, warrants, laws and regulations, or to bring or defend legal claims</td><td><span class="pp-cell-k">Legal basis</span>Legal obligation / legitimate interests</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -614,7 +628,7 @@
     <script src="/auth-modal.19.js" defer></script>
     <script src="/auth-flow.47.js" defer></script>
     <script src="/auth-nav.7.js" defer></script>
-    <script src="/navlift.2.js" defer></script>
-    <script src="/i18n.344.js" defer></script>
+    <script src="/navlift.3.js" defer></script>
+    <script src="/i18n.345.js" defer></script>
 </body>
 </html>

@@ -1997,6 +1997,11 @@ button { font: inherit; color: inherit; }
 }
 .lgx-add:hover, .lgx-menu.is-open .lgx-add { color: var(--ink); }
 .lgx-menu .tk-pop { left: 0; right: auto; min-width: 13rem; }
+/* the chip sits in its menu's box, and that box sized to the chip's whole
+   text, so on a phone a date range ran under the refresh button. Held to the
+   row, the value inside the chip gets its ellipsis. */
+.lgx-chips > .lgx-menu { min-width: 0; max-width: 100%; }
+.lgx-chips > .lgx-menu > .lgx-chip { width: 100%; min-width: 0; }
 .lgx-opt .lgx-tick { display: flex; width: 14px; height: 14px; color: var(--link); visibility: hidden; }
 .lgx-opt .lgx-tick svg { width: 100%; height: 100%; }
 .lgx-opt.is-on .lgx-tick { visibility: visible; }
@@ -2905,8 +2910,8 @@ a.btn { text-decoration: none; }
     pointer-events: none;
 }
 .btn-cta:hover:not([disabled])::after {
-    left: 135%;
-    transition: left 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    translate: 400% 0;
+    transition: translate 0.6s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .btn-wide[disabled] { opacity: 0.45; cursor: default; }
 
@@ -3723,6 +3728,43 @@ html.is-theming .btn {
    address and its pill instead of cutting the address after eight letters */
 @media (max-width: 720px) {
     .tbl-slide > .tr.is-team { min-width: 44rem; grid-template-columns: minmax(17rem, 2fr) 6rem 6rem 12rem; }
+}
+/* A phone. Sliding kept the columns but hid two of them and every action off
+   the right edge, where nobody looks. Each person takes two lines instead: who
+   they are across the top, and under the name their second step and role, at
+   the same place in every row so they still read down as columns, with what
+   you can do about them at the end of that line. Nothing is off screen. */
+@media (max-width: 640px) {
+    .tbl-slide:has(> .tr.is-team) { overflow-x: visible; }
+    .tbl-slide > .tr.is-team {
+        min-width: 0;
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas: "who who" "facts act";
+        row-gap: 0.55rem;
+    }
+    .tbl-slide > .tr.is-team.th { display: none; }
+    .tbl-slide > .tr.is-team > .mem-who { grid-area: who; }
+    .tbl-slide > .tr.is-team > .tr-facts {
+        grid-area: facts;
+        display: grid;
+        grid-template-columns: 6.4rem minmax(0, 1fr);
+        align-items: center;
+        gap: 0.8rem;
+        padding-left: 2.85rem;
+        min-width: 0;
+        font-size: 0.82rem;
+    }
+    .tbl-slide > .tr.is-team > .tr-facts > * { display: flex; align-items: center; gap: 0.35rem; min-width: 0; white-space: nowrap; }
+    .tbl-slide > .tr.is-team .tr-k { display: inline; color: var(--ink-4); font-size: 0.76rem; }
+    /* an owner, an analyst: the role says what it is without its heading */
+    .tbl-slide > .tr.is-team > .tr-facts > :nth-child(2) .tr-k { display: none; }
+    .tbl-slide > .tr.is-team > .tr-act { grid-area: act; justify-self: end; align-self: center; width: auto; }
+}
+/* under 400 the actions do not fit beside the facts without sitting on the
+   role, so they take a line of their own, under the name like the rest */
+@media (max-width: 400px) {
+    .tbl-slide > .tr.is-team { grid-template-areas: "who who" "facts facts" "act act"; }
+    .tbl-slide > .tr.is-team > .tr-act { justify-self: start; padding-left: 2.85rem; }
 }
 .mem-who { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
 /* the middle columns are held in one box so a phone can lay them out as a
@@ -6538,3 +6580,24 @@ a.use-fact:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; 
     .mfa-key { min-height: 11rem; }
 }
 
+
+/* A finger is wider than a pointer. The switches in Preferences were 38 by
+   21, the column sorts 16 tall and the cross on a filter 16 square: aimed at
+   with a thumb, the tap lands beside them. On a touch screen each reaches
+   past its drawn edge to about 40 pixels, without moving anything drawn. */
+@media (pointer: coarse) {
+    .sw, .tk-sort, .lgx-chip-x, .use-plan-n, .rowbtn, .tk-more, .use-delta { position: relative; }
+    .sw::before, .lgx-chip-x::before, .tk-more::before { content: ''; position: absolute; inset: -10px; }
+    .tk-sort::before, .use-plan-n::before { content: ''; position: absolute; inset: -12px -6px; }
+    .rowbtn::before, .use-delta::before { content: ''; position: absolute; inset: -7px -3px; }
+}
+
+/* Safari on a phone zooms the whole page in when a field under 16 pixels is
+   tapped, and leaves it zoomed. The dashboard's fields are 12.8 to 14.4, so
+   searching the team or typing a name pushed the screen sideways. On a touch
+   screen they are 16; the six code boxes are larger already and keep it. */
+@media (pointer: coarse) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not(.mfa-otp input),
+    select,
+    textarea { font-size: 16px; }
+}

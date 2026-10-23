@@ -65,6 +65,7 @@ english, croatian and german. **592 translated strings per language**, keyed on 
 - **first visit picks a language from the visitor's country**, resolved server-side from `cf-ipcountry`. the guess is never written to the cookie, so it cannot harden into a stored preference.
 - **tab titles are translated before first paint.** an inline script in `<head>` sets the title from the cookie, so no page ever shows an english title and then swaps it. measured at one title frame per language.
 - **every translated article can be read in the original.** croatian and german readers get a pill under the byline that flips one article back to the english it was written in, headline, body and tab title together, while the site stays in their language. english readers are already reading the original, so they never see the button.
+- **a page brings only its reader's language.** `api/public/i18n.js` stays the one file translations are written in. the server cuts it into the code that translates and one dictionary per language (`api/i18n-split.js`) and sends each page with its reader's. an english reader loads 15 KB of it instead of 690, a croatian reader half.
 - **`tools/i18n-audit.py` refuses to pass on any untranslated string**, including strings written at runtime by javascript. it currently reports zero missing.
 
 ## security
@@ -302,7 +303,8 @@ html is never cached hard, so copy changes go live with the deploy.
 | email | resend |
 | edge | cloudflare: dns, waf, turnstile, geo, email routing |
 | hosting | railway, docker |
-| dependencies | seven, all direct. no framework, no bundler, no build |
+| dependencies | ten, all direct. no framework, no bundler, no build |
+| assets | our scripts and sheets are sent without their comments (`api/slim.js`, checked token for token); the files on disk keep them |
 
 ## license
 

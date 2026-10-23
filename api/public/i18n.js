@@ -5952,9 +5952,24 @@
                 (body ? '&body=' + encodeURIComponent(body) : ''));
         });
     }
+    // Sent cut by language (api/i18n-split.js), the page brings only the words
+    // the server expected it to need. A language chosen in this browser that
+    // the server could not see, kept in storage with no cookie, is fetched
+    // here, the cookie is set so the next page comes with it, and then the
+    // page is translated as it would have been.
+    var SELF = document.currentScript && document.currentScript.src;
+    var fetched = false;
     function init() {
         var lang = current();
-        if (lang !== 'en') translate(lang);
+        if (lang !== 'en' && !T[lang] && !fetched && SELF && SELF.indexOf('/i18n-core.') !== -1) {
+            fetched = true;
+            var s = document.createElement('script');
+            s.src = SELF.replace('/i18n-core.', '/i18n-' + lang + '.');
+            s.onload = s.onerror = function () { persist(lang); init(); };
+            document.head.appendChild(s);
+            return;
+        }
+        if (lang !== 'en' && T[lang]) translate(lang);
         buildMailtos(lang);
         buildSwitcher(lang);
         buildOriginalToggle(lang);

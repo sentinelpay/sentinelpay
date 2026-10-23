@@ -59,3 +59,50 @@
         new ResizeObserver(function () { place(current()); }).observe(sw);
     }
 })();
+
+// The compare table, on a phone. Five columns do not fit 390 pixels: the table
+// scrolled sideways inside itself, a plan and a half showed, and the buttons
+// spilled out of their own edges. Below 720 pixels the plan names become tabs
+// and the table shows the features against one plan at a time, Growth first,
+// since that is the one marked as the pick. Wider than that the attribute is
+// set and nothing reads it.
+(function () {
+    'use strict';
+    var table = document.querySelector('.lp-cmp-table');
+    if (!table) return;
+    var plans = [].slice.call(table.querySelectorAll('.lp-cmp-row.is-head .lp-cmp-plan'));
+    if (!plans.length) return;
+    var names = plans.map(function (cell) { return cell.querySelector('.lp-cmp-plan-name'); });
+    var head = table.querySelector('.lp-cmp-row.is-head');
+    head.setAttribute('role', 'tablist');
+    var i18n = window.SentinelI18n;
+    head.setAttribute('aria-label', i18n && i18n.t ? i18n.t('Plan') : 'Plan');
+
+    function show(i) {
+        // column 1 is the feature, so plan i is column i + 2
+        table.setAttribute('data-show', String(i + 2));
+        plans.forEach(function (cell, k) {
+            cell.classList.toggle('is-on', k === i);
+            if (names[k]) {
+                names[k].setAttribute('aria-selected', k === i ? 'true' : 'false');
+                names[k].tabIndex = k === i ? 0 : -1;
+            }
+        });
+    }
+    names.forEach(function (name, i) {
+        if (!name) return;
+        name.setAttribute('role', 'tab');
+        name.addEventListener('click', function () { show(i); });
+        name.addEventListener('keydown', function (e) {
+            var to = e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowLeft' ? i - 1 : null;
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); show(i); return; }
+            if (to === null) return;
+            e.preventDefault();
+            to = (to + names.length) % names.length;
+            show(to);
+            if (names[to]) names[to].focus();
+        });
+    });
+    var pick = plans.findIndex ? plans.findIndex(function (c) { return c.classList.contains('is-pick'); }) : -1;
+    show(pick === -1 ? 0 : pick);
+})();

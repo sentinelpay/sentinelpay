@@ -50,7 +50,13 @@ body {
     justify-content: center;
     align-items: center;
     position: relative;
+    /* clip, not hidden: both cut off what pokes out at the side, but hidden
+       on body while html has an overflow of its own made body a scroll box
+       that never scrolls, and every position: sticky on the public pages
+       stuck to it instead of to the window, which is to say not at all.
+       hidden stays first for a browser that does not know clip. */
     overflow-x: hidden;
+    overflow-x: clip;
 }
 .cyber-grid {
     position: fixed;
@@ -346,4 +352,18 @@ button {
 
 .hidden {
     display: none !important;
+}
+
+/* Somebody who has asked their system for less motion gets it everywhere,
+   not only where a rule remembered to ask. Of the sixty or so animations on
+   the public pages fewer than half did. Everything still arrives where it
+   was going, the marquee and the reveals included, in the first frame
+   instead of over half a second. */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }
