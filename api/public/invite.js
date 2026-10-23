@@ -305,7 +305,10 @@
                 t('Add an authenticator app to your account first. It takes about a minute, and you come straight back here to accept.'));
             box = acts(wrap);
             primary(box, t('Set up two-factor'), function () {
-                location.assign('/account/security?invite=1');
+                // the Security page reads this, says why it opened, and opens
+                // the dialog for adding an app; the address stays clean
+                try { sessionStorage.setItem('sp-invite-2fa', String(Date.now())); } catch (e) {  }
+                location.assign('/account/security');
             });
             secondary(box, t('Decline'), function () { askDecline(d, org, who); });
             box.classList.add('is-row');
@@ -509,6 +512,8 @@
     // reset link does, with the answer already in it. If the answer is slow
     // the card opens with its placeholder rather than keep anyone waiting.
     function begin() {
+        // back at the invitation, so the Security page is no longer on its way
+        try { sessionStorage.removeItem('sp-invite-2fa'); } catch (e) {  }
         var answered = false;
         var clear = false;
         var slow = null;
