@@ -10686,8 +10686,24 @@
     // Security. Both of these addresses used to be in the rail with nothing
     // behind them, which is the thing I keep taking out of other people's
     // navigation, so they have screens now rather than a rename.
-    // the Security page opened from an invitation that needs two-factor
-    var INVITE_2FA = /[?&]invite=1(&|$)/;
+    // The Security page opened from an invitation that needs two-factor. The
+    // invitation says so in this tab's session rather than in the address,
+    // which stays /account/security. A link from before, with ?invite=1 on
+    // it, is taken the same way and the address is cleaned. An hour is long
+    // enough to add an app and short enough not to greet a later visit.
+    var INVITE_2FA = 'sp-invite-2fa';
+    function fromInvite() {
+        if (/[?&]invite=1(&|$)/.test(location.search)) {
+            try { sessionStorage.setItem(INVITE_2FA, String(Date.now())); } catch (e) {  }
+            try { history.replaceState(history.state, '', location.pathname + location.hash); } catch (e) {  }
+        }
+        var at = 0;
+        try { at = Number(sessionStorage.getItem(INVITE_2FA)) || 0; } catch (e) {  }
+        return at > 0 && Date.now() - at < 60 * 60 * 1000;
+    }
+    function inviteDone() {
+        try { sessionStorage.removeItem(INVITE_2FA); } catch (e) {  }
+    }
 
     function viewSecurity(me) {
         var page = document.createElement('div');
@@ -10935,9 +10951,11 @@
         paintRules();
 
         // Sent here by an invitation that asks for two-factor: the page says
-        // why, right above the section it is about, and opens on it. Adding
-        // the app takes the reader back to the invitation on its own.
-        if (INVITE_2FA.test(location.search)) {
+        // why, right above the section it is about, opens on it, and opens
+        // the dialog for adding the app once it knows there is none. Adding
+        // it takes the reader back to the invitation on its own.
+        var forInvite = fromInvite();
+        if (forInvite) {
             var forInv = document.createElement('div');
             forInv.className = 'notice';
             forInv.innerHTML = '<svg class="notice-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
@@ -10956,6 +10974,7 @@
             forInvA.href = '/invite';
             forInvA.className = 'notice-a';
             forInvA.textContent = t('Back to the invitation');
+            forInvA.addEventListener('click', inviteDone);
             forInvT.appendChild(forInvA);
             forInv.appendChild(forInvT);
             page.appendChild(forInv);
@@ -11060,6 +11079,7 @@
                 list.appendChild(row);
             });
         }
+        var askedForInvite = false;
         function load() {
             Promise.all([
                 fetch('/v1/account/totp', { credentials: 'same-origin' }).then(function (r) { return r.json(); }),
@@ -11068,6 +11088,10 @@
                 apps = (got[0] && got[0].factors) || [];
                 staffNeeds = Boolean(got[1] && got[1].staffNeeds2fa);
                 paint();
+                if (forInvite && !askedForInvite && !apps.length && page.isConnected) {
+                    askedForInvite = true;
+                    addTwo(load);
+                }
             }).catch(function () {
                 apps = apps || [];
                 paint();
@@ -11599,7 +11623,8 @@
                 postJson('/v1/account/totp/confirm', { code: value, name: appName }).then(function () {
                     m.shut();
                     toast(t('Authenticator app added'), 'good');
-                    if (INVITE_2FA.test(location.search)) {
+                    if (fromInvite()) {
+                        inviteDone();
                         setTimeout(function () { location.assign('/invite'); }, 900);
                         return;
                     }

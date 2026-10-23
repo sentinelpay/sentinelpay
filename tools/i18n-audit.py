@@ -111,7 +111,7 @@ for f in sorted(x for x in os.listdir(PUB) if x.endswith('.js')):
     # strings handed to our own helpers, which translate them inside. the sweep below
     # only looks at literals containing a space, so single words like Theme or Timezone
     # would otherwise never be checked.
-    TRANSLATING_HELPERS = r"(?:acctLabel|acctRow|head|card|crumb|sectionTitle|sectionNote)"
+    TRANSLATING_HELPERS = r"(?:acctLabel|acctRow|head|card|crumb|sectionTitle|sectionNote|wideBtn|modalShell)"
     lits += re.findall(TRANSLATING_HELPERS + r"\(\s*'((?:[^'\\]|\\.)+)'", src)
     # the usage screen's own two: a tile is a label and a number, and a section
     # is an anchor, a title and a hint. both translate inside, and both are
