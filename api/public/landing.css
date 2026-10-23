@@ -755,8 +755,8 @@ html.lp-scroll-lock body {
 .lp-mm-btn-solid:hover::after,
 .lp-mm-btn-ghost:active::after,
 .lp-mm-btn-solid:active::after {
-    left: 130%;
-    transition: left 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+    translate: 382% 0;
+    transition: translate 0.55s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .lp-footer {
     position: relative;
@@ -1572,8 +1572,8 @@ html.theme-light .lp-roles-panels {
 }
 .sp-hero-cta:hover::after,
 .sp-hero-second:hover::after {
-    left: 130%;
-    transition: left 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+    translate: 382% 0;
+    transition: translate 0.55s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .sp-hero-second {
     display: inline-flex;

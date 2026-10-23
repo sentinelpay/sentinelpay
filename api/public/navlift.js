@@ -8,6 +8,7 @@
     var MAX_RADIUS = 26;
     var raf = 0;
     var last = -1;
+    var folds = [document.querySelector('.lp-nav'), document.querySelector('.lp-hero')].filter(Boolean);
 
     function apply() {
         raf = 0;
@@ -16,8 +17,13 @@
         var e = 1 - Math.pow(1 - p, 3);
         if (Math.abs(e - last) < 0.002) return;
         last = e;
-        root.style.setProperty('--sp-fold', e.toFixed(4));
-        root.style.setProperty('--sp-fold-radius', (e * MAX_RADIUS).toFixed(1) + 'px');
+        // on the two things that read them, not on the page root: a value
+        // set on the root is inherited by every element, and every element
+        // had its style worked out again on every frame of a scroll
+        for (var i = 0; i < folds.length; i++) {
+            folds[i].style.setProperty('--sp-fold', e.toFixed(4));
+            folds[i].style.setProperty('--sp-fold-radius', (e * MAX_RADIUS).toFixed(1) + 'px');
+        }
     }
     function onScroll() {
         if (raf) return;

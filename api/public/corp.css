@@ -302,8 +302,8 @@ html.theme-light .lp-hero .lp-cta-ghost:hover {
 }
 html.theme-light .lp-hero .lp-cta-primary:hover::after,
 html.theme-light .lp-hero .lp-cta-ghost:hover::after {
-    left: 135%;
-    transition: left 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    translate: 331% 0;
+    transition: translate 0.6s cubic-bezier(0.22, 1, 0.36, 1);
 }
 html.theme-light .lp-hero { position: relative; overflow: hidden; }
 .lp-hero-fx { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
@@ -533,8 +533,8 @@ html.theme-light .lp-nav .lp-btn-solid::after {
     background: linear-gradient(105deg, transparent, rgba(123, 108, 255, 0.28) 50%, transparent);
 }
 html.theme-light .lp-nav .auth-nav-btn:hover::after {
-    left: 130%;
-    transition: left 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+    translate: 382% 0;
+    transition: translate 0.55s cubic-bezier(0.22, 1, 0.36, 1);
 }
 @media (min-width: 1281px) {
 html.theme-light .lp-hero {
@@ -877,7 +877,7 @@ html.theme-light .lp-role-panel.active { display: block !important; }
     transform: none;
 }
 .lp-roles-dd.open .lp-roles-dd-btn { transform: none; }
-.lp-roles-dd-btn:hover::after { left: 135%; transition: left 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
+.lp-roles-dd-btn:hover::after { translate: 400% 0; transition: translate 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
 .lp-role-cta-btn {
     position: relative;
     overflow: hidden;
@@ -898,7 +898,7 @@ html.theme-light .lp-role-cta-btn:hover {
     background: #ffffff;
     box-shadow: 0 10px 28px -8px rgba(123, 108, 255, 0.6);
 }
-.lp-role-cta-btn:hover::after { left: 135%; transition: left 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
+.lp-role-cta-btn:hover::after { translate: 400% 0; transition: translate 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
 .lp-role-cta-btn span { display: inline-block; transition: transform 0.25s ease; position: relative; z-index: 1; }
 .lp-role-cta-btn:hover span { transform: translateX(5px); }
 @media (min-width: 861px) {
@@ -1092,8 +1092,8 @@ html.theme-light .lp-roles .lp-h2 { margin: 0 0 1.15rem; }
     z-index: 1;
 }
 .lp-sol-card:hover::after {
-    left: 135%;
-    transition: left 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+    translate: 400% 0;
+    transition: translate 0.75s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .lp-sol-card.lp-sol-card-cta::after {
     background: linear-gradient(105deg, transparent, rgba(123, 108, 255, 0.4) 48%, rgba(0, 240, 255, 0.3) 60%, transparent);
@@ -1588,7 +1588,7 @@ html.theme-light .lp-demo-select-list { scrollbar-width: thin; scrollbar-color: 
     pointer-events: none;
 }
 .lp-ins-featured:hover .lp-ins-img::after,
-.lp-ins-card:hover .lp-ins-img::after { left: 135%; transition: left 0.7s cubic-bezier(0.22, 1, 0.36, 1); }
+.lp-ins-card:hover .lp-ins-img::after { translate: 400% 0; transition: translate 0.7s cubic-bezier(0.22, 1, 0.36, 1); }
 .lp-ins-img.has-cover::after { z-index: 3; }
 .lp-ins-cover-img {
     position: absolute;
@@ -1767,8 +1767,12 @@ html.theme-light .lp-hero {
 html.theme-light .lp-statsx { padding: 3rem 0 !important; }
 .lp-footer-link { display: inline-block; padding: 0.32rem 0; font-size: 0.9rem; }
 .lp-footer-email { display: inline-block; padding: 0.3rem 0; font-size: 0.9rem; }
-.lp-footer-col { margin-bottom: 0.4rem; }
-.lp-footer-links { gap: 1.6rem 1.2rem; }}
+.lp-footer-col { margin-bottom: 0.4rem; min-width: 0; }
+/* two columns of link groups on a phone, always. As a wrapping row, groups
+   paired up or stood alone depending on how wide their longest link was, so
+   the front page showed Solutions and Industries one above the other and the
+   pricing page showed them side by side. */
+.lp-footer-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.6rem 1.2rem; }}
 
 @media (max-width: 640px) {
 .lp-fx-orb {
@@ -2199,6 +2203,9 @@ table.pp-table td { padding: 0.7rem 0.75rem; }}
     width: 100%;
     max-width: 26rem;
     max-height: calc(100vh - 2.5rem);
+    /* the visible height: on a phone 100vh is the screen with the browser's
+       bars gone, so the foot of the card sat under the bottom bar */
+    max-height: calc(100dvh - 2.5rem);
     overflow-y: auto;
     overscroll-behavior: contain;
     /* on a screen too short for it the card still scrolls, by wheel, touch
@@ -3709,9 +3716,15 @@ html.theme-light .lp-role-feature .lp-role-desc { max-width: 54ch; }}
 .lp-proof-panel {
     position: relative;
     overflow: hidden;
-    --sp-inset: calc((1 - var(--sp-open, 1)) * min(7vw, 120px));
-    width: min(calc(100% - 2 * var(--sp-inset)), 1460px);
+    /* Opens towards the full width as it reaches the middle of the screen.
+       It used to do that by changing its width, so on every frame of the
+       scroll its text wrapped again, its height changed, and everything below
+       it moved: a tenth of a layout shift each time the page went past it.
+       Scaled, it opens the same way and nothing is laid out again. */
+    width: min(100%, 1460px);
     margin-inline: auto;
+    transform: scale(calc(1 - (1 - var(--sp-open, 1)) * 0.12));
+    transform-origin: 50% 50%;
     border-radius: clamp(16px, calc(32px - var(--sp-open, 1) * 8px), 32px);
     background: #000000;
 }
@@ -3889,7 +3902,7 @@ html.theme-light .lp-proof .lp-statsx-grid { max-width: none; }
 .sp-wall-cell { aspect-ratio: 1; }}
 @media (max-width: 720px) {
 .lp-proof { padding: 3.4rem 0 4rem; }
-.lp-proof-panel { --sp-inset: 0px; border-radius: 0; }
+.lp-proof-panel { border-radius: 0; }
 .sp-wall-cell:nth-child(n+13) { display: none; }
 .lp-proof-copy { padding: 2.6rem 1.4rem 2.2rem; }
 html.theme-light .lp-proof .lp-statsx-heading {
@@ -4476,9 +4489,57 @@ html.theme-light .lp-proof .lp-statsx-label { font-size: 0.78rem; max-width: non
 }
 
 @media (max-width: 900px) {
-    .lp-cmp-table { overflow-x: auto; }
+    /* the five columns fit down to 720, where the tabs take over, so the
+       table only scrolls sideways when there are no tabs to take over. As a
+       scroll box it also held the sticky heading 64 pixels down inside
+       itself, leaving that gap above it and never sticking to the window. */
+    .lp-cmp-table:not([data-show]) { overflow-x: auto; }
     .lp-cmp-row { grid-template-columns: minmax(11rem, 1.5fr) repeat(4, minmax(6.4rem, 1fr)); min-width: 37rem; }
     .lp-cmp-cell { font-size: 0.8rem; padding-inline: 0.6rem; }
+    .lp-cmp-btn { padding: 0.5rem 0.75rem; font-size: 0.74rem; }
+}
+/* a phone: one plan at a time, chosen by the tabs the plan names turn into
+   (bill-switch.js sets data-show to the column on show) */
+@media (max-width: 720px) {
+    .lp-cmp-title { margin-bottom: 1.4rem; }
+    .lp-cmp-table { overflow: visible; }
+    .lp-cmp-table[data-show] .lp-cmp-row { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); min-width: 0; }
+    .lp-cmp-table[data-show] .lp-cmp-row:not(.is-head) > .lp-cmp-cell:not(.is-label) { display: none; }
+    .lp-cmp-table[data-show="2"] .lp-cmp-row:not(.is-head) > .lp-cmp-cell:nth-child(2),
+    .lp-cmp-table[data-show="3"] .lp-cmp-row:not(.is-head) > .lp-cmp-cell:nth-child(3),
+    .lp-cmp-table[data-show="4"] .lp-cmp-row:not(.is-head) > .lp-cmp-cell:nth-child(4),
+    .lp-cmp-table[data-show="5"] .lp-cmp-row:not(.is-head) > .lp-cmp-cell:nth-child(5) { display: flex; }
+    .lp-cmp-table[data-show] .lp-cmp-cell { font-size: 0.84rem; padding-inline: 0.5rem; }
+    .lp-cmp-table[data-show] .lp-cmp-cell.is-label { padding-left: 0; }
+    .lp-cmp-table[data-show] .lp-cmp-cell.is-pick { background: none; }
+
+    .lp-cmp-table[data-show] .lp-cmp-row.is-head {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.35rem;
+        padding: 0.7rem 0 0.8rem;
+        align-items: stretch;
+    }
+    .lp-cmp-table[data-show] .lp-cmp-row.is-head > .lp-cmp-cell.is-label { display: none; }
+    .lp-cmp-table[data-show] .lp-cmp-row.is-head .lp-cmp-plan { display: contents; }
+    .lp-cmp-table[data-show] .lp-cmp-plan-name {
+        display: flex; align-items: center; justify-content: center;
+        min-height: 2.6rem; padding: 0 0.3rem;
+        border-radius: 10px; border: 1px solid rgba(14, 35, 88, 0.12); background: #fff;
+        font-size: 0.8rem; font-weight: 700; color: #5b6b8c; text-align: center; line-height: 1.15;
+        hyphens: auto; -webkit-hyphens: auto; overflow-wrap: anywhere;
+        cursor: pointer; -webkit-tap-highlight-color: transparent;
+        transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    }
+    .lp-cmp-table[data-show] .lp-cmp-plan.is-on .lp-cmp-plan-name { background: #0e2358; border-color: #0e2358; color: #fff; }
+    .lp-cmp-table[data-show] .lp-cmp-plan-name:focus-visible { outline: 2px solid #0091c8; outline-offset: 2px; }
+    .lp-cmp-table[data-show] .lp-cmp-btn { display: none; }
+    .lp-cmp-table[data-show] .lp-cmp-plan.is-on .lp-cmp-btn {
+        display: flex; grid-row: 2; grid-column: 1 / -1;
+        min-height: 2.75rem; margin-top: 0.2rem; font-size: 0.86rem;
+    }
+}
+@media (max-width: 360px) {
+    .lp-cmp-table[data-show] .lp-cmp-plan-name { font-size: 0.72rem; padding: 0 0.2rem; }
 }
 
 

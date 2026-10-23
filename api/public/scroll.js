@@ -27,7 +27,6 @@
     }
     var hero = document.querySelector('.lp-hero');
     if (!hero) return;
-    var root = document.documentElement;
     var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduced) return;
 
@@ -42,7 +41,7 @@
         var e = 1 - Math.pow(1 - p, 2);
         if (Math.abs(e - lastP) < 0.002) return;
         lastP = e;
-        root.style.setProperty('--sp-fold-scale', (1 - e * MAX_SHRINK).toFixed(4));
+        hero.style.setProperty('--sp-fold-scale', (1 - e * MAX_SHRINK).toFixed(4));
 
         hero.style.willChange = (e > 0.001 && e < 0.999) ? 'transform' : 'auto';
     }

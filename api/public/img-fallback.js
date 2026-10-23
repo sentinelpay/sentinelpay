@@ -3,7 +3,9 @@
     document.querySelectorAll(SEL).forEach(function (img) {
         function fail() {
             var fb = img.getAttribute('data-fb');
-            if (fb) { img.removeAttribute('data-fb'); img.src = fb; }
+            // a smaller copy chosen from srcset that failed is replaced too:
+            // with srcset left on, setting src alone changes nothing
+            if (fb) { img.removeAttribute('data-fb'); img.removeAttribute('srcset'); img.src = fb; }
             else { img.remove(); }
         }
         img.addEventListener('error', fail);
