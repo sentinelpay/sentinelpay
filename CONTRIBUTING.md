@@ -1,6 +1,8 @@
 # contributing
 
 read `README.md` first, then `docs/SITE-OVERVIEW.md` if you want the long version.
+working on the dashboard: `docs/DASHBOARD.md` and `CLAUDE.md` are newer than this file
+and win where they disagree.
 this file is the short list of things that are easy to get wrong here.
 
 ## commits
