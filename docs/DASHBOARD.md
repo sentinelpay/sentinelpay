@@ -19,12 +19,12 @@ collide, so say in the chat which screen you are on.
 
 ## how we work
 
-we build with Claude, one feature at a time.
+we build one feature at a time.
 
 1. describe the feature the way you want it: which screen, who uses it, what it shows,
    what you can do there. a screenshot of something you like is worth a paragraph.
-2. Claude builds it, runs the tests, looks at it in the real app in light, dark and on a
-   phone, and sends you screenshots.
+2. it gets built, the tests run, and it is looked at in the real app in light, dark and
+   on a phone, with screenshots back to you.
 3. it goes to staging. you look at it on `staging.sentinelpay.org` and say what to change.
 4. repeat until it is right, then the next feature.
 
@@ -34,7 +34,7 @@ a few things make this go faster:
   slower and worse than three requests.
 - say what is wrong, not only that something is: "the email is too far from the picture"
   beats "looks off".
-- Claude reads `CLAUDE.md` on its own. you do not have to repeat those rules.
+- the rules in `CLAUDE.md` apply to every change. you do not have to repeat them.
 
 ## branches and where things run
 
