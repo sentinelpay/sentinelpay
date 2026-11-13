@@ -128,7 +128,11 @@ let ready = null;
 function init() {
     if (!db.available()) return Promise.resolve(false);
     if (ready) return ready;
-    ready = db.query(SCHEMA)
+    // a check names its project, so projects exist first. Booting, the server
+    // builds them in that order anyway; a test on an empty database did not,
+    // and every check it ran failed on a table that was not there yet
+    ready = require('./projects.js').init()
+        .then(() => db.query(SCHEMA))
         .then(() => {
             console.log('[screening] table ready');
             return true;

@@ -42,7 +42,9 @@ let ready = null;
 function init() {
     if (!db.available()) return Promise.resolve(false);
     if (ready) return ready;
-    ready = db.query(SCHEMA)
+    // a project belongs to an organisation, so organisations exist first
+    ready = require('./orgs.js').init()
+        .then(() => db.query(SCHEMA))
         .then(() => {
             console.log('[projects] tables ready');
             return true;

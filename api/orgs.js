@@ -89,7 +89,9 @@ let ready = null;
 function init() {
     if (!db.available()) return Promise.resolve(false);
     if (ready) return ready;
-    ready = db.query(SCHEMA)
+    // a membership names a user, so users exist first
+    ready = require('./accounts.js').init()
+        .then(() => db.query(SCHEMA))
         .then(() => {
             console.log('[orgs] tables ready');
             return true;

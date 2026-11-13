@@ -180,7 +180,9 @@ let ready = null;
 function init() {
     if (!db.available()) return Promise.resolve(false);
     if (ready) return ready;
-    ready = db.query(SCHEMA)
+    // a token names its project, so projects exist first (see screening.js)
+    ready = require('./projects.js').init()
+        .then(() => db.query(SCHEMA))
         .then(() => {
             console.log('[tokens] table ready');
             return true;

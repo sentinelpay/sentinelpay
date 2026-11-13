@@ -327,7 +327,9 @@ async function send(msg) {
         html: html,
         text: text,
     };
-    payload.reply_to = replyTo || MAIL_TO;
+    // the library takes replyTo and sends it on as reply_to; since its sixth
+    // version a reply_to given directly is dropped without a word
+    payload.replyTo = replyTo || MAIL_TO;
     const result = await resend.emails.send(payload);
     if (result && result.error) {
         const err = new Error(result.error.message || 'resend rejected the message');
